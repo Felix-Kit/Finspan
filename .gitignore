@@ -1,0 +1,29 @@
+# macOS
+.DS_Store
+
+# Xcode
+DerivedData/
+build/
+*.xcuserstate
+*.moved-aside
+*.xccheckout
+*.xcscmblueprint
+
+# User-specific Xcode data
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# Swift Package Manager
+.swiftpm/
+.build/
+
+# Environment / secrets
+.env
+.env.*
+*.pem
+*.p8
+
+# Optional: do not commit official rule PDFs/assets unless repo is private and you understand the copyright risk
+Docs/Rules/*.pdf
+docs/Rules/*.pdf
+Assets/Official/

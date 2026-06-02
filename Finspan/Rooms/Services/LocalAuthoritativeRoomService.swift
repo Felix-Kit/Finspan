@@ -1,0 +1,231 @@
+import Foundation
+
+final class LocalAuthoritativeRoomService: RoomService {
+    private let engine: GameEngine
+    private let reducer: EventReducer
+    private var eventFactory: AuthoritativeEventFactory
+    private let randomSeedProvider: () -> Int
+    private var eventContinuations: [AsyncStream<GameEvent>.Continuation] = []
+
+    private(set) var gameRoom: GameRoom?
+    private(set) var gameState: GameState
+    private(set) var snapshot: RoomSnapshot
+    private(set) var eventLog: [GameEvent]
+
+    var eventStream: AsyncStream<GameEvent> {
+        AsyncStream { continuation in
+            eventContinuations.append(continuation)
+        }
+    }
+
+    init(
+        engine: GameEngine = GameEngine(),
+        reducer: EventReducer = EventReducer(),
+        snapshot: RoomSnapshot = .empty,
+        roomId: RoomID = RoomSnapshot.empty.id,
+        randomSeed: Int = 0,
+        timestampProvider: @escaping () -> Date = Date.init,
+        randomSeedProvider: @escaping () -> Int = { Int.random(in: 1...Int.max) }
+    ) {
+        self.engine = engine
+        self.reducer = reducer
+        self.gameRoom = nil
+        self.gameState = snapshot.state
+        self.snapshot = snapshot
+        self.eventLog = snapshot.events.map(\.event)
+        self.randomSeedProvider = randomSeedProvider
+        self.eventFactory = AuthoritativeEventFactory(
+            roomId: roomId,
+            nextSequenceNumber: snapshot.state.eventSequence + 1,
+            randomSeed: randomSeed,
+            timestampProvider: timestampProvider
+        )
+    }
+
+    @discardableResult
+    func submit(_ command: PlayerCommand) throws -> [GameEvent] {
+        try validateRoomCommand(command)
+        let drafts = try engine.makeEventDrafts(for: command, in: gameState)
+        prepareAuthoritativeFields(for: command)
+        let events = eventFactory.makeEvents(
+            from: drafts,
+            actorPlayerId: command.playerId
+        )
+
+        for event in events {
+            applyRoomEvent(event)
+            let nextState = reducer.reduce(gameState, event: event)
+            let envelope = EventEnvelope(event: event)
+            gameState = nextState
+            snapshot = RoomSnapshot(
+                id: event.roomId,
+                players: gameRoom?.players ?? snapshot.players,
+                state: nextState,
+                events: snapshot.events + [envelope]
+            )
+            eventLog.append(event)
+            publish(event)
+        }
+
+        return events
+    }
+
+    private func validateRoomCommand(_ command: PlayerCommand) throws {
+        switch command.payload {
+        case .createRoom:
+            if gameRoom != nil {
+                throw RoomServiceError.roomAlreadyExists
+            }
+        case .joinRoom:
+            let room = try requireRoom(for: command)
+            if room.status != .waiting && room.status != .configuring {
+                throw RoomServiceError.cannotJoinStartedGame
+            }
+            if room.players.contains(where: { $0.playerId == command.playerId }) {
+                throw RoomServiceError.playerAlreadyJoined(command.playerId)
+            }
+            if room.players.filter({ $0.role != .spectator }).count >= room.gameConfig.playerCount {
+                throw RoomServiceError.roomIsFull
+            }
+        case .leaveRoom:
+            let room = try requireRoom(for: command)
+            if !room.players.contains(where: { $0.playerId == command.playerId }) {
+                throw RoomServiceError.playerNotFound(command.playerId)
+            }
+        case .setReady:
+            let room = try requireRoom(for: command)
+            if !room.players.contains(where: { $0.playerId == command.playerId }) {
+                throw RoomServiceError.playerNotFound(command.playerId)
+            }
+        case .startGame:
+            let room = try requireRoom(for: command)
+            if room.status == .inProgress {
+                throw RoomServiceError.gameAlreadyStarted
+            }
+            if room.hostPlayerId != command.playerId {
+                throw RoomServiceError.hostOnlyAction
+            }
+            for player in room.players where player.role != .spectator && !player.isReady {
+                throw RoomServiceError.playerNotReady(player.playerId)
+            }
+        case .endTurn:
+            let room = try requireRoom(for: command)
+            if room.status != .inProgress {
+                throw RoomServiceError.gameNotStarted
+            }
+            if !room.players.contains(where: { $0.playerId == command.playerId }) {
+                throw RoomServiceError.playerNotFound(command.playerId)
+            }
+        case .chooseSeat,
+             .chooseColor,
+             .playFish,
+             .dive,
+             .chooseAbilityOption:
+            let room = try requireRoom(for: command)
+            if !room.players.contains(where: { $0.playerId == command.playerId }) {
+                throw RoomServiceError.playerNotFound(command.playerId)
+            }
+        }
+    }
+
+    private func requireRoom(for command: PlayerCommand) throws -> GameRoom {
+        guard let room = gameRoom else {
+            throw RoomServiceError.roomNotFound
+        }
+        if room.roomId != command.roomId {
+            throw RoomServiceError.roomIdMismatch(expected: room.roomId, actual: command.roomId)
+        }
+        return room
+    }
+
+    private func prepareAuthoritativeFields(for command: PlayerCommand) {
+        if case .createRoom = command.payload, gameRoom == nil {
+            eventFactory.updateRoomId(command.roomId)
+        }
+
+        if case .startGame = command.payload {
+            eventFactory.updateRandomSeed(randomSeedProvider())
+        }
+    }
+
+    private func applyRoomEvent(_ event: GameEvent) {
+        switch event.payload {
+        case let .roomCreated(payload):
+            let host = RoomPlayer(
+                playerId: payload.hostPlayerId,
+                displayName: payload.hostDisplayName,
+                role: .host
+            )
+            gameRoom = GameRoom(
+                roomId: event.roomId,
+                roomCode: payload.roomCode,
+                hostPlayerId: payload.hostPlayerId,
+                status: .waiting,
+                players: [host],
+                gameConfig: payload.gameConfig,
+                currentSequence: event.sequenceNumber,
+                createdAt: event.timestamp,
+                updatedAt: event.timestamp
+            )
+        case let .playerJoined(payload):
+            updateRoom(event) { room in
+                room.players.append(payload.player)
+            }
+        case let .playerLeft(payload):
+            updateRoom(event) { room in
+                room.players.removeAll { $0.playerId == payload.playerId }
+            }
+        case let .playerReadyChanged(payload):
+            updateRoom(event) { room in
+                guard let index = room.players.firstIndex(where: { $0.playerId == payload.playerId }) else {
+                    return
+                }
+                room.players[index].isReady = payload.isReady
+            }
+        case let .seatChanged(payload):
+            updateRoom(event) { room in
+                guard let index = room.players.firstIndex(where: { $0.playerId == payload.playerId }) else {
+                    return
+                }
+                room.players[index].seatIndex = payload.seatIndex
+            }
+        case let .colorChanged(payload):
+            updateRoom(event) { room in
+                guard let index = room.players.firstIndex(where: { $0.playerId == payload.playerId }) else {
+                    return
+                }
+                room.players[index].color = payload.color
+            }
+        case let .gameStarted(payload):
+            updateRoom(event) { room in
+                room.status = .inProgress
+                room.gameConfig.randomSeed = payload.randomSeed
+            }
+        case .turnEnded:
+            updateRoom(event) { _ in }
+        case .fishPlayed,
+             .diverMoved,
+             .abilityOptionChosen,
+             .weekEnded,
+             .gameEnded,
+             .snapshotCreated:
+            updateRoom(event) { _ in }
+        }
+    }
+
+    private func updateRoom(_ event: GameEvent, mutate: (inout GameRoom) -> Void) {
+        guard var room = gameRoom else {
+            return
+        }
+        mutate(&room)
+        room.currentSequence = event.sequenceNumber
+        room.updatedAt = event.timestamp
+        gameRoom = room
+    }
+
+    private func publish(_ event: GameEvent) {
+        eventContinuations.forEach { continuation in
+            continuation.yield(event)
+        }
+    }
+}
