@@ -18,6 +18,23 @@ Use Swift and SwiftUI. Treat the app as an interactive multiplayer board game, n
 - `GameState` may only be updated by applying `GameEvent` values.
 - All randomness must be controlled by the room service, including values such as `randomSeed`, `shuffledDeck`, and event sequence.
 - Do not hard-code Finspan rules inside SwiftUI views.
+- Implement base game rules first, but model design must leave extension points for expansions.
+- Do not hard-code resources as egg / young / school. Use `ResourceKind`.
+- Do not hard-code fish card play conditions. Use a list of `Requirement` values.
+- Do not hard-code costs. Use a list of `Cost` values.
+- Do not hard-code fish abilities inside SwiftUI views or one giant switch. Model them as `AbilityDefinition` values with `trigger`, `conditions`, and `effects`.
+- Do not hard-code scoring items. Use `ScoreCategory` and `ScoreBreakdown`.
+- Do not hard-code achievements in code. Use `AchievementDefinition`.
+- `GameConfig` must preserve `enabledExpansions`.
+- `Ruleset` / `RuleModule` must support adding later modules such as `SharksAndReefsRuleModule` and `NautomaRuleModule`.
+- The current phase only implements `baseGame`. DLC-related types may be placeholders, but must not affect the minimum base game loop.
+
+## Interface Language
+
+- The app targets Chinese users. All user-visible interface copy must use Simplified Chinese.
+- Swift type names, file names, function names, enum cases, and test names must stay in English.
+- User-visible copy should not mix Chinese and English casually.
+- Avoid scattering large amounts of hard-coded Chinese strings throughout SwiftUI views. Prefer centralized copy management.
 
 ## Development Workflow
 
