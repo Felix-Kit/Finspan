@@ -79,6 +79,9 @@ struct SetupCompletedEvent: Codable, Equatable, Sendable {
 struct FishPlayedEvent: Codable, Equatable, Sendable {
     var playerId: PlayerID
     var cardId: CardID
+    var targetSlot: OceanSlotAddress
+    var payment: PlayFishPayment
+    var nextActivePlayerId: PlayerID?
 }
 
 struct DiverMovedEvent: Codable, Equatable, Sendable {

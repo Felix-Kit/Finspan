@@ -61,6 +61,20 @@ struct ChooseColorCommand: Codable, Equatable, Sendable {
 
 struct PlayFishCommand: Codable, Equatable, Sendable {
     var cardId: CardID
+    var targetSlot: OceanSlotAddress
+    var payment: PlayFishPayment
+}
+
+struct PlayFishPayment: Codable, Equatable, Sendable {
+    var discardedCardIds: [CardID]
+    var eggSources: [OceanSlotAddress]
+    var youngSources: [OceanSlotAddress]
+
+    static let empty = PlayFishPayment(
+        discardedCardIds: [],
+        eggSources: [],
+        youngSources: []
+    )
 }
 
 struct DiveCommand: Codable, Equatable, Sendable {

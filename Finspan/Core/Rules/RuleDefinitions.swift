@@ -8,9 +8,14 @@ struct ResourceKind: RawRepresentable, Codable, Equatable, Hashable, Sendable {
     }
 }
 
-struct Cost: Codable, Equatable, Sendable {
-    var resource: ResourceKind
-    var amount: Int
+extension ResourceKind {
+    static let egg = ResourceKind(rawValue: "egg")
+    static let young = ResourceKind(rawValue: "young")
+}
+
+enum Cost: Codable, Equatable, Sendable {
+    case discardCards(count: Int)
+    case resource(kind: ResourceKind, count: Int)
 }
 
 struct Requirement: Codable, Equatable, Sendable {

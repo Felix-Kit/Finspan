@@ -138,6 +138,164 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(state.turnsCompletedThisWeek, 0)
     }
 
+    func testPlayFishDraftIncludesTargetSlotAndPayment() throws {
+        let engine = GameEngine()
+        let state = playFishState()
+        let targetSlot = OceanSlotAddress(
+            playerId: "player-1",
+            diveSite: .coast,
+            zone: .sunlit,
+            slotIndex: 0
+        )
+        let payment = PlayFishPayment(
+            discardedCardIds: ["fish-6"],
+            eggSources: [],
+            youngSources: []
+        )
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "play-fish-1",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .playFish(
+                    PlayFishCommand(
+                        cardId: "fish-1",
+                        targetSlot: targetSlot,
+                        payment: payment
+                    )
+                )
+            ),
+            in: state
+        )
+
+        XCTAssertEqual(
+            drafts,
+            [
+                .fishPlayed(
+                    FishPlayedEvent(
+                        playerId: "player-1",
+                        cardId: "fish-1",
+                        targetSlot: targetSlot,
+                        payment: payment,
+                        nextActivePlayerId: nil
+                    )
+                )
+            ]
+        )
+    }
+
+    func testFishPlayedReducerMovesCardToTargetSlotAndAppliesPayment() {
+        let engine = GameEngine()
+        var state = playFishState()
+        let targetSlot = OceanSlotAddress(
+            playerId: "player-1",
+            diveSite: .coast,
+            zone: .sunlit,
+            slotIndex: 0
+        )
+        let event = GameEvent(
+            sequenceNumber: 10,
+            roomId: roomId,
+            timestamp: timestamp,
+            payload: .fishPlayed(
+                FishPlayedEvent(
+                    playerId: "player-1",
+                    cardId: "fish-2",
+                    targetSlot: targetSlot,
+                    payment: PlayFishPayment(
+                        discardedCardIds: [],
+                        eggSources: [targetSlot],
+                        youngSources: []
+                    ),
+                    nextActivePlayerId: nil
+                )
+            )
+        )
+
+        state = engine.reduce(state: state, event: event)
+
+        let playerState = state.playerGameStates["player-1"]
+        XCTAssertEqual(playerState?.hand, ["fish-1", "fish-6"])
+        XCTAssertEqual(playerState?.ocean.slots.first?.fishCardId, "fish-2")
+        XCTAssertEqual(
+            playerState?.ocean.slots.first?.resources,
+            [
+                ResourceQuantity(kind: .egg, amount: 1),
+                ResourceQuantity(kind: .young, amount: 1)
+            ]
+        )
+        XCTAssertEqual(state.deckState.discardPile, [])
+    }
+
+    func testPlayFishRejectsInactivePlayer() {
+        let engine = GameEngine()
+        let state = playFishState()
+        let targetSlot = OceanSlotAddress(
+            playerId: "player-2",
+            diveSite: .coast,
+            zone: .sunlit,
+            slotIndex: 0
+        )
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: PlayerCommand(
+                    commandId: "play-fish-2",
+                    playerId: "player-2",
+                    roomId: roomId,
+                    payload: .playFish(
+                        PlayFishCommand(
+                            cardId: "fish-1",
+                            targetSlot: targetSlot,
+                            payment: .empty
+                        )
+                    )
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? CommandValidationError,
+                .inactivePlayer(expected: "player-1", actual: "player-2")
+            )
+        }
+    }
+
+    func testPlayFishRejectsMissingResourcePayment() {
+        let engine = GameEngine()
+        let state = playFishState()
+        let targetSlot = OceanSlotAddress(
+            playerId: "player-1",
+            diveSite: .coast,
+            zone: .sunlit,
+            slotIndex: 0
+        )
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: PlayerCommand(
+                    commandId: "play-fish-3",
+                    playerId: "player-1",
+                    roomId: roomId,
+                    payload: .playFish(
+                        PlayFishCommand(
+                            cardId: "fish-2",
+                            targetSlot: targetSlot,
+                            payment: .empty
+                        )
+                    )
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? CommandValidationError,
+                .paymentResourceCountMismatch(kind: .egg, expected: 1, actual: 0)
+            )
+        }
+    }
+
     private func startedState(engine: GameEngine) -> GameState {
         [
             GameEvent(
@@ -184,6 +342,40 @@ final class GameEngineTests: XCTestCase {
         ].reduce(GameState.empty) { state, event in
             engine.reduce(state: state, event: event)
         }
+    }
+
+    private func playFishState() -> GameState {
+        GameState(
+            roomId: roomId,
+            players: [
+                Player(id: "player-1", name: "Player 1"),
+                Player(id: "player-2", name: "Player 2")
+            ],
+            currentWeek: 1,
+            currentTurnIndex: 0,
+            activePlayerId: "player-1",
+            phase: .playing,
+            eventSequence: 9,
+            randomSeed: 99,
+            turnsCompletedThisWeek: 0,
+            playerGameStates: [
+                "player-1": PlayerGameState(
+                    playerId: "player-1",
+                    hand: ["fish-1", "fish-2", "fish-6"],
+                    availableDivers: 6,
+                    usedDivers: 0,
+                    ocean: .baseGameInitial(for: "player-1")
+                ),
+                "player-2": PlayerGameState(
+                    playerId: "player-2",
+                    hand: ["fish-1", "fish-6"],
+                    availableDivers: 6,
+                    usedDivers: 0,
+                    ocean: .baseGameInitial(for: "player-2")
+                )
+            ],
+            deckState: .empty
+        )
     }
 
     private func submitEndTurn(

@@ -5,9 +5,14 @@ struct GameEngine {
     private static let finalWeek = 4
 
     private let rules: GameRuleSet
+    private let cardCatalog: any CardCatalog
 
-    init(rules: GameRuleSet = GameRuleSet()) {
+    init(
+        rules: GameRuleSet = GameRuleSet(),
+        cardCatalog: any CardCatalog = SampleCardCatalog()
+    ) {
         self.rules = rules
+        self.cardCatalog = cardCatalog
     }
 
     func validate(command: PlayerCommand, in state: GameState) throws {
@@ -31,13 +36,14 @@ struct GameEngine {
             guard state.activePlayerId == command.playerId else {
                 throw GameEngineError.invalidCommand("Only the active player can end the turn.")
             }
+        case let .playFish(payload):
+            try validatePlayFish(payload, playerId: command.playerId, in: state)
         case .createRoom,
              .joinRoom,
              .leaveRoom,
              .setReady,
              .chooseSeat,
              .chooseColor,
-             .playFish,
              .dive,
              .chooseAbilityOption:
             return
@@ -115,10 +121,11 @@ struct GameEngine {
         case .gameEnded:
             nextState.phase = .gameEnded
             nextState.activePlayerId = nil
+        case let .fishPlayed(payload):
+            applyFishPlayed(payload, to: &nextState)
         case .playerReadyChanged,
              .seatChanged,
              .colorChanged,
-             .fishPlayed,
              .diverMoved,
              .abilityOptionChosen,
              .snapshotCreated:
@@ -177,7 +184,10 @@ struct GameEngine {
             return [.fishPlayed(
                 FishPlayedEvent(
                     playerId: command.playerId,
-                    cardId: payload.cardId
+                    cardId: payload.cardId,
+                    targetSlot: payload.targetSlot,
+                    payment: payload.payment,
+                    nextActivePlayerId: nil
                 )
             )]
         case let .dive(payload):
@@ -232,6 +242,199 @@ struct GameEngine {
             return 0
         }
         return (currentIndex + 1) % playerCount
+    }
+
+    private func validatePlayFish(
+        _ payload: PlayFishCommand,
+        playerId: PlayerID,
+        in state: GameState
+    ) throws {
+        guard state.phase == .playing else {
+            throw CommandValidationError.gameNotPlaying
+        }
+        guard state.activePlayerId == playerId else {
+            throw CommandValidationError.inactivePlayer(
+                expected: state.activePlayerId,
+                actual: playerId
+            )
+        }
+        guard let playerState = state.playerGameStates[playerId] else {
+            throw CommandValidationError.missingPlayerState(playerId)
+        }
+        guard playerState.hand.contains(payload.cardId) else {
+            throw CommandValidationError.cardNotInHand(payload.cardId)
+        }
+        guard let card = card(withId: payload.cardId) else {
+            throw CommandValidationError.unknownCard(payload.cardId)
+        }
+        guard payload.targetSlot.playerId == playerId else {
+            throw CommandValidationError.targetSlotNotOwnedByPlayer
+        }
+        guard let targetSlot = playerState.ocean.slots.first(where: { $0.address == payload.targetSlot }) else {
+            throw CommandValidationError.targetSlotNotFound(payload.targetSlot)
+        }
+        guard targetSlot.fishCardId == nil else {
+            throw CommandValidationError.targetSlotOccupied(payload.targetSlot)
+        }
+        guard card.allowedZones.contains(targetSlot.address.zone) else {
+            throw CommandValidationError.targetZoneNotAllowed(targetSlot.address.zone)
+        }
+        if let requiredColor = card.requiredDiveSiteColor,
+           targetSlot.diveSiteColor != requiredColor {
+            throw CommandValidationError.requiredDiveSiteColorMismatch(
+                expected: requiredColor,
+                actual: targetSlot.diveSiteColor
+            )
+        }
+        guard card.requirements.isEmpty else {
+            throw CommandValidationError.unsupportedRequirement(card.requirements[0])
+        }
+
+        try validatePayment(payload.payment, for: card, payload: payload, playerState: playerState)
+    }
+
+    private func validatePayment(
+        _ payment: PlayFishPayment,
+        for card: Card,
+        payload: PlayFishCommand,
+        playerState: PlayerGameState
+    ) throws {
+        for cost in card.costs where !isSupported(cost) {
+            throw CommandValidationError.unsupportedCost(cost)
+        }
+
+        for discardedCardId in payment.discardedCardIds {
+            guard discardedCardId != payload.cardId else {
+                throw CommandValidationError.paymentCannotDiscardPlayedCard(discardedCardId)
+            }
+            guard playerState.hand.contains(discardedCardId) else {
+                throw CommandValidationError.paymentCardNotInHand(discardedCardId)
+            }
+        }
+
+        for cost in card.costs {
+            switch cost {
+            case let .discardCards(count):
+                guard payment.discardedCardIds.count == count else {
+                    throw CommandValidationError.paymentDiscardCountMismatch(
+                        expected: count,
+                        actual: payment.discardedCardIds.count
+                    )
+                }
+            case let .resource(kind, count):
+                let sources = resourceSources(for: kind, in: payment)
+                guard sources.count == count else {
+                    throw CommandValidationError.paymentResourceCountMismatch(
+                        kind: kind,
+                        expected: count,
+                        actual: sources.count
+                    )
+                }
+                try validateResourceSources(sources, kind: kind, playerState: playerState)
+            }
+        }
+    }
+
+    private func validateResourceSources(
+        _ sources: [OceanSlotAddress],
+        kind: ResourceKind,
+        playerState: PlayerGameState
+    ) throws {
+        var availableBySource = Dictionary(
+            uniqueKeysWithValues: playerState.ocean.slots.map { slot in
+                (
+                    slot.address,
+                    slot.resources.first(where: { $0.kind == kind })?.amount ?? 0
+                )
+            }
+        )
+
+        for source in sources {
+            guard source.playerId == playerState.playerId,
+                  let available = availableBySource[source],
+                  available > 0
+            else {
+                throw CommandValidationError.paymentResourceUnavailable(kind: kind, source: source)
+            }
+            availableBySource[source] = available - 1
+        }
+    }
+
+    private func applyFishPlayed(_ payload: FishPlayedEvent, to state: inout GameState) {
+        guard var playerState = state.playerGameStates[payload.playerId],
+              let slotIndex = playerState.ocean.slots.firstIndex(where: { $0.address == payload.targetSlot })
+        else {
+            return
+        }
+
+        let discardedCardIds = Set(payload.payment.discardedCardIds + [payload.cardId])
+        playerState.hand.removeAll { discardedCardIds.contains($0) }
+        playerState.ocean.slots[slotIndex].fishCardId = payload.cardId
+        applyResourcePayment(payload.payment, to: &playerState)
+
+        state.deckState.discardPile.append(contentsOf: payload.payment.discardedCardIds)
+        state.playerGameStates[payload.playerId] = playerState
+
+        if let nextActivePlayerId = payload.nextActivePlayerId,
+           let nextIndex = state.players.firstIndex(where: { $0.id == nextActivePlayerId }) {
+            state.currentTurnIndex = nextIndex
+            state.activePlayerId = nextActivePlayerId
+        }
+    }
+
+    private func applyResourcePayment(
+        _ payment: PlayFishPayment,
+        to playerState: inout PlayerGameState
+    ) {
+        for source in payment.eggSources {
+            removeResource(.egg, from: source, in: &playerState)
+        }
+        for source in payment.youngSources {
+            removeResource(.young, from: source, in: &playerState)
+        }
+    }
+
+    private func removeResource(
+        _ kind: ResourceKind,
+        from source: OceanSlotAddress,
+        in playerState: inout PlayerGameState
+    ) {
+        guard let slotIndex = playerState.ocean.slots.firstIndex(where: { $0.address == source }),
+              let resourceIndex = playerState.ocean.slots[slotIndex].resources.firstIndex(where: { $0.kind == kind })
+        else {
+            return
+        }
+
+        playerState.ocean.slots[slotIndex].resources[resourceIndex].amount -= 1
+        if playerState.ocean.slots[slotIndex].resources[resourceIndex].amount <= 0 {
+            playerState.ocean.slots[slotIndex].resources.remove(at: resourceIndex)
+        }
+    }
+
+    private func resourceSources(
+        for kind: ResourceKind,
+        in payment: PlayFishPayment
+    ) -> [OceanSlotAddress] {
+        if kind == .egg {
+            return payment.eggSources
+        }
+        if kind == .young {
+            return payment.youngSources
+        }
+        return []
+    }
+
+    private func isSupported(_ cost: Cost) -> Bool {
+        switch cost {
+        case .discardCards:
+            return true
+        case let .resource(kind, _):
+            return kind == .egg || kind == .young
+        }
+    }
+
+    private func card(withId cardId: CardID) -> Card? {
+        (cardCatalog.starterFishCards + cardCatalog.fishCards).first { $0.id == cardId }
     }
 }
 

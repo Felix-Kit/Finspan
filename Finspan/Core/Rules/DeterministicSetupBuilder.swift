@@ -47,7 +47,8 @@ struct DeterministicSetupBuilder {
                     playerId: player.playerId,
                     hand: starterHand + fishHand,
                     availableDivers: 6,
-                    ocean: .baseGameInitial
+                    usedDivers: 0,
+                    ocean: .baseGameInitial(for: player.playerId)
                 )
             )
         }
