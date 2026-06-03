@@ -60,6 +60,8 @@ enum AppStrings {
         static let pendingChoiceNotFound = "找不到待处理选择。"
         static let pendingChoiceNotOwned = "只有该选择所属玩家可以处理。"
         static let pendingChoiceRequired = "该选择不能跳过。"
+        static let pendingChoiceResolutionInvalid = "该选择的处理方式暂未支持。"
+        static let fishDrawPileEmpty = "鱼牌牌堆为空，暂时无法抽牌。"
         static let noActivePlayer = "暂无行动玩家。"
         static let noActiveRoom = "暂无活动房间。"
         static let noActiveHand = "当前行动玩家没有可显示的手牌。"

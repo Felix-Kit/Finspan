@@ -34,4 +34,6 @@ enum CommandValidationError: Error, Equatable {
     case pendingChoiceNotFound(PendingChoiceID)
     case pendingChoiceNotOwned(choiceId: PendingChoiceID, expected: PlayerID, actual: PlayerID)
     case pendingChoiceRequired(PendingChoiceID)
+    case invalidPendingChoiceResolution(PendingChoiceID)
+    case fishDrawPileEmpty
 }

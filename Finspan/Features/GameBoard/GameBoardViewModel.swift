@@ -797,6 +797,10 @@ final class GameBoardViewModel: ObservableObject {
                 return AppStrings.GameBoard.pendingChoiceNotOwned
             case .pendingChoiceRequired:
                 return AppStrings.GameBoard.pendingChoiceRequired
+            case .invalidPendingChoiceResolution:
+                return AppStrings.GameBoard.pendingChoiceResolutionInvalid
+            case .fishDrawPileEmpty:
+                return AppStrings.GameBoard.fishDrawPileEmpty
             }
         }
         return "操作失败：\(String(describing: error))"

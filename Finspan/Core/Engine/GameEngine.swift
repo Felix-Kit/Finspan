@@ -6,13 +6,16 @@ struct GameEngine {
 
     private let rules: GameRuleSet
     private let cardCatalog: any CardCatalog
+    private let diveBonusLayout: DiveSiteBonusLayout
 
     init(
         rules: GameRuleSet = GameRuleSet(),
-        cardCatalog: any CardCatalog = SampleCardCatalog()
+        cardCatalog: any CardCatalog = SampleCardCatalog(),
+        diveBonusLayout: DiveSiteBonusLayout = .sampleBaseGame
     ) {
         self.rules = rules
         self.cardCatalog = cardCatalog
+        self.diveBonusLayout = diveBonusLayout
     }
 
     func validate(command: PlayerCommand, in state: GameState) throws {
@@ -134,6 +137,7 @@ struct GameEngine {
         case let .pendingChoiceCreated(payload):
             nextState.pendingChoices[payload.choiceId] = payload
         case let .pendingChoiceResolved(payload):
+            applyPendingChoiceEffects(payload.appliedEffects, to: &nextState)
             nextState.pendingChoices.removeValue(forKey: payload.choiceId)
         case .playerReadyChanged,
              .seatChanged,
@@ -207,7 +211,7 @@ struct GameEngine {
                 playerId: command.playerId,
                 in: state
             )
-            return [.diverMoved(
+            let diverMoved = DomainEventDraft.diverMoved(
                 DiverMovedEvent(
                     playerId: command.playerId,
                     diveSite: payload.diveSite,
@@ -215,14 +219,25 @@ struct GameEngine {
                     bottomBonusClaimed: bottomBonusAvailable,
                     nextActivePlayerId: nextPlayer(after: command.playerId, in: state.players)?.id
                 )
-            )]
+            )
+            return [diverMoved] + diveBonusChoices(
+                for: payload.diveSite,
+                commandId: command.commandId,
+                playerId: command.playerId,
+                includeBottomBonus: bottomBonusAvailable,
+                in: state
+            )
         case let .resolvePendingChoice(payload):
             return [.pendingChoiceResolved(
                 PendingChoiceResolvedEvent(
                     choiceId: payload.choiceId,
                     playerId: command.playerId,
                     resolution: payload.resolution,
-                    appliedEffects: [.none]
+                    appliedEffects: appliedEffects(
+                        for: payload,
+                        playerId: command.playerId,
+                        in: state
+                    )
                 )
             )]
         case let .chooseAbilityOption(payload):
@@ -375,6 +390,148 @@ struct GameEngine {
         if case .skip = payload.resolution, !choice.isOptional {
             throw CommandValidationError.pendingChoiceRequired(payload.choiceId)
         }
+        switch payload.resolution {
+        case .skip:
+            return
+        case let .draw(count):
+            guard choice.kind == .drawFish, count == 1 else {
+                throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
+            }
+            guard !state.deckState.fishDrawPile.isEmpty else {
+                // TODO: decide whether empty fish draw pile should become a no-op or reshuffle discard pile.
+                throw CommandValidationError.fishDrawPileEmpty
+            }
+        case .chooseTarget:
+            guard choice.kind == .placeEgg || choice.kind == .hatchEgg else {
+                throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
+            }
+            // TODO: validate and apply concrete placeEgg / hatchEgg target choices.
+            throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
+        case .chooseOption:
+            throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
+        }
+    }
+
+    private func diveBonusChoices(
+        for diveSite: DiveActionSite,
+        commandId: CommandID,
+        playerId: PlayerID,
+        includeBottomBonus: Bool,
+        in state: GameState
+    ) -> [DomainEventDraft] {
+        guard let playerState = state.playerGameStates[playerId] else {
+            return []
+        }
+
+        return diveBonusLayout.bonuses(for: diveSite)
+            .enumerated()
+            .compactMap { index, bonus in
+                guard bonusIsAvailable(bonus, playerState: playerState, includeBottomBonus: includeBottomBonus) else {
+                    return nil
+                }
+                return .pendingChoiceCreated(
+                    pendingChoice(
+                        for: bonus,
+                        choiceId: "\(commandId)-dive-bonus-\(index)",
+                        playerId: playerId
+                    )
+                )
+            }
+    }
+
+    private func bonusIsAvailable(
+        _ bonus: DiveBonusDefinition,
+        playerState: PlayerGameState,
+        includeBottomBonus: Bool
+    ) -> Bool {
+        switch bonus.position {
+        case .bottom:
+            return includeBottomBonus
+        case let .zone(zone):
+            return playerHasFish(in: bonus.diveSite, zone: zone, playerState: playerState)
+        }
+    }
+
+    private func playerHasFish(
+        in diveSite: DiveActionSite,
+        zone: OceanZone,
+        playerState: PlayerGameState
+    ) -> Bool {
+        guard let mappedDiveSite = diveBonusLayout.oceanDiveSite(for: diveSite) else {
+            return false
+        }
+        let hasSlotFish = playerState.ocean.slots.contains { slot in
+            slot.address.diveSite == mappedDiveSite
+                && slot.address.zone == zone
+                && slot.fishCardId != nil
+        }
+        if hasSlotFish {
+            return true
+        }
+
+        // TODO: replace this with zone-addressed forage fish slots when the ocean model grows them.
+        return zone == .sunlit && !playerState.ocean.forageFishCardIds.isEmpty
+    }
+
+    private func pendingChoice(
+        for bonus: DiveBonusDefinition,
+        choiceId: PendingChoiceID,
+        playerId: PlayerID
+    ) -> PendingChoice {
+        PendingChoice(
+            choiceId: choiceId,
+            playerId: playerId,
+            source: .diveBonus(bonus.diveSite),
+            kind: pendingChoiceKind(for: bonus.kind),
+            options: [],
+            expectedInput: expectedInput(for: bonus.kind),
+            isOptional: true,
+            createdAtSequence: 0
+        )
+    }
+
+    private func pendingChoiceKind(for bonusKind: DiveBonusKind) -> PendingChoiceKind {
+        switch bonusKind {
+        case .drawFish:
+            return .drawFish
+        case .placeEgg:
+            return .placeEgg
+        case .hatchEgg:
+            return .hatchEgg
+        case .unsupported:
+            return .unsupported
+        }
+    }
+
+    private func expectedInput(for bonusKind: DiveBonusKind) -> PendingChoiceExpectedInput {
+        switch bonusKind {
+        case .drawFish:
+            return .none
+        case .placeEgg,
+             .hatchEgg:
+            return .targetSlot
+        case .unsupported:
+            return .none
+        }
+    }
+
+    private func appliedEffects(
+        for payload: ResolvePendingChoiceCommand,
+        playerId: PlayerID,
+        in state: GameState
+    ) -> [PendingChoiceAppliedEffect] {
+        switch payload.resolution {
+        case .skip:
+            return [.none]
+        case .draw:
+            guard let cardId = state.deckState.fishDrawPile.first else {
+                return [.none]
+            }
+            return [.drawFish(playerId: playerId, cardIds: [cardId])]
+        case .chooseTarget,
+             .chooseOption:
+            return [.none]
+        }
     }
 
     private func validatePayment(
@@ -482,6 +639,36 @@ struct GameEngine {
            let nextIndex = state.players.firstIndex(where: { $0.id == nextActivePlayerId }) {
             state.currentTurnIndex = nextIndex
             state.activePlayerId = nextActivePlayerId
+        }
+    }
+
+    private func applyPendingChoiceEffects(
+        _ effects: [PendingChoiceAppliedEffect],
+        to state: inout GameState
+    ) {
+        for effect in effects {
+            switch effect {
+            case .none,
+                 .placeholder:
+                break
+            case let .drawFish(playerId, cardIds):
+                guard var playerState = state.playerGameStates[playerId] else {
+                    break
+                }
+                for cardId in cardIds {
+                    if let deckIndex = state.deckState.fishDrawPile.firstIndex(of: cardId) {
+                        state.deckState.fishDrawPile.remove(at: deckIndex)
+                    }
+                    playerState.hand.append(cardId)
+                }
+                state.playerGameStates[playerId] = playerState
+            case .placeEgg:
+                // TODO: apply after target selection UI and validation are implemented.
+                break
+            case .hatchEgg:
+                // TODO: apply after target selection UI and validation are implemented.
+                break
+            }
         }
     }
 

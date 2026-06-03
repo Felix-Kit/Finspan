@@ -539,7 +539,8 @@ final class GameEngineTests: XCTestCase {
 
     func testDiveEmitsBottomBonusAndNextPlayerForFirstDiveSiteThisWeek() throws {
         let engine = GameEngine()
-        let state = playFishState()
+        var state = playFishState()
+        state.playerGameStates["player-1"]?.ocean.forageFishCardIds = []
 
         let drafts = try engine.makeEventDrafts(
             for: PlayerCommand(
@@ -561,6 +562,18 @@ final class GameEngineTests: XCTestCase {
                         bottomBonusAvailable: true,
                         bottomBonusClaimed: true,
                         nextActivePlayerId: "player-2"
+                    )
+                ),
+                .pendingChoiceCreated(
+                    PendingChoice(
+                        choiceId: "dive-blue-dive-bonus-3",
+                        playerId: "player-1",
+                        source: .diveBonus(.blue),
+                        kind: .drawFish,
+                        options: [],
+                        expectedInput: .none,
+                        isOptional: true,
+                        createdAtSequence: 0
                     )
                 )
             ]
@@ -601,6 +614,7 @@ final class GameEngineTests: XCTestCase {
         let engine = GameEngine()
         var state = playFishState()
         state.playerGameStates["player-1"]?.diveSitesReachedBottomThisWeek = [.blue]
+        state.playerGameStates["player-1"]?.ocean.forageFishCardIds = []
 
         let drafts = try engine.makeEventDrafts(
             for: PlayerCommand(
@@ -625,6 +639,75 @@ final class GameEngineTests: XCTestCase {
                     )
                 )
             ]
+        )
+    }
+
+    func testDiveCreatesPrintedBonusChoiceWhenZoneHasFish() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        let slotAddress = OceanSlotAddress(
+            playerId: "player-1",
+            diveSite: .coast,
+            zone: .sunlit,
+            slotIndex: 0
+        )
+        state.playerGameStates["player-1"]?.ocean.forageFishCardIds = []
+        state.playerGameStates["player-1"]?.diveSitesReachedBottomThisWeek = [.blue]
+        if let slotIndex = state.playerGameStates["player-1"]?.ocean.slots.firstIndex(where: { $0.address == slotAddress }) {
+            state.playerGameStates["player-1"]?.ocean.slots[slotIndex].fishCardId = "fish-9"
+        }
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "dive-blue-zone-bonus",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .dive(DiveCommand(diveSite: .blue))
+            ),
+            in: state
+        )
+
+        XCTAssertTrue(
+            drafts.contains(
+                .pendingChoiceCreated(
+                    PendingChoice(
+                        choiceId: "dive-blue-zone-bonus-dive-bonus-0",
+                        playerId: "player-1",
+                        source: .diveBonus(.blue),
+                        kind: .drawFish,
+                        options: [],
+                        expectedInput: .none,
+                        isOptional: true,
+                        createdAtSequence: 0
+                    )
+                )
+            )
+        )
+    }
+
+    func testDiveDoesNotCreateZoneBonusChoiceWhenZoneHasNoFish() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        state.playerGameStates["player-1"]?.ocean.forageFishCardIds = []
+        state.playerGameStates["player-1"]?.diveSitesReachedBottomThisWeek = [.blue]
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "dive-blue-no-zone-bonus",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .dive(DiveCommand(diveSite: .blue))
+            ),
+            in: state
+        )
+
+        XCTAssertFalse(
+            drafts.contains { draft in
+                if case .pendingChoiceCreated = draft {
+                    return true
+                }
+                return false
+            }
         )
     }
 
@@ -765,6 +848,97 @@ final class GameEngineTests: XCTestCase {
         }
     }
 
+    func testResolveDrawFishChoiceDrawsFromDeckIntoHand() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        let choice = pendingChoice(kind: .drawFish)
+        state.pendingChoices[choice.choiceId] = choice
+        state.deckState.fishDrawPile = ["fish-9", "fish-10"]
+        let startingHand = state.playerGameStates["player-1"]?.hand
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "resolve-draw-fish",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .resolvePendingChoice(
+                    ResolvePendingChoiceCommand(
+                        choiceId: choice.choiceId,
+                        resolution: .draw(count: 1)
+                    )
+                )
+            ),
+            in: state
+        )
+
+        XCTAssertEqual(
+            drafts,
+            [
+                .pendingChoiceResolved(
+                    PendingChoiceResolvedEvent(
+                        choiceId: choice.choiceId,
+                        playerId: "player-1",
+                        resolution: .draw(count: 1),
+                        appliedEffects: [.drawFish(playerId: "player-1", cardIds: ["fish-9"])]
+                    )
+                )
+            ]
+        )
+
+        let nextState = engine.reduce(
+            state: state,
+            event: GameEvent(
+                sequenceNumber: 10,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .pendingChoiceResolved(
+                    PendingChoiceResolvedEvent(
+                        choiceId: choice.choiceId,
+                        playerId: "player-1",
+                        resolution: .draw(count: 1),
+                        appliedEffects: [.drawFish(playerId: "player-1", cardIds: ["fish-9"])]
+                    )
+                )
+            )
+        )
+
+        XCTAssertEqual(nextState.deckState.fishDrawPile, ["fish-10"])
+        XCTAssertEqual(nextState.playerGameStates["player-1"]?.hand, (startingHand ?? []) + ["fish-9"])
+        XCTAssertNil(nextState.pendingChoices[choice.choiceId])
+    }
+
+    func testSkipPendingChoiceDoesNotChangeHandOrOceanResources() {
+        let engine = GameEngine()
+        var state = playFishState()
+        let choice = pendingChoice(kind: .drawFish)
+        state.pendingChoices[choice.choiceId] = choice
+        state.deckState.fishDrawPile = ["fish-9"]
+        let startingHand = state.playerGameStates["player-1"]?.hand
+        let startingOcean = state.playerGameStates["player-1"]?.ocean
+
+        let nextState = engine.reduce(
+            state: state,
+            event: GameEvent(
+                sequenceNumber: 10,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .pendingChoiceResolved(
+                    PendingChoiceResolvedEvent(
+                        choiceId: choice.choiceId,
+                        playerId: "player-1",
+                        resolution: .skip,
+                        appliedEffects: [.none]
+                    )
+                )
+            )
+        )
+
+        XCTAssertEqual(nextState.deckState.fishDrawPile, ["fish-9"])
+        XCTAssertEqual(nextState.playerGameStates["player-1"]?.hand, startingHand)
+        XCTAssertEqual(nextState.playerGameStates["player-1"]?.ocean, startingOcean)
+        XCTAssertNil(nextState.pendingChoices[choice.choiceId])
+    }
+
     private func startedState(engine: GameEngine) -> GameState {
         [
             GameEvent(
@@ -870,12 +1044,15 @@ final class GameEngineTests: XCTestCase {
         return state
     }
 
-    private func pendingChoice(isOptional: Bool = true) -> PendingChoice {
+    private func pendingChoice(
+        kind: PendingChoiceKind = .bottomBonus,
+        isOptional: Bool = true
+    ) -> PendingChoice {
         PendingChoice(
             choiceId: "choice-1",
             playerId: "player-1",
             source: .diveBonus(.blue),
-            kind: .bottomBonus,
+            kind: kind,
             options: [],
             expectedInput: .none,
             isOptional: isOptional,

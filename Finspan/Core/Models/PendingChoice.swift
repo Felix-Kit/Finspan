@@ -52,5 +52,8 @@ enum PendingChoiceResolution: Codable, Equatable, Sendable {
 
 enum PendingChoiceAppliedEffect: Codable, Equatable, Sendable {
     case none
+    case drawFish(playerId: PlayerID, cardIds: [CardID])
+    case placeEgg(target: OceanSlotAddress, amount: Int)
+    case hatchEgg(target: OceanSlotAddress, amount: Int)
     case placeholder(String)
 }
