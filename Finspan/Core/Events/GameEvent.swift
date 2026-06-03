@@ -30,6 +30,8 @@ enum GameEventPayload: Codable, Equatable, Sendable {
     case setupCompleted(SetupCompletedEvent)
     case fishPlayed(FishPlayedEvent)
     case diverMoved(DiverMovedEvent)
+    case pendingChoiceCreated(PendingChoice)
+    case pendingChoiceResolved(PendingChoiceResolvedEvent)
     case abilityOptionChosen(AbilityOptionChosenEvent)
     case turnEnded(TurnEndedEvent)
     case weekEnded(WeekEndedEvent)
@@ -86,7 +88,17 @@ struct FishPlayedEvent: Codable, Equatable, Sendable {
 
 struct DiverMovedEvent: Codable, Equatable, Sendable {
     var playerId: PlayerID
-    var destination: String
+    var diveSite: DiveActionSite
+    var bottomBonusAvailable: Bool
+    var bottomBonusClaimed: Bool
+    var nextActivePlayerId: PlayerID?
+}
+
+struct PendingChoiceResolvedEvent: Codable, Equatable, Sendable {
+    var choiceId: PendingChoiceID
+    var playerId: PlayerID
+    var resolution: PendingChoiceResolution
+    var appliedEffects: [PendingChoiceAppliedEffect]
 }
 
 struct AbilityOptionChosenEvent: Codable, Equatable, Sendable {

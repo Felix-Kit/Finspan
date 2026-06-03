@@ -6,3 +6,4 @@ typealias CommandID = String
 typealias EventID = Int
 typealias CardID = String
 typealias AbilityOptionID = String
+typealias PendingChoiceID = String

@@ -29,6 +29,7 @@ enum PlayerCommandPayload: Codable, Equatable, Sendable {
     case chooseColor(ChooseColorCommand)
     case playFish(PlayFishCommand)
     case dive(DiveCommand)
+    case resolvePendingChoice(ResolvePendingChoiceCommand)
     case chooseAbilityOption(ChooseAbilityOptionCommand)
     case endTurn(EndTurnCommand)
 }
@@ -78,7 +79,12 @@ struct PlayFishPayment: Codable, Equatable, Sendable {
 }
 
 struct DiveCommand: Codable, Equatable, Sendable {
-    var destination: String
+    var diveSite: DiveActionSite
+}
+
+struct ResolvePendingChoiceCommand: Codable, Equatable, Sendable {
+    var choiceId: PendingChoiceID
+    var resolution: PendingChoiceResolution
 }
 
 struct ChooseAbilityOptionCommand: Codable, Equatable, Sendable {

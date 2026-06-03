@@ -23,6 +23,22 @@ enum DiveSiteColor: String, Codable, CaseIterable, Equatable, Sendable {
     case yellow
 }
 
+struct DiveActionSite: RawRepresentable, Codable, Equatable, Hashable, Sendable {
+    var rawValue: String
+
+    init(rawValue: String) {
+        self.rawValue = rawValue
+    }
+}
+
+extension DiveActionSite {
+    static let blue = DiveActionSite(rawValue: "blue")
+    static let purple = DiveActionSite(rawValue: "purple")
+    static let green = DiveActionSite(rawValue: "green")
+
+    static let baseGameSites: Set<DiveActionSite> = [.blue, .purple, .green]
+}
+
 struct OceanSlotAddress: Codable, Equatable, Hashable, Sendable {
     var playerId: PlayerID
     var diveSite: DiveSite
@@ -98,6 +114,7 @@ struct PlayerGameState: Codable, Equatable, Sendable {
     var availableDivers: Int
     var usedDivers: Int
     var ocean: OceanState
+    var diveSitesReachedBottomThisWeek: Set<DiveActionSite> = []
 }
 
 /// Authoritative deck state for local replay.

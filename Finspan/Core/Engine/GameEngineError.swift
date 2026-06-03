@@ -10,6 +10,8 @@ enum GameRuleError: Error, Equatable {
 }
 
 enum CommandValidationError: Error, Equatable {
+    case invalidPhase(GamePhase)
+    case notActivePlayer(expected: PlayerID?, actual: PlayerID)
     case gameNotPlaying
     case inactivePlayer(expected: PlayerID?, actual: PlayerID)
     case missingPlayerState(PlayerID)
@@ -27,4 +29,9 @@ enum CommandValidationError: Error, Equatable {
     case paymentResourceUnavailable(kind: ResourceKind, source: OceanSlotAddress)
     case unsupportedRequirement(Requirement)
     case unsupportedCost(Cost)
+    case invalidDiveSite(DiveActionSite)
+    case noAvailableDiver
+    case pendingChoiceNotFound(PendingChoiceID)
+    case pendingChoiceNotOwned(choiceId: PendingChoiceID, expected: PlayerID, actual: PlayerID)
+    case pendingChoiceRequired(PendingChoiceID)
 }

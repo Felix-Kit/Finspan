@@ -128,6 +128,7 @@ final class LocalAuthoritativeRoomService: RoomService {
              .chooseColor,
              .playFish,
              .dive,
+             .resolvePendingChoice,
              .chooseAbilityOption:
             let room = try requireRoom(for: command)
             if !room.players.contains(where: { $0.playerId == command.playerId }) {
@@ -243,6 +244,8 @@ final class LocalAuthoritativeRoomService: RoomService {
             updateRoom(event) { _ in }
         case .fishPlayed,
              .diverMoved,
+             .pendingChoiceCreated,
+             .pendingChoiceResolved,
              .abilityOptionChosen,
              .weekEnded,
              .gameEnded,

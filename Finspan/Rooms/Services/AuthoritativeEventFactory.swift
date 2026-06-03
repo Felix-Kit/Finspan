@@ -82,6 +82,13 @@ struct AuthoritativeEventFactory {
             return .fishPlayed(payload)
         case let .diverMoved(payload):
             return .diverMoved(payload)
+        case var .pendingChoiceCreated(payload):
+            if payload.createdAtSequence <= 0 {
+                payload.createdAtSequence = context.nextSequenceNumber
+            }
+            return .pendingChoiceCreated(payload)
+        case let .pendingChoiceResolved(payload):
+            return .pendingChoiceResolved(payload)
         case let .abilityOptionChosen(payload):
             return .abilityOptionChosen(payload)
         case let .turnEnded(payload):

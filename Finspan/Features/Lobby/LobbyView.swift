@@ -20,19 +20,19 @@ struct LobbyView: View {
                     .frame(maxWidth: 320, alignment: .topLeading)
             }
             .padding(24)
-            .navigationTitle("Finspan Lobby")
+            .navigationTitle(AppStrings.Lobby.title)
         }
     }
 
     private var roomSummary: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Room")
+            Text(AppStrings.Lobby.room)
                 .font(.title2.weight(.semibold))
 
-            infoRow("Code", viewModel.roomCode)
-            infoRow("Host", viewModel.hostName)
-            infoRow("Status", viewModel.status)
-            infoRow("Players", "\(viewModel.players.count)")
+            infoRow(AppStrings.Lobby.code, viewModel.roomCode)
+            infoRow(AppStrings.Lobby.host, viewModel.hostName)
+            infoRow(AppStrings.Lobby.status, viewModel.status)
+            infoRow(AppStrings.Lobby.players, "\(viewModel.players.count)")
 
             if let errorMessage = viewModel.errorMessage {
                 Text(errorMessage)
@@ -47,14 +47,14 @@ struct LobbyView: View {
 
     private var playerList: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Players")
+            Text(AppStrings.Lobby.players)
                 .font(.title2.weight(.semibold))
 
             if viewModel.players.isEmpty {
                 ContentUnavailableView(
-                    "No Local Room",
+                    AppStrings.Lobby.noLocalRoom,
                     systemImage: "person.2.slash",
-                    description: Text("Create a local room to start testing the flow.")
+                    description: Text(AppStrings.Lobby.noLocalRoomDescription)
                 )
             } else {
                 ScrollView {
@@ -76,13 +76,13 @@ struct LobbyView: View {
 
     private var controls: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Actions")
+            Text(AppStrings.Lobby.actions)
                 .font(.title2.weight(.semibold))
 
             Button {
                 viewModel.createLocalRoom()
             } label: {
-                Label("Create Local Room", systemImage: "plus.circle")
+                Label(AppStrings.Lobby.createLocalRoom, systemImage: "plus.circle")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
@@ -91,7 +91,7 @@ struct LobbyView: View {
             Button {
                 viewModel.joinSimulatedPlayer()
             } label: {
-                Label("Join Simulated Player", systemImage: "person.badge.plus")
+                Label(AppStrings.Lobby.joinSimulatedPlayer, systemImage: "person.badge.plus")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
@@ -99,17 +99,17 @@ struct LobbyView: View {
 
             Divider()
 
-            Picker("Active Player", selection: $viewModel.selectedPlayerId) {
-                Text("None").tag(Optional<PlayerID>.none)
+            Picker(AppStrings.Lobby.activePlayer, selection: $viewModel.selectedPlayerId) {
+                Text(AppStrings.Lobby.none).tag(Optional<PlayerID>.none)
                 ForEach(viewModel.players) { player in
                     Text(player.displayName).tag(Optional(player.playerId))
                 }
             }
             .pickerStyle(.menu)
 
-            Picker("Color", selection: $viewModel.selectedColor) {
+            Picker(AppStrings.Lobby.color, selection: $viewModel.selectedColor) {
                 ForEach(PlayerColor.allCases, id: \.self) { color in
-                    Text(color.rawValue.capitalized).tag(color)
+                    Text(AppStrings.colorName(color)).tag(color)
                 }
             }
             .pickerStyle(.segmented)
@@ -117,7 +117,7 @@ struct LobbyView: View {
             Button {
                 viewModel.chooseSelectedColor()
             } label: {
-                Label("Choose Color", systemImage: "paintpalette")
+                Label(AppStrings.Lobby.chooseColor, systemImage: "paintpalette")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
@@ -126,7 +126,7 @@ struct LobbyView: View {
             Button {
                 viewModel.toggleReadyForSelectedPlayer()
             } label: {
-                Label("Toggle Ready", systemImage: "checkmark.circle")
+                Label(AppStrings.Lobby.toggleReady, systemImage: "checkmark.circle")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
@@ -137,7 +137,7 @@ struct LobbyView: View {
             Button {
                 viewModel.startGameAsHost()
             } label: {
-                Label("Host Start Game", systemImage: "play.circle")
+                Label(AppStrings.Lobby.hostStartGame, systemImage: "play.circle")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
@@ -183,10 +183,10 @@ struct LobbyView: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 4) {
-                Text(player.role.rawValue.capitalized)
+                Text(AppStrings.roleName(player.role))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text(player.isReady ? "Ready" : "Not Ready")
+                Text(player.isReady ? AppStrings.Lobby.ready : AppStrings.Lobby.notReady)
                     .font(.callout.weight(.medium))
                     .foregroundStyle(player.isReady ? .green : .secondary)
             }

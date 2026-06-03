@@ -296,6 +296,475 @@ final class GameEngineTests: XCTestCase {
         }
     }
 
+    func testPlayFishAcceptsEggSourceFromDifferentSlotThanTarget() throws {
+        let engine = GameEngine()
+        let state = playFishStateWithResourcesInDifferentSlot()
+        let targetSlot = OceanSlotAddress(
+            playerId: "player-1",
+            diveSite: .coast,
+            zone: .sunlit,
+            slotIndex: 0
+        )
+        let sourceSlot = OceanSlotAddress(
+            playerId: "player-1",
+            diveSite: .reef,
+            zone: .twilight,
+            slotIndex: 0
+        )
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "play-fish-cross-slot-egg",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .playFish(
+                    PlayFishCommand(
+                        cardId: "fish-2",
+                        targetSlot: targetSlot,
+                        payment: PlayFishPayment(
+                            discardedCardIds: [],
+                            eggSources: [sourceSlot],
+                            youngSources: []
+                        )
+                    )
+                )
+            ),
+            in: state
+        )
+
+        XCTAssertEqual(
+            drafts,
+            [
+                .fishPlayed(
+                    FishPlayedEvent(
+                        playerId: "player-1",
+                        cardId: "fish-2",
+                        targetSlot: targetSlot,
+                        payment: PlayFishPayment(
+                            discardedCardIds: [],
+                            eggSources: [sourceSlot],
+                            youngSources: []
+                        ),
+                        nextActivePlayerId: nil
+                    )
+                )
+            ]
+        )
+    }
+
+    func testFishPlayedReducerDeductsResourceFromPaymentSourceSlot() {
+        let engine = GameEngine()
+        var state = playFishStateWithResourcesInDifferentSlot()
+        let targetSlot = OceanSlotAddress(
+            playerId: "player-1",
+            diveSite: .coast,
+            zone: .sunlit,
+            slotIndex: 0
+        )
+        let sourceSlot = OceanSlotAddress(
+            playerId: "player-1",
+            diveSite: .reef,
+            zone: .twilight,
+            slotIndex: 0
+        )
+
+        state = engine.reduce(
+            state: state,
+            event: GameEvent(
+                sequenceNumber: 10,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .fishPlayed(
+                    FishPlayedEvent(
+                        playerId: "player-1",
+                        cardId: "fish-2",
+                        targetSlot: targetSlot,
+                        payment: PlayFishPayment(
+                            discardedCardIds: [],
+                            eggSources: [sourceSlot],
+                            youngSources: []
+                        ),
+                        nextActivePlayerId: nil
+                    )
+                )
+            )
+        )
+
+        let playerState = state.playerGameStates["player-1"]
+        let target = playerState?.ocean.slots.first { $0.address == targetSlot }
+        let source = playerState?.ocean.slots.first { $0.address == sourceSlot }
+
+        XCTAssertEqual(target?.fishCardId, "fish-2")
+        XCTAssertEqual(source?.resources.first(where: { $0.kind == .egg })?.amount, 1)
+    }
+
+    func testPlayFishAcceptsYoungSourceFromDifferentSlotThanTarget() throws {
+        let engine = GameEngine()
+        var state = playFishStateWithResourcesInDifferentSlot()
+        state.playerGameStates["player-1"]?.hand = ["fish-3"]
+        let targetSlot = OceanSlotAddress(
+            playerId: "player-1",
+            diveSite: .coast,
+            zone: .sunlit,
+            slotIndex: 0
+        )
+        let sourceSlot = OceanSlotAddress(
+            playerId: "player-1",
+            diveSite: .reef,
+            zone: .twilight,
+            slotIndex: 0
+        )
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "play-fish-cross-slot-young",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .playFish(
+                    PlayFishCommand(
+                        cardId: "fish-3",
+                        targetSlot: targetSlot,
+                        payment: PlayFishPayment(
+                            discardedCardIds: [],
+                            eggSources: [],
+                            youngSources: [sourceSlot]
+                        )
+                    )
+                )
+            ),
+            in: state
+        )
+
+        XCTAssertEqual(
+            drafts,
+            [
+                .fishPlayed(
+                    FishPlayedEvent(
+                        playerId: "player-1",
+                        cardId: "fish-3",
+                        targetSlot: targetSlot,
+                        payment: PlayFishPayment(
+                            discardedCardIds: [],
+                            eggSources: [],
+                            youngSources: [sourceSlot]
+                        ),
+                        nextActivePlayerId: nil
+                    )
+                )
+            ]
+        )
+    }
+
+    func testDiveRejectsInactivePlayer() {
+        let engine = GameEngine()
+        let state = playFishState()
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: PlayerCommand(
+                    commandId: "dive-inactive",
+                    playerId: "player-2",
+                    roomId: roomId,
+                    payload: .dive(DiveCommand(diveSite: .blue))
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? CommandValidationError,
+                .notActivePlayer(expected: "player-1", actual: "player-2")
+            )
+        }
+    }
+
+    func testDiveRejectsInvalidPhase() {
+        let engine = GameEngine()
+        var state = playFishState()
+        state.phase = .lobby
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: PlayerCommand(
+                    commandId: "dive-invalid-phase",
+                    playerId: "player-1",
+                    roomId: roomId,
+                    payload: .dive(DiveCommand(diveSite: .blue))
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .invalidPhase(.lobby))
+        }
+    }
+
+    func testDiveRejectsNoAvailableDiver() {
+        let engine = GameEngine()
+        var state = playFishState()
+        state.playerGameStates["player-1"]?.availableDivers = 0
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: PlayerCommand(
+                    commandId: "dive-no-diver",
+                    playerId: "player-1",
+                    roomId: roomId,
+                    payload: .dive(DiveCommand(diveSite: .blue))
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .noAvailableDiver)
+        }
+    }
+
+    func testDiveRejectsInvalidDiveSite() {
+        let engine = GameEngine()
+        let state = playFishState()
+        let invalidDiveSite = DiveActionSite(rawValue: "red")
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: PlayerCommand(
+                    commandId: "dive-invalid-site",
+                    playerId: "player-1",
+                    roomId: roomId,
+                    payload: .dive(DiveCommand(diveSite: invalidDiveSite))
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .invalidDiveSite(invalidDiveSite))
+        }
+    }
+
+    func testDiveEmitsBottomBonusAndNextPlayerForFirstDiveSiteThisWeek() throws {
+        let engine = GameEngine()
+        let state = playFishState()
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "dive-blue",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .dive(DiveCommand(diveSite: .blue))
+            ),
+            in: state
+        )
+
+        XCTAssertEqual(
+            drafts,
+            [
+                .diverMoved(
+                    DiverMovedEvent(
+                        playerId: "player-1",
+                        diveSite: .blue,
+                        bottomBonusAvailable: true,
+                        bottomBonusClaimed: true,
+                        nextActivePlayerId: "player-2"
+                    )
+                )
+            ]
+        )
+    }
+
+    func testDiveReducerConsumesDiverRecordsBottomBonusAndAdvancesActivePlayer() {
+        let engine = GameEngine()
+        var state = playFishState()
+
+        state = engine.reduce(
+            state: state,
+            event: GameEvent(
+                sequenceNumber: 10,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .diverMoved(
+                    DiverMovedEvent(
+                        playerId: "player-1",
+                        diveSite: .blue,
+                        bottomBonusAvailable: true,
+                        bottomBonusClaimed: true,
+                        nextActivePlayerId: "player-2"
+                    )
+                )
+            )
+        )
+
+        let playerState = state.playerGameStates["player-1"]
+        XCTAssertEqual(playerState?.availableDivers, 5)
+        XCTAssertEqual(playerState?.usedDivers, 1)
+        XCTAssertEqual(playerState?.diveSitesReachedBottomThisWeek, [.blue])
+        XCTAssertEqual(state.activePlayerId, "player-2")
+        XCTAssertEqual(state.currentTurnIndex, 1)
+    }
+
+    func testDiveSecondSameSiteThisWeekDoesNotMarkBottomBonus() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        state.playerGameStates["player-1"]?.diveSitesReachedBottomThisWeek = [.blue]
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "dive-blue-second",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .dive(DiveCommand(diveSite: .blue))
+            ),
+            in: state
+        )
+
+        XCTAssertEqual(
+            drafts,
+            [
+                .diverMoved(
+                    DiverMovedEvent(
+                        playerId: "player-1",
+                        diveSite: .blue,
+                        bottomBonusAvailable: false,
+                        bottomBonusClaimed: false,
+                        nextActivePlayerId: "player-2"
+                    )
+                )
+            ]
+        )
+    }
+
+    func testPendingChoiceCreatedReducerAddsChoiceToGameState() {
+        let engine = GameEngine()
+        var state = playFishState()
+        let choice = pendingChoice()
+
+        state = engine.reduce(
+            state: state,
+            event: GameEvent(
+                sequenceNumber: 10,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .pendingChoiceCreated(choice)
+            )
+        )
+
+        XCTAssertEqual(state.pendingChoices[choice.choiceId], choice)
+    }
+
+    func testPendingChoiceResolvedReducerRemovesChoiceFromGameState() {
+        let engine = GameEngine()
+        var state = playFishState()
+        let choice = pendingChoice()
+        state.pendingChoices[choice.choiceId] = choice
+
+        state = engine.reduce(
+            state: state,
+            event: GameEvent(
+                sequenceNumber: 10,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .pendingChoiceResolved(
+                    PendingChoiceResolvedEvent(
+                        choiceId: choice.choiceId,
+                        playerId: "player-1",
+                        resolution: .skip,
+                        appliedEffects: [.none]
+                    )
+                )
+            )
+        )
+
+        XCTAssertNil(state.pendingChoices[choice.choiceId])
+    }
+
+    func testResolvePendingChoiceRejectsNonOwner() {
+        let engine = GameEngine()
+        var state = playFishState()
+        let choice = pendingChoice()
+        state.pendingChoices[choice.choiceId] = choice
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: PlayerCommand(
+                    commandId: "resolve-pending-choice-wrong-player",
+                    playerId: "player-2",
+                    roomId: roomId,
+                    payload: .resolvePendingChoice(
+                        ResolvePendingChoiceCommand(
+                            choiceId: choice.choiceId,
+                            resolution: .skip
+                        )
+                    )
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? CommandValidationError,
+                .pendingChoiceNotOwned(
+                    choiceId: choice.choiceId,
+                    expected: "player-1",
+                    actual: "player-2"
+                )
+            )
+        }
+    }
+
+    func testOptionalPendingChoiceCanBeSkipped() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        let choice = pendingChoice(isOptional: true)
+        state.pendingChoices[choice.choiceId] = choice
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "resolve-pending-choice-skip",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .resolvePendingChoice(
+                    ResolvePendingChoiceCommand(
+                        choiceId: choice.choiceId,
+                        resolution: .skip
+                    )
+                )
+            ),
+            in: state
+        )
+
+        XCTAssertEqual(
+            drafts,
+            [
+                .pendingChoiceResolved(
+                    PendingChoiceResolvedEvent(
+                        choiceId: choice.choiceId,
+                        playerId: "player-1",
+                        resolution: .skip,
+                        appliedEffects: [.none]
+                    )
+                )
+            ]
+        )
+    }
+
+    func testMissingPendingChoiceCannotBeResolved() {
+        let engine = GameEngine()
+        let state = playFishState()
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: PlayerCommand(
+                    commandId: "resolve-pending-choice-missing",
+                    playerId: "player-1",
+                    roomId: roomId,
+                    payload: .resolvePendingChoice(
+                        ResolvePendingChoiceCommand(
+                            choiceId: "missing-choice",
+                            resolution: .skip
+                        )
+                    )
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .pendingChoiceNotFound("missing-choice"))
+        }
+    }
+
     private func startedState(engine: GameEngine) -> GameState {
         [
             GameEvent(
@@ -375,6 +844,42 @@ final class GameEngineTests: XCTestCase {
                 )
             ],
             deckState: .empty
+        )
+    }
+
+    private func playFishStateWithResourcesInDifferentSlot() -> GameState {
+        var state = playFishState()
+        let sourceSlot = OceanSlotAddress(
+            playerId: "player-1",
+            diveSite: .reef,
+            zone: .twilight,
+            slotIndex: 0
+        )
+
+        guard var playerState = state.playerGameStates["player-1"],
+              let sourceIndex = playerState.ocean.slots.firstIndex(where: { $0.address == sourceSlot })
+        else {
+            return state
+        }
+
+        playerState.ocean.slots[sourceIndex].resources = [
+            ResourceQuantity(kind: .egg, amount: 2),
+            ResourceQuantity(kind: .young, amount: 1)
+        ]
+        state.playerGameStates["player-1"] = playerState
+        return state
+    }
+
+    private func pendingChoice(isOptional: Bool = true) -> PendingChoice {
+        PendingChoice(
+            choiceId: "choice-1",
+            playerId: "player-1",
+            source: .diveBonus(.blue),
+            kind: .bottomBonus,
+            options: [],
+            expectedInput: .none,
+            isOptional: isOptional,
+            createdAtSequence: 9
         )
     }
 

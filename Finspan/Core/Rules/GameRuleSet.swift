@@ -14,6 +14,7 @@ struct GameRuleSet {
              .chooseColor,
              .playFish,
              .dive,
+             .resolvePendingChoice,
              .chooseAbilityOption,
              .endTurn:
             return

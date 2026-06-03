@@ -38,13 +38,16 @@ struct GameEngine {
             }
         case let .playFish(payload):
             try validatePlayFish(payload, playerId: command.playerId, in: state)
+        case let .dive(payload):
+            try validateDive(payload, playerId: command.playerId, in: state)
+        case let .resolvePendingChoice(payload):
+            try validateResolvePendingChoice(payload, playerId: command.playerId, in: state)
         case .createRoom,
              .joinRoom,
              .leaveRoom,
              .setReady,
              .chooseSeat,
              .chooseColor,
-             .dive,
              .chooseAbilityOption:
             return
         }
@@ -118,15 +121,23 @@ struct GameEngine {
             nextState.phase = .playing
             nextState.currentWeek = min(payload.weekNumber + 1, Self.finalWeek)
             nextState.turnsCompletedThisWeek = 0
+            for playerId in nextState.playerGameStates.keys {
+                nextState.playerGameStates[playerId]?.diveSitesReachedBottomThisWeek = []
+            }
         case .gameEnded:
             nextState.phase = .gameEnded
             nextState.activePlayerId = nil
         case let .fishPlayed(payload):
             applyFishPlayed(payload, to: &nextState)
+        case let .diverMoved(payload):
+            applyDiverMoved(payload, to: &nextState)
+        case let .pendingChoiceCreated(payload):
+            nextState.pendingChoices[payload.choiceId] = payload
+        case let .pendingChoiceResolved(payload):
+            nextState.pendingChoices.removeValue(forKey: payload.choiceId)
         case .playerReadyChanged,
              .seatChanged,
              .colorChanged,
-             .diverMoved,
              .abilityOptionChosen,
              .snapshotCreated:
             break
@@ -191,10 +202,27 @@ struct GameEngine {
                 )
             )]
         case let .dive(payload):
+            let bottomBonusAvailable = bottomBonusAvailable(
+                for: payload.diveSite,
+                playerId: command.playerId,
+                in: state
+            )
             return [.diverMoved(
                 DiverMovedEvent(
                     playerId: command.playerId,
-                    destination: payload.destination
+                    diveSite: payload.diveSite,
+                    bottomBonusAvailable: bottomBonusAvailable,
+                    bottomBonusClaimed: bottomBonusAvailable,
+                    nextActivePlayerId: nextPlayer(after: command.playerId, in: state.players)?.id
+                )
+            )]
+        case let .resolvePendingChoice(payload):
+            return [.pendingChoiceResolved(
+                PendingChoiceResolvedEvent(
+                    choiceId: payload.choiceId,
+                    playerId: command.playerId,
+                    resolution: payload.resolution,
+                    appliedEffects: [.none]
                 )
             )]
         case let .chooseAbilityOption(payload):
@@ -293,6 +321,62 @@ struct GameEngine {
         try validatePayment(payload.payment, for: card, payload: payload, playerState: playerState)
     }
 
+    private func validateDive(
+        _ payload: DiveCommand,
+        playerId: PlayerID,
+        in state: GameState
+    ) throws {
+        guard state.phase == .playing else {
+            throw CommandValidationError.invalidPhase(state.phase)
+        }
+        guard state.activePlayerId == playerId else {
+            throw CommandValidationError.notActivePlayer(
+                expected: state.activePlayerId,
+                actual: playerId
+            )
+        }
+        guard DiveActionSite.baseGameSites.contains(payload.diveSite) else {
+            throw CommandValidationError.invalidDiveSite(payload.diveSite)
+        }
+        guard let playerState = state.playerGameStates[playerId] else {
+            throw CommandValidationError.missingPlayerState(playerId)
+        }
+        guard playerState.availableDivers > 0 else {
+            throw CommandValidationError.noAvailableDiver
+        }
+    }
+
+    private func bottomBonusAvailable(
+        for diveSite: DiveActionSite,
+        playerId: PlayerID,
+        in state: GameState
+    ) -> Bool {
+        guard let playerState = state.playerGameStates[playerId] else {
+            return false
+        }
+        return !playerState.diveSitesReachedBottomThisWeek.contains(diveSite)
+    }
+
+    private func validateResolvePendingChoice(
+        _ payload: ResolvePendingChoiceCommand,
+        playerId: PlayerID,
+        in state: GameState
+    ) throws {
+        guard let choice = state.pendingChoices[payload.choiceId] else {
+            throw CommandValidationError.pendingChoiceNotFound(payload.choiceId)
+        }
+        guard choice.playerId == playerId else {
+            throw CommandValidationError.pendingChoiceNotOwned(
+                choiceId: payload.choiceId,
+                expected: choice.playerId,
+                actual: playerId
+            )
+        }
+        if case .skip = payload.resolution, !choice.isOptional {
+            throw CommandValidationError.pendingChoiceRequired(payload.choiceId)
+        }
+    }
+
     private func validatePayment(
         _ payment: PlayFishPayment,
         for card: Card,
@@ -373,6 +457,25 @@ struct GameEngine {
         applyResourcePayment(payload.payment, to: &playerState)
 
         state.deckState.discardPile.append(contentsOf: payload.payment.discardedCardIds)
+        state.playerGameStates[payload.playerId] = playerState
+
+        if let nextActivePlayerId = payload.nextActivePlayerId,
+           let nextIndex = state.players.firstIndex(where: { $0.id == nextActivePlayerId }) {
+            state.currentTurnIndex = nextIndex
+            state.activePlayerId = nextActivePlayerId
+        }
+    }
+
+    private func applyDiverMoved(_ payload: DiverMovedEvent, to state: inout GameState) {
+        guard var playerState = state.playerGameStates[payload.playerId] else {
+            return
+        }
+
+        playerState.availableDivers = max(playerState.availableDivers - 1, 0)
+        playerState.usedDivers += 1
+        if payload.bottomBonusAvailable {
+            playerState.diveSitesReachedBottomThisWeek.insert(payload.diveSite)
+        }
         state.playerGameStates[payload.playerId] = playerState
 
         if let nextActivePlayerId = payload.nextActivePlayerId,

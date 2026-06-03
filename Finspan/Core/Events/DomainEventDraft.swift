@@ -11,6 +11,8 @@ enum DomainEventDraft: Equatable, Sendable {
     case setupCompleted(SetupCompletedEvent)
     case fishPlayed(FishPlayedEvent)
     case diverMoved(DiverMovedEvent)
+    case pendingChoiceCreated(PendingChoice)
+    case pendingChoiceResolved(PendingChoiceResolvedEvent)
     case abilityOptionChosen(AbilityOptionChosenEvent)
     case turnEnded(TurnEndedEvent)
     case weekEnded(WeekEndedEvent)

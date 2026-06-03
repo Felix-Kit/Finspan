@@ -5,7 +5,7 @@ import Foundation
 final class LobbyViewModel: ObservableObject {
     @Published private(set) var roomCode = "-"
     @Published private(set) var hostName = "-"
-    @Published private(set) var status = "No Room"
+    @Published private(set) var status = AppStrings.Lobby.noRoom
     @Published private(set) var players: [RoomPlayer] = []
     @Published var selectedPlayerId: PlayerID?
     @Published var selectedColor: PlayerColor = .blue
@@ -13,7 +13,7 @@ final class LobbyViewModel: ObservableObject {
 
     private let roomService: any RoomService
     private let hostPlayerId: PlayerID = "host-player"
-    private let hostDisplayName = "Host"
+    private let hostDisplayName = AppStrings.Lobby.hostName
     private let roomId: RoomID = "local-room"
     private let roomCodeValue = "LOCAL"
     private var commandCounter = 0
@@ -64,7 +64,7 @@ final class LobbyViewModel: ObservableObject {
                 playerId: playerId,
                 roomId: roomId,
                 payload: .joinRoom(
-                    JoinRoomCommand(displayName: "Player \(simulatedPlayerCounter)")
+                    JoinRoomCommand(displayName: "\(AppStrings.Lobby.simulatedPlayerPrefix) \(simulatedPlayerCounter)")
                 )
             )
         )
@@ -72,7 +72,7 @@ final class LobbyViewModel: ObservableObject {
 
     func chooseSelectedColor() {
         guard let selectedPlayerId else {
-            errorMessage = "Select a player first."
+            errorMessage = AppStrings.Lobby.selectPlayerFirst
             return
         }
         submit(
@@ -87,7 +87,7 @@ final class LobbyViewModel: ObservableObject {
 
     func toggleReadyForSelectedPlayer() {
         guard let selectedPlayerId else {
-            errorMessage = "Select a player first."
+            errorMessage = AppStrings.Lobby.selectPlayerFirst
             return
         }
         let currentReady = players.first(where: { $0.playerId == selectedPlayerId })?.isReady ?? false
@@ -102,6 +102,17 @@ final class LobbyViewModel: ObservableObject {
     }
 
     func startGameAsHost() {
+        for player in players where !player.isReady && player.role != .spectator {
+            submit(
+                PlayerCommand(
+                    commandId: nextCommandId(),
+                    playerId: player.playerId,
+                    roomId: roomId,
+                    payload: .setReady(SetReadyCommand(isReady: true))
+                )
+            )
+        }
+
         submit(
             PlayerCommand(
                 commandId: nextCommandId(),
@@ -116,7 +127,7 @@ final class LobbyViewModel: ObservableObject {
         guard let room = roomService.gameRoom else {
             roomCode = "-"
             hostName = "-"
-            status = "No Room"
+            status = AppStrings.Lobby.noRoom
             players = []
             selectedPlayerId = nil
             return
@@ -124,7 +135,7 @@ final class LobbyViewModel: ObservableObject {
 
         roomCode = room.roomCode
         hostName = room.players.first(where: { $0.playerId == room.hostPlayerId })?.displayName ?? room.hostPlayerId
-        status = room.status.rawValue
+        status = AppStrings.roomStatusName(room.status)
         players = room.players
 
         if selectedPlayerId == nil || !room.players.contains(where: { $0.playerId == selectedPlayerId }) {
