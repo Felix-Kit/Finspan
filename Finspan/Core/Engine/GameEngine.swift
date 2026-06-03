@@ -87,6 +87,19 @@ struct GameEngine {
             nextState.activePlayerId = nextState.players[safe: startingIndex]?.id
             nextState.randomSeed = payload.randomSeed
             nextState.turnsCompletedThisWeek = 0
+        case let .setupCompleted(payload):
+            let setup = payload.setup
+            let startingIndex = nextState.players.firstIndex(where: { $0.id == setup.startingPlayerId }) ?? 0
+            nextState.phase = .playing
+            nextState.currentWeek = 1
+            nextState.currentTurnIndex = startingIndex
+            nextState.activePlayerId = nextState.players[safe: startingIndex]?.id
+            nextState.randomSeed = setup.randomSeed
+            nextState.turnsCompletedThisWeek = 0
+            nextState.playerGameStates = Dictionary(
+                uniqueKeysWithValues: setup.playerStates.map { ($0.playerId, $0) }
+            )
+            nextState.deckState = setup.deckState
         case let .turnEnded(payload):
             let fallbackNextIndex = nextTurnIndex(after: nextState.currentTurnIndex, playerCount: nextState.players.count)
             let nextIndex = payload.nextPlayerId

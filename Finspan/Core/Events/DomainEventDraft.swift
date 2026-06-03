@@ -8,6 +8,7 @@ enum DomainEventDraft: Equatable, Sendable {
     case seatChanged(SeatChangedEvent)
     case colorChanged(ColorChangedEvent)
     case gameStarted(GameStartedDraft)
+    case setupCompleted(SetupCompletedEvent)
     case fishPlayed(FishPlayedEvent)
     case diverMoved(DiverMovedEvent)
     case abilityOptionChosen(AbilityOptionChosenEvent)

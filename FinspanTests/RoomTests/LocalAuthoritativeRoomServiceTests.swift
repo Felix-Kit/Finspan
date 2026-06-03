@@ -94,10 +94,17 @@ final class LocalAuthoritativeRoomServiceTests: XCTestCase {
             )
         )
 
+        XCTAssertEqual(events.count, 2)
         XCTAssertEqual(
             events.first?.payload,
             .gameStarted(GameStartedEvent(startingPlayerId: "player-1", randomSeed: 99))
         )
+        if case let .setupCompleted(payload) = events.last?.payload {
+            XCTAssertEqual(payload.setup.randomSeed, 99)
+            XCTAssertEqual(payload.setup.playerStates.first?.hand.count, 5)
+        } else {
+            XCTFail("Expected setupCompleted event.")
+        }
         XCTAssertEqual(service.gameRoom?.status, .inProgress)
         XCTAssertEqual(service.gameRoom?.gameConfig.randomSeed, 99)
     }
@@ -150,10 +157,11 @@ final class LocalAuthoritativeRoomServiceTests: XCTestCase {
                 payload: .startGame(StartGameCommand())
             )
         )
+        let activePlayerId = try XCTUnwrap(service.gameState.activePlayerId)
         let turnEvents = try service.submit(
             PlayerCommand(
                 commandId: "command-6",
-                playerId: "player-1",
+                playerId: activePlayerId,
                 roomId: "room-1",
                 payload: .endTurn(EndTurnCommand())
             )
@@ -162,10 +170,10 @@ final class LocalAuthoritativeRoomServiceTests: XCTestCase {
         XCTAssertEqual(service.gameRoom?.players.count, 2)
         XCTAssertEqual(service.gameRoom?.players.map(\.isReady), [true, true])
         XCTAssertEqual(service.gameRoom?.status, .inProgress)
-        XCTAssertEqual(service.gameRoom?.currentSequence, 6)
-        XCTAssertEqual(service.gameState.eventSequence, 6)
-        XCTAssertEqual(service.eventLog.map(\.sequenceNumber), [1, 2, 3, 4, 5, 6])
-        XCTAssertEqual(turnEvents.first?.payload, .turnEnded(TurnEndedEvent(playerId: "player-1", nextPlayerId: nil)))
+        XCTAssertEqual(service.gameRoom?.currentSequence, 7)
+        XCTAssertEqual(service.gameState.eventSequence, 7)
+        XCTAssertEqual(service.eventLog.map(\.sequenceNumber), [1, 2, 3, 4, 5, 6, 7])
+        XCTAssertEqual(turnEvents.first?.payload, .turnEnded(TurnEndedEvent(playerId: activePlayerId, nextPlayerId: nil)))
     }
 
     func testRejectsNonHostStartGame() throws {

@@ -27,6 +27,7 @@ enum GameEventPayload: Codable, Equatable, Sendable {
     case seatChanged(SeatChangedEvent)
     case colorChanged(ColorChangedEvent)
     case gameStarted(GameStartedEvent)
+    case setupCompleted(SetupCompletedEvent)
     case fishPlayed(FishPlayedEvent)
     case diverMoved(DiverMovedEvent)
     case abilityOptionChosen(AbilityOptionChosenEvent)
@@ -69,6 +70,10 @@ struct ColorChangedEvent: Codable, Equatable, Sendable {
 struct GameStartedEvent: Codable, Equatable, Sendable {
     var startingPlayerId: PlayerID
     var randomSeed: Int
+}
+
+struct SetupCompletedEvent: Codable, Equatable, Sendable {
+    var setup: GameSetup
 }
 
 struct FishPlayedEvent: Codable, Equatable, Sendable {

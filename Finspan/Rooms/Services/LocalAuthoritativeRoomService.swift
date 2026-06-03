@@ -3,6 +3,7 @@ import Foundation
 final class LocalAuthoritativeRoomService: RoomService {
     private let engine: GameEngine
     private let reducer: EventReducer
+    private let setupBuilder: DeterministicSetupBuilder
     private var eventFactory: AuthoritativeEventFactory
     private let randomSeedProvider: () -> Int
     private var eventContinuations: [AsyncStream<GameEvent>.Continuation] = []
@@ -21,6 +22,7 @@ final class LocalAuthoritativeRoomService: RoomService {
     init(
         engine: GameEngine = GameEngine(),
         reducer: EventReducer = EventReducer(),
+        setupBuilder: DeterministicSetupBuilder = DeterministicSetupBuilder(),
         snapshot: RoomSnapshot = .empty,
         roomId: RoomID = RoomSnapshot.empty.id,
         randomSeed: Int = 0,
@@ -29,6 +31,7 @@ final class LocalAuthoritativeRoomService: RoomService {
     ) {
         self.engine = engine
         self.reducer = reducer
+        self.setupBuilder = setupBuilder
         self.gameRoom = nil
         self.gameState = snapshot.state
         self.snapshot = snapshot
@@ -45,8 +48,13 @@ final class LocalAuthoritativeRoomService: RoomService {
     @discardableResult
     func submit(_ command: PlayerCommand) throws -> [GameEvent] {
         try validateRoomCommand(command)
-        let drafts = try engine.makeEventDrafts(for: command, in: gameState)
-        prepareAuthoritativeFields(for: command)
+        let engineDrafts = try engine.makeEventDrafts(for: command, in: gameState)
+        let randomSeed = prepareAuthoritativeFields(for: command)
+        let drafts = try makeAuthoritativeDrafts(
+            for: command,
+            engineDrafts: engineDrafts,
+            randomSeed: randomSeed
+        )
         let events = eventFactory.makeEvents(
             from: drafts,
             actorPlayerId: command.playerId
@@ -138,14 +146,42 @@ final class LocalAuthoritativeRoomService: RoomService {
         return room
     }
 
-    private func prepareAuthoritativeFields(for command: PlayerCommand) {
+    private func prepareAuthoritativeFields(for command: PlayerCommand) -> Int? {
         if case .createRoom = command.payload, gameRoom == nil {
             eventFactory.updateRoomId(command.roomId)
         }
 
         if case .startGame = command.payload {
-            eventFactory.updateRandomSeed(randomSeedProvider())
+            let randomSeed = randomSeedProvider()
+            eventFactory.updateRandomSeed(randomSeed)
+            return randomSeed
         }
+
+        return nil
+    }
+
+    private func makeAuthoritativeDrafts(
+        for command: PlayerCommand,
+        engineDrafts: [DomainEventDraft],
+        randomSeed: Int?
+    ) throws -> [DomainEventDraft] {
+        guard case .startGame = command.payload else {
+            return engineDrafts
+        }
+
+        guard let room = gameRoom, let randomSeed else {
+            throw RoomServiceError.roomNotFound
+        }
+
+        let setup = try setupBuilder.makeSetup(
+            players: room.players,
+            randomSeed: randomSeed
+        )
+
+        return [
+            .gameStarted(GameStartedDraft(startingPlayerId: setup.startingPlayerId)),
+            .setupCompleted(SetupCompletedEvent(setup: setup))
+        ]
     }
 
     private func applyRoomEvent(_ event: GameEvent) {
@@ -201,6 +237,8 @@ final class LocalAuthoritativeRoomService: RoomService {
                 room.status = .inProgress
                 room.gameConfig.randomSeed = payload.randomSeed
             }
+        case .setupCompleted:
+            updateRoom(event) { _ in }
         case .turnEnded:
             updateRoom(event) { _ in }
         case .fishPlayed,

@@ -85,6 +85,8 @@ final class GameBoardViewModel: ObservableObject {
             payload = "Color: \(event.playerId) \(event.color.rawValue)"
         case let .gameStarted(event):
             payload = "Game Started: \(event.startingPlayerId)"
+        case let .setupCompleted(event):
+            payload = "Setup Completed: \(event.setup.playerStates.count) players"
         case let .fishPlayed(event):
             payload = "Fish Played: \(event.playerId) \(event.cardId)"
         case let .diverMoved(event):

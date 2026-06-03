@@ -76,6 +76,8 @@ struct AuthoritativeEventFactory {
                     randomSeed: context.randomSeed
                 )
             )
+        case let .setupCompleted(payload):
+            return .setupCompleted(payload)
         case let .fishPlayed(payload):
             return .fishPlayed(payload)
         case let .diverMoved(payload):

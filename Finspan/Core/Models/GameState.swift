@@ -19,6 +19,8 @@ struct GameState: Codable, Equatable, Sendable {
     var eventSequence: EventID
     var randomSeed: Int?
     var turnsCompletedThisWeek: Int
+    var playerGameStates: [PlayerID: PlayerGameState]
+    var deckState: DeckState
 
     static let empty = GameState(
         roomId: nil,
@@ -29,6 +31,8 @@ struct GameState: Codable, Equatable, Sendable {
         phase: .lobby,
         eventSequence: 0,
         randomSeed: nil,
-        turnsCompletedThisWeek: 0
+        turnsCompletedThisWeek: 0,
+        playerGameStates: [:],
+        deckState: .empty
     )
 }
