@@ -60,7 +60,7 @@ struct FinalScoreView: View {
                         .monospacedDigit()
                 }
 
-                scoreBar(row.segments)
+                scoreBar(row)
 
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 8)], spacing: 6) {
                     ForEach(row.segments) { segment in
@@ -83,28 +83,46 @@ struct FinalScoreView: View {
         )
     }
 
-    private func scoreBar(_ segments: [ScoreBarSegmentViewState]) -> some View {
+    private func scoreBar(_ row: FinalScorePlayerRowViewState) -> some View {
         GeometryReader { proxy in
+            let availableWidth = proxy.size.width
+            let totalWidthRatio = clampedRatio(row.totalWidthRatioRelativeToMaxTotal)
+            let animationProgress = animateScoreBars ? 1.0 : 0.0
+
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: 5)
                     .fill(Color(.tertiarySystemFill))
 
-                HStack(spacing: 0) {
-                    ForEach(segments) { segment in
+                ZStack(alignment: .leading) {
+                    ForEach(row.segments.indices, id: \.self) { index in
+                        let segment = row.segments[index]
+                        let segmentWidthRatio = clampedRatio(segment.widthRatioRelativeToMaxTotal)
+                        let precedingWidthRatio = clampedRatio(
+                            row.segments.prefix(index).reduce(0) {
+                                $0 + $1.widthRatioRelativeToMaxTotal
+                            }
+                        )
+
                         Rectangle()
                             .fill(color(for: segment.displayColorKey))
                             .frame(
-                                width: animateScoreBars
-                                    ? proxy.size.width * segment.widthRatioRelativeToMaxTotal
-                                    : 0
+                                width: availableWidth * segmentWidthRatio * animationProgress
                             )
+                            .offset(x: availableWidth * precedingWidthRatio * animationProgress)
                     }
                 }
-                .frame(width: proxy.size.width, alignment: .leading)
+                .frame(
+                    width: availableWidth * totalWidthRatio * animationProgress,
+                    alignment: .leading
+                )
                 .clipShape(RoundedRectangle(cornerRadius: 5))
             }
         }
         .frame(height: 18)
+    }
+
+    private func clampedRatio(_ ratio: Double) -> Double {
+        min(max(ratio, 0), 1)
     }
 
     private var legend: some View {

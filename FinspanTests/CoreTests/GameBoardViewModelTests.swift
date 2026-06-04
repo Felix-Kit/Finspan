@@ -444,9 +444,13 @@ final class GameBoardViewModelTests: XCTestCase {
 
         XCTAssertEqual(finalScoreViewState.title, AppStrings.GameBoard.finalScoreTitle)
         XCTAssertEqual(finalScoreViewState.winnerText, "获胜玩家：玩家 2")
+        XCTAssertEqual(finalScoreViewState.maxTotalPoints, 20)
         XCTAssertEqual(finalScoreViewState.playerRows.count, 2)
         XCTAssertEqual(finalScoreViewState.playerRows[0].avatarText, "玩")
+        XCTAssertEqual(finalScoreViewState.playerRows[0].playerDisplayName, "玩家 1")
         XCTAssertEqual(finalScoreViewState.playerRows[0].totalPoints, 10)
+        XCTAssertEqual(finalScoreViewState.playerRows[0].totalText, "最终得分 10 分")
+        XCTAssertEqual(finalScoreViewState.playerRows[0].totalWidthRatioRelativeToMaxTotal, 0.5, accuracy: 0.0001)
         XCTAssertEqual(finalScoreViewState.playerRows[0].segments.count, 6)
         XCTAssertEqual(finalScoreViewState.playerRows[0].segments.map(\.category), [
             .weeklyAchievements,
@@ -458,7 +462,74 @@ final class GameBoardViewModelTests: XCTestCase {
         ])
         XCTAssertEqual(finalScoreViewState.playerRows[0].segments[0].widthRatioRelativeToMaxTotal, 0.15, accuracy: 0.0001)
         XCTAssertTrue(finalScoreViewState.playerRows[1].isWinner)
+        XCTAssertEqual(finalScoreViewState.playerRows[1].totalWidthRatioRelativeToMaxTotal, 1, accuracy: 0.0001)
         XCTAssertEqual(finalScoreViewState.legendItems.count, 6)
+        XCTAssertEqual(Set(finalScoreViewState.legendItems.map(\.displayColorKey)).count, 6)
+        XCTAssertGreaterThan(Set(finalScoreViewState.playerRows[1].segments.map(\.displayColorKey)).count, 1)
+    }
+
+    func testFinalScoreSegmentsUseSharedMaximumTotalScaleAcrossPlayers() {
+        let playerOneScore = FinalScoreBreakdown(
+            playerId: "player-1",
+            weeklyAchievementPoints: 2,
+            fishPrintedPoints: 2,
+            gameEndAbilityPoints: 0,
+            eggPoints: 0,
+            youngPoints: 0,
+            schoolPoints: 6,
+            consumedFishPoints: 0,
+            totalPoints: 10
+        )
+        let playerTwoScore = FinalScoreBreakdown(
+            playerId: "player-2",
+            weeklyAchievementPoints: 4,
+            fishPrintedPoints: 8,
+            gameEndAbilityPoints: 0,
+            eggPoints: 0,
+            youngPoints: 0,
+            schoolPoints: 6,
+            consumedFishPoints: 2,
+            totalPoints: 20
+        )
+        let service = makeService(
+            hand: [],
+            phase: .gameEnded,
+            activePlayerId: nil,
+            finalScoreResult: FinalScoreResult(
+                results: [playerOneScore, playerTwoScore],
+                winnerPlayerIds: ["player-2"],
+                isTie: false
+            )
+        )
+        service.gameRoom?.players.append(RoomPlayer(playerId: "player-2", displayName: "玩家 2"))
+        service.gameState.players.append(Player(id: "player-2", name: "玩家 2"))
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        guard let viewState = viewModel.finalScoreViewState else {
+            return XCTFail("Expected final score view state.")
+        }
+        let lowerRow = viewState.playerRows[0]
+        let higherRow = viewState.playerRows[1]
+        let lowerSchool = lowerRow.segments.first { $0.category == .schools }
+        let higherSchool = higherRow.segments.first { $0.category == .schools }
+
+        XCTAssertEqual(viewState.maxTotalPoints, 20)
+        XCTAssertEqual(lowerSchool?.points, 6)
+        XCTAssertEqual(higherSchool?.points, 6)
+        XCTAssertEqual(lowerSchool?.widthRatioRelativeToMaxTotal ?? -1, 0.3, accuracy: 0.0001)
+        XCTAssertEqual(higherSchool?.widthRatioRelativeToMaxTotal ?? -1, 0.3, accuracy: 0.0001)
+        XCTAssertEqual(
+            lowerRow.segments.reduce(0) { $0 + $1.widthRatioRelativeToMaxTotal },
+            lowerRow.totalWidthRatioRelativeToMaxTotal,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(
+            higherRow.segments.reduce(0) { $0 + $1.widthRatioRelativeToMaxTotal },
+            higherRow.totalWidthRatioRelativeToMaxTotal,
+            accuracy: 0.0001
+        )
+        XCTAssertLessThan(lowerRow.totalWidthRatioRelativeToMaxTotal, higherRow.totalWidthRatioRelativeToMaxTotal)
+        XCTAssertEqual(higherRow.totalWidthRatioRelativeToMaxTotal, 1, accuracy: 0.0001)
     }
 
     func testFinalScoreZeroCategoriesDoNotBreakProportionCalculation() {
@@ -489,6 +560,8 @@ final class GameBoardViewModelTests: XCTestCase {
         let proportions = viewModel.finalScoreViewState?.playerRows[0].segments.map(\.widthRatioRelativeToMaxTotal)
 
         XCTAssertEqual(proportions, [0, 0, 0, 0, 0, 0])
+        XCTAssertEqual(viewModel.finalScoreViewState?.maxTotalPoints, 0)
+        XCTAssertEqual(viewModel.finalScoreViewState?.playerRows[0].totalWidthRatioRelativeToMaxTotal, 0)
     }
 
     func testGameEndedPhasePreventsPlayFishAndDiveSubmission() {

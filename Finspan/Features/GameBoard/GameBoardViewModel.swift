@@ -369,7 +369,7 @@ final class GameBoardViewModel: ObservableObject {
         guard let finalScoreResult = state.finalScoreResult else {
             return nil
         }
-        let maxTotalPoints = finalScoreResult.results.map(\.totalPoints).max() ?? 0
+        let maxTotalPoints = max(finalScoreResult.results.map(\.totalPoints).max() ?? 0, 0)
         let ratioDivisor = max(maxTotalPoints, 1)
         let winnerNames = finalScoreResult.winnerPlayerIds.map(displayName)
         let playerRows = finalScoreResult.results.map { result in
@@ -384,7 +384,10 @@ final class GameBoardViewModel: ObservableObject {
                 avatarText: String(playerName.prefix(1)),
                 totalPoints: result.totalPoints,
                 totalText: AppStrings.GameBoard.finalScoreTotalText(points: result.totalPoints),
-                totalWidthRatioRelativeToMaxTotal: Double(result.totalPoints) / Double(ratioDivisor),
+                totalWidthRatioRelativeToMaxTotal: scoreBarWidthRatio(
+                    points: result.totalPoints,
+                    maximumTotal: ratioDivisor
+                ),
                 isWinner: finalScoreResult.winnerPlayerIds.contains(result.playerId),
                 segments: finalScoreSegments(for: result, maximumTotal: ratioDivisor)
             )
@@ -1365,10 +1368,20 @@ final class GameBoardViewModel: ObservableObject {
                 category: category,
                 title: title,
                 points: points,
-                widthRatioRelativeToMaxTotal: Double(points) / Double(maximumTotal),
+                widthRatioRelativeToMaxTotal: scoreBarWidthRatio(
+                    points: points,
+                    maximumTotal: maximumTotal
+                ),
                 displayColorKey: colorStyle
             )
         }
+    }
+
+    private func scoreBarWidthRatio(points: Int, maximumTotal: Int) -> Double {
+        guard maximumTotal > 0 else {
+            return 0
+        }
+        return min(max(Double(points) / Double(maximumTotal), 0), 1)
     }
 
     private func discardCostCount(for card: Card?) -> Int? {
