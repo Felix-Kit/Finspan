@@ -51,9 +51,15 @@ enum AppStrings {
         static let noPendingChoices = "暂无待处理选择。"
         static let pendingChoicePlayer = "玩家"
         static let pendingChoiceSource = "来源"
+        static let pendingChoiceStatus = "状态"
+        static let pendingChoiceWaiting = "待处理"
         static let optionalChoice = "可跳过"
         static let requiredChoice = "必须处理"
         static let skipChoice = "跳过"
+        static let drawOneFishCard = "抽 1 张鱼牌"
+        static let chooseTargetUnsupported = "选择目标（暂未接入）"
+        static let unsupportedSkippableChoice = "暂未接入，可跳过"
+        static let resolveCurrentRewardFirst = "请先处理当前奖励选择。"
         static let chooseTarget = "选择目标"
         static let drawFish = "抽鱼牌"
         static let chooseOption = "选择选项"
@@ -65,12 +71,13 @@ enum AppStrings {
         static let noActivePlayer = "暂无行动玩家。"
         static let noActiveRoom = "暂无活动房间。"
         static let noActiveHand = "当前行动玩家没有可显示的手牌。"
-        static let noOceanSlots = "当前行动玩家没有可显示的海域槽位。"
+        static let noOceanSlots = "当前行动玩家没有可显示的海域格子。"
         static let selectCard = "选择鱼牌"
-        static let selectSlot = "选择槽位"
+        static let selectSlot = "选择格子"
         static let selected = "已选择"
         static let occupied = "已占用"
         static let empty = "空格"
+        static let forageFish = "印刷小鱼"
         static let resources = "资源"
         static let noResources = "无资源"
         static let discardPayment = "弃牌费用"
@@ -87,9 +94,86 @@ enum AppStrings {
         static let costUnsupportedInUI = "该费用类型暂未接入界面。"
         static let discardPaymentIncomplete = "请选择正确数量的弃牌。"
         static let playFishSucceeded = "出牌成功。"
+        static let cancelPlayFishSelection = "取消出牌选择"
+        static let finishOrCancelPlayFish = "正在出牌，请先完成或取消当前出牌。"
+        static let selectedFishCard = "当前选择鱼牌"
+        static let fishCardName = "鱼牌名称"
+        static let score = "分数"
+        static let length = "长度"
+        static let allowedZones = "可放置区域"
+        static let requiredDiveSite = "限定潜水点"
+        static let costs = "费用"
+        static let unsupportedItems = "暂未接入项目"
+        static let noLimit = "不限"
+        static let centimeters = "厘米"
+        static let unknownCard = "未知卡牌"
+        static let noCost = "无费用"
+        static let cardScoreUnsupported = "暂未接入"
+        static let cardLengthUnsupported = "暂未接入"
+        static let slotAvailable = "可放置"
+        static let slotOccupied = "已占用"
+        static let slotZoneMismatch = "区域不符"
+        static let slotDiveSiteMismatch = "潜水点不符"
+        static let slotSelectFishFirst = "先选择鱼牌"
+        static let unsupportedRequirementInUI = "暂不支持该条件"
+        static let unsupportedAbilityInUI = "能力暂未接入"
+        static let topRow = "顶行"
+        static let bottomRow = "底行"
         static let active = "行动中"
         static let connected = "已连接"
         static let disconnected = "未连接"
+    }
+
+    static func oceanZoneName(_ zone: OceanZone) -> String {
+        switch zone {
+        case .sunlit:
+            return "阳光层"
+        case .twilight:
+            return "暮光层"
+        case .midnight:
+            return "深海层"
+        }
+    }
+
+    static func diveSiteColorName(_ color: DiveSiteColor) -> String {
+        switch color {
+        case .blue:
+            return "蓝色"
+        case .purple:
+            return "紫色"
+        case .green:
+            return "绿色"
+        }
+    }
+
+    static func oceanDiveSiteName(_ site: DiveSite) -> String {
+        switch site {
+        case .blue:
+            return "蓝色潜水点"
+        case .purple:
+            return "紫色潜水点"
+        case .green:
+            return "绿色潜水点"
+        }
+    }
+
+    static func oceanRowLabel(rowIndex: Int) -> String {
+        switch rowIndex {
+        case 0:
+            return "阳光层 1 / 顶行"
+        case 1:
+            return "阳光层 2"
+        case 2:
+            return "阳光层 3"
+        case 3:
+            return "暮光层"
+        case 4:
+            return "深海层 1"
+        case 5:
+            return "深海层 2 / 底行"
+        default:
+            return "未知行"
+        }
     }
 
     static func diveActionSiteName(_ site: DiveActionSite) -> String {

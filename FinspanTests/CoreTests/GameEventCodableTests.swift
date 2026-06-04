@@ -14,9 +14,8 @@ final class GameEventCodableTests: XCTestCase {
                     cardId: "fish-card-1",
                     targetSlot: OceanSlotAddress(
                         playerId: "player-1",
-                        diveSite: .coast,
-                        zone: .sunlit,
-                        slotIndex: 0
+                        diveSite: .blue,
+                        rowIndex: 0
                     ),
                     payment: .empty,
                     nextActivePlayerId: nil

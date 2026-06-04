@@ -9,8 +9,8 @@ struct ResourceKind: RawRepresentable, Codable, Equatable, Hashable, Sendable {
 }
 
 extension ResourceKind {
-    static let egg = ResourceKind(rawValue: "egg")
-    static let young = ResourceKind(rawValue: "young")
+    nonisolated static let egg = ResourceKind(rawValue: "egg")
+    nonisolated static let young = ResourceKind(rawValue: "young")
 }
 
 enum Cost: Codable, Equatable, Sendable {

@@ -37,7 +37,6 @@ final class DeterministicSetupTests: XCTestCase {
         let service = try makeStartedService(seed: 123)
 
         for playerState in service.gameState.playerGameStates.values {
-            XCTAssertEqual(playerState.ocean.forageFishCardIds, ["base-forage-placeholder"])
             XCTAssertEqual(
                 playerState.ocean.resources,
                 [
@@ -45,6 +44,88 @@ final class DeterministicSetupTests: XCTestCase {
                     ResourceQuantity(kind: ResourceKind(rawValue: "young"), amount: 1)
                 ]
             )
+        }
+    }
+
+    func testEachPlayerStartsWithThreeForageFishSlots() throws {
+        let service = try makeStartedService(seed: 123)
+
+        for playerState in service.gameState.playerGameStates.values {
+            let forageSlots = playerState.ocean.slots.filter { slot in
+                if case .forageFish = slot.content {
+                    return true
+                }
+                return false
+            }
+
+            XCTAssertEqual(forageSlots.count, 3)
+            XCTAssertEqual(
+                Set(forageSlots.map(\.address)),
+                [
+                    OceanSlotAddress(playerId: playerState.playerId, diveSite: .blue, rowIndex: 4),
+                    OceanSlotAddress(playerId: playerState.playerId, diveSite: .purple, rowIndex: 3),
+                    OceanSlotAddress(playerId: playerState.playerId, diveSite: .green, rowIndex: 1)
+                ]
+            )
+        }
+    }
+
+    func testEachPlayerStartsWithEighteenOceanSlots() throws {
+        let service = try makeStartedService(seed: 123)
+
+        for playerState in service.gameState.playerGameStates.values {
+            XCTAssertEqual(playerState.ocean.slots.count, 18)
+
+            for diveSite in DiveSite.allCases {
+                let siteSlots = playerState.ocean.slots.filter { $0.address.diveSite == diveSite }
+                XCTAssertEqual(siteSlots.count, 6)
+                XCTAssertEqual(siteSlots.filter { $0.address.zone == .sunlit }.count, 3)
+                XCTAssertEqual(siteSlots.filter { $0.address.zone == .twilight }.count, 1)
+                XCTAssertEqual(siteSlots.filter { $0.address.zone == .midnight }.count, 2)
+                XCTAssertEqual(siteSlots.first(where: { $0.address.rowIndex == 0 })?.rowTrait, .topRow)
+                XCTAssertEqual(siteSlots.first(where: { $0.address.rowIndex == 5 })?.rowTrait, .bottomRow)
+            }
+        }
+    }
+
+    func testOnlyThreeSampleForageFishSlotsAreOccupiedAtSetup() throws {
+        let service = try makeStartedService(seed: 123)
+
+        for playerState in service.gameState.playerGameStates.values {
+            let forageAddresses = Set(
+                playerState.ocean.slots.compactMap { slot -> OceanSlotAddress? in
+                    if case .forageFish = slot.content {
+                        return slot.address
+                    }
+                    return nil
+                }
+            )
+            let expectedForageAddresses: Set<OceanSlotAddress> = [
+                OceanSlotAddress(playerId: playerState.playerId, diveSite: .blue, rowIndex: 4),
+                OceanSlotAddress(playerId: playerState.playerId, diveSite: .purple, rowIndex: 3),
+                OceanSlotAddress(playerId: playerState.playerId, diveSite: .green, rowIndex: 1)
+            ]
+
+            XCTAssertEqual(forageAddresses, expectedForageAddresses)
+            XCTAssertEqual(playerState.ocean.slots.filter { $0.content == .empty }.count, 15)
+        }
+    }
+
+    func testEachPlayerStartsWithDistributedEggAndYoungResources() throws {
+        let service = try makeStartedService(seed: 123)
+
+        for playerState in service.gameState.playerGameStates.values {
+            let eggSlots = playerState.ocean.slots.filter { resourceAmount(.egg, in: $0) > 0 }
+            let youngSlots = playerState.ocean.slots.filter { resourceAmount(.young, in: $0) > 0 }
+            let eggTotal = playerState.ocean.slots.reduce(0) { $0 + resourceAmount(.egg, in: $1) }
+            let youngTotal = playerState.ocean.slots.reduce(0) { $0 + resourceAmount(.young, in: $1) }
+
+            XCTAssertEqual(eggTotal, 2)
+            XCTAssertEqual(youngTotal, 1)
+            XCTAssertEqual(eggSlots.count, 2)
+            XCTAssertNotEqual(eggSlots[0].address, eggSlots[1].address)
+            XCTAssertEqual(youngSlots.count, 1)
+            XCTAssertFalse(eggSlots.allSatisfy { $0.address == youngSlots[0].address })
         }
     }
 
@@ -121,5 +202,9 @@ final class DeterministicSetupTests: XCTestCase {
         )
 
         return service
+    }
+
+    private func resourceAmount(_ kind: ResourceKind, in slot: OceanSlot) -> Int {
+        slot.resources.first(where: { $0.kind == kind })?.amount ?? 0
     }
 }

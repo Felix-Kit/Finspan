@@ -33,6 +33,7 @@ enum GameEventPayload: Codable, Equatable, Sendable {
     case pendingChoiceCreated(PendingChoice)
     case pendingChoiceResolved(PendingChoiceResolvedEvent)
     case abilityOptionChosen(AbilityOptionChosenEvent)
+    case turnAdvanced(TurnAdvancedEvent)
     case turnEnded(TurnEndedEvent)
     case weekEnded(WeekEndedEvent)
     case gameEnded(GameEndedEvent)
@@ -104,6 +105,11 @@ struct PendingChoiceResolvedEvent: Codable, Equatable, Sendable {
 struct AbilityOptionChosenEvent: Codable, Equatable, Sendable {
     var playerId: PlayerID
     var optionId: AbilityOptionID
+}
+
+struct TurnAdvancedEvent: Codable, Equatable, Sendable {
+    var playerId: PlayerID
+    var nextPlayerId: PlayerID?
 }
 
 struct TurnEndedEvent: Codable, Equatable, Sendable {

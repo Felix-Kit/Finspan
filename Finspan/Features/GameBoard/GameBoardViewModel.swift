@@ -12,7 +12,7 @@ struct GameBoardCardViewData: Identifiable, Equatable {
 
 struct OceanSlotViewData: Identifiable, Equatable {
     var id: String {
-        "\(address.playerId)-\(address.diveSite.rawValue)-\(address.zone.rawValue)-\(address.slotIndex)"
+        "\(address.playerId)-\(address.diveSite.rawValue)-\(address.rowIndex)"
     }
 
     let address: OceanSlotAddress
@@ -21,11 +21,53 @@ struct OceanSlotViewData: Identifiable, Equatable {
     let resourcesText: String
     let isOccupied: Bool
     let isSelected: Bool
+    let playFishPreview: PlayFishSlotPreview
+}
+
+struct OceanDiveSiteColumnViewData: Identifiable, Equatable {
+    var id: String { diveSite.rawValue }
+
+    let diveSite: DiveSite
+    let title: String
+    let slots: [OceanSlotViewData]
+}
+
+struct SelectedFishCardViewData: Equatable {
+    let title: String
+    let scoreText: String
+    let lengthText: String
+    let allowedZonesText: String
+    let requiredDiveSiteText: String
+    let costsText: String
+    let unsupportedText: String?
+}
+
+struct PlayFishSlotPreview: Equatable {
+    let availability: PlayFishSlotAvailability
+    let unavailableReason: PlayFishSlotUnavailableReason?
+    let message: String
+
+    var isSelectable: Bool {
+        availability == .available
+    }
+}
+
+enum PlayFishSlotAvailability: Equatable {
+    case available
+    case unavailable
+}
+
+enum PlayFishSlotUnavailableReason: Equatable {
+    case noSelectedCard
+    case occupied
+    case zoneMismatch
+    case diveSiteMismatch
+    case unsupportedRequirement
 }
 
 struct ResourceSourceViewData: Identifiable, Equatable {
     var id: String {
-        "\(address.playerId)-\(address.diveSite.rawValue)-\(address.zone.rawValue)-\(address.slotIndex)-\(resourceKind.rawValue)"
+        "\(address.playerId)-\(address.diveSite.rawValue)-\(address.rowIndex)-\(resourceKind.rawValue)"
     }
 
     let address: OceanSlotAddress
@@ -48,7 +90,26 @@ struct PendingChoiceViewData: Identifiable, Equatable {
     let choiceId: PendingChoiceID
     let title: String
     let subtitle: String
+    let sourceText: String
+    let statusText: String
     let canSkip: Bool
+    let canResolve: Bool
+    let actions: [PendingChoiceActionViewData]
+}
+
+struct PendingChoiceActionViewData: Identifiable, Equatable {
+    var id: String { "\(choiceId)-\(action.rawValue)" }
+
+    let choiceId: PendingChoiceID
+    let action: PendingChoiceAction
+    let title: String
+    let isEnabled: Bool
+}
+
+enum PendingChoiceAction: String, Equatable {
+    case drawFish
+    case chooseTarget
+    case skip
 }
 
 @MainActor
@@ -88,11 +149,22 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     var canEndTurn: Bool {
-        state.phase == .playing && state.activePlayerId != nil
+        state.phase == .playing && state.activePlayerId != nil && !hasBlockingPendingChoices
     }
 
     var canDive: Bool {
-        activePlayerState?.availableDivers ?? 0 > 0
+        !isSelectingPlayFish && !hasBlockingPendingChoices && (activePlayerState?.availableDivers ?? 0) > 0
+    }
+
+    var isSelectingPlayFish: Bool {
+        selectedCardId != nil
+    }
+
+    var hasBlockingPendingChoices: Bool {
+        guard let activePlayerId = state.activePlayerId else {
+            return false
+        }
+        return state.pendingChoices.values.contains { $0.playerId == activePlayerId }
     }
 
     var diveActionSites: [DiveActionSiteViewData] {
@@ -117,7 +189,11 @@ final class GameBoardViewModel: ObservableObject {
                     choiceId: choice.choiceId,
                     title: AppStrings.pendingChoiceKindName(choice.kind),
                     subtitle: pendingChoiceSubtitle(choice),
-                    canSkip: choice.isOptional
+                    sourceText: AppStrings.pendingChoiceSourceName(choice.source),
+                    statusText: AppStrings.GameBoard.pendingChoiceWaiting,
+                    canSkip: choice.isOptional,
+                    canResolve: canResolvePendingChoice(choice),
+                    actions: pendingChoiceActionButtons(for: choice)
                 )
             }
     }
@@ -149,16 +225,41 @@ final class GameBoardViewModel: ObservableObject {
         guard let activePlayerState else {
             return []
         }
-        return activePlayerState.ocean.slots.map { slot in
-            OceanSlotViewData(
-                address: slot.address,
-                title: slotTitle(slot.address),
-                subtitle: slot.fishCardId.map { "\(AppStrings.GameBoard.occupied)：\(cardTitle($0))" } ?? AppStrings.GameBoard.empty,
-                resourcesText: resourcesText(slot.resources),
-                isOccupied: slot.fishCardId != nil,
-                isSelected: selectedTargetSlot == slot.address
+        return activePlayerState.ocean.slots
+            .sorted { left, right in
+                if left.address.diveSite.rawValue == right.address.diveSite.rawValue {
+                    return left.address.rowIndex < right.address.rowIndex
+                }
+                return diveSiteSortIndex(left.address.diveSite) < diveSiteSortIndex(right.address.diveSite)
+            }
+            .map(oceanSlotViewData)
+    }
+
+    var oceanColumns: [OceanDiveSiteColumnViewData] {
+        DiveSite.allCases.map { diveSite in
+            OceanDiveSiteColumnViewData(
+                diveSite: diveSite,
+                title: AppStrings.oceanDiveSiteName(diveSite),
+                slots: oceanSlots.filter { $0.address.diveSite == diveSite }
             )
         }
+    }
+
+    var selectedFishCardDetails: SelectedFishCardViewData? {
+        guard let selectedCard else {
+            return nil
+        }
+
+        let unsupportedItems = selectedCardUnsupportedItems(selectedCard)
+        return SelectedFishCardViewData(
+            title: cardTitle(selectedCard.id),
+            scoreText: AppStrings.GameBoard.cardScoreUnsupported,
+            lengthText: AppStrings.GameBoard.cardLengthUnsupported,
+            allowedZonesText: selectedCard.allowedZones.map(AppStrings.oceanZoneName).joined(separator: "，"),
+            requiredDiveSiteText: selectedCard.requiredDiveSiteColor.map(AppStrings.diveSiteColorName) ?? AppStrings.GameBoard.noLimit,
+            costsText: selectedCard.costs.isEmpty ? AppStrings.GameBoard.noCost : selectedCard.costs.map(costText).joined(separator: "，"),
+            unsupportedText: unsupportedItems.isEmpty ? nil : unsupportedItems.joined(separator: "，")
+        )
     }
 
     var selectedCardPaymentPrompt: String? {
@@ -212,7 +313,8 @@ final class GameBoardViewModel: ObservableObject {
 
     var canSubmitPlayFish: Bool {
         guard selectedCard != nil,
-              selectedTargetSlot != nil,
+              selectedTargetSlotIsAvailable,
+              !hasBlockingPendingChoices,
               !selectedCardHasUnsupportedUICost
         else {
             return false
@@ -226,6 +328,16 @@ final class GameBoardViewModel: ObservableObject {
 
     private var selectedCard: Card? {
         selectedCardId.flatMap { cardsById[$0] }
+    }
+
+    private var selectedTargetSlotIsAvailable: Bool {
+        guard let selectedTargetSlot,
+              let activePlayerState,
+              let slot = activePlayerState.ocean.slots.first(where: { $0.address == selectedTargetSlot })
+        else {
+            return false
+        }
+        return playFishSlotPreview(for: slot).isSelectable
     }
 
     private var hasCompleteDiscardPayment: Bool {
@@ -258,7 +370,12 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     func selectCard(_ cardId: CardID) {
+        guard !hasBlockingPendingChoices else {
+            errorMessage = AppStrings.GameBoard.resolveCurrentRewardFirst
+            return
+        }
         selectedCardId = cardId
+        selectedTargetSlot = nil
         selectedDiscardCardIds = []
         selectedEggSources = []
         selectedYoungSources = []
@@ -266,7 +383,18 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     func selectTargetSlot(_ address: OceanSlotAddress) {
+        guard let activePlayerState,
+              let slot = activePlayerState.ocean.slots.first(where: { $0.address == address }),
+              playFishSlotPreview(for: slot).isSelectable
+        else {
+            return
+        }
         selectedTargetSlot = address
+        errorMessage = nil
+    }
+
+    func cancelPlayFishSelection() {
+        clearPlayFishSelection()
         errorMessage = nil
     }
 
@@ -288,6 +416,10 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     func submitPlayFish() {
+        guard !hasBlockingPendingChoices else {
+            errorMessage = AppStrings.GameBoard.resolveCurrentRewardFirst
+            return
+        }
         guard let activePlayerId = state.activePlayerId else {
             errorMessage = AppStrings.GameBoard.noActivePlayer
             return
@@ -298,6 +430,10 @@ final class GameBoardViewModel: ObservableObject {
         }
         guard let selectedCardId, let selectedTargetSlot else {
             errorMessage = "\(AppStrings.GameBoard.selectCard)，\(AppStrings.GameBoard.selectSlot)。"
+            return
+        }
+        guard selectedTargetSlotIsAvailable else {
+            errorMessage = AppStrings.GameBoard.selectSlot
             return
         }
         guard !selectedCardHasUnsupportedUICost else {
@@ -346,6 +482,14 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     func submitDive(to diveSite: DiveActionSite) {
+        guard !hasBlockingPendingChoices else {
+            errorMessage = AppStrings.GameBoard.resolveCurrentRewardFirst
+            return
+        }
+        guard !isSelectingPlayFish else {
+            errorMessage = AppStrings.GameBoard.finishOrCancelPlayFish
+            return
+        }
         guard let activePlayerId = state.activePlayerId else {
             errorMessage = AppStrings.GameBoard.noActivePlayer
             return
@@ -373,6 +517,21 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     func skipPendingChoice(_ choiceId: PendingChoiceID) {
+        resolvePendingChoice(choiceId, resolution: .skip)
+    }
+
+    func performPendingChoiceAction(_ action: PendingChoiceAction, for choiceId: PendingChoiceID) {
+        switch action {
+        case .drawFish:
+            resolvePendingChoice(choiceId, resolution: .draw(count: 1))
+        case .skip:
+            resolvePendingChoice(choiceId, resolution: .skip)
+        case .chooseTarget:
+            errorMessage = AppStrings.GameBoard.chooseTargetUnsupported
+        }
+    }
+
+    private func resolvePendingChoice(_ choiceId: PendingChoiceID, resolution: PendingChoiceResolution) {
         guard let choice = state.pendingChoices[choiceId] else {
             errorMessage = AppStrings.GameBoard.pendingChoiceNotFound
             return
@@ -391,7 +550,7 @@ final class GameBoardViewModel: ObservableObject {
                     payload: .resolvePendingChoice(
                         ResolvePendingChoiceCommand(
                             choiceId: choiceId,
-                            resolution: .skip
+                            resolution: resolution
                         )
                     )
                 )
@@ -460,6 +619,8 @@ final class GameBoardViewModel: ObservableObject {
             payload = "选择已处理：\(event.playerId) \(pendingChoiceResolutionName(event.resolution))"
         case let .abilityOptionChosen(event):
             payload = "能力选择：\(event.playerId) \(event.optionId)"
+        case let .turnAdvanced(event):
+            payload = "行动推进：\(event.playerId) → \(event.nextPlayerId ?? "-")"
         case let .turnEnded(event):
             payload = "回合结束：\(event.playerId)"
         case let .weekEnded(event):
@@ -498,7 +659,7 @@ final class GameBoardViewModel: ObservableObject {
         }
 
         if let selectedTargetSlot,
-           !activePlayerState.ocean.slots.contains(where: { $0.address == selectedTargetSlot && $0.fishCardId == nil }) {
+           !activePlayerState.ocean.slots.contains(where: { $0.address == selectedTargetSlot && playFishSlotPreview(for: $0).isSelectable }) {
             self.selectedTargetSlot = nil
         }
     }
@@ -523,12 +684,72 @@ final class GameBoardViewModel: ObservableObject {
 
     private func cardSubtitle(_ card: Card?) -> String {
         guard let card else {
-            return "未知卡牌"
+            return AppStrings.GameBoard.unknownCard
         }
         guard !card.costs.isEmpty else {
-            return "无费用"
+            return AppStrings.GameBoard.noCost
         }
         return card.costs.map(costText).joined(separator: "，")
+    }
+
+    private func playFishSlotPreview(for slot: OceanSlot) -> PlayFishSlotPreview {
+        guard let card = selectedCard else {
+            return PlayFishSlotPreview(
+                availability: .unavailable,
+                unavailableReason: .noSelectedCard,
+                message: AppStrings.GameBoard.slotSelectFishFirst
+            )
+        }
+
+        guard card.requirements.isEmpty else {
+            return PlayFishSlotPreview(
+                availability: .unavailable,
+                unavailableReason: .unsupportedRequirement,
+                message: AppStrings.GameBoard.unsupportedRequirementInUI
+            )
+        }
+
+        guard slot.content == .empty else {
+            return PlayFishSlotPreview(
+                availability: .unavailable,
+                unavailableReason: .occupied,
+                message: AppStrings.GameBoard.slotOccupied
+            )
+        }
+
+        guard card.allowedZones.contains(slot.address.zone) else {
+            return PlayFishSlotPreview(
+                availability: .unavailable,
+                unavailableReason: .zoneMismatch,
+                message: AppStrings.GameBoard.slotZoneMismatch
+            )
+        }
+
+        if let requiredDiveSiteColor = card.requiredDiveSiteColor,
+           slot.diveSiteColor != requiredDiveSiteColor {
+            return PlayFishSlotPreview(
+                availability: .unavailable,
+                unavailableReason: .diveSiteMismatch,
+                message: AppStrings.GameBoard.slotDiveSiteMismatch
+            )
+        }
+
+        return PlayFishSlotPreview(
+            availability: .available,
+            unavailableReason: nil,
+            message: AppStrings.GameBoard.slotAvailable
+        )
+    }
+
+    private func slotContentText(_ content: OceanSlotContent) -> String {
+        switch content {
+        case .empty:
+            return AppStrings.GameBoard.empty
+        case let .forageFish(fish):
+            return "\(AppStrings.GameBoard.forageFish)：\(fish.name)"
+        case let .fishCard(cardId):
+            return "\(AppStrings.GameBoard.occupied)：\(cardTitle(cardId))"
+        }
     }
 
     private func costText(_ cost: Cost) -> String {
@@ -556,8 +777,64 @@ final class GameBoardViewModel: ObservableObject {
         return [
             "\(AppStrings.GameBoard.pendingChoicePlayer)：\(playerName)",
             "\(AppStrings.GameBoard.pendingChoiceSource)：\(AppStrings.pendingChoiceSourceName(choice.source))",
+            "\(AppStrings.GameBoard.pendingChoiceStatus)：\(AppStrings.GameBoard.pendingChoiceWaiting)",
             optionalText
         ].joined(separator: "，")
+    }
+
+    private func canResolvePendingChoice(_ choice: PendingChoice) -> Bool {
+        state.activePlayerId == choice.playerId
+    }
+
+    private func pendingChoiceActionButtons(for choice: PendingChoice) -> [PendingChoiceActionViewData] {
+        var actions: [PendingChoiceActionViewData] = []
+        let canResolve = canResolvePendingChoice(choice)
+
+        switch choice.kind {
+        case .drawFish:
+            actions.append(
+                PendingChoiceActionViewData(
+                    choiceId: choice.choiceId,
+                    action: .drawFish,
+                    title: AppStrings.GameBoard.drawOneFishCard,
+                    isEnabled: canResolve
+                )
+            )
+        case .placeEgg,
+             .hatchEgg:
+            actions.append(
+                PendingChoiceActionViewData(
+                    choiceId: choice.choiceId,
+                    action: .chooseTarget,
+                    title: AppStrings.GameBoard.chooseTargetUnsupported,
+                    isEnabled: false
+                )
+            )
+        case .bottomBonus,
+             .placeholder,
+             .unsupported:
+            actions.append(
+                PendingChoiceActionViewData(
+                    choiceId: choice.choiceId,
+                    action: .chooseTarget,
+                    title: AppStrings.GameBoard.unsupportedSkippableChoice,
+                    isEnabled: false
+                )
+            )
+        }
+
+        if choice.isOptional {
+            actions.append(
+                PendingChoiceActionViewData(
+                    choiceId: choice.choiceId,
+                    action: .skip,
+                    title: AppStrings.GameBoard.skipChoice,
+                    isEnabled: canResolve
+                )
+            )
+        }
+
+        return actions
     }
 
     private func pendingChoiceResolutionName(_ resolution: PendingChoiceResolution) -> String {
@@ -582,29 +859,34 @@ final class GameBoardViewModel: ObservableObject {
             .joined(separator: "，")
     }
 
-    private func slotTitle(_ address: OceanSlotAddress) -> String {
-        "\(diveSiteName(address.diveSite)) / \(zoneName(address.zone)) #\(address.slotIndex + 1)"
+    private func oceanSlotViewData(_ slot: OceanSlot) -> OceanSlotViewData {
+        OceanSlotViewData(
+            address: slot.address,
+            title: slotTitle(slot.address),
+            subtitle: slotContentText(slot.content),
+            resourcesText: resourcesText(slot.resources),
+            isOccupied: slot.content != .empty,
+            isSelected: selectedTargetSlot == slot.address,
+            playFishPreview: playFishSlotPreview(for: slot)
+        )
     }
 
-    private func diveSiteName(_ diveSite: DiveSite) -> String {
-        switch diveSite {
-        case .coast:
-            return "海岸"
-        case .reef:
-            return "珊瑚礁"
-        case .deep:
-            return "深海"
-        }
+    private func slotTitle(_ address: OceanSlotAddress) -> String {
+        AppStrings.oceanRowLabel(rowIndex: address.rowIndex)
     }
 
     private func zoneName(_ zone: OceanZone) -> String {
-        switch zone {
-        case .sunlit:
-            return "透光层"
-        case .twilight:
-            return "弱光层"
-        case .midnight:
-            return "午夜层"
+        AppStrings.oceanZoneName(zone)
+    }
+
+    private func diveSiteSortIndex(_ diveSite: DiveSite) -> Int {
+        switch diveSite {
+        case .blue:
+            return 0
+        case .purple:
+            return 1
+        case .green:
+            return 2
         }
     }
 
@@ -636,6 +918,17 @@ final class GameBoardViewModel: ObservableObject {
             }
             return false
         }
+    }
+
+    private func selectedCardUnsupportedItems(_ card: Card) -> [String] {
+        var items: [String] = []
+        if !card.requirements.isEmpty {
+            items.append(AppStrings.GameBoard.unsupportedRequirementInUI)
+        }
+        if !card.abilities.isEmpty {
+            items.append(AppStrings.GameBoard.unsupportedAbilityInUI)
+        }
+        return items
     }
 
     private func countPrompt(_ label: String, _ count: Int?) -> String? {
@@ -765,15 +1058,15 @@ final class GameBoardViewModel: ObservableObject {
             case .unknownCard:
                 return "找不到所选鱼牌。"
             case .targetSlotNotOwnedByPlayer:
-                return "目标槽位不属于当前玩家。"
+                return "目标格子不属于当前玩家。"
             case .targetSlotNotFound:
-                return "找不到目标槽位。"
+                return "找不到目标格子。"
             case .targetSlotOccupied:
-                return "目标槽位已被占用。"
+                return "目标格子已被占用。"
             case .targetZoneNotAllowed:
                 return "所选鱼牌不能放入该海域层。"
             case .requiredDiveSiteColorMismatch:
-                return "所选鱼牌不符合该槽位颜色要求。"
+                return "所选鱼牌不符合该格子颜色要求。"
             case .paymentCardNotInHand:
                 return "弃牌支付中包含不在手牌中的卡牌。"
             case .paymentCannotDiscardPlayedCard:
@@ -801,6 +1094,8 @@ final class GameBoardViewModel: ObservableObject {
                 return AppStrings.GameBoard.pendingChoiceResolutionInvalid
             case .fishDrawPileEmpty:
                 return AppStrings.GameBoard.fishDrawPileEmpty
+            case .unresolvedPendingChoices:
+                return AppStrings.GameBoard.resolveCurrentRewardFirst
             }
         }
         return "操作失败：\(String(describing: error))"

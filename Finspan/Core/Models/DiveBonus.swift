@@ -29,11 +29,11 @@ struct DiveSiteBonusLayout: Codable, Equatable, Sendable {
     func oceanDiveSite(for diveSite: DiveActionSite) -> DiveSite? {
         switch diveSite {
         case .blue:
-            return .coast
+            return .blue
         case .purple:
-            return .reef
+            return .purple
         case .green:
-            return .deep
+            return .green
         default:
             return nil
         }

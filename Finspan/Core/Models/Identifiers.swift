@@ -7,3 +7,4 @@ typealias EventID = Int
 typealias CardID = String
 typealias AbilityOptionID = String
 typealias PendingChoiceID = String
+typealias ForageFishID = String

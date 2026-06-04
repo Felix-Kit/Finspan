@@ -14,6 +14,7 @@ enum DomainEventDraft: Equatable, Sendable {
     case pendingChoiceCreated(PendingChoice)
     case pendingChoiceResolved(PendingChoiceResolvedEvent)
     case abilityOptionChosen(AbilityOptionChosenEvent)
+    case turnAdvanced(TurnAdvancedEvent)
     case turnEnded(TurnEndedEvent)
     case weekEnded(WeekEndedEvent)
     case gameEnded(GameEndedEvent)

@@ -139,6 +139,8 @@ struct GameEngine {
         case let .pendingChoiceResolved(payload):
             applyPendingChoiceEffects(payload.appliedEffects, to: &nextState)
             nextState.pendingChoices.removeValue(forKey: payload.choiceId)
+        case let .turnAdvanced(payload):
+            applyTurnAdvanced(payload, to: &nextState)
         case .playerReadyChanged,
              .seatChanged,
              .colorChanged,
@@ -211,24 +213,36 @@ struct GameEngine {
                 playerId: command.playerId,
                 in: state
             )
-            let diverMoved = DomainEventDraft.diverMoved(
-                DiverMovedEvent(
-                    playerId: command.playerId,
-                    diveSite: payload.diveSite,
-                    bottomBonusAvailable: bottomBonusAvailable,
-                    bottomBonusClaimed: bottomBonusAvailable,
-                    nextActivePlayerId: nextPlayer(after: command.playerId, in: state.players)?.id
-                )
-            )
-            return [diverMoved] + diveBonusChoices(
+            let pendingChoices = diveBonusChoices(
                 for: payload.diveSite,
                 commandId: command.commandId,
                 playerId: command.playerId,
                 includeBottomBonus: bottomBonusAvailable,
                 in: state
             )
+            let diverMoved = DomainEventDraft.diverMoved(
+                DiverMovedEvent(
+                    playerId: command.playerId,
+                    diveSite: payload.diveSite,
+                    bottomBonusAvailable: bottomBonusAvailable,
+                    bottomBonusClaimed: bottomBonusAvailable,
+                    nextActivePlayerId: pendingChoices.isEmpty ? nextPlayer(after: command.playerId, in: state.players)?.id : nil
+                )
+            )
+            if pendingChoices.isEmpty {
+                return [
+                    diverMoved,
+                    .turnAdvanced(
+                        TurnAdvancedEvent(
+                            playerId: command.playerId,
+                            nextPlayerId: nextPlayer(after: command.playerId, in: state.players)?.id
+                        )
+                    )
+                ]
+            }
+            return [diverMoved] + pendingChoices
         case let .resolvePendingChoice(payload):
-            return [.pendingChoiceResolved(
+            var drafts: [DomainEventDraft] = [.pendingChoiceResolved(
                 PendingChoiceResolvedEvent(
                     choiceId: payload.choiceId,
                     playerId: command.playerId,
@@ -240,6 +254,17 @@ struct GameEngine {
                     )
                 )
             )]
+            if shouldAdvanceTurnAfterResolving(payload, playerId: command.playerId, in: state) {
+                drafts.append(
+                    .turnAdvanced(
+                        TurnAdvancedEvent(
+                            playerId: command.playerId,
+                            nextPlayerId: nextPlayer(after: command.playerId, in: state.players)?.id
+                        )
+                    )
+                )
+            }
+            return drafts
         case let .chooseAbilityOption(payload):
             return [.abilityOptionChosen(
                 AbilityOptionChosenEvent(
@@ -304,6 +329,9 @@ struct GameEngine {
         guard let playerState = state.playerGameStates[playerId] else {
             throw CommandValidationError.missingPlayerState(playerId)
         }
+        guard !hasBlockingPendingChoices(for: playerId, in: state) else {
+            throw CommandValidationError.unresolvedPendingChoices(playerId)
+        }
         guard playerState.hand.contains(payload.cardId) else {
             throw CommandValidationError.cardNotInHand(payload.cardId)
         }
@@ -316,7 +344,7 @@ struct GameEngine {
         guard let targetSlot = playerState.ocean.slots.first(where: { $0.address == payload.targetSlot }) else {
             throw CommandValidationError.targetSlotNotFound(payload.targetSlot)
         }
-        guard targetSlot.fishCardId == nil else {
+        guard targetSlot.content == .empty else {
             throw CommandValidationError.targetSlotOccupied(payload.targetSlot)
         }
         guard card.allowedZones.contains(targetSlot.address.zone) else {
@@ -352,6 +380,9 @@ struct GameEngine {
         }
         guard DiveActionSite.baseGameSites.contains(payload.diveSite) else {
             throw CommandValidationError.invalidDiveSite(payload.diveSite)
+        }
+        guard !hasBlockingPendingChoices(for: playerId, in: state) else {
+            throw CommandValidationError.unresolvedPendingChoices(playerId)
         }
         guard let playerState = state.playerGameStates[playerId] else {
             throw CommandValidationError.missingPlayerState(playerId)
@@ -412,6 +443,29 @@ struct GameEngine {
         }
     }
 
+    private func hasBlockingPendingChoices(for playerId: PlayerID, in state: GameState) -> Bool {
+        state.pendingChoices.values.contains { choice in
+            choice.playerId == playerId
+        }
+    }
+
+    private func shouldAdvanceTurnAfterResolving(
+        _ payload: ResolvePendingChoiceCommand,
+        playerId: PlayerID,
+        in state: GameState
+    ) -> Bool {
+        guard state.activePlayerId == playerId,
+              let choice = state.pendingChoices[payload.choiceId],
+              choice.playerId == playerId
+        else {
+            return false
+        }
+
+        return !state.pendingChoices.values.contains { pendingChoice in
+            pendingChoice.playerId == playerId && pendingChoice.choiceId != payload.choiceId
+        }
+    }
+
     private func diveBonusChoices(
         for diveSite: DiveActionSite,
         commandId: CommandID,
@@ -463,14 +517,9 @@ struct GameEngine {
         let hasSlotFish = playerState.ocean.slots.contains { slot in
             slot.address.diveSite == mappedDiveSite
                 && slot.address.zone == zone
-                && slot.fishCardId != nil
+                && slot.content.hasFish
         }
-        if hasSlotFish {
-            return true
-        }
-
-        // TODO: replace this with zone-addressed forage fish slots when the ocean model grows them.
-        return zone == .sunlit && !playerState.ocean.forageFishCardIds.isEmpty
+        return hasSlotFish
     }
 
     private func pendingChoice(
@@ -610,7 +659,7 @@ struct GameEngine {
 
         let discardedCardIds = Set(payload.payment.discardedCardIds + [payload.cardId])
         playerState.hand.removeAll { discardedCardIds.contains($0) }
-        playerState.ocean.slots[slotIndex].fishCardId = payload.cardId
+        playerState.ocean.slots[slotIndex].content = .fishCard(payload.cardId)
         applyResourcePayment(payload.payment, to: &playerState)
 
         state.deckState.discardPile.append(contentsOf: payload.payment.discardedCardIds)
@@ -635,11 +684,17 @@ struct GameEngine {
         }
         state.playerGameStates[payload.playerId] = playerState
 
-        if let nextActivePlayerId = payload.nextActivePlayerId,
-           let nextIndex = state.players.firstIndex(where: { $0.id == nextActivePlayerId }) {
-            state.currentTurnIndex = nextIndex
-            state.activePlayerId = nextActivePlayerId
+    }
+
+    private func applyTurnAdvanced(_ payload: TurnAdvancedEvent, to state: inout GameState) {
+        guard let nextActivePlayerId = payload.nextPlayerId,
+              let nextIndex = state.players.firstIndex(where: { $0.id == nextActivePlayerId })
+        else {
+            return
         }
+
+        state.currentTurnIndex = nextIndex
+        state.activePlayerId = nextActivePlayerId
     }
 
     private func applyPendingChoiceEffects(

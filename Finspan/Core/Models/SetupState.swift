@@ -6,9 +6,9 @@ struct ResourceQuantity: Codable, Equatable, Sendable {
 }
 
 enum DiveSite: String, Codable, CaseIterable, Equatable, Sendable {
-    case coast
-    case reef
-    case deep
+    case blue
+    case purple
+    case green
 }
 
 enum OceanZone: String, Codable, CaseIterable, Equatable, Sendable {
@@ -19,8 +19,14 @@ enum OceanZone: String, Codable, CaseIterable, Equatable, Sendable {
 
 enum DiveSiteColor: String, Codable, CaseIterable, Equatable, Sendable {
     case blue
+    case purple
     case green
-    case yellow
+}
+
+enum OceanRowTrait: String, Codable, Equatable, Sendable {
+    case none
+    case topRow
+    case bottomRow
 }
 
 struct DiveActionSite: RawRepresentable, Codable, Equatable, Hashable, Sendable {
@@ -42,69 +48,197 @@ extension DiveActionSite {
 struct OceanSlotAddress: Codable, Equatable, Hashable, Sendable {
     var playerId: PlayerID
     var diveSite: DiveSite
-    var zone: OceanZone
-    var slotIndex: Int
+    var rowIndex: Int
+
+    var zone: OceanZone {
+        switch rowIndex {
+        case 0...2:
+            return .sunlit
+        case 3:
+            return .twilight
+        default:
+            return .midnight
+        }
+    }
+
+    var zoneSlotIndex: Int {
+        switch rowIndex {
+        case 0...2:
+            return rowIndex
+        case 3:
+            return 0
+        default:
+            return rowIndex - 4
+        }
+    }
+
+    var rowTrait: OceanRowTrait {
+        switch rowIndex {
+        case 0:
+            return .topRow
+        case 5:
+            return .bottomRow
+        default:
+            return .none
+        }
+    }
 }
 
 typealias BoardSlotAddress = OceanSlotAddress
 
+struct ForageFish: Codable, Equatable, Sendable {
+    var forageFishId: ForageFishID
+    var name: String
+    var lengthCm: Int
+    var diveSite: DiveSite
+    var rowIndex: Int
+
+    var zone: OceanZone {
+        OceanSlotAddress(playerId: "", diveSite: diveSite, rowIndex: rowIndex).zone
+    }
+}
+
+struct ConsumedFish: Codable, Equatable, Sendable {
+    var cardId: CardID
+}
+
+enum OceanSlotContent: Codable, Equatable, Sendable {
+    case empty
+    case forageFish(ForageFish)
+    case fishCard(CardID)
+
+    var fishCardId: CardID? {
+        if case let .fishCard(cardId) = self {
+            return cardId
+        }
+        return nil
+    }
+
+    var hasFish: Bool {
+        switch self {
+        case .empty:
+            return false
+        case .forageFish,
+             .fishCard:
+            return true
+        }
+    }
+}
+
 struct OceanSlot: Codable, Equatable, Sendable {
     var address: OceanSlotAddress
     var diveSiteColor: DiveSiteColor
-    var fishCardId: CardID?
+    var content: OceanSlotContent
     var resources: [ResourceQuantity]
+    var consumedFish: [ConsumedFish]
+
+    var fishCardId: CardID? {
+        get {
+            content.fishCardId
+        }
+        set {
+            content = newValue.map(OceanSlotContent.fishCard) ?? .empty
+        }
+    }
+
+    var rowTrait: OceanRowTrait {
+        address.rowTrait
+    }
 }
 
 struct OceanState: Codable, Equatable, Sendable {
-    var forageFishCardIds: [CardID]
     var resources: [ResourceQuantity]
     var slots: [OceanSlot]
 
     static func baseGameInitial(for playerId: PlayerID) -> OceanState {
-        let startingResources = [
+        SampleOceanLayout.baseGameInitial(for: playerId)
+    }
+}
+
+enum SampleOceanLayout {
+    nonisolated static let rowIndices = Array(0...5)
+
+    nonisolated static func baseGameInitial(for playerId: PlayerID) -> OceanState {
+        let startingResourceSummary = [
             ResourceQuantity(kind: .egg, amount: 2),
             ResourceQuantity(kind: .young, amount: 1)
         ]
+        let forageFishLayout = baseForageFish()
 
         return OceanState(
-            forageFishCardIds: ["base-forage-placeholder"],
-            resources: startingResources,
-            slots: [
-                OceanSlot(
-                    address: OceanSlotAddress(
+            resources: startingResourceSummary,
+            slots: DiveSite.allCases.flatMap { diveSite in
+                rowIndices.map { rowIndex in
+                    let address = OceanSlotAddress(
                         playerId: playerId,
-                        diveSite: .coast,
-                        zone: .sunlit,
-                        slotIndex: 0
-                    ),
-                    diveSiteColor: .blue,
-                    fishCardId: nil,
-                    resources: startingResources
-                ),
-                OceanSlot(
-                    address: OceanSlotAddress(
-                        playerId: playerId,
-                        diveSite: .reef,
-                        zone: .twilight,
-                        slotIndex: 0
-                    ),
-                    diveSiteColor: .green,
-                    fishCardId: nil,
-                    resources: []
-                ),
-                OceanSlot(
-                    address: OceanSlotAddress(
-                        playerId: playerId,
-                        diveSite: .deep,
-                        zone: .midnight,
-                        slotIndex: 0
-                    ),
-                    diveSiteColor: .yellow,
-                    fishCardId: nil,
-                    resources: []
-                )
-            ]
+                        diveSite: diveSite,
+                        rowIndex: rowIndex
+                    )
+                    let forageFish = forageFishLayout.first { fish in
+                        fish.diveSite == diveSite && fish.rowIndex == rowIndex
+                    }
+                    // Sample-only starting resources until the real base game ocean mat positions are encoded.
+                    let slotResources = forageFish.map(startingResources) ?? []
+                    return OceanSlot(
+                        address: address,
+                        diveSiteColor: diveSiteColor(for: diveSite),
+                        content: forageFish.map(OceanSlotContent.forageFish) ?? .empty,
+                        resources: slotResources,
+                        consumedFish: []
+                    )
+                }
+            }
         )
+    }
+
+    nonisolated static func baseForageFish() -> [ForageFish] {
+        [
+            ForageFish(
+                forageFishId: "sample-forage-blue-row-4",
+                name: "印刷小鱼一",
+                lengthCm: 5,
+                diveSite: .blue,
+                rowIndex: 4
+            ),
+            ForageFish(
+                forageFishId: "sample-forage-purple-row-3",
+                name: "印刷小鱼二",
+                lengthCm: 8,
+                diveSite: .purple,
+                rowIndex: 3
+            ),
+            ForageFish(
+                forageFishId: "sample-forage-green-row-1",
+                name: "印刷小鱼三",
+                lengthCm: 12,
+                diveSite: .green,
+                rowIndex: 1
+            )
+        ]
+    }
+
+    nonisolated private static func diveSiteColor(for diveSite: DiveSite) -> DiveSiteColor {
+        switch diveSite {
+        case .blue:
+            return .blue
+        case .purple:
+            return .purple
+        case .green:
+            return .green
+        }
+    }
+
+    nonisolated private static func startingResources(for fish: ForageFish) -> [ResourceQuantity] {
+        switch (fish.diveSite, fish.rowIndex) {
+        case (.blue, 4):
+            return [ResourceQuantity(kind: .egg, amount: 1)]
+        case (.purple, 3):
+            return [ResourceQuantity(kind: .egg, amount: 1)]
+        case (.green, 1):
+            return [ResourceQuantity(kind: .young, amount: 1)]
+        default:
+            return []
+        }
     }
 }
 

@@ -240,6 +240,8 @@ final class LocalAuthoritativeRoomService: RoomService {
             }
         case .setupCompleted:
             updateRoom(event) { _ in }
+        case .turnAdvanced:
+            updateRoom(event) { _ in }
         case .turnEnded:
             updateRoom(event) { _ in }
         case .fishPlayed,

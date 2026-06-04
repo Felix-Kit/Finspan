@@ -76,6 +76,7 @@ struct GameBoardView: View {
             VStack(alignment: .leading, spacing: 20) {
                 playerStrip
                 handPanel
+                selectedFishCardPanel
                 oceanPanel
                 paymentPanel
                 divePanel
@@ -142,18 +143,68 @@ struct GameBoardView: View {
                     systemImage: "square.grid.3x3"
                 )
             } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 210), spacing: 10)], spacing: 10) {
-                    ForEach(viewModel.oceanSlots) { slot in
-                        Button {
-                            viewModel.selectTargetSlot(slot.address)
-                        } label: {
-                            slotButton(slot)
+                HStack(alignment: .top, spacing: 12) {
+                    ForEach(viewModel.oceanColumns) { column in
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(column.title)
+                                .font(.headline)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            ForEach(column.slots) { slot in
+                                Button {
+                                    viewModel.selectTargetSlot(slot.address)
+                                } label: {
+                                    slotButton(slot)
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(!slot.playFishPreview.isSelectable)
+                            }
                         }
-                        .buttonStyle(.plain)
-                        .disabled(slot.isOccupied)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
                     }
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var selectedFishCardPanel: some View {
+        if let card = viewModel.selectedFishCardDetails {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(AppStrings.GameBoard.selectedFishCard)
+                        .font(.title2.weight(.semibold))
+
+                    Spacer()
+
+                    Button {
+                        viewModel.cancelPlayFishSelection()
+                    } label: {
+                        Label(AppStrings.GameBoard.cancelPlayFishSelection, systemImage: "xmark.circle")
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 10)], spacing: 10) {
+                    selectedFishInfoRow(AppStrings.GameBoard.fishCardName, card.title)
+                    selectedFishInfoRow(AppStrings.GameBoard.score, card.scoreText)
+                    selectedFishInfoRow(AppStrings.GameBoard.length, card.lengthText)
+                    selectedFishInfoRow(AppStrings.GameBoard.allowedZones, card.allowedZonesText)
+                    selectedFishInfoRow(AppStrings.GameBoard.requiredDiveSite, card.requiredDiveSiteText)
+                    selectedFishInfoRow(AppStrings.GameBoard.costs, card.costsText)
+                }
+
+                if let unsupportedText = card.unsupportedText {
+                    Text("\(AppStrings.GameBoard.unsupportedItems)：\(unsupportedText)")
+                        .font(.callout.weight(.medium))
+                        .foregroundStyle(.red)
+                }
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color(.secondarySystemBackground))
+            )
         }
     }
 
@@ -215,7 +266,13 @@ struct GameBoardView: View {
 
             Text(AppStrings.GameBoard.chooseDiveSite)
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(viewModel.isSelectingPlayFish ? .red : .secondary)
+
+            if viewModel.isSelectingPlayFish {
+                Text(AppStrings.GameBoard.finishOrCancelPlayFish)
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(.red)
+            }
 
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 10)], spacing: 10) {
                 ForEach(viewModel.diveActionSites) { site in
@@ -242,6 +299,12 @@ struct GameBoardView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             } else {
+                if viewModel.hasBlockingPendingChoices {
+                    Text(AppStrings.GameBoard.resolveCurrentRewardFirst)
+                        .font(.callout.weight(.medium))
+                        .foregroundStyle(.red)
+                }
+
                 LazyVStack(alignment: .leading, spacing: 10) {
                     ForEach(viewModel.pendingChoices) { choice in
                         pendingChoiceRow(choice)
@@ -386,9 +449,14 @@ struct GameBoardView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
+
+            Text(slot.playFishPreview.message)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(slot.playFishPreview.isSelectable ? .green : .secondary)
+                .lineLimit(1)
         }
         .padding(12)
-        .frame(maxWidth: .infinity, minHeight: 112, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: 132, alignment: .topLeading)
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(slot.isSelected ? Color.accentColor.opacity(0.16) : Color(.secondarySystemBackground))
@@ -397,7 +465,19 @@ struct GameBoardView: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(slot.isSelected ? Color.accentColor : Color.clear, lineWidth: 1.5)
         )
-        .opacity(slot.isOccupied ? 0.58 : 1)
+    }
+
+    private func selectedFishInfoRow(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.callout.weight(.medium))
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     private func resourceSourceSection(
@@ -452,25 +532,47 @@ struct GameBoardView: View {
     }
 
     private func pendingChoiceRow(_ choice: PendingChoiceViewData) -> some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(choice.title)
-                    .font(.headline)
-                Text(choice.subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(choice.title)
+                        .font(.headline)
+                    Text(choice.subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+
+                Text(choice.statusText)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(choice.canResolve ? .green : .secondary)
             }
 
-            Spacer()
-
-            Button {
-                viewModel.skipPendingChoice(choice.choiceId)
-            } label: {
-                Label(AppStrings.GameBoard.skipChoice, systemImage: "forward.end")
+            HStack(spacing: 10) {
+                ForEach(choice.actions) { action in
+                    if action.action == .skip {
+                        Button {
+                            viewModel.performPendingChoiceAction(action.action, for: choice.choiceId)
+                        } label: {
+                            Text(action.title)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!action.isEnabled)
+                    } else {
+                        Button {
+                            viewModel.performPendingChoiceAction(action.action, for: choice.choiceId)
+                        } label: {
+                            Text(action.title)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!action.isEnabled)
+                    }
+                }
             }
-            .buttonStyle(.bordered)
-            .disabled(!choice.canSkip)
         }
         .padding(12)
         .background(
