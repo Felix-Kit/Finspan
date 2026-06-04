@@ -22,6 +22,17 @@ Current risks before implementing base game rules:
 
 These risks do not block starting the base game minimum playable version, as long as the next rules work is data-driven and event-sourced.
 
+## Data Catalog Boundaries
+
+The current playable loop intentionally uses development sample data:
+
+- `SampleCardCatalog` contains the current sample starter and fish cards. It is not the complete Finspan base game card list.
+- Complete authoritative base game cards should be introduced through `BaseGameCardCatalog` and a `CardDataSource`, such as reviewed JSON or a Swift fixture.
+- `SampleOceanLayout` contains the current sample 18-slot ocean setup. Verified base game ocean mat positions should be introduced separately through `BaseGameOceanLayout`.
+- `DiveSiteBonusLayout.baseGame` is the authoritative printed dive site bonus layout for the base game, not sample data.
+
+Card data and board layout data must remain separate from UI copy and SwiftUI presentation. Future DLC overlays and rule changes should be added through `Ruleset` / `RuleModule` extensions rather than written into base game data.
+
 ## 1. Basic Domain Model
 
 Goal: add only the facts needed by the base game minimum loop.
