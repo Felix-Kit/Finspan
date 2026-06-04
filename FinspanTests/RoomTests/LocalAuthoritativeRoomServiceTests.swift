@@ -109,7 +109,7 @@ final class LocalAuthoritativeRoomServiceTests: XCTestCase {
         XCTAssertEqual(service.gameRoom?.gameConfig.randomSeed, 99)
     }
 
-    func testRoomLifecycleCreateJoinReadyStartAndEndTurn() throws {
+    func testRoomLifecycleRejectsEndTurnWithoutMainAction() throws {
         let service = LocalAuthoritativeRoomService(
             timestampProvider: { Date(timeIntervalSince1970: 1_000) },
             randomSeedProvider: { 123 }
@@ -158,22 +158,26 @@ final class LocalAuthoritativeRoomServiceTests: XCTestCase {
             )
         )
         let activePlayerId = try XCTUnwrap(service.gameState.activePlayerId)
-        let turnEvents = try service.submit(
-            PlayerCommand(
-                commandId: "command-6",
-                playerId: activePlayerId,
-                roomId: "room-1",
-                payload: .endTurn(EndTurnCommand())
+
+        XCTAssertThrowsError(
+            try service.submit(
+                PlayerCommand(
+                    commandId: "command-6",
+                    playerId: activePlayerId,
+                    roomId: "room-1",
+                    payload: .endTurn(EndTurnCommand())
+                )
             )
-        )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .passTurnNotAllowed)
+        }
 
         XCTAssertEqual(service.gameRoom?.players.count, 2)
         XCTAssertEqual(service.gameRoom?.players.map(\.isReady), [true, true])
         XCTAssertEqual(service.gameRoom?.status, .inProgress)
-        XCTAssertEqual(service.gameRoom?.currentSequence, 7)
-        XCTAssertEqual(service.gameState.eventSequence, 7)
-        XCTAssertEqual(service.eventLog.map(\.sequenceNumber), [1, 2, 3, 4, 5, 6, 7])
-        XCTAssertEqual(turnEvents.first?.payload, .turnEnded(TurnEndedEvent(playerId: activePlayerId, nextPlayerId: nil)))
+        XCTAssertEqual(service.gameRoom?.currentSequence, 6)
+        XCTAssertEqual(service.gameState.eventSequence, 6)
+        XCTAssertEqual(service.eventLog.map(\.sequenceNumber), [1, 2, 3, 4, 5, 6])
     }
 
     func testRejectsNonHostStartGame() throws {

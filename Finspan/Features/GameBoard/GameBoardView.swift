@@ -37,16 +37,14 @@ struct GameBoardView: View {
             infoRow(AppStrings.GameBoard.activePlayer, viewModel.activePlayerName)
             infoRow(AppStrings.GameBoard.phase, AppStrings.phaseName(viewModel.state.phase))
 
-            errorPanel
-
-            Button {
-                viewModel.endTurn()
-            } label: {
-                Label(AppStrings.GameBoard.endTurn, systemImage: "arrowshape.turn.up.right.circle")
-                    .frame(maxWidth: .infinity)
+            if let prompt = viewModel.mainActionPrompt {
+                Text(prompt)
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(viewModel.hasBlockingPendingChoices ? .red : .secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .buttonStyle(.borderedProminent)
-            .disabled(!viewModel.canEndTurn)
+
+            errorPanel
 
             Spacer(minLength: 0)
         }
@@ -270,6 +268,12 @@ struct GameBoardView: View {
 
             if viewModel.isSelectingPlayFish {
                 Text(AppStrings.GameBoard.finishOrCancelPlayFish)
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(.red)
+            }
+
+            if let diverWarning = viewModel.diverAvailabilityWarning {
+                Text(diverWarning)
                     .font(.callout.weight(.medium))
                     .foregroundStyle(.red)
             }

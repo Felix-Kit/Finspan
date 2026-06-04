@@ -33,12 +33,7 @@ struct GameEngine {
                 throw GameEngineError.invalidCommand("Only a joined player can start the game.")
             }
         case .endTurn:
-            guard state.phase == .playing else {
-                throw GameEngineError.invalidCommand("Turns can only end while the game is playing.")
-            }
-            guard state.activePlayerId == command.playerId else {
-                throw GameEngineError.invalidCommand("Only the active player can end the turn.")
-            }
+            throw CommandValidationError.passTurnNotAllowed
         case let .playFish(payload):
             try validatePlayFish(payload, playerId: command.playerId, in: state)
         case let .dive(payload):
@@ -78,6 +73,7 @@ struct GameEngine {
             nextState.currentWeek = 0
             nextState.currentTurnIndex = 0
             nextState.activePlayerId = nil
+            nextState.firstPlayerId = nil
             nextState.randomSeed = payload.gameConfig.randomSeed
             nextState.turnsCompletedThisWeek = 0
         case let .playerJoined(payload):
@@ -97,6 +93,7 @@ struct GameEngine {
             nextState.currentWeek = 1
             nextState.currentTurnIndex = startingIndex
             nextState.activePlayerId = nextState.players[safe: startingIndex]?.id
+            nextState.firstPlayerId = nextState.players[safe: startingIndex]?.id
             nextState.randomSeed = payload.randomSeed
             nextState.turnsCompletedThisWeek = 0
         case let .setupCompleted(payload):
@@ -106,6 +103,7 @@ struct GameEngine {
             nextState.currentWeek = 1
             nextState.currentTurnIndex = startingIndex
             nextState.activePlayerId = nextState.players[safe: startingIndex]?.id
+            nextState.firstPlayerId = nextState.players[safe: startingIndex]?.id
             nextState.randomSeed = setup.randomSeed
             nextState.turnsCompletedThisWeek = 0
             nextState.playerGameStates = Dictionary(
@@ -121,12 +119,7 @@ struct GameEngine {
             nextState.activePlayerId = nextState.players[safe: nextIndex]?.id
             nextState.turnsCompletedThisWeek += 1
         case let .weekEnded(payload):
-            nextState.phase = .playing
-            nextState.currentWeek = min(payload.weekNumber + 1, Self.finalWeek)
-            nextState.turnsCompletedThisWeek = 0
-            for playerId in nextState.playerGameStates.keys {
-                nextState.playerGameStates[playerId]?.diveSitesReachedBottomThisWeek = []
-            }
+            applyWeekEnded(payload, to: &nextState)
         case .gameEnded:
             nextState.phase = .gameEnded
             nextState.activePlayerId = nil
@@ -198,7 +191,7 @@ struct GameEngine {
                 )
             )]
         case let .playFish(payload):
-            return [.fishPlayed(
+            let drafts: [DomainEventDraft] = [.fishPlayed(
                 FishPlayedEvent(
                     playerId: command.playerId,
                     cardId: payload.cardId,
@@ -207,6 +200,11 @@ struct GameEngine {
                     nextActivePlayerId: nil
                 )
             )]
+            return drafts + actionCompletionDrafts(
+                afterApplying: drafts,
+                actorPlayerId: command.playerId,
+                in: state
+            )
         case let .dive(payload):
             let bottomBonusAvailable = bottomBonusAvailable(
                 for: payload.diveSite,
@@ -230,15 +228,12 @@ struct GameEngine {
                 )
             )
             if pendingChoices.isEmpty {
-                return [
-                    diverMoved,
-                    .turnAdvanced(
-                        TurnAdvancedEvent(
-                            playerId: command.playerId,
-                            nextPlayerId: nextPlayer(after: command.playerId, in: state.players)?.id
-                        )
-                    )
-                ]
+                let drafts = [diverMoved]
+                return drafts + actionCompletionDrafts(
+                    afterApplying: drafts,
+                    actorPlayerId: command.playerId,
+                    in: state
+                )
             }
             return [diverMoved] + pendingChoices
         case let .resolvePendingChoice(payload):
@@ -256,11 +251,10 @@ struct GameEngine {
             )]
             if shouldAdvanceTurnAfterResolving(payload, playerId: command.playerId, in: state) {
                 drafts.append(
-                    .turnAdvanced(
-                        TurnAdvancedEvent(
-                            playerId: command.playerId,
-                            nextPlayerId: nextPlayer(after: command.playerId, in: state.players)?.id
-                        )
+                    contentsOf: actionCompletionDrafts(
+                        afterApplying: drafts,
+                        actorPlayerId: command.playerId,
+                        in: state
                     )
                 )
             }
@@ -273,25 +267,7 @@ struct GameEngine {
                 )
             )]
         case .endTurn:
-            let nextPlayerId = nextPlayer(after: command.playerId, in: state.players)?.id
-            var drafts: [DomainEventDraft] = [
-                .turnEnded(
-                TurnEndedEvent(
-                    playerId: command.playerId,
-                    nextPlayerId: nextPlayerId
-                )
-                )
-            ]
-
-            if state.turnsCompletedThisWeek + 1 >= Self.turnsPerWeek {
-                drafts.append(.weekEnded(WeekEndedEvent(weekNumber: state.currentWeek)))
-
-                if state.currentWeek >= Self.finalWeek {
-                    drafts.append(.gameEnded(GameEndedEvent(reason: "Completed 4 weeks.")))
-                }
-            }
-
-            return drafts
+            return []
         }
     }
 
@@ -310,6 +286,109 @@ struct GameEngine {
             return 0
         }
         return (currentIndex + 1) % playerCount
+    }
+
+    private func actionCompletionDrafts(
+        afterApplying drafts: [DomainEventDraft],
+        actorPlayerId: PlayerID,
+        in state: GameState
+    ) -> [DomainEventDraft] {
+        let projectedState = stateAfterApplying(drafts, to: state)
+        guard projectedState.pendingChoices.isEmpty else {
+            return []
+        }
+        guard allDiversUsed(in: projectedState) else {
+            return [
+                .turnAdvanced(
+                    TurnAdvancedEvent(
+                        playerId: actorPlayerId,
+                        nextPlayerId: nextPlayerWithAvailableDiver(after: actorPlayerId, in: projectedState)?.id
+                    )
+                )
+            ]
+        }
+        return [
+            .weekEnded(
+                weekEndedEvent(in: projectedState)
+            )
+        ]
+    }
+
+    private func stateAfterApplying(_ drafts: [DomainEventDraft], to state: GameState) -> GameState {
+        var projectedState = state
+        for draft in drafts {
+            apply(draft, to: &projectedState)
+        }
+        return projectedState
+    }
+
+    private func apply(_ draft: DomainEventDraft, to state: inout GameState) {
+        switch draft {
+        case let .fishPlayed(payload):
+            applyFishPlayed(payload, to: &state)
+        case let .diverMoved(payload):
+            applyDiverMoved(payload, to: &state)
+        case let .pendingChoiceCreated(payload):
+            state.pendingChoices[payload.choiceId] = payload
+        case let .pendingChoiceResolved(payload):
+            applyPendingChoiceEffects(payload.appliedEffects, to: &state)
+            state.pendingChoices.removeValue(forKey: payload.choiceId)
+        case let .turnAdvanced(payload):
+            applyTurnAdvanced(payload, to: &state)
+        case let .weekEnded(payload):
+            applyWeekEnded(payload, to: &state)
+        case .roomCreated,
+             .playerJoined,
+             .playerLeft,
+             .playerReadyChanged,
+             .seatChanged,
+             .colorChanged,
+             .gameStarted,
+             .setupCompleted,
+             .abilityOptionChosen,
+             .turnEnded,
+             .gameEnded,
+             .snapshotCreated:
+            break
+        }
+    }
+
+    private func allDiversUsed(in state: GameState) -> Bool {
+        guard !state.playerGameStates.isEmpty else {
+            return false
+        }
+        return state.playerGameStates.values.allSatisfy { $0.availableDivers == 0 }
+    }
+
+    private func nextPlayerWithAvailableDiver(after playerId: PlayerID, in state: GameState) -> Player? {
+        guard !state.players.isEmpty,
+              let currentIndex = state.players.firstIndex(where: { $0.id == playerId })
+        else {
+            return nil
+        }
+
+        for offset in 1...state.players.count {
+            let index = (currentIndex + offset) % state.players.count
+            let candidate = state.players[index]
+            if (state.playerGameStates[candidate.id]?.availableDivers ?? 0) > 0 {
+                return candidate
+            }
+        }
+        return nil
+    }
+
+    private func weekEndedEvent(in state: GameState) -> WeekEndedEvent {
+        let previousFirstPlayerId = state.firstPlayerId ?? state.players.first?.id
+        let nextFirstPlayerId = previousFirstPlayerId.flatMap { nextPlayer(after: $0, in: state.players)?.id }
+        let isGameEndTriggered = state.currentWeek >= Self.finalWeek
+        return WeekEndedEvent(
+            endedWeek: state.currentWeek,
+            nextWeek: isGameEndTriggered ? nil : min(state.currentWeek + 1, Self.finalWeek),
+            previousFirstPlayerId: previousFirstPlayerId,
+            nextFirstPlayerId: isGameEndTriggered ? nil : nextFirstPlayerId,
+            nextActivePlayerId: isGameEndTriggered ? nil : nextFirstPlayerId,
+            isGameEndTriggered: isGameEndTriggered
+        )
     }
 
     private func validatePlayFish(
@@ -331,6 +410,9 @@ struct GameEngine {
         }
         guard !hasBlockingPendingChoices(for: playerId, in: state) else {
             throw CommandValidationError.unresolvedPendingChoices(playerId)
+        }
+        guard playerState.availableDivers > 0 else {
+            throw CommandValidationError.noAvailableDiver
         }
         guard playerState.hand.contains(payload.cardId) else {
             throw CommandValidationError.cardNotInHand(payload.cardId)
@@ -707,6 +789,8 @@ struct GameEngine {
 
         let discardedCardIds = Set(payload.payment.discardedCardIds + [payload.cardId])
         playerState.hand.removeAll { discardedCardIds.contains($0) }
+        playerState.availableDivers = max(playerState.availableDivers - 1, 0)
+        playerState.usedDivers += 1
         playerState.ocean.slots[slotIndex].content = .fishCard(payload.cardId)
         applyResourcePayment(payload.payment, to: &playerState)
 
@@ -743,6 +827,39 @@ struct GameEngine {
 
         state.currentTurnIndex = nextIndex
         state.activePlayerId = nextActivePlayerId
+        state.turnsCompletedThisWeek += 1
+    }
+
+    private func applyWeekEnded(_ payload: WeekEndedEvent, to state: inout GameState) {
+        state.turnsCompletedThisWeek = 0
+
+        if payload.isGameEndTriggered {
+            state.phase = .endGamePending
+            state.currentWeek = payload.endedWeek
+            state.activePlayerId = nil
+            state.firstPlayerId = payload.previousFirstPlayerId
+            return
+        }
+
+        state.phase = .playing
+        state.currentWeek = payload.nextWeek ?? min(payload.endedWeek + 1, Self.finalWeek)
+        state.firstPlayerId = payload.nextFirstPlayerId
+
+        if let nextActivePlayerId = payload.nextActivePlayerId,
+           let nextIndex = state.players.firstIndex(where: { $0.id == nextActivePlayerId }) {
+            state.currentTurnIndex = nextIndex
+            state.activePlayerId = nextActivePlayerId
+        } else if let nextFirstPlayerId = payload.nextFirstPlayerId,
+                  let nextIndex = state.players.firstIndex(where: { $0.id == nextFirstPlayerId }) {
+            state.currentTurnIndex = nextIndex
+            state.activePlayerId = nextFirstPlayerId
+        }
+
+        for playerId in state.playerGameStates.keys {
+            state.playerGameStates[playerId]?.availableDivers = 6
+            state.playerGameStates[playerId]?.usedDivers = 0
+            state.playerGameStates[playerId]?.diveSitesReachedBottomThisWeek = []
+        }
     }
 
     private func applyPendingChoiceEffects(
@@ -770,7 +887,6 @@ struct GameEngine {
             case let .hatchEgg(target, amount):
                 applyResourceChange(.egg, amount: -amount, at: target, to: &state)
                 applyResourceChange(.young, amount: amount, at: target, to: &state)
-                // TODO: handle automatic school formation when hatch effects are fully implemented.
             }
         }
     }
@@ -828,7 +944,40 @@ struct GameEngine {
             )
         }
 
+        if kind == .young && amount > 0 {
+            applySchoolFormationIfNeeded(to: &playerState.ocean.slots[slotIndex])
+        }
+
         state.playerGameStates[target.playerId] = playerState
+    }
+
+    private func applySchoolFormationIfNeeded(to slot: inout OceanSlot) {
+        // School formation is a deterministic automatic base game rule, not a player choice.
+        guard slot.youngCount >= 3, !slot.hasSchool else {
+            return
+        }
+
+        updateResource(.young, amountDelta: -3, in: &slot)
+        updateResource(.school, amountDelta: 1, in: &slot)
+    }
+
+    private func updateResource(
+        _ kind: ResourceKind,
+        amountDelta: Int,
+        in slot: inout OceanSlot
+    ) {
+        guard amountDelta != 0 else {
+            return
+        }
+
+        if let resourceIndex = slot.resources.firstIndex(where: { $0.kind == kind }) {
+            slot.resources[resourceIndex].amount += amountDelta
+            if slot.resources[resourceIndex].amount <= 0 {
+                slot.resources.remove(at: resourceIndex)
+            }
+        } else if amountDelta > 0 {
+            slot.resources.append(ResourceQuantity(kind: kind, amount: amountDelta))
+        }
     }
 
     private func resourceAmount(_ kind: ResourceKind, in slot: OceanSlot) -> Int {

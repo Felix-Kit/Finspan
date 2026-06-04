@@ -244,6 +244,92 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.errorMessage, AppStrings.GameBoard.resolveCurrentRewardFirst)
     }
 
+    func testNoAvailableDiversPreventsPlayFishAndDiveSubmission() {
+        let service = makeService(hand: ["starter-fish-1"], availableDivers: 0)
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectCard("starter-fish-1")
+        viewModel.selectTargetSlot(Self.slotAddress)
+        viewModel.submitPlayFish()
+        viewModel.submitDive(to: .blue)
+
+        XCTAssertFalse(viewModel.canSubmitPlayFish)
+        XCTAssertFalse(viewModel.canDive)
+        XCTAssertEqual(viewModel.diverAvailabilityWarning, AppStrings.GameBoard.diversUsedThisWeek)
+        XCTAssertTrue(service.submittedCommands.isEmpty)
+        XCTAssertEqual(viewModel.errorMessage, AppStrings.GameBoard.diversUsedThisWeek)
+    }
+
+    func testPendingChoicesTakePriorityOverNoAvailableDiversWarning() {
+        let choice = pendingChoice(kind: .drawFish)
+        let service = makeService(
+            hand: ["starter-fish-1"],
+            pendingChoices: [choice.choiceId: choice],
+            availableDivers: 0
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectCard("starter-fish-1")
+        viewModel.submitDive(to: .blue)
+
+        XCTAssertTrue(viewModel.hasBlockingPendingChoices)
+        XCTAssertNil(viewModel.diverAvailabilityWarning)
+        XCTAssertEqual(viewModel.errorMessage, AppStrings.GameBoard.resolveCurrentRewardFirst)
+    }
+
+    func testMainActionPromptAsksForPlayFishOrDive() {
+        let service = makeService(hand: ["starter-fish-1"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.mainActionPrompt, AppStrings.GameBoard.chooseMainAction)
+    }
+
+    func testMainActionPromptPrioritizesPendingChoice() {
+        let choice = pendingChoice(kind: .drawFish)
+        let service = makeService(
+            hand: ["starter-fish-1"],
+            pendingChoices: [choice.choiceId: choice]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.mainActionPrompt, AppStrings.GameBoard.resolveCurrentRewardFirst)
+    }
+
+    func testDisplaysCurrentWeekAndEndGamePendingPhase() {
+        let service = makeService(
+            hand: ["starter-fish-1"],
+            phase: .endGamePending,
+            currentWeek: 4,
+            activePlayerId: nil
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.currentWeekText, "4")
+        XCTAssertEqual(AppStrings.phaseName(viewModel.state.phase), "游戏结束待结算")
+    }
+
+    func testWeekEndedEventSummaryShowsNextWeek() {
+        let service = makeService(hand: ["starter-fish-1"])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let event = GameEvent(
+            sequenceNumber: 3,
+            roomId: "room-1",
+            timestamp: Date(timeIntervalSince1970: 1_000),
+            payload: .weekEnded(
+                WeekEndedEvent(
+                    endedWeek: 1,
+                    nextWeek: 2,
+                    previousFirstPlayerId: "player-1",
+                    nextFirstPlayerId: "player-1",
+                    nextActivePlayerId: "player-1",
+                    isGameEndTriggered: false
+                )
+            )
+        )
+
+        XCTAssertEqual(viewModel.eventSummary(event), "#3 第 1 周结束，进入第 2 周")
+    }
+
     func testDrawFishPendingChoiceShowsDrawAndSkipActions() {
         let choice = pendingChoice(kind: .drawFish)
         let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
@@ -341,6 +427,26 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertFalse(targets.contains { $0.address == Self.slotAddress })
     }
 
+    func testOceanSlotResourcesTextDisplaysSchool() {
+        let service = makeService(hand: ["fish-2"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let slot = oceanSlot(in: viewModel, address: Self.resourceSourceAddress)
+
+        XCTAssertTrue(slot.resourcesText.contains("鱼群 1"))
+    }
+
+    func testHatchEggTargetResourcesTextDisplaysSchool() {
+        let choice = pendingChoice(kind: .hatchEgg)
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let target = viewModel.pendingChoiceTargets(for: choice)
+            .first { $0.address == Self.resourceSourceAddress }
+
+        XCTAssertEqual(target?.resourcesText, "鱼卵 1，幼鱼 1，鱼群 1")
+    }
+
     func testPendingChoiceShowsNoTargetsWhenNoneAreLegal() {
         let choice = pendingChoice(kind: .placeEgg)
         let service = makeService(
@@ -397,7 +503,11 @@ final class GameBoardViewModelTests: XCTestCase {
         hand: [CardID],
         pendingChoices: [PendingChoiceID: PendingChoice] = [:],
         emptySlots: [OceanSlotAddress] = [GameBoardViewModelTests.slotAddress],
-        additionalSlots: [OceanSlot] = []
+        additionalSlots: [OceanSlot] = [],
+        availableDivers: Int = 6,
+        phase: GamePhase = .playing,
+        currentWeek: Int = 1,
+        activePlayerId: PlayerID? = "player-1"
     ) -> CapturingRoomService {
         var ocean = OceanState.baseGameInitial(for: "player-1")
         for emptySlot in emptySlots {
@@ -408,7 +518,8 @@ final class GameBoardViewModelTests: XCTestCase {
         if let sourceIndex = ocean.slots.firstIndex(where: { $0.address == Self.resourceSourceAddress }) {
             ocean.slots[sourceIndex].resources = [
                 ResourceQuantity(kind: .egg, amount: 1),
-                ResourceQuantity(kind: .young, amount: 1)
+                ResourceQuantity(kind: .young, amount: 1),
+                ResourceQuantity(kind: .school, amount: 1)
             ]
         }
         ocean.slots.append(contentsOf: additionalSlots)
@@ -432,10 +543,11 @@ final class GameBoardViewModelTests: XCTestCase {
             gameState: GameState(
                 roomId: "room-1",
                 players: [Player(id: "player-1", name: "玩家 1")],
-                currentWeek: 1,
+                currentWeek: currentWeek,
                 currentTurnIndex: 0,
-                activePlayerId: "player-1",
-                phase: .playing,
+                activePlayerId: activePlayerId,
+                firstPlayerId: "player-1",
+                phase: phase,
                 eventSequence: 1,
                 randomSeed: 1,
                 turnsCompletedThisWeek: 0,
@@ -443,8 +555,8 @@ final class GameBoardViewModelTests: XCTestCase {
                     "player-1": PlayerGameState(
                         playerId: "player-1",
                         hand: hand,
-                        availableDivers: 6,
-                        usedDivers: 0,
+                        availableDivers: availableDivers,
+                        usedDivers: 6 - availableDivers,
                         ocean: ocean
                     )
                 ],

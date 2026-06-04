@@ -37,4 +37,5 @@ enum CommandValidationError: Error, Equatable {
     case invalidPendingChoiceResolution(PendingChoiceID)
     case fishDrawPileEmpty
     case unresolvedPendingChoices(PlayerID)
+    case passTurnNotAllowed
 }

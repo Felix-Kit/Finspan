@@ -144,6 +144,18 @@ struct OceanSlot: Codable, Equatable, Sendable {
     var rowTrait: OceanRowTrait {
         address.rowTrait
     }
+
+    var youngCount: Int {
+        resources.first(where: { $0.kind == .young })?.amount ?? 0
+    }
+
+    var schoolCount: Int {
+        resources.first(where: { $0.kind == .school })?.amount ?? 0
+    }
+
+    var hasSchool: Bool {
+        schoolCount > 0
+    }
 }
 
 struct OceanState: Codable, Equatable, Sendable {

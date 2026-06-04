@@ -65,77 +65,314 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(state.turnsCompletedThisWeek, 0)
     }
 
-    func testEndTurnRotatesThroughMultiplePlayers() throws {
+    func testEndTurnCommandCannotAdvanceWithoutMainAction() {
         let engine = GameEngine()
-        var state = startedState(engine: engine)
-        var factory = AuthoritativeEventFactory(
-            roomId: roomId,
-            nextSequenceNumber: 5,
-            randomSeed: 99,
-            timestampProvider: { self.timestamp }
-        )
+        let state = playFishState()
 
-        state = try submitEndTurn(playerId: "player-1", state: state, engine: engine, factory: &factory)
-        XCTAssertEqual(state.activePlayerId, "player-2")
-        XCTAssertEqual(state.currentTurnIndex, 1)
-
-        state = try submitEndTurn(playerId: "player-2", state: state, engine: engine, factory: &factory)
-        XCTAssertEqual(state.activePlayerId, "player-3")
-        XCTAssertEqual(state.currentTurnIndex, 2)
-
-        state = try submitEndTurn(playerId: "player-3", state: state, engine: engine, factory: &factory)
-        XCTAssertEqual(state.activePlayerId, "player-1")
-        XCTAssertEqual(state.currentTurnIndex, 0)
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: PlayerCommand(
+                    commandId: "end-turn-not-allowed",
+                    playerId: "player-1",
+                    roomId: roomId,
+                    payload: .endTurn(EndTurnCommand())
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .passTurnNotAllowed)
+        }
     }
 
-    func testSixTurnsAdvanceOneWeek() throws {
+    func testPlayFishAutomaticallyAdvancesActivePlayer() throws {
         let engine = GameEngine()
-        var state = startedState(engine: engine)
-        var factory = AuthoritativeEventFactory(
-            roomId: roomId,
-            nextSequenceNumber: 5,
-            randomSeed: 99,
-            timestampProvider: { self.timestamp }
+        let state = playFishState()
+        let targetSlot = OceanSlotAddress(
+            playerId: "player-1",
+            diveSite: .blue,
+            rowIndex: 0
         )
 
-        for _ in 0..<6 {
-            state = try submitEndTurn(
-                playerId: try XCTUnwrap(state.activePlayerId),
-                state: state,
-                engine: engine,
-                factory: &factory
-            )
-        }
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "play-fish-auto-advance",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .playFish(
+                    PlayFishCommand(
+                        cardId: "fish-6",
+                        targetSlot: targetSlot,
+                        payment: PlayFishPayment.empty
+                    )
+                )
+            ),
+            in: state
+        )
 
-        XCTAssertEqual(state.phase, .playing)
-        XCTAssertEqual(state.currentWeek, 2)
-        XCTAssertEqual(state.turnsCompletedThisWeek, 0)
-        XCTAssertEqual(state.activePlayerId, "player-1")
+        XCTAssertEqual(drafts.last, .turnAdvanced(TurnAdvancedEvent(playerId: "player-1", nextPlayerId: "player-2")))
     }
 
-    func testFourWeeksEndGameAfterTwentyFourTurns() throws {
+    func testPlayFishTriggersWeekEndedWhenAllDiversAreUsed() throws {
         let engine = GameEngine()
-        var state = startedState(engine: engine)
-        var factory = AuthoritativeEventFactory(
-            roomId: roomId,
-            nextSequenceNumber: 5,
-            randomSeed: 99,
-            timestampProvider: { self.timestamp }
+        var state = playFishState()
+        state.firstPlayerId = "player-1"
+        state.playerGameStates["player-1"]?.availableDivers = 1
+        state.playerGameStates["player-2"]?.availableDivers = 0
+        let targetSlot = OceanSlotAddress(
+            playerId: "player-1",
+            diveSite: .blue,
+            rowIndex: 0
         )
 
-        for _ in 0..<24 {
-            state = try submitEndTurn(
-                playerId: try XCTUnwrap(state.activePlayerId),
-                state: state,
-                engine: engine,
-                factory: &factory
-            )
-        }
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "play-fish-ending-week",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .playFish(
+                    PlayFishCommand(
+                        cardId: "fish-6",
+                        targetSlot: targetSlot,
+                        payment: PlayFishPayment.empty
+                    )
+                )
+            ),
+            in: state
+        )
 
-        XCTAssertEqual(state.phase, .gameEnded)
-        XCTAssertEqual(state.currentWeek, 4)
-        XCTAssertNil(state.activePlayerId)
-        XCTAssertEqual(state.turnsCompletedThisWeek, 0)
+        XCTAssertEqual(
+            drafts.last,
+            .weekEnded(
+                WeekEndedEvent(
+                    endedWeek: 1,
+                    nextWeek: 2,
+                    previousFirstPlayerId: "player-1",
+                    nextFirstPlayerId: "player-2",
+                    nextActivePlayerId: "player-2",
+                    isGameEndTriggered: false
+                )
+            )
+        )
+    }
+
+    func testEndTurnDoesNotTriggerWeekOrGameEnd() {
+        let engine = GameEngine()
+        var state = playFishState()
+        state.currentWeek = 4
+        state.playerGameStates["player-1"]?.availableDivers = 1
+        state.playerGameStates["player-2"]?.availableDivers = 0
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: PlayerCommand(
+                    commandId: "end-turn-no-game-end",
+                    playerId: "player-1",
+                    roomId: roomId,
+                    payload: .endTurn(EndTurnCommand())
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .passTurnNotAllowed)
+        }
+    }
+
+    func testActionDoesNotEndWeekWhenSomePlayerStillHasDivers() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        state.playerGameStates["player-1"]?.availableDivers = 1
+        state.playerGameStates["player-2"]?.availableDivers = 1
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "dive-before-week-end",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .dive(DiveCommand(diveSite: .blue))
+            ),
+            in: state
+        )
+
+        XCTAssertFalse(drafts.contains { draft in
+            if case .weekEnded = draft {
+                return true
+            }
+            return false
+        })
+        XCTAssertEqual(drafts.last, .turnAdvanced(TurnAdvancedEvent(playerId: "player-1", nextPlayerId: "player-2")))
+    }
+
+    func testActionEndsWeekWhenAllDiversUsedAndNoPendingChoices() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        state.firstPlayerId = "player-1"
+        state.playerGameStates["player-1"]?.availableDivers = 1
+        state.playerGameStates["player-2"]?.availableDivers = 0
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "dive-ending-week",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .dive(DiveCommand(diveSite: .blue))
+            ),
+            in: state
+        )
+
+        XCTAssertEqual(
+            drafts.last,
+            .weekEnded(
+                WeekEndedEvent(
+                    endedWeek: 1,
+                    nextWeek: 2,
+                    previousFirstPlayerId: "player-1",
+                    nextFirstPlayerId: "player-2",
+                    nextActivePlayerId: "player-2",
+                    isGameEndTriggered: false
+                )
+            )
+        )
+    }
+
+    func testPendingChoicesPreventWeekEndEvenWhenAllDiversUsed() throws {
+        let engine = GameEngine()
+        var state = playFishState(keepForageFish: true)
+        state.playerGameStates["player-1"]?.availableDivers = 1
+        state.playerGameStates["player-2"]?.availableDivers = 0
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "dive-with-pending-before-week-end",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .dive(DiveCommand(diveSite: .blue))
+            ),
+            in: state
+        )
+
+        XCTAssertTrue(drafts.contains { draft in
+            if case .pendingChoiceCreated = draft {
+                return true
+            }
+            return false
+        })
+        XCTAssertFalse(drafts.contains { draft in
+            if case .weekEnded = draft {
+                return true
+            }
+            return false
+        })
+    }
+
+    func testResolveLastPendingChoiceEndsWeekWhenAllDiversUsed() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        state.firstPlayerId = "player-1"
+        state.playerGameStates["player-1"]?.availableDivers = 0
+        state.playerGameStates["player-2"]?.availableDivers = 0
+        let choice = pendingChoice(kind: .placeEgg)
+        state.pendingChoices[choice.choiceId] = choice
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "resolve-ending-week",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .resolvePendingChoice(
+                    ResolvePendingChoiceCommand(
+                        choiceId: choice.choiceId,
+                        resolution: .skip
+                    )
+                )
+            ),
+            in: state
+        )
+
+        XCTAssertEqual(
+            drafts.last,
+            .weekEnded(
+                WeekEndedEvent(
+                    endedWeek: 1,
+                    nextWeek: 2,
+                    previousFirstPlayerId: "player-1",
+                    nextFirstPlayerId: "player-2",
+                    nextActivePlayerId: "player-2",
+                    isGameEndTriggered: false
+                )
+            )
+        )
+    }
+
+    func testWeekEndedResetsDiversAndAdvancesWeek() {
+        let engine = GameEngine()
+        var state = playFishState()
+        state.firstPlayerId = "player-1"
+        state.playerGameStates["player-1"]?.availableDivers = 0
+        state.playerGameStates["player-1"]?.usedDivers = 6
+        state.playerGameStates["player-1"]?.diveSitesReachedBottomThisWeek = [.blue]
+        state.playerGameStates["player-2"]?.availableDivers = 0
+        state.playerGameStates["player-2"]?.usedDivers = 6
+        state.playerGameStates["player-2"]?.diveSitesReachedBottomThisWeek = [.green]
+
+        let nextState = engine.reduce(
+            state: state,
+            event: GameEvent(
+                sequenceNumber: 10,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .weekEnded(
+                    WeekEndedEvent(
+                        endedWeek: 1,
+                        nextWeek: 2,
+                        previousFirstPlayerId: "player-1",
+                        nextFirstPlayerId: "player-2",
+                        nextActivePlayerId: "player-2",
+                        isGameEndTriggered: false
+                    )
+                )
+            )
+        )
+
+        XCTAssertEqual(nextState.currentWeek, 2)
+        XCTAssertEqual(nextState.firstPlayerId, "player-2")
+        XCTAssertEqual(nextState.activePlayerId, "player-2")
+        XCTAssertEqual(nextState.currentTurnIndex, 1)
+        XCTAssertEqual(nextState.playerGameStates["player-1"]?.availableDivers, 6)
+        XCTAssertEqual(nextState.playerGameStates["player-2"]?.availableDivers, 6)
+        XCTAssertEqual(nextState.playerGameStates["player-1"]?.usedDivers, 0)
+        XCTAssertEqual(nextState.playerGameStates["player-2"]?.usedDivers, 0)
+        XCTAssertEqual(nextState.playerGameStates["player-1"]?.diveSitesReachedBottomThisWeek, [])
+        XCTAssertEqual(nextState.playerGameStates["player-2"]?.diveSitesReachedBottomThisWeek, [])
+    }
+
+    func testFourthWeekEndedEntersEndGamePending() {
+        let engine = GameEngine()
+        var state = playFishState()
+        state.currentWeek = 4
+        state.firstPlayerId = "player-1"
+
+        let nextState = engine.reduce(
+            state: state,
+            event: GameEvent(
+                sequenceNumber: 10,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .weekEnded(
+                    WeekEndedEvent(
+                        endedWeek: 4,
+                        nextWeek: nil,
+                        previousFirstPlayerId: "player-1",
+                        nextFirstPlayerId: nil,
+                        nextActivePlayerId: nil,
+                        isGameEndTriggered: true
+                    )
+                )
+            )
+        )
+
+        XCTAssertEqual(nextState.phase, .endGamePending)
+        XCTAssertEqual(nextState.currentWeek, 4)
+        XCTAssertNil(nextState.activePlayerId)
     }
 
     func testPlayFishDraftIncludesTargetSlotAndPayment() throws {
@@ -1286,6 +1523,118 @@ final class GameEngineTests: XCTestCase {
         }
     }
 
+    func testHatchEggFormsSchoolWhenYoungReachesThree() {
+        let engine = GameEngine()
+        var state = playFishState(keepForageFish: true)
+        let choice = pendingChoice(kind: .hatchEgg)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 4)
+        state.pendingChoices[choice.choiceId] = choice
+        setResources(
+            [
+                ResourceQuantity(kind: .egg, amount: 1),
+                ResourceQuantity(kind: .young, amount: 2)
+            ],
+            at: target,
+            in: &state
+        )
+
+        let nextState = engine.reduce(
+            state: state,
+            event: GameEvent(
+                sequenceNumber: 10,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .pendingChoiceResolved(
+                    PendingChoiceResolvedEvent(
+                        choiceId: choice.choiceId,
+                        playerId: "player-1",
+                        resolution: .chooseTarget(target),
+                        appliedEffects: [.hatchEgg(target: target, amount: 1)]
+                    )
+                )
+            )
+        )
+
+        XCTAssertEqual(resourceAmount(.egg, at: target, in: nextState), 0)
+        XCTAssertEqual(resourceAmount(.young, at: target, in: nextState), 0)
+        XCTAssertEqual(resourceAmount(.school, at: target, in: nextState), 1)
+    }
+
+    func testHatchEggDoesNotFormSecondSchoolWhenSlotAlreadyHasSchool() {
+        let engine = GameEngine()
+        var state = playFishState(keepForageFish: true)
+        let choice = pendingChoice(kind: .hatchEgg)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 4)
+        state.pendingChoices[choice.choiceId] = choice
+        setResources(
+            [
+                ResourceQuantity(kind: .egg, amount: 1),
+                ResourceQuantity(kind: .young, amount: 2),
+                ResourceQuantity(kind: .school, amount: 1)
+            ],
+            at: target,
+            in: &state
+        )
+
+        let nextState = engine.reduce(
+            state: state,
+            event: GameEvent(
+                sequenceNumber: 10,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .pendingChoiceResolved(
+                    PendingChoiceResolvedEvent(
+                        choiceId: choice.choiceId,
+                        playerId: "player-1",
+                        resolution: .chooseTarget(target),
+                        appliedEffects: [.hatchEgg(target: target, amount: 1)]
+                    )
+                )
+            )
+        )
+
+        XCTAssertEqual(resourceAmount(.egg, at: target, in: nextState), 0)
+        XCTAssertEqual(resourceAmount(.young, at: target, in: nextState), 3)
+        XCTAssertEqual(resourceAmount(.school, at: target, in: nextState), 1)
+    }
+
+    func testHatchEggDoesNotFormSchoolWhenYoungStaysBelowThree() {
+        let engine = GameEngine()
+        var state = playFishState(keepForageFish: true)
+        let choice = pendingChoice(kind: .hatchEgg)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 4)
+        state.pendingChoices[choice.choiceId] = choice
+        setResources(
+            [
+                ResourceQuantity(kind: .egg, amount: 1),
+                ResourceQuantity(kind: .young, amount: 1)
+            ],
+            at: target,
+            in: &state
+        )
+
+        let nextState = engine.reduce(
+            state: state,
+            event: GameEvent(
+                sequenceNumber: 10,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .pendingChoiceResolved(
+                    PendingChoiceResolvedEvent(
+                        choiceId: choice.choiceId,
+                        playerId: "player-1",
+                        resolution: .chooseTarget(target),
+                        appliedEffects: [.hatchEgg(target: target, amount: 1)]
+                    )
+                )
+            )
+        )
+
+        XCTAssertEqual(resourceAmount(.egg, at: target, in: nextState), 0)
+        XCTAssertEqual(resourceAmount(.young, at: target, in: nextState), 2)
+        XCTAssertEqual(resourceAmount(.school, at: target, in: nextState), 0)
+    }
+
     func testSkipPlaceEggAndHatchEggChoicesDoNotChangeOceanResources() {
         let engine = GameEngine()
         for kind in [PendingChoiceKind.placeEgg, .hatchEgg] {
@@ -1314,6 +1663,43 @@ final class GameEngineTests: XCTestCase {
             XCTAssertEqual(nextState.playerGameStates["player-1"]?.ocean, startingOcean)
             XCTAssertNil(nextState.pendingChoices[choice.choiceId])
         }
+    }
+
+    func testSkipHatchEggDoesNotTriggerSchoolFormation() {
+        let engine = GameEngine()
+        var state = playFishState(keepForageFish: true)
+        let choice = pendingChoice(kind: .hatchEgg)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 4)
+        state.pendingChoices[choice.choiceId] = choice
+        setResources(
+            [
+                ResourceQuantity(kind: .egg, amount: 1),
+                ResourceQuantity(kind: .young, amount: 2)
+            ],
+            at: target,
+            in: &state
+        )
+
+        let nextState = engine.reduce(
+            state: state,
+            event: GameEvent(
+                sequenceNumber: 10,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .pendingChoiceResolved(
+                    PendingChoiceResolvedEvent(
+                        choiceId: choice.choiceId,
+                        playerId: "player-1",
+                        resolution: .skip,
+                        appliedEffects: [.none]
+                    )
+                )
+            )
+        )
+
+        XCTAssertEqual(resourceAmount(.egg, at: target, in: nextState), 1)
+        XCTAssertEqual(resourceAmount(.young, at: target, in: nextState), 2)
+        XCTAssertEqual(resourceAmount(.school, at: target, in: nextState), 0)
     }
 
     func testResolveTargetDoesNotAdvanceWhenPlayerStillHasPendingChoices() throws {
@@ -1530,23 +1916,19 @@ final class GameEngineTests: XCTestCase {
             .amount ?? 0
     }
 
-    private func submitEndTurn(
-        playerId: PlayerID,
-        state: GameState,
-        engine: GameEngine,
-        factory: inout AuthoritativeEventFactory
-    ) throws -> GameState {
-        let command = PlayerCommand(
-            commandId: "end-turn-\(state.eventSequence)",
-            playerId: playerId,
-            roomId: roomId,
-            payload: .endTurn(EndTurnCommand())
-        )
-        let drafts = try engine.makeEventDrafts(for: command, in: state)
-        let events = factory.makeEvents(from: drafts, actorPlayerId: playerId)
-
-        return events.reduce(state) { state, event in
-            engine.reduce(state: state, event: event)
+    private func setResources(
+        _ resources: [ResourceQuantity],
+        at address: OceanSlotAddress,
+        in state: inout GameState
+    ) {
+        guard var playerState = state.playerGameStates[address.playerId],
+              let slotIndex = playerState.ocean.slots.firstIndex(where: { $0.address == address })
+        else {
+            return
         }
+
+        playerState.ocean.slots[slotIndex].resources = resources
+        state.playerGameStates[address.playerId] = playerState
     }
+
 }

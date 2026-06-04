@@ -118,7 +118,43 @@ struct TurnEndedEvent: Codable, Equatable, Sendable {
 }
 
 struct WeekEndedEvent: Codable, Equatable, Sendable {
-    var weekNumber: Int
+    var endedWeek: Int
+    var nextWeek: Int?
+    var previousFirstPlayerId: PlayerID?
+    var nextFirstPlayerId: PlayerID?
+    var nextActivePlayerId: PlayerID?
+    var isGameEndTriggered: Bool
+
+    var weekNumber: Int {
+        endedWeek
+    }
+
+    init(
+        endedWeek: Int,
+        nextWeek: Int?,
+        previousFirstPlayerId: PlayerID?,
+        nextFirstPlayerId: PlayerID?,
+        nextActivePlayerId: PlayerID?,
+        isGameEndTriggered: Bool
+    ) {
+        self.endedWeek = endedWeek
+        self.nextWeek = nextWeek
+        self.previousFirstPlayerId = previousFirstPlayerId
+        self.nextFirstPlayerId = nextFirstPlayerId
+        self.nextActivePlayerId = nextActivePlayerId
+        self.isGameEndTriggered = isGameEndTriggered
+    }
+
+    init(weekNumber: Int) {
+        self.init(
+            endedWeek: weekNumber,
+            nextWeek: weekNumber + 1,
+            previousFirstPlayerId: nil,
+            nextFirstPlayerId: nil,
+            nextActivePlayerId: nil,
+            isGameEndTriggered: false
+        )
+    }
 }
 
 struct GameEndedEvent: Codable, Equatable, Sendable {

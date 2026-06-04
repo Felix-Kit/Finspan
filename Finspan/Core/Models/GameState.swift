@@ -6,6 +6,7 @@ enum GamePhase: String, Codable, Equatable, Sendable {
     case playing
     case awaitingChoice
     case weekScoring
+    case endGamePending
     case gameEnded
 }
 
@@ -15,6 +16,7 @@ struct GameState: Codable, Equatable, Sendable {
     var currentWeek: Int
     var currentTurnIndex: Int
     var activePlayerId: PlayerID?
+    var firstPlayerId: PlayerID? = nil
     var phase: GamePhase
     var eventSequence: EventID
     var randomSeed: Int?
@@ -29,6 +31,7 @@ struct GameState: Codable, Equatable, Sendable {
         currentWeek: 0,
         currentTurnIndex: 0,
         activePlayerId: nil,
+        firstPlayerId: nil,
         phase: .lobby,
         eventSequence: 0,
         randomSeed: nil,

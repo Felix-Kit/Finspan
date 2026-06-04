@@ -164,12 +164,32 @@ final class GameBoardViewModel: ObservableObject {
         return players.first(where: { $0.playerId == activePlayerId })?.displayName ?? activePlayerId
     }
 
-    var canEndTurn: Bool {
-        state.phase == .playing && state.activePlayerId != nil && !hasBlockingPendingChoices
-    }
-
     var canDive: Bool {
         !isSelectingPlayFish && !hasBlockingPendingChoices && (activePlayerState?.availableDivers ?? 0) > 0
+    }
+
+    var diverAvailabilityWarning: String? {
+        guard !hasBlockingPendingChoices,
+              state.phase == .playing,
+              let activePlayerState,
+              activePlayerState.availableDivers <= 0
+        else {
+            return nil
+        }
+        return AppStrings.GameBoard.diversUsedThisWeek
+    }
+
+    var mainActionPrompt: String? {
+        guard state.phase == .playing else {
+            return nil
+        }
+        if hasBlockingPendingChoices {
+            return AppStrings.GameBoard.resolveCurrentRewardFirst
+        }
+        if let diverAvailabilityWarning {
+            return diverAvailabilityWarning
+        }
+        return AppStrings.GameBoard.chooseMainAction
     }
 
     var isSelectingPlayFish: Bool {
@@ -334,6 +354,7 @@ final class GameBoardViewModel: ObservableObject {
         guard selectedCard != nil,
               selectedTargetSlotIsAvailable,
               !hasBlockingPendingChoices,
+              (activePlayerState?.availableDivers ?? 0) > 0,
               !selectedCardHasUnsupportedUICost
         else {
             return false
@@ -441,6 +462,10 @@ final class GameBoardViewModel: ObservableObject {
         }
         guard let activePlayerId = state.activePlayerId else {
             errorMessage = AppStrings.GameBoard.noActivePlayer
+            return
+        }
+        guard (activePlayerState?.availableDivers ?? 0) > 0 else {
+            errorMessage = AppStrings.GameBoard.diversUsedThisWeek
             return
         }
         guard let roomId = state.roomId ?? roomService.gameRoom?.roomId else {
@@ -586,33 +611,6 @@ final class GameBoardViewModel: ObservableObject {
         }
     }
 
-    func endTurn() {
-        guard let activePlayerId = state.activePlayerId else {
-            errorMessage = AppStrings.GameBoard.noActivePlayer
-            return
-        }
-        guard let roomId = state.roomId ?? roomService.gameRoom?.roomId else {
-            errorMessage = AppStrings.GameBoard.noActiveRoom
-            return
-        }
-
-        do {
-            _ = try roomService.submit(
-                PlayerCommand(
-                    commandId: nextCommandId(),
-                    playerId: activePlayerId,
-                    roomId: roomId,
-                    payload: .endTurn(EndTurnCommand())
-                )
-            )
-            errorMessage = nil
-            refresh()
-        } catch {
-            errorMessage = String(describing: error)
-            refresh()
-        }
-    }
-
     func eventSummary(_ event: GameEvent) -> String {
         let payload: String
         switch event.payload {
@@ -647,7 +645,13 @@ final class GameBoardViewModel: ObservableObject {
         case let .turnEnded(event):
             payload = "回合结束：\(event.playerId)"
         case let .weekEnded(event):
-            payload = "周结束：第 \(event.weekNumber) 周"
+            if let nextWeek = event.nextWeek {
+                payload = "第 \(event.endedWeek) 周结束，进入第 \(nextWeek) 周"
+            } else if event.isGameEndTriggered {
+                payload = "第 \(event.endedWeek) 周结束，游戏结束待结算"
+            } else {
+                payload = "第 \(event.endedWeek) 周结束"
+            }
         case .gameEnded:
             payload = "游戏结束"
         case let .snapshotCreated(event):
@@ -790,6 +794,9 @@ final class GameBoardViewModel: ObservableObject {
         }
         if kind == .young {
             return "幼鱼"
+        }
+        if kind == .school {
+            return "鱼群"
         }
         return kind.rawValue
     }
@@ -1170,8 +1177,6 @@ final class GameBoardViewModel: ObservableObject {
                 return AppStrings.GameBoard.costUnsupportedInUI
             case .invalidDiveSite:
                 return "请选择合法的潜水点。"
-            case .noAvailableDiver:
-                return "没有可用潜水员。"
             case .pendingChoiceNotFound:
                 return AppStrings.GameBoard.pendingChoiceNotFound
             case .pendingChoiceNotOwned:
@@ -1184,6 +1189,10 @@ final class GameBoardViewModel: ObservableObject {
                 return AppStrings.GameBoard.fishDrawPileEmpty
             case .unresolvedPendingChoices:
                 return AppStrings.GameBoard.resolveCurrentRewardFirst
+            case .noAvailableDiver:
+                return AppStrings.GameBoard.diversUsedThisWeek
+            case .passTurnNotAllowed:
+                return AppStrings.GameBoard.passTurnNotAllowed
             }
         }
         return "操作失败：\(String(describing: error))"

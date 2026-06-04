@@ -34,7 +34,6 @@ enum AppStrings {
         static let currentTurn = "当前回合"
         static let activePlayer = "当前行动玩家"
         static let phase = "当前阶段"
-        static let endTurn = "结束回合"
         static let players = "玩家"
         static let eventLog = "事件日志"
         static let noEvents = "暂无事件"
@@ -64,6 +63,9 @@ enum AppStrings {
         static let noPendingChoiceTargets = "没有可用目标"
         static let unsupportedSkippableChoice = "暂未接入，可跳过"
         static let resolveCurrentRewardFirst = "请先处理当前奖励选择。"
+        static let diversUsedThisWeek = "本周潜水员已用完"
+        static let chooseMainAction = "请选择出牌或潜水"
+        static let passTurnNotAllowed = "不能空过回合，请选择出牌或潜水。"
         static let chooseTarget = "选择目标"
         static let drawFish = "抽鱼牌"
         static let chooseOption = "选择选项"
@@ -239,6 +241,8 @@ enum AppStrings {
             return "等待选择"
         case .weekScoring:
             return "周结算"
+        case .endGamePending:
+            return "游戏结束待结算"
         case .gameEnded:
             return "游戏结束"
         }
