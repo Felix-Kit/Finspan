@@ -598,12 +598,155 @@ final class GameEngineTests: XCTestCase {
             in: state
         )
 
-        guard case let .weekEnded(event) = drafts.last else {
+        guard case let .weekEnded(event) = drafts.first(where: { draft in
+            if case .weekEnded = draft {
+                return true
+            }
+            return false
+        }) else {
             return XCTFail("Expected weekEnded event.")
         }
         XCTAssertTrue(event.achievementResults.isEmpty)
         XCTAssertTrue(event.isGameEndTriggered)
         XCTAssertNil(event.nextWeek)
+    }
+
+    func testFourthWeekEndAutomaticallyGeneratesGameEndedAndStoresFinalScore() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        state.currentWeek = 4
+        state.firstPlayerId = "player-1"
+        state.playerGameStates["player-1"]?.availableDivers = 1
+        state.playerGameStates["player-2"]?.availableDivers = 0
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "fourth-week-final-dive",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .dive(DiveCommand(diveSite: .blue))
+            ),
+            in: state
+        )
+
+        guard case let .weekEnded(weekEnded) = drafts[drafts.count - 2],
+              case let .gameEnded(gameEnded) = drafts.last
+        else {
+            return XCTFail("Expected weekEnded followed by gameEnded.")
+        }
+
+        let endGamePendingState = engine.reduce(
+            state: state,
+            event: GameEvent(
+                sequenceNumber: 10,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .weekEnded(weekEnded)
+            )
+        )
+        let gameEndedState = engine.reduce(
+            state: endGamePendingState,
+            event: GameEvent(
+                sequenceNumber: 11,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .gameEnded(gameEnded)
+            )
+        )
+
+        XCTAssertEqual(endGamePendingState.phase, .endGamePending)
+        XCTAssertEqual(gameEndedState.phase, .gameEnded)
+        XCTAssertEqual(gameEndedState.finalScoreResult, gameEnded.finalScoreResult)
+    }
+
+    func testFinalScoreCalculatorScoresAllSupportedCategoriesAndExcludesForageFishPrintedPoints() {
+        let calculator = FinalScoreCalculator()
+        var state = playFishState(keepForageFish: true)
+        clearResources(for: "player-1", in: &state)
+        clearOceanContent(for: "player-1", in: &state)
+        state.weeklyAchievementResults = [
+            WeeklyAchievementResult(week: 1, kind: .eggsAndYoung, playerId: "player-1", quantity: 3, points: 3),
+            WeeklyAchievementResult(week: 2, kind: .rowsOfFish, playerId: "player-1", quantity: 3, points: 6)
+        ]
+        let scoredFishAddress = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        let forageFishAddress = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 3)
+        setContent(.fishCard("scored-fish"), at: scoredFishAddress, in: &state)
+        setContent(
+            .forageFish(
+                ForageFish(
+                    forageFishId: "test-forage",
+                    name: "测试印刷小鱼",
+                    lengthCm: 5,
+                    diveSite: .purple,
+                    rowIndex: 3
+                )
+            ),
+            at: forageFishAddress,
+            in: &state
+        )
+        setResources(
+            [
+                ResourceQuantity(kind: .egg, amount: 2),
+                ResourceQuantity(kind: .young, amount: 3),
+                ResourceQuantity(kind: .school, amount: 2)
+            ],
+            at: scoredFishAddress,
+            in: &state
+        )
+        setConsumedFish(
+            [ConsumedFish(cardId: "consumed-1"), ConsumedFish(cardId: "consumed-2")],
+            at: scoredFishAddress,
+            in: &state
+        )
+
+        let result = calculator.calculate(
+            in: state,
+            cardCatalog: TestCardCatalog(
+                fishCards: [Card(id: "scored-fish", name: "计分鱼牌", printedPoints: 4)]
+            )
+        )
+        let playerResult = result.results.first { $0.playerId == "player-1" }
+
+        XCTAssertEqual(playerResult?.weeklyAchievementPoints, 9)
+        XCTAssertEqual(playerResult?.fishPrintedPoints, 4)
+        XCTAssertEqual(playerResult?.gameEndAbilityPoints, 0)
+        XCTAssertEqual(playerResult?.eggPoints, 2)
+        XCTAssertEqual(playerResult?.youngPoints, 3)
+        XCTAssertEqual(playerResult?.schoolPoints, 12)
+        XCTAssertEqual(playerResult?.consumedFishPoints, 2)
+        XCTAssertEqual(playerResult?.totalPoints, 32)
+    }
+
+    func testFinalScoreCalculatorDeterminesWinnerAndTie() {
+        let calculator = FinalScoreCalculator()
+        var state = playFishState()
+        clearResources(for: "player-1", in: &state)
+        clearResources(for: "player-2", in: &state)
+        setResources(
+            [ResourceQuantity(kind: .egg, amount: 2)],
+            at: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0),
+            in: &state
+        )
+        setResources(
+            [ResourceQuantity(kind: .egg, amount: 1)],
+            at: OceanSlotAddress(playerId: "player-2", diveSite: .blue, rowIndex: 0),
+            in: &state
+        )
+
+        let winnerResult = calculator.calculate(in: state, cardCatalog: TestCardCatalog())
+
+        XCTAssertEqual(winnerResult.winnerPlayerIds, ["player-1"])
+        XCTAssertFalse(winnerResult.isTie)
+
+        setResources(
+            [ResourceQuantity(kind: .egg, amount: 2)],
+            at: OceanSlotAddress(playerId: "player-2", diveSite: .blue, rowIndex: 0),
+            in: &state
+        )
+        let tieResult = calculator.calculate(in: state, cardCatalog: TestCardCatalog())
+
+        XCTAssertEqual(tieResult.winnerPlayerIds, ["player-1", "player-2"])
+        XCTAssertTrue(tieResult.isTie)
     }
 
     func testPlayFishDraftIncludesTargetSlotAndPayment() throws {
@@ -1057,9 +1200,9 @@ final class GameEngineTests: XCTestCase {
                         choiceId: "dive-blue-dive-bonus-3",
                         playerId: "player-1",
                         source: .diveBonus(.blue),
-                        kind: .drawFish,
+                        kind: .recoverFromDiscardOrDraw,
                         options: [],
-                        expectedInput: .none,
+                        expectedInput: .cardSelection,
                         isOptional: true,
                         createdAtSequence: 0
                     )
@@ -1246,15 +1389,225 @@ final class GameEngineTests: XCTestCase {
                         choiceId: "dive-blue-forage-bonus-dive-bonus-2",
                         playerId: "player-1",
                         source: .diveBonus(.blue),
-                        kind: .hatchEgg,
+                        kind: .drawFish,
                         options: [],
-                        expectedInput: .targetSlot,
+                        expectedInput: .none,
                         isOptional: true,
                         createdAtSequence: 0
                     )
                 )
             )
         )
+    }
+
+    func testBaseGameDiveBonusLayoutMatchesPrintedBonuses() {
+        let layout = DiveSiteBonusLayout.baseGame
+
+        XCTAssertEqual(layout.bonuses(for: .blue).map(\.kind), [
+            .drawFish, .drawFish, .drawFish, .recoverFromDiscardOrDraw
+        ])
+        XCTAssertEqual(layout.bonuses(for: .green).map(\.kind), [
+            .placeEgg, .placeEgg, .placeEgg, .placeEgg
+        ])
+        XCTAssertEqual(layout.bonuses(for: .purple).map(\.kind), [
+            .hatchEgg, .hatchEgg, .moveYoungOrSchool, .moveYoungOrSchool
+        ])
+    }
+
+    func testRecoverFromDiscardChoiceMovesSelectedCardToHand() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        let choice = pendingChoice(kind: .recoverFromDiscardOrDraw)
+        state.pendingChoices[choice.choiceId] = choice
+        state.playerGameStates["player-1"]?.discardPile = ["fish-9"]
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "recover-discard",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .resolvePendingChoice(
+                    ResolvePendingChoiceCommand(
+                        choiceId: choice.choiceId,
+                        resolution: .recoverCard("fish-9")
+                    )
+                )
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(payload) = drafts.first else {
+            return XCTFail("Expected pendingChoiceResolved.")
+        }
+        let nextState = engine.reduce(
+            state: state,
+            event: GameEvent(
+                sequenceNumber: 10,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .pendingChoiceResolved(payload)
+            )
+        )
+
+        XCTAssertEqual(payload.appliedEffects, [.recoverFromDiscard(playerId: "player-1", cardId: "fish-9")])
+        XCTAssertTrue(nextState.playerGameStates["player-1"]?.hand.contains("fish-9") == true)
+        XCTAssertEqual(nextState.playerGameStates["player-1"]?.discardPile, [])
+    }
+
+    func testRecoverFromDiscardChoiceDrawsFromDeckWhenDiscardIsEmpty() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        let choice = pendingChoice(kind: .recoverFromDiscardOrDraw)
+        state.pendingChoices[choice.choiceId] = choice
+        state.playerGameStates["player-1"]?.discardPile = []
+        state.deckState.fishDrawPile = ["fish-9", "fish-10"]
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "recover-draw",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .resolvePendingChoice(
+                    ResolvePendingChoiceCommand(
+                        choiceId: choice.choiceId,
+                        resolution: .drawFromDeck
+                    )
+                )
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(payload) = drafts.first else {
+            return XCTFail("Expected pendingChoiceResolved.")
+        }
+        let nextState = engine.reduce(
+            state: state,
+            event: GameEvent(
+                sequenceNumber: 10,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .pendingChoiceResolved(payload)
+            )
+        )
+
+        XCTAssertEqual(payload.appliedEffects, [.drawFish(playerId: "player-1", cardIds: ["fish-9"])])
+        XCTAssertTrue(nextState.playerGameStates["player-1"]?.hand.contains("fish-9") == true)
+        XCTAssertEqual(nextState.deckState.fishDrawPile, ["fish-10"])
+    }
+
+    func testMoveYoungCanFormSchoolAtTarget() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        let choice = pendingChoice(kind: .moveYoungOrSchool)
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 0)
+        state.pendingChoices[choice.choiceId] = choice
+        setResources([ResourceQuantity(kind: .young, amount: 1)], at: source, in: &state)
+        setResources([ResourceQuantity(kind: .young, amount: 2)], at: target, in: &state)
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "move-young",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .resolvePendingChoice(
+                    ResolvePendingChoiceCommand(
+                        choiceId: choice.choiceId,
+                        resolution: .moveResource(source: source, target: target, kind: .young)
+                    )
+                )
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(payload) = drafts.first else {
+            return XCTFail("Expected pendingChoiceResolved.")
+        }
+        let nextState = engine.reduce(
+            state: state,
+            event: GameEvent(
+                sequenceNumber: 10,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .pendingChoiceResolved(payload)
+            )
+        )
+
+        XCTAssertEqual(resourceAmount(.young, at: source, in: nextState), 0)
+        XCTAssertEqual(resourceAmount(.young, at: target, in: nextState), 0)
+        XCTAssertEqual(resourceAmount(.school, at: target, in: nextState), 1)
+    }
+
+    func testMoveSchoolRejectsTargetWithSchool() {
+        let engine = GameEngine()
+        var state = playFishState()
+        let choice = pendingChoice(kind: .moveYoungOrSchool)
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 0)
+        state.pendingChoices[choice.choiceId] = choice
+        setResources([ResourceQuantity(kind: .school, amount: 1)], at: source, in: &state)
+        setResources([ResourceQuantity(kind: .school, amount: 1)], at: target, in: &state)
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: PlayerCommand(
+                    commandId: "move-school-invalid",
+                    playerId: "player-1",
+                    roomId: roomId,
+                    payload: .resolvePendingChoice(
+                        ResolvePendingChoiceCommand(
+                            choiceId: choice.choiceId,
+                            resolution: .moveResource(source: source, target: target, kind: .school)
+                        )
+                    )
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .invalidPendingChoiceResolution(choice.choiceId))
+        }
+    }
+
+    func testMoveSchoolMovesOneSchoolToEmptySchoolTarget() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        let choice = pendingChoice(kind: .moveYoungOrSchool)
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 0)
+        state.pendingChoices[choice.choiceId] = choice
+        setResources([ResourceQuantity(kind: .school, amount: 1)], at: source, in: &state)
+        setResources([], at: target, in: &state)
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "move-school",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .resolvePendingChoice(
+                    ResolvePendingChoiceCommand(
+                        choiceId: choice.choiceId,
+                        resolution: .moveResource(source: source, target: target, kind: .school)
+                    )
+                )
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(payload) = drafts.first else {
+            return XCTFail("Expected pendingChoiceResolved.")
+        }
+        let nextState = engine.reduce(
+            state: state,
+            event: GameEvent(
+                sequenceNumber: 10,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .pendingChoiceResolved(payload)
+            )
+        )
+
+        XCTAssertEqual(resourceAmount(.school, at: source, in: nextState), 0)
+        XCTAssertEqual(resourceAmount(.school, at: target, in: nextState), 1)
     }
 
     func testPendingChoiceCreatedReducerAddsChoiceToGameState() {
@@ -2197,4 +2550,24 @@ final class GameEngineTests: XCTestCase {
         state.playerGameStates[address.playerId] = playerState
     }
 
+    private func setConsumedFish(
+        _ consumedFish: [ConsumedFish],
+        at address: OceanSlotAddress,
+        in state: inout GameState
+    ) {
+        guard var playerState = state.playerGameStates[address.playerId],
+              let slotIndex = playerState.ocean.slots.firstIndex(where: { $0.address == address })
+        else {
+            return
+        }
+
+        playerState.ocean.slots[slotIndex].consumedFish = consumedFish
+        state.playerGameStates[address.playerId] = playerState
+    }
+
+}
+
+private struct TestCardCatalog: CardCatalog {
+    var starterFishCards: [Card] = []
+    var fishCards: [Card] = []
 }

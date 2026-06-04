@@ -8,6 +8,7 @@ struct Card: Identifiable, Codable, Equatable, Sendable {
     var abilities: [AbilityDefinition]
     var allowedZones: [OceanZone]
     var requiredDiveSiteColor: DiveSiteColor?
+    var printedPoints: Int
 
     init(
         id: String,
@@ -16,7 +17,8 @@ struct Card: Identifiable, Codable, Equatable, Sendable {
         requirements: [Requirement] = [],
         abilities: [AbilityDefinition] = [],
         allowedZones: [OceanZone] = OceanZone.allCases,
-        requiredDiveSiteColor: DiveSiteColor? = nil
+        requiredDiveSiteColor: DiveSiteColor? = nil,
+        printedPoints: Int = 0
     ) {
         self.id = id
         self.name = name
@@ -25,5 +27,6 @@ struct Card: Identifiable, Codable, Equatable, Sendable {
         self.abilities = abilities
         self.allowedZones = allowedZones
         self.requiredDiveSiteColor = requiredDiveSiteColor
+        self.printedPoints = printedPoints
     }
 }

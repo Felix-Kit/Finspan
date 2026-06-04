@@ -50,6 +50,20 @@ enum AppStrings {
         static let noPendingChoices = "暂无待处理选择。"
         static let weeklyAchievementPanel = "周成就分"
         static let noWeeklyAchievementResults = "暂无周成就结果。"
+        static let finalScoreTitle = "最终结算"
+        static let finalScoreNoResult = "暂无最终结算结果。"
+        static let finalScoreWinner = "获胜玩家"
+        static let finalScoreTie = "并列获胜玩家"
+        static let finalScoreLegend = "计分图例"
+        static let finalScoreTotal = "总分"
+        static let finalScoreFinalPoints = "最终得分"
+        static let finalScoreWeeklyAchievements = "周成就"
+        static let finalScoreFishPrintedPoints = "鱼牌分"
+        static let finalScoreGameEndAbility = "游戏结束能力"
+        static let finalScoreEggsAndYoung = "鱼卵 / 幼鱼"
+        static let finalScoreSchools = "鱼群"
+        static let finalScoreConsumedFish = "被吞食鱼"
+        static let playerColor = "玩家颜色"
         static let pendingChoicePlayer = "玩家"
         static let pendingChoiceSource = "来源"
         static let pendingChoiceStatus = "状态"
@@ -62,6 +76,13 @@ enum AppStrings {
         static let chooseTargetFromList = "请从目标列表中选择格子。"
         static let choosePlaceEggTarget = "选择放置鱼卵的格子"
         static let chooseHatchEggTarget = "选择要孵化的鱼卵"
+        static let recoverFromDiscardOrDraw = "从弃牌堆拿回 1 张牌"
+        static let chooseDiscardCardToRecover = "选择要拿回的弃牌"
+        static let discardPileEmptyDrawHint = "弃牌堆为空，可从牌堆抽 1 张"
+        static let moveYoungOrSchool = "移动幼鱼或鱼群"
+        static let chooseMoveSource = "选择移动来源"
+        static let chooseMoveTarget = "选择移动目标"
+        static let noMovableYoungOrSchool = "没有可移动的幼鱼或鱼群"
         static let noPendingChoiceTargets = "没有可用目标"
         static let unsupportedSkippableChoice = "暂未接入，可跳过"
         static let resolveCurrentRewardFirst = "请先处理当前奖励选择。"
@@ -170,6 +191,33 @@ enum AppStrings {
             }
             return "第 \(endedWeek) 周结束"
         }
+
+        static func finalScoreWinnerText(playerNames: [String], isTie: Bool) -> String {
+            let label = isTie ? finalScoreTie : finalScoreWinner
+            return "\(label)：\(playerNames.joined(separator: "、"))"
+        }
+
+        static func finalScorePlayerColorText(_ colorName: String?) -> String {
+            guard let colorName else {
+                return "\(playerColor)：未选择"
+            }
+            return "\(playerColor)：\(colorName)"
+        }
+
+        static func finalScorePointsText(title: String, points: Int) -> String {
+            "\(title) +\(points)"
+        }
+
+        static func finalScoreTotalText(points: Int) -> String {
+            "\(finalScoreFinalPoints) \(points) 分"
+        }
+
+        static func gameEndedEventText(winnerNames: [String]) -> String {
+            guard !winnerNames.isEmpty else {
+                return "游戏结束，最终计分已完成"
+            }
+            return "游戏结束，获胜玩家：\(winnerNames.joined(separator: "、"))"
+        }
     }
 
     static func achievementKindName(_ kind: AchievementKind) -> String {
@@ -266,6 +314,10 @@ enum AppStrings {
             return "放置鱼卵"
         case .hatchEgg:
             return "孵化鱼卵"
+        case .recoverFromDiscardOrDraw:
+            return "从弃牌堆拿回 1 张牌"
+        case .moveYoungOrSchool:
+            return "移动幼鱼或鱼群"
         case .bottomBonus:
             return "底部奖励"
         case .placeholder:

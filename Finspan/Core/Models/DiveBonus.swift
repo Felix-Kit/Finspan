@@ -4,6 +4,8 @@ enum DiveBonusKind: String, Codable, Equatable, Sendable {
     case drawFish
     case placeEgg
     case hatchEgg
+    case recoverFromDiscardOrDraw
+    case moveYoungOrSchool
     case unsupported
 }
 
@@ -39,39 +41,28 @@ struct DiveSiteBonusLayout: Codable, Equatable, Sendable {
         }
     }
 
-    static let sampleBaseGame = DiveSiteBonusLayout(
-        bonusesBySite: Dictionary(
-            uniqueKeysWithValues: DiveActionSite.baseGameSites.map { site in
-                (
-                    site,
-                    [
-                        DiveBonusDefinition(
-                            diveSite: site,
-                            position: .zone(.sunlit),
-                            kind: .drawFish,
-                            amount: 1
-                        ),
-                        DiveBonusDefinition(
-                            diveSite: site,
-                            position: .zone(.twilight),
-                            kind: .placeEgg,
-                            amount: 1
-                        ),
-                        DiveBonusDefinition(
-                            diveSite: site,
-                            position: .zone(.midnight),
-                            kind: .hatchEgg,
-                            amount: 1
-                        ),
-                        DiveBonusDefinition(
-                            diveSite: site,
-                            position: .bottom,
-                            kind: .drawFish,
-                            amount: 1
-                        )
-                    ]
-                )
-            }
-        )
+    static let baseGame = DiveSiteBonusLayout(
+        bonusesBySite: [
+            .blue: [
+                DiveBonusDefinition(diveSite: .blue, position: .zone(.sunlit), kind: .drawFish, amount: 1),
+                DiveBonusDefinition(diveSite: .blue, position: .zone(.twilight), kind: .drawFish, amount: 1),
+                DiveBonusDefinition(diveSite: .blue, position: .zone(.midnight), kind: .drawFish, amount: 1),
+                DiveBonusDefinition(diveSite: .blue, position: .bottom, kind: .recoverFromDiscardOrDraw, amount: 1)
+            ],
+            .green: [
+                DiveBonusDefinition(diveSite: .green, position: .zone(.sunlit), kind: .placeEgg, amount: 1),
+                DiveBonusDefinition(diveSite: .green, position: .zone(.twilight), kind: .placeEgg, amount: 1),
+                DiveBonusDefinition(diveSite: .green, position: .zone(.midnight), kind: .placeEgg, amount: 1),
+                DiveBonusDefinition(diveSite: .green, position: .bottom, kind: .placeEgg, amount: 1)
+            ],
+            .purple: [
+                DiveBonusDefinition(diveSite: .purple, position: .zone(.sunlit), kind: .hatchEgg, amount: 1),
+                DiveBonusDefinition(diveSite: .purple, position: .zone(.twilight), kind: .hatchEgg, amount: 1),
+                DiveBonusDefinition(diveSite: .purple, position: .zone(.midnight), kind: .moveYoungOrSchool, amount: 1),
+                DiveBonusDefinition(diveSite: .purple, position: .bottom, kind: .moveYoungOrSchool, amount: 1)
+            ]
+        ]
     )
+
+    static let sampleBaseGame = baseGame
 }

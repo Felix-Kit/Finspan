@@ -26,6 +26,8 @@ enum PendingChoiceKind: String, Codable, Equatable, Sendable {
     case drawFish
     case placeEgg
     case hatchEgg
+    case recoverFromDiscardOrDraw
+    case moveYoungOrSchool
     case bottomBonus
     case placeholder
     case unsupported
@@ -40,6 +42,7 @@ enum PendingChoiceExpectedInput: Codable, Equatable, Sendable {
     case none
     case targetSlot
     case cardSelection
+    case sourceAndTargetSlots
     case count(Int)
 }
 
@@ -47,13 +50,18 @@ enum PendingChoiceResolution: Codable, Equatable, Sendable {
     case skip
     case chooseTarget(OceanSlotAddress)
     case draw(count: Int)
+    case recoverCard(CardID)
+    case drawFromDeck
+    case moveResource(source: OceanSlotAddress, target: OceanSlotAddress, kind: ResourceKind)
     case chooseOption(String)
 }
 
 enum PendingChoiceAppliedEffect: Codable, Equatable, Sendable {
     case none
     case drawFish(playerId: PlayerID, cardIds: [CardID])
+    case recoverFromDiscard(playerId: PlayerID, cardId: CardID)
     case placeEgg(target: OceanSlotAddress, amount: Int)
     case hatchEgg(target: OceanSlotAddress, amount: Int)
+    case moveResource(source: OceanSlotAddress, target: OceanSlotAddress, kind: ResourceKind, amount: Int)
     case placeholder(String)
 }

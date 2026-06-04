@@ -244,13 +244,16 @@ final class LocalAuthoritativeRoomService: RoomService {
             updateRoom(event) { _ in }
         case .turnEnded:
             updateRoom(event) { _ in }
+        case .gameEnded:
+            updateRoom(event) { room in
+                room.status = .finished
+            }
         case .fishPlayed,
              .diverMoved,
              .pendingChoiceCreated,
              .pendingChoiceResolved,
              .abilityOptionChosen,
              .weekEnded,
-             .gameEnded,
              .snapshotCreated:
             updateRoom(event) { _ in }
         }

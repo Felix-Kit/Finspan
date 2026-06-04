@@ -162,7 +162,7 @@ struct WeekEndedEvent: Codable, Equatable, Sendable {
 }
 
 struct GameEndedEvent: Codable, Equatable, Sendable {
-    var reason: String
+    var finalScoreResult: FinalScoreResult
 }
 
 struct SnapshotCreatedEvent: Codable, Equatable, Sendable {

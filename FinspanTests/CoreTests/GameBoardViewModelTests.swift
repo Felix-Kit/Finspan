@@ -399,6 +399,140 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.weeklyAchievementResults.isEmpty)
     }
 
+    func testFinalScoreResultGeneratesChineseViewStateWithWinnerRowsSegmentsAndLegend() {
+        let playerOneScore = FinalScoreBreakdown(
+            playerId: "player-1",
+            weeklyAchievementPoints: 3,
+            fishPrintedPoints: 4,
+            gameEndAbilityPoints: 0,
+            eggPoints: 1,
+            youngPoints: 1,
+            schoolPoints: 0,
+            consumedFishPoints: 1,
+            totalPoints: 10
+        )
+        let playerTwoScore = FinalScoreBreakdown(
+            playerId: "player-2",
+            weeklyAchievementPoints: 6,
+            fishPrintedPoints: 5,
+            gameEndAbilityPoints: 0,
+            eggPoints: 2,
+            youngPoints: 1,
+            schoolPoints: 6,
+            consumedFishPoints: 0,
+            totalPoints: 20
+        )
+        let service = makeService(
+            hand: [],
+            phase: .gameEnded,
+            activePlayerId: nil,
+            finalScoreResult: FinalScoreResult(
+                results: [playerOneScore, playerTwoScore],
+                winnerPlayerIds: ["player-2"],
+                isTie: false
+            )
+        )
+        service.gameRoom?.players.append(
+            RoomPlayer(playerId: "player-2", displayName: "玩家 2", color: .green)
+        )
+        service.gameState.players.append(Player(id: "player-2", name: "玩家 2"))
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        guard let finalScoreViewState = viewModel.finalScoreViewState else {
+            return XCTFail("Expected final score view state.")
+        }
+
+        XCTAssertEqual(finalScoreViewState.title, AppStrings.GameBoard.finalScoreTitle)
+        XCTAssertEqual(finalScoreViewState.winnerText, "获胜玩家：玩家 2")
+        XCTAssertEqual(finalScoreViewState.playerRows.count, 2)
+        XCTAssertEqual(finalScoreViewState.playerRows[0].avatarText, "玩")
+        XCTAssertEqual(finalScoreViewState.playerRows[0].totalPoints, 10)
+        XCTAssertEqual(finalScoreViewState.playerRows[0].segments.count, 6)
+        XCTAssertEqual(finalScoreViewState.playerRows[0].segments.map(\.category), [
+            .weeklyAchievements,
+            .fishPrintedPoints,
+            .gameEndAbilityPoints,
+            .eggsAndYoung,
+            .schools,
+            .consumedFish
+        ])
+        XCTAssertEqual(finalScoreViewState.playerRows[0].segments[0].widthRatioRelativeToMaxTotal, 0.15, accuracy: 0.0001)
+        XCTAssertTrue(finalScoreViewState.playerRows[1].isWinner)
+        XCTAssertEqual(finalScoreViewState.legendItems.count, 6)
+    }
+
+    func testFinalScoreZeroCategoriesDoNotBreakProportionCalculation() {
+        let service = makeService(
+            hand: [],
+            phase: .gameEnded,
+            activePlayerId: nil,
+            finalScoreResult: FinalScoreResult(
+                results: [
+                    FinalScoreBreakdown(
+                        playerId: "player-1",
+                        weeklyAchievementPoints: 0,
+                        fishPrintedPoints: 0,
+                        gameEndAbilityPoints: 0,
+                        eggPoints: 0,
+                        youngPoints: 0,
+                        schoolPoints: 0,
+                        consumedFishPoints: 0,
+                        totalPoints: 0
+                    )
+                ],
+                winnerPlayerIds: ["player-1"],
+                isTie: false
+            )
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let proportions = viewModel.finalScoreViewState?.playerRows[0].segments.map(\.widthRatioRelativeToMaxTotal)
+
+        XCTAssertEqual(proportions, [0, 0, 0, 0, 0, 0])
+    }
+
+    func testGameEndedPhasePreventsPlayFishAndDiveSubmission() {
+        let service = makeService(
+            hand: ["starter-fish-1"],
+            phase: .gameEnded,
+            activePlayerId: nil,
+            finalScoreResult: FinalScoreResult(
+                results: [],
+                winnerPlayerIds: [],
+                isTie: false
+            )
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.submitDive(to: .blue)
+        viewModel.submitPlayFish()
+
+        XCTAssertFalse(viewModel.canDive)
+        XCTAssertFalse(viewModel.canSubmitPlayFish)
+        XCTAssertTrue(service.submittedCommands.isEmpty)
+    }
+
+    func testGameEndedEventSummaryShowsWinner() {
+        let service = makeService(hand: [])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let event = GameEvent(
+            sequenceNumber: 12,
+            roomId: "room-1",
+            timestamp: Date(timeIntervalSince1970: 1_000),
+            payload: .gameEnded(
+                GameEndedEvent(
+                    finalScoreResult: FinalScoreResult(
+                        results: [],
+                        winnerPlayerIds: ["player-1"],
+                        isTie: false
+                    )
+                )
+            )
+        )
+
+        XCTAssertEqual(viewModel.eventSummary(event), "#12 游戏结束，获胜玩家：玩家 1")
+    }
+
     func testDrawFishPendingChoiceShowsDrawAndSkipActions() {
         let choice = pendingChoice(kind: .drawFish)
         let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
@@ -577,7 +711,8 @@ final class GameBoardViewModelTests: XCTestCase {
         phase: GamePhase = .playing,
         currentWeek: Int = 1,
         activePlayerId: PlayerID? = "player-1",
-        weeklyAchievementResults: [WeeklyAchievementResult] = []
+        weeklyAchievementResults: [WeeklyAchievementResult] = [],
+        finalScoreResult: FinalScoreResult? = nil
     ) -> CapturingRoomService {
         var ocean = OceanState.baseGameInitial(for: "player-1")
         for emptySlot in emptySlots {
@@ -632,7 +767,8 @@ final class GameBoardViewModelTests: XCTestCase {
                 ],
                 deckState: .empty,
                 pendingChoices: pendingChoices,
-                weeklyAchievementResults: weeklyAchievementResults
+                weeklyAchievementResults: weeklyAchievementResults,
+                finalScoreResult: finalScoreResult
             )
         )
     }

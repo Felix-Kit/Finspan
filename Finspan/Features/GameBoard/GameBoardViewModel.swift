@@ -95,9 +95,35 @@ struct PendingChoiceViewData: Identifiable, Equatable {
     let targetPrompt: String?
     let noTargetsText: String?
     let targets: [PendingChoiceTargetViewData]
+    let cardTargets: [PendingChoiceCardTargetViewData]
+    let moveTargets: [PendingChoiceMoveTargetViewData]
     let canSkip: Bool
     let canResolve: Bool
     let actions: [PendingChoiceActionViewData]
+}
+
+struct PendingChoiceCardTargetViewData: Identifiable, Equatable {
+    var id: String { "\(choiceId)-\(cardId)" }
+
+    let choiceId: PendingChoiceID
+    let cardId: CardID
+    let title: String
+    let subtitle: String
+    let isEnabled: Bool
+}
+
+struct PendingChoiceMoveTargetViewData: Identifiable, Equatable {
+    var id: String {
+        "\(choiceId)-\(kind.rawValue)-\(source.diveSite.rawValue)-\(source.rowIndex)-\(target.diveSite.rawValue)-\(target.rowIndex)"
+    }
+
+    let choiceId: PendingChoiceID
+    let source: OceanSlotAddress
+    let target: OceanSlotAddress
+    let kind: ResourceKind
+    let title: String
+    let subtitle: String
+    let isEnabled: Bool
 }
 
 struct PendingChoiceTargetViewData: Identifiable, Equatable {
@@ -134,8 +160,66 @@ struct WeeklyAchievementResultViewData: Identifiable, Equatable {
     let subtitle: String
 }
 
+enum ScoreBarCategory: String, Codable, Equatable, Sendable {
+    case weeklyAchievements
+    case fishPrintedPoints
+    case gameEndAbilityPoints
+    case eggsAndYoung
+    case schools
+    case consumedFish
+}
+
+enum ScoreBarColorStyle: String, Codable, Equatable, Sendable {
+    case weeklyAchievements
+    case fishPrintedPoints
+    case gameEndAbilityPoints
+    case eggsAndYoung
+    case schools
+    case consumedFish
+}
+
+struct ScoreBarSegmentViewState: Identifiable, Codable, Equatable, Sendable {
+    var id: String { category.rawValue }
+
+    let category: ScoreBarCategory
+    let title: String
+    let points: Int
+    let widthRatioRelativeToMaxTotal: Double
+    let displayColorKey: ScoreBarColorStyle
+}
+
+struct ScoreLegendItemViewState: Identifiable, Codable, Equatable, Sendable {
+    var id: String { displayColorKey.rawValue }
+
+    let title: String
+    let displayColorKey: ScoreBarColorStyle
+}
+
+struct FinalScorePlayerRowViewState: Identifiable, Codable, Equatable, Sendable {
+    var id: PlayerID { playerId }
+
+    let playerId: PlayerID
+    let playerDisplayName: String
+    let playerColorText: String
+    let avatarText: String
+    let totalPoints: Int
+    let totalText: String
+    let totalWidthRatioRelativeToMaxTotal: Double
+    let isWinner: Bool
+    let segments: [ScoreBarSegmentViewState]
+}
+
+struct FinalScoreViewState: Codable, Equatable, Sendable {
+    let title: String
+    let winnerText: String
+    let maxTotalPoints: Int
+    let playerRows: [FinalScorePlayerRowViewState]
+    let legendItems: [ScoreLegendItemViewState]
+}
+
 enum PendingChoiceAction: String, Equatable {
     case drawFish
+    case drawFromDeck
     case chooseTarget
     case skip
 }
@@ -177,7 +261,10 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     var canDive: Bool {
-        !isSelectingPlayFish && !hasBlockingPendingChoices && (activePlayerState?.availableDivers ?? 0) > 0
+        state.phase == .playing
+            && !isSelectingPlayFish
+            && !hasBlockingPendingChoices
+            && (activePlayerState?.availableDivers ?? 0) > 0
     }
 
     var diverAvailabilityWarning: String? {
@@ -242,6 +329,8 @@ final class GameBoardViewModel: ObservableObject {
                     targetPrompt: pendingChoiceTargetPrompt(for: choice),
                     noTargetsText: noPendingChoiceTargetsText(for: choice),
                     targets: pendingChoiceTargets(for: choice),
+                    cardTargets: pendingChoiceCardTargets(for: choice),
+                    moveTargets: pendingChoiceMoveTargets(for: choice),
                     canSkip: choice.isOptional,
                     canResolve: canResolvePendingChoice(choice),
                     actions: pendingChoiceActionButtons(for: choice)
@@ -274,6 +363,43 @@ final class GameBoardViewModel: ObservableObject {
                     )
                 )
             }
+    }
+
+    var finalScoreViewState: FinalScoreViewState? {
+        guard let finalScoreResult = state.finalScoreResult else {
+            return nil
+        }
+        let maxTotalPoints = finalScoreResult.results.map(\.totalPoints).max() ?? 0
+        let ratioDivisor = max(maxTotalPoints, 1)
+        let winnerNames = finalScoreResult.winnerPlayerIds.map(displayName)
+        let playerRows = finalScoreResult.results.map { result in
+            let playerName = displayName(for: result.playerId)
+            let playerColor = players.first(where: { $0.playerId == result.playerId })?.color
+            return FinalScorePlayerRowViewState(
+                playerId: result.playerId,
+                playerDisplayName: playerName,
+                playerColorText: AppStrings.GameBoard.finalScorePlayerColorText(
+                    playerColor.map(AppStrings.colorName)
+                ),
+                avatarText: String(playerName.prefix(1)),
+                totalPoints: result.totalPoints,
+                totalText: AppStrings.GameBoard.finalScoreTotalText(points: result.totalPoints),
+                totalWidthRatioRelativeToMaxTotal: Double(result.totalPoints) / Double(ratioDivisor),
+                isWinner: finalScoreResult.winnerPlayerIds.contains(result.playerId),
+                segments: finalScoreSegments(for: result, maximumTotal: ratioDivisor)
+            )
+        }
+
+        return FinalScoreViewState(
+            title: AppStrings.GameBoard.finalScoreTitle,
+            winnerText: AppStrings.GameBoard.finalScoreWinnerText(
+                playerNames: winnerNames,
+                isTie: finalScoreResult.isTie
+            ),
+            maxTotalPoints: maxTotalPoints,
+            playerRows: playerRows,
+            legendItems: finalScoreLegendItems
+        )
     }
 
     var activePlayerState: PlayerGameState? {
@@ -331,7 +457,7 @@ final class GameBoardViewModel: ObservableObject {
         let unsupportedItems = selectedCardUnsupportedItems(selectedCard)
         return SelectedFishCardViewData(
             title: cardTitle(selectedCard.id),
-            scoreText: AppStrings.GameBoard.cardScoreUnsupported,
+            scoreText: "\(selectedCard.printedPoints)",
             lengthText: AppStrings.GameBoard.cardLengthUnsupported,
             allowedZonesText: selectedCard.allowedZones.map(AppStrings.oceanZoneName).joined(separator: "，"),
             requiredDiveSiteText: selectedCard.requiredDiveSiteColor.map(AppStrings.diveSiteColorName) ?? AppStrings.GameBoard.noLimit,
@@ -390,7 +516,8 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     var canSubmitPlayFish: Bool {
-        guard selectedCard != nil,
+        guard state.phase == .playing,
+              selectedCard != nil,
               selectedTargetSlotIsAvailable,
               !hasBlockingPendingChoices,
               (activePlayerState?.availableDivers ?? 0) > 0,
@@ -607,6 +734,8 @@ final class GameBoardViewModel: ObservableObject {
         switch action {
         case .drawFish:
             resolvePendingChoice(choiceId, resolution: .draw(count: 1))
+        case .drawFromDeck:
+            resolvePendingChoice(choiceId, resolution: .drawFromDeck)
         case .skip:
             resolvePendingChoice(choiceId, resolution: .skip)
         case .chooseTarget:
@@ -616,6 +745,22 @@ final class GameBoardViewModel: ObservableObject {
 
     func resolvePendingChoice(_ choiceId: PendingChoiceID, target: OceanSlotAddress) {
         resolvePendingChoice(choiceId, resolution: .chooseTarget(target))
+    }
+
+    func resolvePendingChoice(_ choiceId: PendingChoiceID, recoverCardId: CardID) {
+        resolvePendingChoice(choiceId, resolution: .recoverCard(recoverCardId))
+    }
+
+    func resolvePendingChoice(
+        _ choiceId: PendingChoiceID,
+        moveSource: OceanSlotAddress,
+        target: OceanSlotAddress,
+        kind: ResourceKind
+    ) {
+        resolvePendingChoice(
+            choiceId,
+            resolution: .moveResource(source: moveSource, target: target, kind: kind)
+        )
     }
 
     private func resolvePendingChoice(_ choiceId: PendingChoiceID, resolution: PendingChoiceResolution) {
@@ -698,8 +843,10 @@ final class GameBoardViewModel: ObservableObject {
                 isGameEndTriggered: event.isGameEndTriggered,
                 achievementSummary: achievementSummary.isEmpty ? nil : achievementSummary
             )
-        case .gameEnded:
-            payload = "游戏结束"
+        case let .gameEnded(event):
+            payload = AppStrings.GameBoard.gameEndedEventText(
+                winnerNames: event.finalScoreResult.winnerPlayerIds.map(displayName)
+            )
         case let .snapshotCreated(event):
             payload = "快照：\(event.snapshotSequenceNumber)"
         }
@@ -876,8 +1023,20 @@ final class GameBoardViewModel: ObservableObject {
                     isEnabled: canResolve
                 )
             )
+        case .recoverFromDiscardOrDraw:
+            if state.playerGameStates[choice.playerId]?.discardPile.isEmpty == true {
+                actions.append(
+                    PendingChoiceActionViewData(
+                        choiceId: choice.choiceId,
+                        action: .drawFromDeck,
+                        title: AppStrings.GameBoard.drawOneFishCard,
+                        isEnabled: canResolve && !state.deckState.fishDrawPile.isEmpty
+                    )
+                )
+            }
         case .placeEgg,
-             .hatchEgg:
+             .hatchEgg,
+             .moveYoungOrSchool:
             break
         case .bottomBonus,
              .placeholder,
@@ -935,6 +1094,65 @@ final class GameBoardViewModel: ObservableObject {
             }
     }
 
+    func pendingChoiceCardTargets(for choice: PendingChoice) -> [PendingChoiceCardTargetViewData] {
+        guard choice.kind == .recoverFromDiscardOrDraw,
+              let playerState = state.playerGameStates[choice.playerId]
+        else {
+            return []
+        }
+
+        return playerState.discardPile.map { cardId in
+            PendingChoiceCardTargetViewData(
+                choiceId: choice.choiceId,
+                cardId: cardId,
+                title: cardTitle(cardId),
+                subtitle: AppStrings.GameBoard.recoverFromDiscardOrDraw,
+                isEnabled: canResolvePendingChoice(choice)
+            )
+        }
+    }
+
+    func pendingChoiceMoveTargets(for choice: PendingChoice) -> [PendingChoiceMoveTargetViewData] {
+        guard choice.kind == .moveYoungOrSchool,
+              let playerState = state.playerGameStates[choice.playerId]
+        else {
+            return []
+        }
+
+        let slots = playerState.ocean.slots.sorted(by: slotSort)
+        var results: [PendingChoiceMoveTargetViewData] = []
+        for source in slots {
+            for kind in [ResourceKind.young, ResourceKind.school] where resourceAmount(kind, in: source) > 0 {
+                for target in slots where moveTargetIsLegal(target, from: source, kind: kind) {
+                    results.append(
+                        PendingChoiceMoveTargetViewData(
+                            choiceId: choice.choiceId,
+                            source: source.address,
+                            target: target.address,
+                            kind: kind,
+                            title: "\(resourceName(kind))：\(slotLocationText(source.address)) → \(slotLocationText(target.address))",
+                            subtitle: "\(AppStrings.GameBoard.chooseMoveSource)：\(resourcesText(source.resources))，\(AppStrings.GameBoard.chooseMoveTarget)：\(resourcesText(target.resources))",
+                            isEnabled: canResolvePendingChoice(choice)
+                        )
+                    )
+                }
+            }
+        }
+        return results
+    }
+
+    private func moveTargetIsLegal(_ target: OceanSlot, from source: OceanSlot, kind: ResourceKind) -> Bool {
+        guard source.address != target.address,
+              source.address.playerId == target.address.playerId
+        else {
+            return false
+        }
+        if kind == .school {
+            return resourceAmount(.school, in: target) == 0
+        }
+        return kind == .young
+    }
+
     private func pendingChoiceTargetIsLegal(_ slot: OceanSlot, for choice: PendingChoice) -> Bool {
         guard slot.address.playerId == choice.playerId else {
             return false
@@ -946,6 +1164,8 @@ final class GameBoardViewModel: ObservableObject {
         case .hatchEgg:
             return resourceAmount(.egg, in: slot) > 0
         case .drawFish,
+             .recoverFromDiscardOrDraw,
+             .moveYoungOrSchool,
              .bottomBonus,
              .placeholder,
              .unsupported:
@@ -959,6 +1179,12 @@ final class GameBoardViewModel: ObservableObject {
             return AppStrings.GameBoard.choosePlaceEggTarget
         case .hatchEgg:
             return AppStrings.GameBoard.chooseHatchEggTarget
+        case .recoverFromDiscardOrDraw:
+            return state.playerGameStates[choice.playerId]?.discardPile.isEmpty == true
+                ? AppStrings.GameBoard.discardPileEmptyDrawHint
+                : AppStrings.GameBoard.chooseDiscardCardToRecover
+        case .moveYoungOrSchool:
+            return AppStrings.GameBoard.moveYoungOrSchool
         case .drawFish,
              .bottomBonus,
              .placeholder,
@@ -968,10 +1194,16 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     private func noPendingChoiceTargetsText(for choice: PendingChoice) -> String? {
-        guard choice.kind == .placeEgg || choice.kind == .hatchEgg else {
+        if choice.kind == .placeEgg || choice.kind == .hatchEgg {
+            return pendingChoiceTargets(for: choice).isEmpty ? AppStrings.GameBoard.noPendingChoiceTargets : nil
+        }
+        if choice.kind == .moveYoungOrSchool {
+            return pendingChoiceMoveTargets(for: choice).isEmpty ? AppStrings.GameBoard.noMovableYoungOrSchool : nil
+        }
+        if choice.kind == .recoverFromDiscardOrDraw {
             return nil
         }
-        return pendingChoiceTargets(for: choice).isEmpty ? AppStrings.GameBoard.noPendingChoiceTargets : nil
+        return nil
     }
 
     private func pendingChoiceResolutionName(_ resolution: PendingChoiceResolution) -> String {
@@ -982,6 +1214,12 @@ final class GameBoardViewModel: ObservableObject {
             return AppStrings.GameBoard.chooseTarget
         case .draw:
             return AppStrings.GameBoard.drawFish
+        case .recoverCard:
+            return AppStrings.GameBoard.recoverFromDiscardOrDraw
+        case .drawFromDeck:
+            return AppStrings.GameBoard.drawFish
+        case .moveResource:
+            return AppStrings.GameBoard.moveYoungOrSchool
         case .chooseOption:
             return AppStrings.GameBoard.chooseOption
         }
@@ -1012,6 +1250,17 @@ final class GameBoardViewModel: ObservableObject {
         AppStrings.oceanRowLabel(rowIndex: address.rowIndex)
     }
 
+    private func slotLocationText(_ address: OceanSlotAddress) -> String {
+        "\(AppStrings.oceanDiveSiteName(address.diveSite)) · \(slotTitle(address))"
+    }
+
+    private func slotSort(_ left: OceanSlot, _ right: OceanSlot) -> Bool {
+        if left.address.diveSite.rawValue == right.address.diveSite.rawValue {
+            return left.address.rowIndex < right.address.rowIndex
+        }
+        return diveSiteSortIndex(left.address.diveSite) < diveSiteSortIndex(right.address.diveSite)
+    }
+
     private func zoneName(_ zone: OceanZone) -> String {
         AppStrings.oceanZoneName(zone)
     }
@@ -1037,6 +1286,89 @@ final class GameBoardViewModel: ObservableObject {
         players.first(where: { $0.playerId == playerId })?.displayName
             ?? state.players.first(where: { $0.id == playerId })?.name
             ?? playerId
+    }
+
+    private var finalScoreLegendItems: [ScoreLegendItemViewState] {
+        [
+            ScoreLegendItemViewState(
+                title: AppStrings.GameBoard.finalScoreWeeklyAchievements,
+                displayColorKey: .weeklyAchievements
+            ),
+            ScoreLegendItemViewState(
+                title: AppStrings.GameBoard.finalScoreFishPrintedPoints,
+                displayColorKey: .fishPrintedPoints
+            ),
+            ScoreLegendItemViewState(
+                title: AppStrings.GameBoard.finalScoreGameEndAbility,
+                displayColorKey: .gameEndAbilityPoints
+            ),
+            ScoreLegendItemViewState(
+                title: AppStrings.GameBoard.finalScoreEggsAndYoung,
+                displayColorKey: .eggsAndYoung
+            ),
+            ScoreLegendItemViewState(
+                title: AppStrings.GameBoard.finalScoreSchools,
+                displayColorKey: .schools
+            ),
+            ScoreLegendItemViewState(
+                title: AppStrings.GameBoard.finalScoreConsumedFish,
+                displayColorKey: .consumedFish
+            )
+        ]
+    }
+
+    private func finalScoreSegments(
+        for result: FinalScoreBreakdown,
+        maximumTotal: Int
+    ) -> [ScoreBarSegmentViewState] {
+        let segmentValues: [(ScoreBarCategory, String, Int, ScoreBarColorStyle)] = [
+            (
+                .weeklyAchievements,
+                AppStrings.GameBoard.finalScoreWeeklyAchievements,
+                result.weeklyAchievementPoints,
+                .weeklyAchievements
+            ),
+            (
+                .fishPrintedPoints,
+                AppStrings.GameBoard.finalScoreFishPrintedPoints,
+                result.fishPrintedPoints,
+                .fishPrintedPoints
+            ),
+            (
+                .gameEndAbilityPoints,
+                AppStrings.GameBoard.finalScoreGameEndAbility,
+                result.gameEndAbilityPoints,
+                .gameEndAbilityPoints
+            ),
+            (
+                .eggsAndYoung,
+                AppStrings.GameBoard.finalScoreEggsAndYoung,
+                result.eggPoints + result.youngPoints,
+                .eggsAndYoung
+            ),
+            (
+                .schools,
+                AppStrings.GameBoard.finalScoreSchools,
+                result.schoolPoints,
+                .schools
+            ),
+            (
+                .consumedFish,
+                AppStrings.GameBoard.finalScoreConsumedFish,
+                result.consumedFishPoints,
+                .consumedFish
+            )
+        ]
+
+        return segmentValues.map { category, title, points, colorStyle in
+            ScoreBarSegmentViewState(
+                category: category,
+                title: title,
+                points: points,
+                widthRatioRelativeToMaxTotal: Double(points) / Double(maximumTotal),
+                displayColorKey: colorStyle
+            )
+        }
     }
 
     private func discardCostCount(for card: Card?) -> Int? {

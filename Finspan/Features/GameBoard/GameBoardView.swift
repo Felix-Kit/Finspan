@@ -4,23 +4,33 @@ struct GameBoardView: View {
     @StateObject var viewModel: GameBoardViewModel
 
     var body: some View {
-        NavigationStack {
-            HStack(alignment: .top, spacing: 20) {
-                turnPanel
-                    .frame(width: 260, alignment: .topLeading)
+        Group {
+            if viewModel.state.phase == .gameEnded,
+               let finalScoreViewState = viewModel.finalScoreViewState {
+                NavigationStack {
+                    FinalScoreView(viewState: finalScoreViewState)
+                        .navigationTitle(AppStrings.GameBoard.finalScoreTitle)
+                }
+            } else {
+                NavigationStack {
+                    HStack(alignment: .top, spacing: 20) {
+                        turnPanel
+                            .frame(width: 260, alignment: .topLeading)
 
-                Divider()
+                        Divider()
 
-                playFishPanel
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                        playFishPanel
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
 
-                Divider()
+                        Divider()
 
-                eventLogPanel
-                    .frame(width: 360, alignment: .topLeading)
+                        eventLogPanel
+                            .frame(width: 360, alignment: .topLeading)
+                    }
+                    .padding(24)
+                    .navigationTitle(AppStrings.GameBoard.title)
+                }
             }
-            .padding(24)
-            .navigationTitle(AppStrings.GameBoard.title)
         }
         .onAppear {
             viewModel.refresh()
@@ -601,13 +611,46 @@ struct GameBoardView: View {
                         Text(noTargetsText)
                             .font(.callout)
                             .foregroundStyle(.secondary)
-                    } else {
+                    } else if !choice.targets.isEmpty {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 8)], spacing: 8) {
                             ForEach(choice.targets) { target in
                                 Button {
                                     viewModel.resolvePendingChoice(choice.choiceId, target: target.address)
                                 } label: {
                                     pendingChoiceTargetButton(target)
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(!target.isEnabled)
+                            }
+                        }
+                    }
+
+                    if !choice.cardTargets.isEmpty {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 8)], spacing: 8) {
+                            ForEach(choice.cardTargets) { target in
+                                Button {
+                                    viewModel.resolvePendingChoice(choice.choiceId, recoverCardId: target.cardId)
+                                } label: {
+                                    pendingChoiceCardTargetButton(target)
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(!target.isEnabled)
+                            }
+                        }
+                    }
+
+                    if !choice.moveTargets.isEmpty {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 8)], spacing: 8) {
+                            ForEach(choice.moveTargets) { target in
+                                Button {
+                                    viewModel.resolvePendingChoice(
+                                        choice.choiceId,
+                                        moveSource: target.source,
+                                        target: target.target,
+                                        kind: target.kind
+                                    )
+                                } label: {
+                                    pendingChoiceMoveTargetButton(target)
                                 }
                                 .buttonStyle(.plain)
                                 .disabled(!target.isEnabled)
@@ -671,6 +714,41 @@ struct GameBoardView: View {
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.accentColor.opacity(0.55), lineWidth: 1)
+        )
+    }
+
+    private func pendingChoiceCardTargetButton(_ target: PendingChoiceCardTargetViewData) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(target.title)
+                .font(.headline)
+                .lineLimit(2)
+            Text(target.subtitle)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, minHeight: 76, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.accentColor.opacity(0.12))
+        )
+    }
+
+    private func pendingChoiceMoveTargetButton(_ target: PendingChoiceMoveTargetViewData) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(target.title)
+                .font(.headline)
+                .lineLimit(3)
+            Text(target.subtitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(3)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, minHeight: 92, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.accentColor.opacity(0.12))
         )
     }
 

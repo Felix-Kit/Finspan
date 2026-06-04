@@ -257,6 +257,7 @@ enum SampleOceanLayout {
 struct PlayerGameState: Codable, Equatable, Sendable {
     var playerId: PlayerID
     var hand: [CardID]
+    var discardPile: [CardID] = []
     var availableDivers: Int
     var usedDivers: Int
     var ocean: OceanState

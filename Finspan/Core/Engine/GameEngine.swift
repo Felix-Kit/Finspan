@@ -8,17 +8,20 @@ struct GameEngine {
     private let cardCatalog: any CardCatalog
     private let diveBonusLayout: DiveSiteBonusLayout
     private let weeklyAchievementScorer: SideAWeeklyAchievementScorer
+    private let finalScoreCalculator: FinalScoreCalculator
 
     init(
         rules: GameRuleSet = GameRuleSet(),
         cardCatalog: any CardCatalog = SampleCardCatalog(),
-        diveBonusLayout: DiveSiteBonusLayout = .sampleBaseGame,
-        weeklyAchievementScorer: SideAWeeklyAchievementScorer = SideAWeeklyAchievementScorer()
+        diveBonusLayout: DiveSiteBonusLayout = .baseGame,
+        weeklyAchievementScorer: SideAWeeklyAchievementScorer = SideAWeeklyAchievementScorer(),
+        finalScoreCalculator: FinalScoreCalculator = FinalScoreCalculator()
     ) {
         self.rules = rules
         self.cardCatalog = cardCatalog
         self.diveBonusLayout = diveBonusLayout
         self.weeklyAchievementScorer = weeklyAchievementScorer
+        self.finalScoreCalculator = finalScoreCalculator
     }
 
     func validate(command: PlayerCommand, in state: GameState) throws {
@@ -123,9 +126,10 @@ struct GameEngine {
             nextState.turnsCompletedThisWeek += 1
         case let .weekEnded(payload):
             applyWeekEnded(payload, to: &nextState)
-        case .gameEnded:
+        case let .gameEnded(payload):
             nextState.phase = .gameEnded
             nextState.activePlayerId = nil
+            nextState.finalScoreResult = payload.finalScoreResult
         case let .fishPlayed(payload):
             applyFishPlayed(payload, to: &nextState)
         case let .diverMoved(payload):
@@ -310,9 +314,22 @@ struct GameEngine {
                 )
             ]
         }
+        let weekEnded = weekEndedEvent(in: projectedState)
+        let weekEndedDraft = DomainEventDraft.weekEnded(weekEnded)
+        guard weekEnded.isGameEndTriggered else {
+            return [weekEndedDraft]
+        }
+
+        let endGamePendingState = stateAfterApplying([weekEndedDraft], to: projectedState)
         return [
-            .weekEnded(
-                weekEndedEvent(in: projectedState)
+            weekEndedDraft,
+            .gameEnded(
+                GameEndedEvent(
+                    finalScoreResult: finalScoreCalculator.calculate(
+                        in: endGamePendingState,
+                        cardCatalog: cardCatalog
+                    )
+                )
             )
         ]
     }
@@ -340,6 +357,10 @@ struct GameEngine {
             applyTurnAdvanced(payload, to: &state)
         case let .weekEnded(payload):
             applyWeekEnded(payload, to: &state)
+        case let .gameEnded(payload):
+            state.phase = .gameEnded
+            state.activePlayerId = nil
+            state.finalScoreResult = payload.finalScoreResult
         case .roomCreated,
              .playerJoined,
              .playerLeft,
@@ -350,7 +371,6 @@ struct GameEngine {
              .setupCompleted,
              .abilityOptionChosen,
              .turnEnded,
-             .gameEnded,
              .snapshotCreated:
             break
         }
@@ -534,6 +554,34 @@ struct GameEngine {
                 for: choice,
                 in: state
             )
+        case let .recoverCard(cardId):
+            guard choice.kind == .recoverFromDiscardOrDraw,
+                  let playerState = state.playerGameStates[playerId],
+                  playerState.discardPile.contains(cardId)
+            else {
+                throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
+            }
+        case .drawFromDeck:
+            guard choice.kind == .recoverFromDiscardOrDraw,
+                  let playerState = state.playerGameStates[playerId],
+                  playerState.discardPile.isEmpty
+            else {
+                throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
+            }
+            guard !state.deckState.fishDrawPile.isEmpty else {
+                throw CommandValidationError.fishDrawPileEmpty
+            }
+        case let .moveResource(source, target, kind):
+            guard choice.kind == .moveYoungOrSchool else {
+                throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
+            }
+            try validateMoveResource(
+                source: source,
+                target: target,
+                kind: kind,
+                for: choice,
+                in: state
+            )
         case .chooseOption:
             throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
         }
@@ -563,11 +611,39 @@ struct GameEngine {
                 throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
             }
         case .drawFish,
+             .recoverFromDiscardOrDraw,
+             .moveYoungOrSchool,
              .bottomBonus,
              .placeholder,
              .unsupported:
             throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
         }
+    }
+
+    private func validateMoveResource(
+        source: OceanSlotAddress,
+        target: OceanSlotAddress,
+        kind: ResourceKind,
+        for choice: PendingChoice,
+        in state: GameState
+    ) throws {
+        guard source != target,
+              source.playerId == choice.playerId,
+              target.playerId == choice.playerId,
+              let playerState = state.playerGameStates[choice.playerId],
+              let sourceSlot = playerState.ocean.slots.first(where: { $0.address == source }),
+              let targetSlot = playerState.ocean.slots.first(where: { $0.address == target }),
+              kind == .young || kind == .school,
+              resourceAmount(kind, in: sourceSlot) > 0
+        else {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+
+        if kind == .school, resourceAmount(.school, in: targetSlot) > 0 {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+
+        // TODO: Enforce the full straight-line movement and occupied-school path rules.
     }
 
     private func hasBlockingPendingChoices(for playerId: PlayerID, in state: GameState) -> Bool {
@@ -674,6 +750,10 @@ struct GameEngine {
             return .placeEgg
         case .hatchEgg:
             return .hatchEgg
+        case .recoverFromDiscardOrDraw:
+            return .recoverFromDiscardOrDraw
+        case .moveYoungOrSchool:
+            return .moveYoungOrSchool
         case .unsupported:
             return .unsupported
         }
@@ -686,6 +766,10 @@ struct GameEngine {
         case .placeEgg,
              .hatchEgg:
             return .targetSlot
+        case .recoverFromDiscardOrDraw:
+            return .cardSelection
+        case .moveYoungOrSchool:
+            return .sourceAndTargetSlots
         case .unsupported:
             return .none
         }
@@ -704,6 +788,15 @@ struct GameEngine {
                 return [.none]
             }
             return [.drawFish(playerId: playerId, cardIds: [cardId])]
+        case let .recoverCard(cardId):
+            return [.recoverFromDiscard(playerId: playerId, cardId: cardId)]
+        case .drawFromDeck:
+            guard let cardId = state.deckState.fishDrawPile.first else {
+                return [.none]
+            }
+            return [.drawFish(playerId: playerId, cardIds: [cardId])]
+        case let .moveResource(source, target, kind):
+            return [.moveResource(source: source, target: target, kind: kind, amount: 1)]
         case let .chooseTarget(target):
             guard let choice = state.pendingChoices[payload.choiceId] else {
                 return [.none]
@@ -714,6 +807,8 @@ struct GameEngine {
             case .hatchEgg:
                 return [.hatchEgg(target: target, amount: 1)]
             case .drawFish,
+                 .recoverFromDiscardOrDraw,
+                 .moveYoungOrSchool,
                  .bottomBonus,
                  .placeholder,
                  .unsupported:
@@ -805,7 +900,7 @@ struct GameEngine {
         playerState.ocean.slots[slotIndex].content = .fishCard(payload.cardId)
         applyResourcePayment(payload.payment, to: &playerState)
 
-        state.deckState.discardPile.append(contentsOf: payload.payment.discardedCardIds)
+        playerState.discardPile.append(contentsOf: payload.payment.discardedCardIds)
         state.playerGameStates[payload.playerId] = playerState
 
         if let nextActivePlayerId = payload.nextActivePlayerId,
@@ -894,11 +989,23 @@ struct GameEngine {
                     playerState.hand.append(cardId)
                 }
                 state.playerGameStates[playerId] = playerState
+            case let .recoverFromDiscard(playerId, cardId):
+                guard var playerState = state.playerGameStates[playerId],
+                      let discardIndex = playerState.discardPile.firstIndex(of: cardId)
+                else {
+                    break
+                }
+                playerState.discardPile.remove(at: discardIndex)
+                playerState.hand.append(cardId)
+                state.playerGameStates[playerId] = playerState
             case let .placeEgg(target, amount):
                 applyResourceChange(.egg, amount: amount, at: target, to: &state)
             case let .hatchEgg(target, amount):
                 applyResourceChange(.egg, amount: -amount, at: target, to: &state)
                 applyResourceChange(.young, amount: amount, at: target, to: &state)
+            case let .moveResource(source, target, kind, amount):
+                applyResourceChange(kind, amount: -amount, at: source, to: &state)
+                applyResourceChange(kind, amount: amount, at: target, to: &state)
             }
         }
     }

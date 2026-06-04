@@ -26,7 +26,7 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if phase == .playing || phase == .awaitingChoice || phase == .weekScoring || phase == .gameEnded {
+            if phase == .playing || phase == .awaitingChoice || phase == .weekScoring || phase == .endGamePending || phase == .gameEnded {
                 GameBoardView(viewModel: gameBoardViewModel)
             } else {
                 LobbyView(viewModel: lobbyViewModel)
