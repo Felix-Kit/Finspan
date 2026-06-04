@@ -549,6 +549,110 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(pendingChoice.actions.map(\.isEnabled), [true, true])
     }
 
+    func testPrintedDiveBonusPendingChoiceTitlesUseChineseCopy() {
+        let choices = [
+            pendingChoice(kind: .drawFish, source: .diveBonus(.blue)),
+            pendingChoice(kind: .placeEgg, source: .diveBonus(.green)),
+            pendingChoice(kind: .moveYoungOrSchool, source: .diveBonus(.purple))
+        ]
+        let service = makeService(
+            hand: ["fish-2"],
+            pendingChoices: Dictionary(uniqueKeysWithValues: choices.map { ($0.choiceId, $0) })
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(
+            Dictionary(uniqueKeysWithValues: viewModel.pendingChoices.map { ($0.choiceId, $0.title) }),
+            [
+                "choice-drawFish": AppStrings.pendingChoiceKindName(.drawFish),
+                "choice-placeEgg": AppStrings.pendingChoiceKindName(.placeEgg),
+                "choice-moveYoungOrSchool": AppStrings.GameBoard.moveYoungOrSchool
+            ]
+        )
+    }
+
+    func testRecoverFromDiscardPendingChoiceListsDiscardCards() {
+        let choice = pendingChoice(kind: .recoverFromDiscardOrDraw)
+        let service = makeService(
+            hand: ["fish-2"],
+            pendingChoices: [choice.choiceId: choice],
+            discardPile: ["fish-9"]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let pendingChoice = viewModel.pendingChoices[0]
+
+        XCTAssertEqual(pendingChoice.targetPrompt, AppStrings.GameBoard.chooseDiscardCardToRecover)
+        XCTAssertEqual(pendingChoice.cardTargets.map(\.cardId), ["fish-9"])
+        XCTAssertEqual(pendingChoice.cardTargets.map(\.subtitle), [AppStrings.GameBoard.recoverFromDiscardOrDraw])
+        XCTAssertEqual(pendingChoice.actions.map(\.title), [AppStrings.GameBoard.skipChoice])
+    }
+
+    func testRecoverFromDiscardPendingChoiceOffersDeckDrawWhenDiscardIsEmpty() {
+        let choice = pendingChoice(kind: .recoverFromDiscardOrDraw)
+        let service = makeService(
+            hand: ["fish-2"],
+            pendingChoices: [choice.choiceId: choice],
+            discardPile: [],
+            fishDrawPile: ["fish-9"]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let pendingChoice = viewModel.pendingChoices[0]
+
+        XCTAssertEqual(pendingChoice.targetPrompt, AppStrings.GameBoard.discardPileEmptyDrawHint)
+        XCTAssertTrue(pendingChoice.cardTargets.isEmpty)
+        XCTAssertEqual(pendingChoice.actions.map(\.title), [
+            AppStrings.GameBoard.drawOneFishCard,
+            AppStrings.GameBoard.skipChoice
+        ])
+        XCTAssertEqual(pendingChoice.actions.map(\.isEnabled), [true, true])
+    }
+
+    func testMoveYoungOrSchoolPendingChoiceListsSourcesAndTargets() {
+        let choice = pendingChoice(kind: .moveYoungOrSchool, source: .diveBonus(.purple))
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let pendingChoice = viewModel.pendingChoices[0]
+
+        XCTAssertEqual(pendingChoice.targetPrompt, AppStrings.GameBoard.moveYoungOrSchool)
+        XCTAssertTrue(
+            pendingChoice.moveTargets.contains {
+                $0.source == Self.resourceSourceAddress && $0.kind == .young
+            }
+        )
+        XCTAssertTrue(
+            pendingChoice.moveTargets.contains {
+                $0.source == Self.resourceSourceAddress
+                    && $0.target != Self.resourceSourceAddress
+                    && $0.kind == .school
+            }
+        )
+        XCTAssertTrue(
+            pendingChoice.moveTargets.allSatisfy {
+                $0.subtitle.contains(AppStrings.GameBoard.chooseMoveSource)
+                    && $0.subtitle.contains(AppStrings.GameBoard.chooseMoveTarget)
+            }
+        )
+    }
+
+    func testMoveYoungOrSchoolPendingChoiceShowsNoMovableResources() {
+        let choice = pendingChoice(kind: .moveYoungOrSchool, source: .diveBonus(.purple))
+        let service = makeService(
+            hand: ["fish-2"],
+            pendingChoices: [choice.choiceId: choice],
+            resourceSourceResources: []
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let pendingChoice = viewModel.pendingChoices[0]
+
+        XCTAssertTrue(pendingChoice.moveTargets.isEmpty)
+        XCTAssertEqual(pendingChoice.noTargetsText, AppStrings.GameBoard.noMovableYoungOrSchool)
+        XCTAssertEqual(pendingChoice.actions.map(\.title), [AppStrings.GameBoard.skipChoice])
+    }
+
     func testPlaceEggPendingChoiceShowsTargetPromptAndSkipAction() {
         let choice = pendingChoice(kind: .placeEgg)
         let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
@@ -711,6 +815,13 @@ final class GameBoardViewModelTests: XCTestCase {
         phase: GamePhase = .playing,
         currentWeek: Int = 1,
         activePlayerId: PlayerID? = "player-1",
+        discardPile: [CardID] = [],
+        fishDrawPile: [CardID] = [],
+        resourceSourceResources: [ResourceQuantity] = [
+            ResourceQuantity(kind: .egg, amount: 1),
+            ResourceQuantity(kind: .young, amount: 1),
+            ResourceQuantity(kind: .school, amount: 1)
+        ],
         weeklyAchievementResults: [WeeklyAchievementResult] = [],
         finalScoreResult: FinalScoreResult? = nil
     ) -> CapturingRoomService {
@@ -721,11 +832,7 @@ final class GameBoardViewModelTests: XCTestCase {
             }
         }
         if let sourceIndex = ocean.slots.firstIndex(where: { $0.address == Self.resourceSourceAddress }) {
-            ocean.slots[sourceIndex].resources = [
-                ResourceQuantity(kind: .egg, amount: 1),
-                ResourceQuantity(kind: .young, amount: 1),
-                ResourceQuantity(kind: .school, amount: 1)
-            ]
+            ocean.slots[sourceIndex].resources = resourceSourceResources
         }
         ocean.slots.append(contentsOf: additionalSlots)
 
@@ -760,12 +867,17 @@ final class GameBoardViewModelTests: XCTestCase {
                     "player-1": PlayerGameState(
                         playerId: "player-1",
                         hand: hand,
+                        discardPile: discardPile,
                         availableDivers: availableDivers,
                         usedDivers: 6 - availableDivers,
                         ocean: ocean
                     )
                 ],
-                deckState: .empty,
+                deckState: DeckState(
+                    starterFishDrawPile: [],
+                    fishDrawPile: fishDrawPile,
+                    discardPile: []
+                ),
                 pendingChoices: pendingChoices,
                 weeklyAchievementResults: weeklyAchievementResults,
                 finalScoreResult: finalScoreResult
@@ -773,17 +885,37 @@ final class GameBoardViewModelTests: XCTestCase {
         )
     }
 
-    private func pendingChoice(kind: PendingChoiceKind) -> PendingChoice {
+    private func pendingChoice(
+        kind: PendingChoiceKind,
+        source: PendingChoiceSource = .diveBonus(.blue)
+    ) -> PendingChoice {
         PendingChoice(
             choiceId: "choice-\(kind.rawValue)",
             playerId: "player-1",
-            source: .diveBonus(.blue),
+            source: source,
             kind: kind,
             options: [],
-            expectedInput: kind == .placeEgg || kind == .hatchEgg ? .targetSlot : .none,
+            expectedInput: expectedInput(for: kind),
             isOptional: true,
             createdAtSequence: 2
         )
+    }
+
+    private func expectedInput(for kind: PendingChoiceKind) -> PendingChoiceExpectedInput {
+        switch kind {
+        case .placeEgg,
+             .hatchEgg:
+            return .targetSlot
+        case .recoverFromDiscardOrDraw:
+            return .cardSelection
+        case .moveYoungOrSchool:
+            return .sourceAndTargetSlots
+        case .drawFish,
+             .bottomBonus,
+             .placeholder,
+             .unsupported:
+            return .none
+        }
     }
 
     private func oceanSlot(

@@ -1403,14 +1403,23 @@ final class GameEngineTests: XCTestCase {
     func testBaseGameDiveBonusLayoutMatchesPrintedBonuses() {
         let layout = DiveSiteBonusLayout.baseGame
 
-        XCTAssertEqual(layout.bonuses(for: .blue).map(\.kind), [
-            .drawFish, .drawFish, .drawFish, .recoverFromDiscardOrDraw
+        XCTAssertEqual(layout.bonuses(for: .blue), [
+            DiveBonusDefinition(diveSite: .blue, position: .zone(.sunlit), kind: .drawFish, amount: 1),
+            DiveBonusDefinition(diveSite: .blue, position: .zone(.twilight), kind: .drawFish, amount: 1),
+            DiveBonusDefinition(diveSite: .blue, position: .zone(.midnight), kind: .drawFish, amount: 1),
+            DiveBonusDefinition(diveSite: .blue, position: .bottom, kind: .recoverFromDiscardOrDraw, amount: 1)
         ])
-        XCTAssertEqual(layout.bonuses(for: .green).map(\.kind), [
-            .placeEgg, .placeEgg, .placeEgg, .placeEgg
+        XCTAssertEqual(layout.bonuses(for: .green), [
+            DiveBonusDefinition(diveSite: .green, position: .zone(.sunlit), kind: .placeEgg, amount: 1),
+            DiveBonusDefinition(diveSite: .green, position: .zone(.twilight), kind: .placeEgg, amount: 1),
+            DiveBonusDefinition(diveSite: .green, position: .zone(.midnight), kind: .placeEgg, amount: 1),
+            DiveBonusDefinition(diveSite: .green, position: .bottom, kind: .placeEgg, amount: 1)
         ])
-        XCTAssertEqual(layout.bonuses(for: .purple).map(\.kind), [
-            .hatchEgg, .hatchEgg, .moveYoungOrSchool, .moveYoungOrSchool
+        XCTAssertEqual(layout.bonuses(for: .purple), [
+            DiveBonusDefinition(diveSite: .purple, position: .zone(.sunlit), kind: .hatchEgg, amount: 1),
+            DiveBonusDefinition(diveSite: .purple, position: .zone(.twilight), kind: .hatchEgg, amount: 1),
+            DiveBonusDefinition(diveSite: .purple, position: .zone(.midnight), kind: .moveYoungOrSchool, amount: 1),
+            DiveBonusDefinition(diveSite: .purple, position: .bottom, kind: .moveYoungOrSchool, amount: 1)
         ])
     }
 
@@ -1493,6 +1502,92 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(payload.appliedEffects, [.drawFish(playerId: "player-1", cardIds: ["fish-9"])])
         XCTAssertTrue(nextState.playerGameStates["player-1"]?.hand.contains("fish-9") == true)
         XCTAssertEqual(nextState.deckState.fishDrawPile, ["fish-10"])
+    }
+
+    func testSkipRecoverFromDiscardChoiceDoesNotChangeHandDiscardOrDeck() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        let choice = pendingChoice(kind: .recoverFromDiscardOrDraw)
+        state.pendingChoices[choice.choiceId] = choice
+        state.playerGameStates["player-1"]?.discardPile = ["fish-9"]
+        state.deckState.fishDrawPile = ["fish-10"]
+        let startingHand = state.playerGameStates["player-1"]?.hand
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "recover-skip",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .resolvePendingChoice(
+                    ResolvePendingChoiceCommand(
+                        choiceId: choice.choiceId,
+                        resolution: .skip
+                    )
+                )
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(payload) = drafts.first else {
+            return XCTFail("Expected pendingChoiceResolved.")
+        }
+        let nextState = engine.reduce(
+            state: state,
+            event: GameEvent(
+                sequenceNumber: 10,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .pendingChoiceResolved(payload)
+            )
+        )
+
+        XCTAssertEqual(payload.appliedEffects, [.none])
+        XCTAssertEqual(nextState.playerGameStates["player-1"]?.hand, startingHand)
+        XCTAssertEqual(nextState.playerGameStates["player-1"]?.discardPile, ["fish-9"])
+        XCTAssertEqual(nextState.deckState.fishDrawPile, ["fish-10"])
+    }
+
+    func testMoveYoungMovesOneYoungToTarget() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        let choice = pendingChoice(kind: .moveYoungOrSchool)
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 0)
+        state.pendingChoices[choice.choiceId] = choice
+        setResources([ResourceQuantity(kind: .young, amount: 2)], at: source, in: &state)
+        setResources([], at: target, in: &state)
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "move-young",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .resolvePendingChoice(
+                    ResolvePendingChoiceCommand(
+                        choiceId: choice.choiceId,
+                        resolution: .moveResource(source: source, target: target, kind: .young)
+                    )
+                )
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(payload) = drafts.first else {
+            return XCTFail("Expected pendingChoiceResolved.")
+        }
+        let nextState = engine.reduce(
+            state: state,
+            event: GameEvent(
+                sequenceNumber: 10,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .pendingChoiceResolved(payload)
+            )
+        )
+
+        XCTAssertEqual(resourceAmount(.young, at: source, in: nextState), 1)
+        XCTAssertEqual(resourceAmount(.young, at: target, in: nextState), 1)
+        XCTAssertEqual(resourceAmount(.school, at: target, in: nextState), 0)
     }
 
     func testMoveYoungCanFormSchoolAtTarget() throws {
@@ -2480,10 +2575,27 @@ final class GameEngineTests: XCTestCase {
             source: .diveBonus(.blue),
             kind: kind,
             options: [],
-            expectedInput: kind == .placeEgg || kind == .hatchEgg ? .targetSlot : .none,
+            expectedInput: expectedInput(for: kind),
             isOptional: isOptional,
             createdAtSequence: 9
         )
+    }
+
+    private func expectedInput(for kind: PendingChoiceKind) -> PendingChoiceExpectedInput {
+        switch kind {
+        case .placeEgg,
+             .hatchEgg:
+            return .targetSlot
+        case .recoverFromDiscardOrDraw:
+            return .cardSelection
+        case .moveYoungOrSchool:
+            return .sourceAndTargetSlots
+        case .drawFish,
+             .bottomBonus,
+             .placeholder,
+             .unsupported:
+            return .none
+        }
     }
 
     private func resourceAmount(
