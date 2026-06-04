@@ -7,15 +7,18 @@ struct GameEngine {
     private let rules: GameRuleSet
     private let cardCatalog: any CardCatalog
     private let diveBonusLayout: DiveSiteBonusLayout
+    private let weeklyAchievementScorer: SideAWeeklyAchievementScorer
 
     init(
         rules: GameRuleSet = GameRuleSet(),
         cardCatalog: any CardCatalog = SampleCardCatalog(),
-        diveBonusLayout: DiveSiteBonusLayout = .sampleBaseGame
+        diveBonusLayout: DiveSiteBonusLayout = .sampleBaseGame,
+        weeklyAchievementScorer: SideAWeeklyAchievementScorer = SideAWeeklyAchievementScorer()
     ) {
         self.rules = rules
         self.cardCatalog = cardCatalog
         self.diveBonusLayout = diveBonusLayout
+        self.weeklyAchievementScorer = weeklyAchievementScorer
     }
 
     func validate(command: PlayerCommand, in state: GameState) throws {
@@ -381,13 +384,21 @@ struct GameEngine {
         let previousFirstPlayerId = state.firstPlayerId ?? state.players.first?.id
         let nextFirstPlayerId = previousFirstPlayerId.flatMap { nextPlayer(after: $0, in: state.players)?.id }
         let isGameEndTriggered = state.currentWeek >= Self.finalWeek
+        let orderedPlayerStates = state.players.compactMap { state.playerGameStates[$0.id] }
+        let achievementResults = isGameEndTriggered
+            ? []
+            : weeklyAchievementScorer.score(
+                week: state.currentWeek,
+                playerStates: orderedPlayerStates
+            )
         return WeekEndedEvent(
             endedWeek: state.currentWeek,
             nextWeek: isGameEndTriggered ? nil : min(state.currentWeek + 1, Self.finalWeek),
             previousFirstPlayerId: previousFirstPlayerId,
             nextFirstPlayerId: isGameEndTriggered ? nil : nextFirstPlayerId,
             nextActivePlayerId: isGameEndTriggered ? nil : nextFirstPlayerId,
-            isGameEndTriggered: isGameEndTriggered
+            isGameEndTriggered: isGameEndTriggered,
+            achievementResults: achievementResults
         )
     }
 
@@ -832,6 +843,7 @@ struct GameEngine {
 
     private func applyWeekEnded(_ payload: WeekEndedEvent, to state: inout GameState) {
         state.turnsCompletedThisWeek = 0
+        state.weeklyAchievementResults.append(contentsOf: payload.achievementResults)
 
         if payload.isGameEndTriggered {
             state.phase = .endGamePending

@@ -73,6 +73,7 @@ struct GameBoardView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 playerStrip
+                weeklyAchievementPanel
                 handPanel
                 selectedFishCardPanel
                 oceanPanel
@@ -90,6 +91,43 @@ struct GameBoardView: View {
                 .disabled(!viewModel.canSubmitPlayFish)
             }
         }
+    }
+
+    private var weeklyAchievementPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(AppStrings.GameBoard.weeklyAchievementPanel)
+                .font(.title2.weight(.semibold))
+
+            if viewModel.weeklyAchievementResults.isEmpty {
+                Text(AppStrings.GameBoard.noWeeklyAchievementResults)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 10)], spacing: 10) {
+                    ForEach(viewModel.weeklyAchievementResults) { result in
+                        weeklyAchievementRow(result)
+                    }
+                }
+            }
+        }
+    }
+
+    private func weeklyAchievementRow(_ result: WeeklyAchievementResultViewData) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(result.title)
+                .font(.headline)
+                .lineLimit(2)
+            Text(result.subtitle)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: 76, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(.secondarySystemBackground))
+        )
     }
 
     private var playerStrip: some View {

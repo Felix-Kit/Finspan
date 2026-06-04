@@ -149,7 +149,23 @@ final class GameEngineTests: XCTestCase {
                     previousFirstPlayerId: "player-1",
                     nextFirstPlayerId: "player-2",
                     nextActivePlayerId: "player-2",
-                    isGameEndTriggered: false
+                    isGameEndTriggered: false,
+                    achievementResults: [
+                        WeeklyAchievementResult(
+                            week: 1,
+                            kind: .eggsAndYoung,
+                            playerId: "player-1",
+                            quantity: 3,
+                            points: 3
+                        ),
+                        WeeklyAchievementResult(
+                            week: 1,
+                            kind: .eggsAndYoung,
+                            playerId: "player-2",
+                            quantity: 3,
+                            points: 3
+                        )
+                    ]
                 )
             )
         )
@@ -228,7 +244,23 @@ final class GameEngineTests: XCTestCase {
                     previousFirstPlayerId: "player-1",
                     nextFirstPlayerId: "player-2",
                     nextActivePlayerId: "player-2",
-                    isGameEndTriggered: false
+                    isGameEndTriggered: false,
+                    achievementResults: [
+                        WeeklyAchievementResult(
+                            week: 1,
+                            kind: .eggsAndYoung,
+                            playerId: "player-1",
+                            quantity: 3,
+                            points: 3
+                        ),
+                        WeeklyAchievementResult(
+                            week: 1,
+                            kind: .eggsAndYoung,
+                            playerId: "player-2",
+                            quantity: 3,
+                            points: 3
+                        )
+                    ]
                 )
             )
         )
@@ -297,7 +329,23 @@ final class GameEngineTests: XCTestCase {
                     previousFirstPlayerId: "player-1",
                     nextFirstPlayerId: "player-2",
                     nextActivePlayerId: "player-2",
-                    isGameEndTriggered: false
+                    isGameEndTriggered: false,
+                    achievementResults: [
+                        WeeklyAchievementResult(
+                            week: 1,
+                            kind: .eggsAndYoung,
+                            playerId: "player-1",
+                            quantity: 3,
+                            points: 3
+                        ),
+                        WeeklyAchievementResult(
+                            week: 1,
+                            kind: .eggsAndYoung,
+                            playerId: "player-2",
+                            quantity: 3,
+                            points: 3
+                        )
+                    ]
                 )
             )
         )
@@ -327,7 +375,16 @@ final class GameEngineTests: XCTestCase {
                         previousFirstPlayerId: "player-1",
                         nextFirstPlayerId: "player-2",
                         nextActivePlayerId: "player-2",
-                        isGameEndTriggered: false
+                        isGameEndTriggered: false,
+                        achievementResults: [
+                            WeeklyAchievementResult(
+                                week: 1,
+                                kind: .eggsAndYoung,
+                                playerId: "player-1",
+                                quantity: 5,
+                                points: 5
+                            )
+                        ]
                     )
                 )
             )
@@ -343,6 +400,18 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(nextState.playerGameStates["player-2"]?.usedDivers, 0)
         XCTAssertEqual(nextState.playerGameStates["player-1"]?.diveSitesReachedBottomThisWeek, [])
         XCTAssertEqual(nextState.playerGameStates["player-2"]?.diveSitesReachedBottomThisWeek, [])
+        XCTAssertEqual(
+            nextState.weeklyAchievementResults,
+            [
+                WeeklyAchievementResult(
+                    week: 1,
+                    kind: .eggsAndYoung,
+                    playerId: "player-1",
+                    quantity: 5,
+                    points: 5
+                )
+            ]
+        )
     }
 
     func testFourthWeekEndedEntersEndGamePending() {
@@ -373,6 +442,168 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(nextState.phase, .endGamePending)
         XCTAssertEqual(nextState.currentWeek, 4)
         XCTAssertNil(nextState.activePlayerId)
+    }
+
+    func testWeekOneAchievementScoresEggsAndYoungExcludingSchools() {
+        let scorer = SideAWeeklyAchievementScorer()
+        var state = playFishState()
+        clearResources(for: "player-1", in: &state)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        setResources(
+            [
+                ResourceQuantity(kind: .egg, amount: 2),
+                ResourceQuantity(kind: .young, amount: 3),
+                ResourceQuantity(kind: .school, amount: 1)
+            ],
+            at: target,
+            in: &state
+        )
+
+        let results = scorer.score(
+            week: 1,
+            playerStates: [state.playerGameStates["player-1"]!]
+        )
+
+        XCTAssertEqual(
+            results,
+            [
+                WeeklyAchievementResult(
+                    week: 1,
+                    kind: .eggsAndYoung,
+                    playerId: "player-1",
+                    quantity: 5,
+                    points: 5
+                )
+            ]
+        )
+    }
+
+    func testWeekTwoAchievementScoresCompleteRowsOfFishIncludingForageFish() {
+        let scorer = SideAWeeklyAchievementScorer()
+        var state = playFishState(keepForageFish: true)
+        clearOceanContent(for: "player-1", in: &state)
+
+        let blue = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 1)
+        let purple = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 1)
+        let green = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 1)
+        setContent(.fishCard("fish-6"), at: blue, in: &state)
+        setContent(.fishCard("fish-7"), at: purple, in: &state)
+        setContent(
+            .forageFish(
+                ForageFish(
+                    forageFishId: "test-forage-green-row-1",
+                    name: "测试印刷小鱼",
+                    lengthCm: 5,
+                    diveSite: .green,
+                    rowIndex: 1
+                )
+            ),
+            at: green,
+            in: &state
+        )
+
+        let results = scorer.score(
+            week: 2,
+            playerStates: [state.playerGameStates["player-1"]!]
+        )
+
+        XCTAssertEqual(
+            results,
+            [
+                WeeklyAchievementResult(
+                    week: 2,
+                    kind: .rowsOfFish,
+                    playerId: "player-1",
+                    quantity: 1,
+                    points: 2
+                )
+            ]
+        )
+    }
+
+    func testWeekTwoAchievementDoesNotScoreIncompleteRow() {
+        let scorer = SideAWeeklyAchievementScorer()
+        var state = playFishState()
+        clearOceanContent(for: "player-1", in: &state)
+
+        setContent(
+            .fishCard("fish-6"),
+            at: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 2),
+            in: &state
+        )
+        setContent(
+            .fishCard("fish-7"),
+            at: OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 2),
+            in: &state
+        )
+
+        let results = scorer.score(
+            week: 2,
+            playerStates: [state.playerGameStates["player-1"]!]
+        )
+
+        XCTAssertEqual(results.first?.quantity, 0)
+        XCTAssertEqual(results.first?.points, 0)
+    }
+
+    func testWeekThreeAchievementScoresSchoolsAtTwoPointsEach() {
+        let scorer = SideAWeeklyAchievementScorer()
+        var state = playFishState()
+        clearResources(for: "player-1", in: &state)
+        setResources(
+            [ResourceQuantity(kind: .school, amount: 1)],
+            at: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0),
+            in: &state
+        )
+        setResources(
+            [ResourceQuantity(kind: .school, amount: 3)],
+            at: OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 3),
+            in: &state
+        )
+
+        let results = scorer.score(
+            week: 3,
+            playerStates: [state.playerGameStates["player-1"]!]
+        )
+
+        XCTAssertEqual(
+            results,
+            [
+                WeeklyAchievementResult(
+                    week: 3,
+                    kind: .schools,
+                    playerId: "player-1",
+                    quantity: 4,
+                    points: 8
+                )
+            ]
+        )
+    }
+
+    func testFourthWeekEndedDraftHasNoAchievementResults() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        state.currentWeek = 4
+        state.firstPlayerId = "player-1"
+        state.playerGameStates["player-1"]?.availableDivers = 1
+        state.playerGameStates["player-2"]?.availableDivers = 0
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "fourth-week-ending-dive",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .dive(DiveCommand(diveSite: .blue))
+            ),
+            in: state
+        )
+
+        guard case let .weekEnded(event) = drafts.last else {
+            return XCTFail("Expected weekEnded event.")
+        }
+        XCTAssertTrue(event.achievementResults.isEmpty)
+        XCTAssertTrue(event.isGameEndTriggered)
+        XCTAssertNil(event.nextWeek)
     }
 
     func testPlayFishDraftIncludesTargetSlotAndPayment() throws {
@@ -1928,6 +2159,41 @@ final class GameEngineTests: XCTestCase {
         }
 
         playerState.ocean.slots[slotIndex].resources = resources
+        state.playerGameStates[address.playerId] = playerState
+    }
+
+    private func clearResources(for playerId: PlayerID, in state: inout GameState) {
+        guard var playerState = state.playerGameStates[playerId] else {
+            return
+        }
+        for index in playerState.ocean.slots.indices {
+            playerState.ocean.slots[index].resources = []
+        }
+        state.playerGameStates[playerId] = playerState
+    }
+
+    private func clearOceanContent(for playerId: PlayerID, in state: inout GameState) {
+        guard var playerState = state.playerGameStates[playerId] else {
+            return
+        }
+        for index in playerState.ocean.slots.indices {
+            playerState.ocean.slots[index].content = .empty
+        }
+        state.playerGameStates[playerId] = playerState
+    }
+
+    private func setContent(
+        _ content: OceanSlotContent,
+        at address: OceanSlotAddress,
+        in state: inout GameState
+    ) {
+        guard var playerState = state.playerGameStates[address.playerId],
+              let slotIndex = playerState.ocean.slots.firstIndex(where: { $0.address == address })
+        else {
+            return
+        }
+
+        playerState.ocean.slots[slotIndex].content = content
         state.playerGameStates[address.playerId] = playerState
     }
 

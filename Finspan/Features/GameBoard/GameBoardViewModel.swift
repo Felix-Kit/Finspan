@@ -122,6 +122,18 @@ struct PendingChoiceActionViewData: Identifiable, Equatable {
     let isEnabled: Bool
 }
 
+struct WeeklyAchievementResultViewData: Identifiable, Equatable {
+    var id: String {
+        "\(week)-\(playerId)-\(kind.rawValue)"
+    }
+
+    let week: Int
+    let playerId: PlayerID
+    let kind: AchievementKind
+    let title: String
+    let subtitle: String
+}
+
 enum PendingChoiceAction: String, Equatable {
     case drawFish
     case chooseTarget
@@ -233,6 +245,33 @@ final class GameBoardViewModel: ObservableObject {
                     canSkip: choice.isOptional,
                     canResolve: canResolvePendingChoice(choice),
                     actions: pendingChoiceActionButtons(for: choice)
+                )
+            }
+    }
+
+    var weeklyAchievementResults: [WeeklyAchievementResultViewData] {
+        state.weeklyAchievementResults
+            .sorted { left, right in
+                if left.week == right.week {
+                    return playerSortIndex(left.playerId) < playerSortIndex(right.playerId)
+                }
+                return left.week < right.week
+            }
+            .map { result in
+                let playerName = displayName(for: result.playerId)
+                return WeeklyAchievementResultViewData(
+                    week: result.week,
+                    playerId: result.playerId,
+                    kind: result.kind,
+                    title: AppStrings.GameBoard.weeklyAchievementTitle(
+                        week: result.week,
+                        playerName: playerName
+                    ),
+                    subtitle: AppStrings.GameBoard.weeklyAchievementResultText(
+                        kind: result.kind,
+                        quantity: result.quantity,
+                        points: result.points
+                    )
                 )
             }
     }
@@ -645,13 +684,20 @@ final class GameBoardViewModel: ObservableObject {
         case let .turnEnded(event):
             payload = "回合结束：\(event.playerId)"
         case let .weekEnded(event):
-            if let nextWeek = event.nextWeek {
-                payload = "第 \(event.endedWeek) 周结束，进入第 \(nextWeek) 周"
-            } else if event.isGameEndTriggered {
-                payload = "第 \(event.endedWeek) 周结束，游戏结束待结算"
-            } else {
-                payload = "第 \(event.endedWeek) 周结束"
-            }
+            let achievementSummary = event.achievementResults
+                .map { result in
+                    AppStrings.GameBoard.weeklyAchievementEventPlayerSummary(
+                        playerName: displayName(for: result.playerId),
+                        points: result.points
+                    )
+                }
+                .joined(separator: "，")
+            payload = AppStrings.GameBoard.weekEndedEventText(
+                endedWeek: event.endedWeek,
+                nextWeek: event.nextWeek,
+                isGameEndTriggered: event.isGameEndTriggered,
+                achievementSummary: achievementSummary.isEmpty ? nil : achievementSummary
+            )
         case .gameEnded:
             payload = "游戏结束"
         case let .snapshotCreated(event):
@@ -979,6 +1025,18 @@ final class GameBoardViewModel: ObservableObject {
         case .green:
             return 2
         }
+    }
+
+    private func playerSortIndex(_ playerId: PlayerID) -> Int {
+        players.firstIndex(where: { $0.playerId == playerId })
+            ?? state.players.firstIndex(where: { $0.id == playerId })
+            ?? Int.max
+    }
+
+    private func displayName(for playerId: PlayerID) -> String {
+        players.first(where: { $0.playerId == playerId })?.displayName
+            ?? state.players.first(where: { $0.id == playerId })?.name
+            ?? playerId
     }
 
     private func discardCostCount(for card: Card?) -> Int? {

@@ -24,6 +24,7 @@ struct GameState: Codable, Equatable, Sendable {
     var playerGameStates: [PlayerID: PlayerGameState]
     var deckState: DeckState
     var pendingChoices: [PendingChoiceID: PendingChoice] = [:]
+    var weeklyAchievementResults: [WeeklyAchievementResult] = []
 
     static let empty = GameState(
         roomId: nil,
@@ -38,6 +39,7 @@ struct GameState: Codable, Equatable, Sendable {
         turnsCompletedThisWeek: 0,
         playerGameStates: [:],
         deckState: .empty,
-        pendingChoices: [:]
+        pendingChoices: [:],
+        weeklyAchievementResults: []
     )
 }

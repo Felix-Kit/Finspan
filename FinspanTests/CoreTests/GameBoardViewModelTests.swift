@@ -330,6 +330,75 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.eventSummary(event), "#3 第 1 周结束，进入第 2 周")
     }
 
+    func testWeeklyAchievementResultsGenerateChineseViewData() {
+        let result = WeeklyAchievementResult(
+            week: 2,
+            kind: .rowsOfFish,
+            playerId: "player-1",
+            quantity: 3,
+            points: 6
+        )
+        let service = makeService(
+            hand: ["starter-fish-1"],
+            weeklyAchievementResults: [result]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(
+            viewModel.weeklyAchievementResults,
+            [
+                WeeklyAchievementResultViewData(
+                    week: 2,
+                    playerId: "player-1",
+                    kind: .rowsOfFish,
+                    title: "第 2 周 · 玩家 1",
+                    subtitle: "鱼的行 3 行，得 6 分"
+                )
+            ]
+        )
+    }
+
+    func testWeekEndedEventSummaryIncludesAchievementPoints() {
+        let service = makeService(hand: ["starter-fish-1"])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let event = GameEvent(
+            sequenceNumber: 3,
+            roomId: "room-1",
+            timestamp: Date(timeIntervalSince1970: 1_000),
+            payload: .weekEnded(
+                WeekEndedEvent(
+                    endedWeek: 1,
+                    nextWeek: 2,
+                    previousFirstPlayerId: "player-1",
+                    nextFirstPlayerId: "player-1",
+                    nextActivePlayerId: "player-1",
+                    isGameEndTriggered: false,
+                    achievementResults: [
+                        WeeklyAchievementResult(
+                            week: 1,
+                            kind: .eggsAndYoung,
+                            playerId: "player-1",
+                            quantity: 7,
+                            points: 7
+                        )
+                    ]
+                )
+            )
+        )
+
+        XCTAssertEqual(
+            viewModel.eventSummary(event),
+            "#3 第 1 周结束：玩家 1 成就得 7 分，进入第 2 周"
+        )
+    }
+
+    func testNoWeeklyAchievementResultsReturnsEmptyViewData() {
+        let service = makeService(hand: ["starter-fish-1"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertTrue(viewModel.weeklyAchievementResults.isEmpty)
+    }
+
     func testDrawFishPendingChoiceShowsDrawAndSkipActions() {
         let choice = pendingChoice(kind: .drawFish)
         let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
@@ -507,7 +576,8 @@ final class GameBoardViewModelTests: XCTestCase {
         availableDivers: Int = 6,
         phase: GamePhase = .playing,
         currentWeek: Int = 1,
-        activePlayerId: PlayerID? = "player-1"
+        activePlayerId: PlayerID? = "player-1",
+        weeklyAchievementResults: [WeeklyAchievementResult] = []
     ) -> CapturingRoomService {
         var ocean = OceanState.baseGameInitial(for: "player-1")
         for emptySlot in emptySlots {
@@ -561,7 +631,8 @@ final class GameBoardViewModelTests: XCTestCase {
                     )
                 ],
                 deckState: .empty,
-                pendingChoices: pendingChoices
+                pendingChoices: pendingChoices,
+                weeklyAchievementResults: weeklyAchievementResults
             )
         )
     }

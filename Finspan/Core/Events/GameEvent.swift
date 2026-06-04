@@ -124,6 +124,7 @@ struct WeekEndedEvent: Codable, Equatable, Sendable {
     var nextFirstPlayerId: PlayerID?
     var nextActivePlayerId: PlayerID?
     var isGameEndTriggered: Bool
+    var achievementResults: [WeeklyAchievementResult]
 
     var weekNumber: Int {
         endedWeek
@@ -135,7 +136,8 @@ struct WeekEndedEvent: Codable, Equatable, Sendable {
         previousFirstPlayerId: PlayerID?,
         nextFirstPlayerId: PlayerID?,
         nextActivePlayerId: PlayerID?,
-        isGameEndTriggered: Bool
+        isGameEndTriggered: Bool,
+        achievementResults: [WeeklyAchievementResult] = []
     ) {
         self.endedWeek = endedWeek
         self.nextWeek = nextWeek
@@ -143,6 +145,7 @@ struct WeekEndedEvent: Codable, Equatable, Sendable {
         self.nextFirstPlayerId = nextFirstPlayerId
         self.nextActivePlayerId = nextActivePlayerId
         self.isGameEndTriggered = isGameEndTriggered
+        self.achievementResults = achievementResults
     }
 
     init(weekNumber: Int) {
@@ -152,7 +155,8 @@ struct WeekEndedEvent: Codable, Equatable, Sendable {
             previousFirstPlayerId: nil,
             nextFirstPlayerId: nil,
             nextActivePlayerId: nil,
-            isGameEndTriggered: false
+            isGameEndTriggered: false,
+            achievementResults: []
         )
     }
 }

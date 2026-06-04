@@ -48,6 +48,8 @@ enum AppStrings {
         static let dive = "潜水"
         static let pendingChoicePanel = "待处理选择"
         static let noPendingChoices = "暂无待处理选择。"
+        static let weeklyAchievementPanel = "周成就分"
+        static let noWeeklyAchievementResults = "暂无周成就结果。"
         static let pendingChoicePlayer = "玩家"
         static let pendingChoiceSource = "来源"
         static let pendingChoiceStatus = "状态"
@@ -128,6 +130,67 @@ enum AppStrings {
         static let active = "行动中"
         static let connected = "已连接"
         static let disconnected = "未连接"
+
+        static func weeklyAchievementTitle(week: Int, playerName: String) -> String {
+            "第 \(week) 周 · \(playerName)"
+        }
+
+        static func weeklyAchievementResultText(
+            kind: AchievementKind,
+            quantity: Int,
+            points: Int
+        ) -> String {
+            "\(AppStrings.achievementKindName(kind)) \(quantity) \(AppStrings.achievementQuantityUnit(kind))，得 \(points) 分"
+        }
+
+        static func weeklyAchievementEventPlayerSummary(
+            playerName: String,
+            points: Int
+        ) -> String {
+            "\(playerName) 成就得 \(points) 分"
+        }
+
+        static func weekEndedEventText(
+            endedWeek: Int,
+            nextWeek: Int?,
+            isGameEndTriggered: Bool,
+            achievementSummary: String?
+        ) -> String {
+            if let achievementSummary, !achievementSummary.isEmpty {
+                if let nextWeek {
+                    return "第 \(endedWeek) 周结束：\(achievementSummary)，进入第 \(nextWeek) 周"
+                }
+                return "第 \(endedWeek) 周结束：\(achievementSummary)"
+            }
+            if let nextWeek {
+                return "第 \(endedWeek) 周结束，进入第 \(nextWeek) 周"
+            }
+            if isGameEndTriggered {
+                return "第 \(endedWeek) 周结束，游戏结束待结算"
+            }
+            return "第 \(endedWeek) 周结束"
+        }
+    }
+
+    static func achievementKindName(_ kind: AchievementKind) -> String {
+        switch kind {
+        case .eggsAndYoung:
+            return "鱼卵/幼鱼"
+        case .rowsOfFish:
+            return "鱼的行"
+        case .schools:
+            return "鱼群"
+        }
+    }
+
+    static func achievementQuantityUnit(_ kind: AchievementKind) -> String {
+        switch kind {
+        case .eggsAndYoung,
+             .schools:
+            return "个"
+        case .rowsOfFish:
+            return "行"
+        }
     }
 
     static func oceanZoneName(_ zone: OceanZone) -> String {
