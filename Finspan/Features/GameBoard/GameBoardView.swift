@@ -550,6 +550,31 @@ struct GameBoardView: View {
                     .foregroundStyle(choice.canResolve ? .green : .secondary)
             }
 
+            if let targetPrompt = choice.targetPrompt {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(targetPrompt)
+                        .font(.callout.weight(.semibold))
+
+                    if let noTargetsText = choice.noTargetsText {
+                        Text(noTargetsText)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 8)], spacing: 8) {
+                            ForEach(choice.targets) { target in
+                                Button {
+                                    viewModel.resolvePendingChoice(choice.choiceId, target: target.address)
+                                } label: {
+                                    pendingChoiceTargetButton(target)
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(!target.isEnabled)
+                            }
+                        }
+                    }
+                }
+            }
+
             HStack(spacing: 10) {
                 ForEach(choice.actions) { action in
                     if action.action == .skip {
@@ -578,6 +603,32 @@ struct GameBoardView: View {
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(Color(.secondarySystemBackground))
+        )
+    }
+
+    private func pendingChoiceTargetButton(_ target: PendingChoiceTargetViewData) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(target.title)
+                .font(.headline)
+                .lineLimit(2)
+            Text(target.subtitle)
+                .font(.callout.weight(.medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+            Text("\(AppStrings.GameBoard.resources)：\(target.resourcesText)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.accentColor.opacity(0.12))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.accentColor.opacity(0.55), lineWidth: 1)
         )
     }
 

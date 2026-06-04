@@ -432,14 +432,48 @@ struct GameEngine {
                 // TODO: decide whether empty fish draw pile should become a no-op or reshuffle discard pile.
                 throw CommandValidationError.fishDrawPileEmpty
             }
-        case .chooseTarget:
+        case let .chooseTarget(target):
             guard choice.kind == .placeEgg || choice.kind == .hatchEgg else {
                 throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
             }
-            // TODO: validate and apply concrete placeEgg / hatchEgg target choices.
-            throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
+            try validatePendingChoiceTarget(
+                target,
+                for: choice,
+                in: state
+            )
         case .chooseOption:
             throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
+        }
+    }
+
+    private func validatePendingChoiceTarget(
+        _ target: OceanSlotAddress,
+        for choice: PendingChoice,
+        in state: GameState
+    ) throws {
+        guard target.playerId == choice.playerId,
+              let playerState = state.playerGameStates[choice.playerId],
+              let slot = playerState.ocean.slots.first(where: { $0.address == target })
+        else {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+
+        switch choice.kind {
+        case .placeEgg:
+            guard slot.content.hasFish,
+                  resourceAmount(.egg, in: slot) == 0
+            else {
+                throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+            }
+        case .hatchEgg:
+            guard resourceAmount(.egg, in: slot) > 0 else {
+                throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+            }
+        case .drawFish,
+             .bottomBonus,
+             .placeholder,
+             .unsupported:
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
         }
     }
 
@@ -577,8 +611,22 @@ struct GameEngine {
                 return [.none]
             }
             return [.drawFish(playerId: playerId, cardIds: [cardId])]
-        case .chooseTarget,
-             .chooseOption:
+        case let .chooseTarget(target):
+            guard let choice = state.pendingChoices[payload.choiceId] else {
+                return [.none]
+            }
+            switch choice.kind {
+            case .placeEgg:
+                return [.placeEgg(target: target, amount: 1)]
+            case .hatchEgg:
+                return [.hatchEgg(target: target, amount: 1)]
+            case .drawFish,
+                 .bottomBonus,
+                 .placeholder,
+                 .unsupported:
+                return [.none]
+            }
+        case .chooseOption:
             return [.none]
         }
     }
@@ -717,12 +765,12 @@ struct GameEngine {
                     playerState.hand.append(cardId)
                 }
                 state.playerGameStates[playerId] = playerState
-            case .placeEgg:
-                // TODO: apply after target selection UI and validation are implemented.
-                break
-            case .hatchEgg:
-                // TODO: apply after target selection UI and validation are implemented.
-                break
+            case let .placeEgg(target, amount):
+                applyResourceChange(.egg, amount: amount, at: target, to: &state)
+            case let .hatchEgg(target, amount):
+                applyResourceChange(.egg, amount: -amount, at: target, to: &state)
+                applyResourceChange(.young, amount: amount, at: target, to: &state)
+                // TODO: handle automatic school formation when hatch effects are fully implemented.
             }
         }
     }
@@ -754,6 +802,37 @@ struct GameEngine {
         if playerState.ocean.slots[slotIndex].resources[resourceIndex].amount <= 0 {
             playerState.ocean.slots[slotIndex].resources.remove(at: resourceIndex)
         }
+    }
+
+    private func applyResourceChange(
+        _ kind: ResourceKind,
+        amount: Int,
+        at target: OceanSlotAddress,
+        to state: inout GameState
+    ) {
+        guard amount != 0,
+              var playerState = state.playerGameStates[target.playerId],
+              let slotIndex = playerState.ocean.slots.firstIndex(where: { $0.address == target })
+        else {
+            return
+        }
+
+        if let resourceIndex = playerState.ocean.slots[slotIndex].resources.firstIndex(where: { $0.kind == kind }) {
+            playerState.ocean.slots[slotIndex].resources[resourceIndex].amount += amount
+            if playerState.ocean.slots[slotIndex].resources[resourceIndex].amount <= 0 {
+                playerState.ocean.slots[slotIndex].resources.remove(at: resourceIndex)
+            }
+        } else if amount > 0 {
+            playerState.ocean.slots[slotIndex].resources.append(
+                ResourceQuantity(kind: kind, amount: amount)
+            )
+        }
+
+        state.playerGameStates[target.playerId] = playerState
+    }
+
+    private func resourceAmount(_ kind: ResourceKind, in slot: OceanSlot) -> Int {
+        slot.resources.first(where: { $0.kind == kind })?.amount ?? 0
     }
 
     private func resourceSources(

@@ -260,32 +260,30 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(pendingChoice.actions.map(\.isEnabled), [true, true])
     }
 
-    func testPlaceEggPendingChoiceShowsDisabledTargetAndSkipActions() {
+    func testPlaceEggPendingChoiceShowsTargetPromptAndSkipAction() {
         let choice = pendingChoice(kind: .placeEgg)
         let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
         let viewModel = GameBoardViewModel(roomService: service)
 
         let pendingChoice = viewModel.pendingChoices[0]
 
-        XCTAssertEqual(pendingChoice.actions.map(\.title), [
-            AppStrings.GameBoard.chooseTargetUnsupported,
-            AppStrings.GameBoard.skipChoice
-        ])
-        XCTAssertEqual(pendingChoice.actions.map(\.isEnabled), [false, true])
+        XCTAssertEqual(pendingChoice.targetPrompt, AppStrings.GameBoard.choosePlaceEggTarget)
+        XCTAssertFalse(pendingChoice.targets.isEmpty)
+        XCTAssertEqual(pendingChoice.actions.map(\.title), [AppStrings.GameBoard.skipChoice])
+        XCTAssertEqual(pendingChoice.actions.map(\.isEnabled), [true])
     }
 
-    func testHatchEggPendingChoiceShowsDisabledTargetAndSkipActions() {
+    func testHatchEggPendingChoiceShowsTargetPromptAndSkipAction() {
         let choice = pendingChoice(kind: .hatchEgg)
         let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
         let viewModel = GameBoardViewModel(roomService: service)
 
         let pendingChoice = viewModel.pendingChoices[0]
 
-        XCTAssertEqual(pendingChoice.actions.map(\.title), [
-            AppStrings.GameBoard.chooseTargetUnsupported,
-            AppStrings.GameBoard.skipChoice
-        ])
-        XCTAssertEqual(pendingChoice.actions.map(\.isEnabled), [false, true])
+        XCTAssertEqual(pendingChoice.targetPrompt, AppStrings.GameBoard.chooseHatchEggTarget)
+        XCTAssertFalse(pendingChoice.targets.isEmpty)
+        XCTAssertEqual(pendingChoice.actions.map(\.title), [AppStrings.GameBoard.skipChoice])
+        XCTAssertEqual(pendingChoice.actions.map(\.isEnabled), [true])
     }
 
     func testPerformSkipPendingChoiceActionBuildsResolvePendingChoiceCommand() {
@@ -301,6 +299,62 @@ final class GameBoardViewModelTests: XCTestCase {
 
         XCTAssertEqual(payload.choiceId, choice.choiceId)
         XCTAssertEqual(payload.resolution, .skip)
+    }
+
+    func testResolvePendingChoiceTargetBuildsChooseTargetCommand() {
+        let choice = pendingChoice(kind: .placeEgg)
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let target = viewModel.pendingChoices[0].targets[0].address
+
+        viewModel.resolvePendingChoice(choice.choiceId, target: target)
+
+        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolvePendingChoice command.")
+        }
+
+        XCTAssertEqual(payload.choiceId, choice.choiceId)
+        XCTAssertEqual(payload.resolution, .chooseTarget(target))
+    }
+
+    func testPlaceEggTargetsIncludeFishSlotsWithoutEggOnly() {
+        let choice = pendingChoice(kind: .placeEgg)
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let targets = viewModel.pendingChoiceTargets(for: choice)
+
+        XCTAssertTrue(targets.contains { $0.address == Self.forageYoungAddress })
+        XCTAssertFalse(targets.contains { $0.address == Self.forageEggAddress })
+        XCTAssertFalse(targets.contains { $0.address == Self.slotAddress })
+    }
+
+    func testHatchEggTargetsIncludeSlotsWithEggOnly() {
+        let choice = pendingChoice(kind: .hatchEgg)
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let targets = viewModel.pendingChoiceTargets(for: choice)
+
+        XCTAssertTrue(targets.contains { $0.address == Self.forageEggAddress })
+        XCTAssertFalse(targets.contains { $0.address == Self.forageYoungAddress })
+        XCTAssertFalse(targets.contains { $0.address == Self.slotAddress })
+    }
+
+    func testPendingChoiceShowsNoTargetsWhenNoneAreLegal() {
+        let choice = pendingChoice(kind: .placeEgg)
+        let service = makeService(
+            hand: ["fish-2"],
+            pendingChoices: [choice.choiceId: choice],
+            emptySlots: [Self.slotAddress, Self.forageEggAddress, Self.forageYoungAddress]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let pendingChoice = viewModel.pendingChoices[0]
+
+        XCTAssertTrue(pendingChoice.targets.isEmpty)
+        XCTAssertEqual(pendingChoice.noTargetsText, AppStrings.GameBoard.noPendingChoiceTargets)
+        XCTAssertEqual(pendingChoice.actions.map(\.title), [AppStrings.GameBoard.skipChoice])
     }
 
     private static let slotAddress = OceanSlotAddress(
@@ -325,6 +379,18 @@ final class GameBoardViewModelTests: XCTestCase {
         playerId: "player-1",
         diveSite: .blue,
         rowIndex: 4
+    )
+
+    private static let forageEggAddress = OceanSlotAddress(
+        playerId: "player-1",
+        diveSite: .blue,
+        rowIndex: 4
+    )
+
+    private static let forageYoungAddress = OceanSlotAddress(
+        playerId: "player-1",
+        diveSite: .green,
+        rowIndex: 1
     )
 
     private func makeService(

@@ -92,9 +92,25 @@ struct PendingChoiceViewData: Identifiable, Equatable {
     let subtitle: String
     let sourceText: String
     let statusText: String
+    let targetPrompt: String?
+    let noTargetsText: String?
+    let targets: [PendingChoiceTargetViewData]
     let canSkip: Bool
     let canResolve: Bool
     let actions: [PendingChoiceActionViewData]
+}
+
+struct PendingChoiceTargetViewData: Identifiable, Equatable {
+    var id: String {
+        "\(choiceId)-\(address.playerId)-\(address.diveSite.rawValue)-\(address.rowIndex)"
+    }
+
+    let choiceId: PendingChoiceID
+    let address: OceanSlotAddress
+    let title: String
+    let subtitle: String
+    let resourcesText: String
+    let isEnabled: Bool
 }
 
 struct PendingChoiceActionViewData: Identifiable, Equatable {
@@ -191,6 +207,9 @@ final class GameBoardViewModel: ObservableObject {
                     subtitle: pendingChoiceSubtitle(choice),
                     sourceText: AppStrings.pendingChoiceSourceName(choice.source),
                     statusText: AppStrings.GameBoard.pendingChoiceWaiting,
+                    targetPrompt: pendingChoiceTargetPrompt(for: choice),
+                    noTargetsText: noPendingChoiceTargetsText(for: choice),
+                    targets: pendingChoiceTargets(for: choice),
                     canSkip: choice.isOptional,
                     canResolve: canResolvePendingChoice(choice),
                     actions: pendingChoiceActionButtons(for: choice)
@@ -527,8 +546,12 @@ final class GameBoardViewModel: ObservableObject {
         case .skip:
             resolvePendingChoice(choiceId, resolution: .skip)
         case .chooseTarget:
-            errorMessage = AppStrings.GameBoard.chooseTargetUnsupported
+            errorMessage = AppStrings.GameBoard.chooseTargetFromList
         }
+    }
+
+    func resolvePendingChoice(_ choiceId: PendingChoiceID, target: OceanSlotAddress) {
+        resolvePendingChoice(choiceId, resolution: .chooseTarget(target))
     }
 
     private func resolvePendingChoice(_ choiceId: PendingChoiceID, resolution: PendingChoiceResolution) {
@@ -802,14 +825,7 @@ final class GameBoardViewModel: ObservableObject {
             )
         case .placeEgg,
              .hatchEgg:
-            actions.append(
-                PendingChoiceActionViewData(
-                    choiceId: choice.choiceId,
-                    action: .chooseTarget,
-                    title: AppStrings.GameBoard.chooseTargetUnsupported,
-                    isEnabled: false
-                )
-            )
+            break
         case .bottomBonus,
              .placeholder,
              .unsupported:
@@ -835,6 +851,74 @@ final class GameBoardViewModel: ObservableObject {
         }
 
         return actions
+    }
+
+    func pendingChoiceTargets(for choice: PendingChoice) -> [PendingChoiceTargetViewData] {
+        guard let playerState = state.playerGameStates[choice.playerId],
+              choice.kind == .placeEgg || choice.kind == .hatchEgg
+        else {
+            return []
+        }
+
+        return playerState.ocean.slots
+            .sorted { left, right in
+                if left.address.diveSite.rawValue == right.address.diveSite.rawValue {
+                    return left.address.rowIndex < right.address.rowIndex
+                }
+                return diveSiteSortIndex(left.address.diveSite) < diveSiteSortIndex(right.address.diveSite)
+            }
+            .compactMap { slot in
+                guard pendingChoiceTargetIsLegal(slot, for: choice) else {
+                    return nil
+                }
+                return PendingChoiceTargetViewData(
+                    choiceId: choice.choiceId,
+                    address: slot.address,
+                    title: "\(AppStrings.oceanDiveSiteName(slot.address.diveSite)) · \(slotTitle(slot.address))",
+                    subtitle: slotContentText(slot.content),
+                    resourcesText: resourcesText(slot.resources),
+                    isEnabled: canResolvePendingChoice(choice)
+                )
+            }
+    }
+
+    private func pendingChoiceTargetIsLegal(_ slot: OceanSlot, for choice: PendingChoice) -> Bool {
+        guard slot.address.playerId == choice.playerId else {
+            return false
+        }
+
+        switch choice.kind {
+        case .placeEgg:
+            return slot.content.hasFish && resourceAmount(.egg, in: slot) == 0
+        case .hatchEgg:
+            return resourceAmount(.egg, in: slot) > 0
+        case .drawFish,
+             .bottomBonus,
+             .placeholder,
+             .unsupported:
+            return false
+        }
+    }
+
+    private func pendingChoiceTargetPrompt(for choice: PendingChoice) -> String? {
+        switch choice.kind {
+        case .placeEgg:
+            return AppStrings.GameBoard.choosePlaceEggTarget
+        case .hatchEgg:
+            return AppStrings.GameBoard.chooseHatchEggTarget
+        case .drawFish,
+             .bottomBonus,
+             .placeholder,
+             .unsupported:
+            return nil
+        }
+    }
+
+    private func noPendingChoiceTargetsText(for choice: PendingChoice) -> String? {
+        guard choice.kind == .placeEgg || choice.kind == .hatchEgg else {
+            return nil
+        }
+        return pendingChoiceTargets(for: choice).isEmpty ? AppStrings.GameBoard.noPendingChoiceTargets : nil
     }
 
     private func pendingChoiceResolutionName(_ resolution: PendingChoiceResolution) -> String {
@@ -1038,6 +1122,10 @@ final class GameBoardViewModel: ObservableObject {
             .resources
             .first(where: { $0.kind == kind })?
             .amount ?? 0
+    }
+
+    private func resourceAmount(_ kind: ResourceKind, in slot: OceanSlot) -> Int {
+        slot.resources.first(where: { $0.kind == kind })?.amount ?? 0
     }
 
     private func localizedErrorMessage(for error: Error) -> String {

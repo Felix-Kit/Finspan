@@ -1078,6 +1078,283 @@ final class GameEngineTests: XCTestCase {
         XCTAssertNil(nextState.pendingChoices[choice.choiceId])
     }
 
+    func testResolvePlaceEggChoiceAddsEggToLegalTarget() throws {
+        let engine = GameEngine()
+        var state = playFishState(keepForageFish: true)
+        let choice = pendingChoice(kind: .placeEgg)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 1)
+        state.pendingChoices[choice.choiceId] = choice
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "resolve-place-egg",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .resolvePendingChoice(
+                    ResolvePendingChoiceCommand(
+                        choiceId: choice.choiceId,
+                        resolution: .chooseTarget(target)
+                    )
+                )
+            ),
+            in: state
+        )
+
+        XCTAssertEqual(
+            drafts,
+            [
+                .pendingChoiceResolved(
+                    PendingChoiceResolvedEvent(
+                        choiceId: choice.choiceId,
+                        playerId: "player-1",
+                        resolution: .chooseTarget(target),
+                        appliedEffects: [.placeEgg(target: target, amount: 1)]
+                    )
+                ),
+                .turnAdvanced(
+                    TurnAdvancedEvent(
+                        playerId: "player-1",
+                        nextPlayerId: "player-2"
+                    )
+                )
+            ]
+        )
+
+        let nextState = engine.reduce(
+            state: state,
+            event: GameEvent(
+                sequenceNumber: 10,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .pendingChoiceResolved(
+                    PendingChoiceResolvedEvent(
+                        choiceId: choice.choiceId,
+                        playerId: "player-1",
+                        resolution: .chooseTarget(target),
+                        appliedEffects: [.placeEgg(target: target, amount: 1)]
+                    )
+                )
+            )
+        )
+
+        XCTAssertEqual(resourceAmount(.egg, at: target, in: nextState), 1)
+        XCTAssertNil(nextState.pendingChoices[choice.choiceId])
+    }
+
+    func testResolvePlaceEggChoiceRejectsEmptySlot() {
+        let engine = GameEngine()
+        var state = playFishState()
+        let choice = pendingChoice(kind: .placeEgg)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        state.pendingChoices[choice.choiceId] = choice
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: PlayerCommand(
+                    commandId: "resolve-place-egg-empty",
+                    playerId: "player-1",
+                    roomId: roomId,
+                    payload: .resolvePendingChoice(
+                        ResolvePendingChoiceCommand(
+                            choiceId: choice.choiceId,
+                            resolution: .chooseTarget(target)
+                        )
+                    )
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .invalidPendingChoiceResolution(choice.choiceId))
+        }
+    }
+
+    func testResolvePlaceEggChoiceRejectsSlotWithEgg() {
+        let engine = GameEngine()
+        var state = playFishState(keepForageFish: true)
+        let choice = pendingChoice(kind: .placeEgg)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 4)
+        state.pendingChoices[choice.choiceId] = choice
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: PlayerCommand(
+                    commandId: "resolve-place-egg-existing-egg",
+                    playerId: "player-1",
+                    roomId: roomId,
+                    payload: .resolvePendingChoice(
+                        ResolvePendingChoiceCommand(
+                            choiceId: choice.choiceId,
+                            resolution: .chooseTarget(target)
+                        )
+                    )
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .invalidPendingChoiceResolution(choice.choiceId))
+        }
+    }
+
+    func testResolveHatchEggChoiceTurnsEggIntoYoung() throws {
+        let engine = GameEngine()
+        var state = playFishState(keepForageFish: true)
+        let choice = pendingChoice(kind: .hatchEgg)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 4)
+        state.pendingChoices[choice.choiceId] = choice
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "resolve-hatch-egg",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .resolvePendingChoice(
+                    ResolvePendingChoiceCommand(
+                        choiceId: choice.choiceId,
+                        resolution: .chooseTarget(target)
+                    )
+                )
+            ),
+            in: state
+        )
+
+        XCTAssertEqual(
+            drafts,
+            [
+                .pendingChoiceResolved(
+                    PendingChoiceResolvedEvent(
+                        choiceId: choice.choiceId,
+                        playerId: "player-1",
+                        resolution: .chooseTarget(target),
+                        appliedEffects: [.hatchEgg(target: target, amount: 1)]
+                    )
+                ),
+                .turnAdvanced(
+                    TurnAdvancedEvent(
+                        playerId: "player-1",
+                        nextPlayerId: "player-2"
+                    )
+                )
+            ]
+        )
+
+        let nextState = engine.reduce(
+            state: state,
+            event: GameEvent(
+                sequenceNumber: 10,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .pendingChoiceResolved(
+                    PendingChoiceResolvedEvent(
+                        choiceId: choice.choiceId,
+                        playerId: "player-1",
+                        resolution: .chooseTarget(target),
+                        appliedEffects: [.hatchEgg(target: target, amount: 1)]
+                    )
+                )
+            )
+        )
+
+        XCTAssertEqual(resourceAmount(.egg, at: target, in: nextState), 0)
+        XCTAssertEqual(resourceAmount(.young, at: target, in: nextState), 1)
+        XCTAssertNil(nextState.pendingChoices[choice.choiceId])
+    }
+
+    func testResolveHatchEggChoiceRejectsSlotWithoutEgg() {
+        let engine = GameEngine()
+        var state = playFishState(keepForageFish: true)
+        let choice = pendingChoice(kind: .hatchEgg)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 1)
+        state.pendingChoices[choice.choiceId] = choice
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: PlayerCommand(
+                    commandId: "resolve-hatch-egg-no-egg",
+                    playerId: "player-1",
+                    roomId: roomId,
+                    payload: .resolvePendingChoice(
+                        ResolvePendingChoiceCommand(
+                            choiceId: choice.choiceId,
+                            resolution: .chooseTarget(target)
+                        )
+                    )
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .invalidPendingChoiceResolution(choice.choiceId))
+        }
+    }
+
+    func testSkipPlaceEggAndHatchEggChoicesDoNotChangeOceanResources() {
+        let engine = GameEngine()
+        for kind in [PendingChoiceKind.placeEgg, .hatchEgg] {
+            var state = playFishState(keepForageFish: true)
+            let choice = pendingChoice(choiceId: "choice-\(kind.rawValue)", kind: kind)
+            state.pendingChoices[choice.choiceId] = choice
+            let startingOcean = state.playerGameStates["player-1"]?.ocean
+
+            let nextState = engine.reduce(
+                state: state,
+                event: GameEvent(
+                    sequenceNumber: 10,
+                    roomId: roomId,
+                    timestamp: timestamp,
+                    payload: .pendingChoiceResolved(
+                        PendingChoiceResolvedEvent(
+                            choiceId: choice.choiceId,
+                            playerId: "player-1",
+                            resolution: .skip,
+                            appliedEffects: [.none]
+                        )
+                    )
+                )
+            )
+
+            XCTAssertEqual(nextState.playerGameStates["player-1"]?.ocean, startingOcean)
+            XCTAssertNil(nextState.pendingChoices[choice.choiceId])
+        }
+    }
+
+    func testResolveTargetDoesNotAdvanceWhenPlayerStillHasPendingChoices() throws {
+        let engine = GameEngine()
+        var state = playFishState(keepForageFish: true)
+        let firstChoice = pendingChoice(choiceId: "choice-place-egg", kind: .placeEgg)
+        let secondChoice = pendingChoice(choiceId: "choice-hatch-egg", kind: .hatchEgg)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 1)
+        state.pendingChoices[firstChoice.choiceId] = firstChoice
+        state.pendingChoices[secondChoice.choiceId] = secondChoice
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "resolve-target-with-remaining-choice",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .resolvePendingChoice(
+                    ResolvePendingChoiceCommand(
+                        choiceId: firstChoice.choiceId,
+                        resolution: .chooseTarget(target)
+                    )
+                )
+            ),
+            in: state
+        )
+
+        XCTAssertEqual(
+            drafts,
+            [
+                .pendingChoiceResolved(
+                    PendingChoiceResolvedEvent(
+                        choiceId: firstChoice.choiceId,
+                        playerId: "player-1",
+                        resolution: .chooseTarget(target),
+                        appliedEffects: [.placeEgg(target: target, amount: 1)]
+                    )
+                )
+            ]
+        )
+    }
+
     func testSkipPendingChoiceDoesNotChangeHandOrOceanResources() {
         let engine = GameEngine()
         var state = playFishState()
@@ -1233,10 +1510,24 @@ final class GameEngineTests: XCTestCase {
             source: .diveBonus(.blue),
             kind: kind,
             options: [],
-            expectedInput: .none,
+            expectedInput: kind == .placeEgg || kind == .hatchEgg ? .targetSlot : .none,
             isOptional: isOptional,
             createdAtSequence: 9
         )
+    }
+
+    private func resourceAmount(
+        _ kind: ResourceKind,
+        at address: OceanSlotAddress,
+        in state: GameState
+    ) -> Int {
+        state.playerGameStates[address.playerId]?
+            .ocean
+            .slots
+            .first(where: { $0.address == address })?
+            .resources
+            .first(where: { $0.kind == kind })?
+            .amount ?? 0
     }
 
     private func submitEndTurn(
