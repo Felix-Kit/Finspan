@@ -4,6 +4,8 @@ struct PendingChoice: Identifiable, Codable, Equatable, Sendable {
     var choiceId: PendingChoiceID
     var playerId: PlayerID
     var source: PendingChoiceSource
+    var diveQueueId: DiveResolutionQueueID? = nil
+    var diveStepId: DiveResolutionStepID? = nil
     var kind: PendingChoiceKind
     var options: [PendingChoiceOption]
     var expectedInput: PendingChoiceExpectedInput?

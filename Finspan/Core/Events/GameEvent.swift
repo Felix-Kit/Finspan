@@ -93,6 +93,7 @@ struct DiverMovedEvent: Codable, Equatable, Sendable {
     var bottomBonusAvailable: Bool
     var bottomBonusClaimed: Bool
     var nextActivePlayerId: PlayerID?
+    var diveResolutionQueue: DiveResolutionQueue? = nil
 }
 
 struct PendingChoiceResolvedEvent: Codable, Equatable, Sendable {
@@ -100,6 +101,7 @@ struct PendingChoiceResolvedEvent: Codable, Equatable, Sendable {
     var playerId: PlayerID
     var resolution: PendingChoiceResolution
     var appliedEffects: [PendingChoiceAppliedEffect]
+    var diveQueueUpdate: DiveResolutionQueueUpdate? = nil
 }
 
 struct AbilityOptionChosenEvent: Codable, Equatable, Sendable {

@@ -198,6 +198,7 @@ final class GameEngineTests: XCTestCase {
         var state = playFishState()
         state.playerGameStates["player-1"]?.availableDivers = 1
         state.playerGameStates["player-2"]?.availableDivers = 1
+        state.playerGameStates["player-1"]?.diveSitesReachedBottomThisWeek = [.blue]
 
         let drafts = try engine.makeEventDrafts(
             for: PlayerCommand(
@@ -224,6 +225,7 @@ final class GameEngineTests: XCTestCase {
         state.firstPlayerId = "player-1"
         state.playerGameStates["player-1"]?.availableDivers = 1
         state.playerGameStates["player-2"]?.availableDivers = 0
+        state.playerGameStates["player-1"]?.diveSitesReachedBottomThisWeek = [.blue]
 
         let drafts = try engine.makeEventDrafts(
             for: PlayerCommand(
@@ -1183,32 +1185,20 @@ final class GameEngineTests: XCTestCase {
             in: state
         )
 
-        XCTAssertEqual(
-            drafts,
-            [
-                .diverMoved(
-                    DiverMovedEvent(
-                        playerId: "player-1",
-                        diveSite: .blue,
-                        bottomBonusAvailable: true,
-                        bottomBonusClaimed: true,
-                        nextActivePlayerId: nil
-                    )
-                ),
-                .pendingChoiceCreated(
-                    PendingChoice(
-                        choiceId: "dive-blue-dive-bonus-3",
-                        playerId: "player-1",
-                        source: .diveBonus(.blue),
-                        kind: .recoverFromDiscardOrDraw,
-                        options: [],
-                        expectedInput: .cardSelection,
-                        isOptional: true,
-                        createdAtSequence: 0
-                    )
-                )
-            ]
-        )
+        XCTAssertEqual(drafts.count, 2)
+        guard case let .diverMoved(diverMoved) = drafts[0],
+              case let .pendingChoiceCreated(choice) = drafts[1]
+        else {
+            return XCTFail("Expected diver movement followed by the first queue choice.")
+        }
+
+        XCTAssertNil(diverMoved.nextActivePlayerId)
+        XCTAssertEqual(diverMoved.diveResolutionQueue?.steps.count, 1)
+        XCTAssertEqual(diverMoved.diveResolutionQueue?.currentStep?.source, .bottomBonus)
+        XCTAssertEqual(choice.choiceId, "dive-blue-dive-bonus-3")
+        XCTAssertEqual(choice.kind, .recoverFromDiscardOrDraw)
+        XCTAssertEqual(choice.diveQueueId, diverMoved.diveResolutionQueue?.queueId)
+        XCTAssertEqual(choice.diveStepId, diverMoved.diveResolutionQueue?.currentStep?.stepId)
     }
 
     func testDiveReducerConsumesDiverRecordsBottomBonusWithoutAdvancingActivePlayer() {
@@ -1325,20 +1315,15 @@ final class GameEngineTests: XCTestCase {
         )
 
         XCTAssertTrue(
-            drafts.contains(
-                .pendingChoiceCreated(
-                    PendingChoice(
-                        choiceId: "dive-blue-zone-bonus-dive-bonus-0",
-                        playerId: "player-1",
-                        source: .diveBonus(.blue),
-                        kind: .drawFish,
-                        options: [],
-                        expectedInput: .none,
-                        isOptional: true,
-                        createdAtSequence: 0
-                    )
-                )
-            )
+            drafts.contains { draft in
+                guard case let .pendingChoiceCreated(choice) = draft else {
+                    return false
+                }
+                return choice.choiceId == "dive-blue-zone-bonus-dive-bonus-0"
+                    && choice.kind == .drawFish
+                    && choice.diveQueueId != nil
+                    && choice.diveStepId != nil
+            }
         )
     }
 
@@ -1383,21 +1368,261 @@ final class GameEngineTests: XCTestCase {
         )
 
         XCTAssertTrue(
-            drafts.contains(
-                .pendingChoiceCreated(
-                    PendingChoice(
-                        choiceId: "dive-blue-forage-bonus-dive-bonus-2",
-                        playerId: "player-1",
-                        source: .diveBonus(.blue),
-                        kind: .drawFish,
-                        options: [],
-                        expectedInput: .none,
-                        isOptional: true,
-                        createdAtSequence: 0
-                    )
-                )
-            )
+            drafts.contains { draft in
+                guard case let .pendingChoiceCreated(choice) = draft else {
+                    return false
+                }
+                return choice.choiceId == "dive-blue-forage-bonus-dive-bonus-2"
+                    && choice.kind == .drawFish
+            }
         )
+    }
+
+    func testDiveResolutionQueueCreatesOnlyFirstPendingChoiceInTopToBottomOrder() throws {
+        let engine = GameEngine()
+        let state = blueDiveQueueState()
+
+        let drafts = try engine.makeEventDrafts(
+            for: diveCommand(commandId: "dive-queue-order"),
+            in: state
+        )
+
+        XCTAssertEqual(drafts.filter(\.isPendingChoiceCreated).count, 1)
+        guard case let .diverMoved(diverMoved) = drafts.first,
+              let queue = diverMoved.diveResolutionQueue,
+              case let .pendingChoiceCreated(choice) = drafts.last
+        else {
+            return XCTFail("Expected a dive queue and its first pending choice.")
+        }
+
+        XCTAssertEqual(
+            queue.steps.map(\.source),
+            [
+                .printedDiveBonus(.sunlit),
+                .printedDiveBonus(.twilight),
+                .printedDiveBonus(.midnight),
+                .bottomBonus
+            ]
+        )
+        XCTAssertEqual(queue.currentStepIndex, 0)
+        XCTAssertFalse(queue.isCompleted)
+        XCTAssertEqual(choice.choiceId, queue.currentStep?.pendingChoice.choiceId)
+        XCTAssertEqual(choice.kind, .drawFish)
+    }
+
+    func testResolveDiveQueueStepCreatesNextPendingChoiceWithoutAdvancingPlayer() throws {
+        let engine = GameEngine()
+        var state = applying(
+            try engine.makeEventDrafts(
+                for: diveCommand(commandId: "dive-queue-resolve"),
+                in: blueDiveQueueState()
+            ),
+            to: blueDiveQueueState(),
+            using: engine
+        )
+        state.deckState.fishDrawPile = ["fish-9"]
+        let firstChoice = try XCTUnwrap(state.pendingChoices.values.first)
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(
+                commandId: "resolve-dive-queue-first",
+                choiceId: firstChoice.choiceId,
+                resolution: .draw(count: 1)
+            ),
+            in: state
+        )
+
+        XCTAssertEqual(drafts.count, 2)
+        guard case let .pendingChoiceResolved(resolved) = drafts[0],
+              case let .advanced(queue) = resolved.diveQueueUpdate,
+              case let .pendingChoiceCreated(nextChoice) = drafts[1]
+        else {
+            return XCTFail("Expected queue advancement and the next pending choice.")
+        }
+        XCTAssertEqual(queue.currentStepIndex, 1)
+        XCTAssertEqual(queue.currentStep?.source, .printedDiveBonus(.twilight))
+        XCTAssertEqual(nextChoice.choiceId, queue.currentStep?.pendingChoice.choiceId)
+        XCTAssertFalse(drafts.contains(where: \.isTurnCompletion))
+
+        let nextState = applying(drafts, to: state, using: engine)
+        XCTAssertEqual(nextState.activePlayerId, "player-1")
+        XCTAssertEqual(nextState.activeDiveQueue?.currentStepIndex, 1)
+        XCTAssertNil(nextState.pendingChoices[firstChoice.choiceId])
+        XCTAssertNotNil(nextState.pendingChoices[nextChoice.choiceId])
+    }
+
+    func testSkipDiveQueueStepAlsoCreatesNextPendingChoice() throws {
+        let engine = GameEngine()
+        let initialState = blueDiveQueueState()
+        let state = applying(
+            try engine.makeEventDrafts(
+                for: diveCommand(commandId: "dive-queue-skip"),
+                in: initialState
+            ),
+            to: initialState,
+            using: engine
+        )
+        let firstChoice = try XCTUnwrap(state.pendingChoices.values.first)
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(
+                commandId: "skip-dive-queue-first",
+                choiceId: firstChoice.choiceId,
+                resolution: .skip
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(resolved) = drafts.first,
+              case let .advanced(queue) = resolved.diveQueueUpdate,
+              case let .pendingChoiceCreated(nextChoice) = drafts.last
+        else {
+            return XCTFail("Expected skip to advance the dive queue.")
+        }
+        XCTAssertEqual(queue.currentStepIndex, 1)
+        XCTAssertEqual(nextChoice.diveStepId, queue.currentStep?.stepId)
+        XCTAssertFalse(drafts.contains(where: \.isTurnCompletion))
+    }
+
+    func testDiveQueueCompletesBeforeActivePlayerAdvances() throws {
+        let engine = GameEngine()
+        let initialState = blueDiveQueueState()
+        var state = applying(
+            try engine.makeEventDrafts(
+                for: diveCommand(commandId: "dive-queue-complete"),
+                in: initialState
+            ),
+            to: initialState,
+            using: engine
+        )
+
+        while let choice = state.pendingChoices.values.first {
+            let isLastStep = state.activeDiveQueue?.currentStepIndex == (state.activeDiveQueue?.steps.count ?? 0) - 1
+            let drafts = try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "skip-\(choice.choiceId)",
+                    choiceId: choice.choiceId,
+                    resolution: .skip
+                ),
+                in: state
+            )
+
+            if isLastStep {
+                XCTAssertTrue(drafts.contains(where: \.isTurnCompletion))
+            } else {
+                XCTAssertFalse(drafts.contains(where: \.isTurnCompletion))
+            }
+            state = applying(drafts, to: state, using: engine)
+
+            if !isLastStep {
+                XCTAssertEqual(state.activePlayerId, "player-1")
+            }
+        }
+
+        XCTAssertNil(state.activeDiveQueue)
+        XCTAssertEqual(state.activePlayerId, "player-2")
+    }
+
+    func testDiveQueueCompletionEndsWeekWhenAllDiversAreUsed() throws {
+        let engine = GameEngine()
+        var initialState = blueDiveQueueState()
+        initialState.firstPlayerId = "player-1"
+        initialState.playerGameStates["player-1"]?.availableDivers = 1
+        initialState.playerGameStates["player-2"]?.availableDivers = 0
+        var state = applying(
+            try engine.makeEventDrafts(
+                for: diveCommand(commandId: "dive-queue-week-end"),
+                in: initialState
+            ),
+            to: initialState,
+            using: engine
+        )
+        var finalDrafts: [DomainEventDraft] = []
+
+        while let choice = state.pendingChoices.values.first {
+            finalDrafts = try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "skip-\(choice.choiceId)",
+                    choiceId: choice.choiceId,
+                    resolution: .skip
+                ),
+                in: state
+            )
+            state = applying(finalDrafts, to: state, using: engine)
+        }
+
+        XCTAssertTrue(finalDrafts.contains { draft in
+            if case .weekEnded = draft {
+                return true
+            }
+            return false
+        })
+        XCTAssertNil(state.activeDiveQueue)
+        XCTAssertEqual(state.currentWeek, 2)
+    }
+
+    func testSecondDiveAtSameSiteOmitsBottomBonusStep() throws {
+        let engine = GameEngine()
+        var state = blueDiveQueueState()
+        state.playerGameStates["player-1"]?.diveSitesReachedBottomThisWeek = [.blue]
+
+        let drafts = try engine.makeEventDrafts(
+            for: diveCommand(commandId: "dive-queue-no-second-bottom"),
+            in: state
+        )
+
+        guard case let .diverMoved(diverMoved) = drafts.first,
+              let queue = diverMoved.diveResolutionQueue
+        else {
+            return XCTFail("Expected zone bonus queue.")
+        }
+        XCTAssertEqual(
+            queue.steps.map(\.source),
+            [
+                .printedDiveBonus(.sunlit),
+                .printedDiveBonus(.twilight),
+                .printedDiveBonus(.midnight)
+            ]
+        )
+    }
+
+    func testActiveDiveQueuePreventsPlayFishAndDive() throws {
+        let engine = GameEngine()
+        let initialState = blueDiveQueueState()
+        let state = applying(
+            try engine.makeEventDrafts(
+                for: diveCommand(commandId: "dive-queue-blocking"),
+                in: initialState
+            ),
+            to: initialState,
+            using: engine
+        )
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 0)
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: PlayerCommand(
+                    commandId: "play-during-dive-queue",
+                    playerId: "player-1",
+                    roomId: roomId,
+                    payload: .playFish(
+                        PlayFishCommand(cardId: "fish-6", targetSlot: target, payment: .empty)
+                    )
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .unresolvedPendingChoices("player-1"))
+        }
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: diveCommand(commandId: "dive-during-dive-queue"),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .unresolvedPendingChoices("player-1"))
+        }
     }
 
     func testBaseGameDiveBonusLayoutMatchesPrintedBonuses() {
@@ -2564,6 +2789,63 @@ final class GameEngineTests: XCTestCase {
         return state
     }
 
+    private func blueDiveQueueState() -> GameState {
+        var state = playFishState()
+        for rowIndex in [0, 3, 4] {
+            setContent(
+                .fishCard("fish-\(rowIndex + 10)"),
+                at: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: rowIndex),
+                in: &state
+            )
+        }
+        return state
+    }
+
+    private func diveCommand(commandId: CommandID) -> PlayerCommand {
+        PlayerCommand(
+            commandId: commandId,
+            playerId: "player-1",
+            roomId: roomId,
+            payload: .dive(DiveCommand(diveSite: .blue))
+        )
+    }
+
+    private func resolveCommand(
+        commandId: CommandID,
+        choiceId: PendingChoiceID,
+        resolution: PendingChoiceResolution
+    ) -> PlayerCommand {
+        PlayerCommand(
+            commandId: commandId,
+            playerId: "player-1",
+            roomId: roomId,
+            payload: .resolvePendingChoice(
+                ResolvePendingChoiceCommand(
+                    choiceId: choiceId,
+                    resolution: resolution
+                )
+            )
+        )
+    }
+
+    private func applying(
+        _ drafts: [DomainEventDraft],
+        to state: GameState,
+        using engine: GameEngine
+    ) -> GameState {
+        var eventFactory = AuthoritativeEventFactory(
+            roomId: roomId,
+            nextSequenceNumber: state.eventSequence + 1,
+            randomSeed: state.randomSeed ?? 0,
+            timestampProvider: { self.timestamp }
+        )
+        return eventFactory
+            .makeEvents(from: drafts, actorPlayerId: "player-1")
+            .reduce(state) { currentState, event in
+                engine.reduce(state: currentState, event: event)
+            }
+    }
+
     private func pendingChoice(
         choiceId: PendingChoiceID = "choice-1",
         kind: PendingChoiceKind = .bottomBonus,
@@ -2682,4 +2964,23 @@ final class GameEngineTests: XCTestCase {
 private struct TestCardCatalog: CardCatalog {
     var starterFishCards: [Card] = []
     var fishCards: [Card] = []
+}
+
+private extension DomainEventDraft {
+    var isPendingChoiceCreated: Bool {
+        if case .pendingChoiceCreated = self {
+            return true
+        }
+        return false
+    }
+
+    var isTurnCompletion: Bool {
+        switch self {
+        case .turnAdvanced,
+             .weekEnded:
+            return true
+        default:
+            return false
+        }
+    }
 }

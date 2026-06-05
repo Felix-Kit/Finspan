@@ -139,6 +139,7 @@ struct GameEngine {
         case let .pendingChoiceResolved(payload):
             applyPendingChoiceEffects(payload.appliedEffects, to: &nextState)
             nextState.pendingChoices.removeValue(forKey: payload.choiceId)
+            applyDiveQueueUpdate(payload.diveQueueUpdate, to: &nextState)
         case let .turnAdvanced(payload):
             applyTurnAdvanced(payload, to: &nextState)
         case .playerReadyChanged,
@@ -218,7 +219,7 @@ struct GameEngine {
                 playerId: command.playerId,
                 in: state
             )
-            let pendingChoices = diveBonusChoices(
+            let diveQueue = diveResolutionQueue(
                 for: payload.diveSite,
                 commandId: command.commandId,
                 playerId: command.playerId,
@@ -231,10 +232,11 @@ struct GameEngine {
                     diveSite: payload.diveSite,
                     bottomBonusAvailable: bottomBonusAvailable,
                     bottomBonusClaimed: bottomBonusAvailable,
-                    nextActivePlayerId: pendingChoices.isEmpty ? nextPlayer(after: command.playerId, in: state.players)?.id : nil
+                    nextActivePlayerId: diveQueue == nil ? nextPlayer(after: command.playerId, in: state.players)?.id : nil,
+                    diveResolutionQueue: diveQueue
                 )
             )
-            if pendingChoices.isEmpty {
+            guard let firstChoice = diveQueue?.currentStep?.pendingChoice else {
                 let drafts = [diverMoved]
                 return drafts + actionCompletionDrafts(
                     afterApplying: drafts,
@@ -242,20 +244,28 @@ struct GameEngine {
                     in: state
                 )
             }
-            return [diverMoved] + pendingChoices
+            return [diverMoved, .pendingChoiceCreated(firstChoice)]
         case let .resolvePendingChoice(payload):
-            var drafts: [DomainEventDraft] = [.pendingChoiceResolved(
-                PendingChoiceResolvedEvent(
-                    choiceId: payload.choiceId,
-                    playerId: command.playerId,
-                    resolution: payload.resolution,
-                    appliedEffects: appliedEffects(
-                        for: payload,
+            let queueProgress = diveQueueProgressAfterResolving(payload, in: state)
+            var drafts: [DomainEventDraft] = [
+                .pendingChoiceResolved(
+                    PendingChoiceResolvedEvent(
+                        choiceId: payload.choiceId,
                         playerId: command.playerId,
-                        in: state
+                        resolution: payload.resolution,
+                        appliedEffects: appliedEffects(
+                            for: payload,
+                            playerId: command.playerId,
+                            in: state
+                        ),
+                        diveQueueUpdate: queueProgress.update
                     )
                 )
-            )]
+            ]
+            if let nextChoice = queueProgress.nextChoice {
+                drafts.append(.pendingChoiceCreated(nextChoice))
+                return drafts
+            }
             if shouldAdvanceTurnAfterResolving(payload, playerId: command.playerId, in: state) {
                 drafts.append(
                     contentsOf: actionCompletionDrafts(
@@ -301,7 +311,9 @@ struct GameEngine {
         in state: GameState
     ) -> [DomainEventDraft] {
         let projectedState = stateAfterApplying(drafts, to: state)
-        guard projectedState.pendingChoices.isEmpty else {
+        guard projectedState.pendingChoices.isEmpty,
+              projectedState.activeDiveQueue == nil
+        else {
             return []
         }
         guard allDiversUsed(in: projectedState) else {
@@ -353,6 +365,7 @@ struct GameEngine {
         case let .pendingChoiceResolved(payload):
             applyPendingChoiceEffects(payload.appliedEffects, to: &state)
             state.pendingChoices.removeValue(forKey: payload.choiceId)
+            applyDiveQueueUpdate(payload.diveQueueUpdate, to: &state)
         case let .turnAdvanced(payload):
             applyTurnAdvanced(payload, to: &state)
         case let .weekEnded(payload):
@@ -439,7 +452,9 @@ struct GameEngine {
         guard let playerState = state.playerGameStates[playerId] else {
             throw CommandValidationError.missingPlayerState(playerId)
         }
-        guard !hasBlockingPendingChoices(for: playerId, in: state) else {
+        guard state.activeDiveQueue == nil,
+              !hasBlockingPendingChoices(for: playerId, in: state)
+        else {
             throw CommandValidationError.unresolvedPendingChoices(playerId)
         }
         guard playerState.availableDivers > 0 else {
@@ -494,7 +509,9 @@ struct GameEngine {
         guard DiveActionSite.baseGameSites.contains(payload.diveSite) else {
             throw CommandValidationError.invalidDiveSite(payload.diveSite)
         }
-        guard !hasBlockingPendingChoices(for: playerId, in: state) else {
+        guard state.activeDiveQueue == nil,
+              !hasBlockingPendingChoices(for: playerId, in: state)
+        else {
             throw CommandValidationError.unresolvedPendingChoices(playerId)
         }
         guard let playerState = state.playerGameStates[playerId] else {
@@ -530,6 +547,15 @@ struct GameEngine {
                 expected: choice.playerId,
                 actual: playerId
             )
+        }
+        if choice.diveQueueId != nil {
+            guard let activeDiveQueue = state.activeDiveQueue,
+                  activeDiveQueue.queueId == choice.diveQueueId,
+                  activeDiveQueue.currentStep?.stepId == choice.diveStepId,
+                  activeDiveQueue.currentStep?.pendingChoice.choiceId == choice.choiceId
+            else {
+                throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
+            }
         }
         if case .skip = payload.resolution, !choice.isOptional {
             throw CommandValidationError.pendingChoiceRequired(payload.choiceId)
@@ -664,36 +690,79 @@ struct GameEngine {
             return false
         }
 
+        if choice.diveQueueId != nil {
+            guard let activeDiveQueue = state.activeDiveQueue,
+                  activeDiveQueue.queueId == choice.diveQueueId
+            else {
+                return false
+            }
+            return activeDiveQueue.currentStepIndex + 1 >= activeDiveQueue.steps.count
+        }
+
         return !state.pendingChoices.values.contains { pendingChoice in
             pendingChoice.playerId == playerId && pendingChoice.choiceId != payload.choiceId
         }
     }
 
-    private func diveBonusChoices(
+    private func diveResolutionQueue(
         for diveSite: DiveActionSite,
         commandId: CommandID,
         playerId: PlayerID,
         includeBottomBonus: Bool,
         in state: GameState
-    ) -> [DomainEventDraft] {
+    ) -> DiveResolutionQueue? {
         guard let playerState = state.playerGameStates[playerId] else {
-            return []
+            return nil
         }
 
-        return diveBonusLayout.bonuses(for: diveSite)
-            .enumerated()
-            .compactMap { index, bonus in
-                guard bonusIsAvailable(bonus, playerState: playerState, includeBottomBonus: includeBottomBonus) else {
-                    return nil
-                }
-                return .pendingChoiceCreated(
-                    pendingChoice(
-                        for: bonus,
-                        choiceId: "\(commandId)-dive-bonus-\(index)",
-                        playerId: playerId
-                    )
-                )
+        let queueId = "\(commandId)-dive-queue"
+        let indexedBonuses = diveBonusLayout.bonuses(for: diveSite).enumerated().map { ($0.offset, $0.element) }
+        let orderedBonuses = OceanZone.allCases.flatMap { zone in
+            indexedBonuses.filter { _, bonus in
+                bonus.position == .zone(zone)
             }
+        } + indexedBonuses.filter { _, bonus in
+            bonus.position == .bottom
+        }
+        let availableBonuses = orderedBonuses.filter { _, bonus in
+            bonusIsAvailable(bonus, playerState: playerState, includeBottomBonus: includeBottomBonus)
+        }
+        let steps = availableBonuses.enumerated().map { stepIndex, indexedBonus in
+            let (bonusIndex, bonus) = indexedBonus
+            let stepId = "\(queueId)-step-\(stepIndex)"
+            return DiveResolutionStep(
+                stepId: stepId,
+                source: diveResolutionStepSource(for: bonus.position),
+                pendingChoice: pendingChoice(
+                    for: bonus,
+                    choiceId: "\(commandId)-dive-bonus-\(bonusIndex)",
+                    playerId: playerId,
+                    diveQueueId: queueId,
+                    diveStepId: stepId
+                )
+            )
+        }
+
+        guard !steps.isEmpty else {
+            return nil
+        }
+
+        return DiveResolutionQueue(
+            queueId: queueId,
+            playerId: playerId,
+            diveSite: diveSite,
+            steps: steps,
+            currentStepIndex: 0
+        )
+    }
+
+    private func diveResolutionStepSource(for position: DiveBonusPosition) -> DiveResolutionStepSource {
+        switch position {
+        case let .zone(zone):
+            return .printedDiveBonus(zone)
+        case .bottom:
+            return .bottomBonus
+        }
     }
 
     private func bonusIsAvailable(
@@ -728,18 +797,42 @@ struct GameEngine {
     private func pendingChoice(
         for bonus: DiveBonusDefinition,
         choiceId: PendingChoiceID,
-        playerId: PlayerID
+        playerId: PlayerID,
+        diveQueueId: DiveResolutionQueueID,
+        diveStepId: DiveResolutionStepID
     ) -> PendingChoice {
         PendingChoice(
             choiceId: choiceId,
             playerId: playerId,
             source: .diveBonus(bonus.diveSite),
+            diveQueueId: diveQueueId,
+            diveStepId: diveStepId,
             kind: pendingChoiceKind(for: bonus.kind),
             options: [],
             expectedInput: expectedInput(for: bonus.kind),
             isOptional: true,
             createdAtSequence: 0
         )
+    }
+
+    private func diveQueueProgressAfterResolving(
+        _ payload: ResolvePendingChoiceCommand,
+        in state: GameState
+    ) -> (update: DiveResolutionQueueUpdate?, nextChoice: PendingChoice?) {
+        guard let choice = state.pendingChoices[payload.choiceId],
+              let queueId = choice.diveQueueId,
+              var queue = state.activeDiveQueue,
+              queue.queueId == queueId,
+              queue.currentStep?.stepId == choice.diveStepId
+        else {
+            return (nil, nil)
+        }
+
+        queue.currentStepIndex += 1
+        guard let nextChoice = queue.currentStep?.pendingChoice else {
+            return (.completed(queueId: queue.queueId), nil)
+        }
+        return (.advanced(queue), nextChoice)
     }
 
     private func pendingChoiceKind(for bonusKind: DiveBonusKind) -> PendingChoiceKind {
@@ -921,7 +1014,25 @@ struct GameEngine {
             playerState.diveSitesReachedBottomThisWeek.insert(payload.diveSite)
         }
         state.playerGameStates[payload.playerId] = playerState
+        state.activeDiveQueue = payload.diveResolutionQueue
+    }
 
+    private func applyDiveQueueUpdate(
+        _ update: DiveResolutionQueueUpdate?,
+        to state: inout GameState
+    ) {
+        guard let update else {
+            return
+        }
+
+        switch update {
+        case let .advanced(queue):
+            state.activeDiveQueue = queue
+        case let .completed(queueId):
+            if state.activeDiveQueue?.queueId == queueId {
+                state.activeDiveQueue = nil
+            }
+        }
     }
 
     private func applyTurnAdvanced(_ payload: TurnAdvancedEvent, to state: inout GameState) {

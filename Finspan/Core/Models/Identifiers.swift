@@ -8,3 +8,5 @@ typealias CardID = String
 typealias AbilityOptionID = String
 typealias PendingChoiceID = String
 typealias ForageFishID = String
+typealias DiveResolutionQueueID = String
+typealias DiveResolutionStepID = String
