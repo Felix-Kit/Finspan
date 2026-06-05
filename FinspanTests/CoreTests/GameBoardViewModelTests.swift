@@ -171,6 +171,110 @@ final class GameBoardViewModelTests: XCTestCase {
             Set(viewModel.oceanSlots.filter { $0.address.rowTrait == .bottomRow }.map(\.address.rowIndex)),
             [5]
         )
+
+        let blueBottomRowAddress = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 5)
+        XCTAssertEqual(
+            oceanSlot(in: viewModel, address: blueBottomRowAddress).title,
+            "深海层 2 / 底行"
+        )
+        XCTAssertEqual(viewModel.bottomAreas.count, 3)
+    }
+
+    func testBottomAreaViewStatesUseBaseGameBottomBonusLayout() {
+        let service = makeService(
+            hand: ["fish-1", "fish-6"],
+            diveSitesReachedBottomThisWeek: [.green]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        let bottomAreas = Dictionary(uniqueKeysWithValues: viewModel.bottomAreas.map { ($0.diveSite, $0) })
+
+        XCTAssertEqual(viewModel.bottomAreas.map(\.diveSite), [.blue, .purple, .green])
+        XCTAssertEqual(bottomAreas[.blue]?.bonusKind, .recoverFromDiscardOrDraw)
+        XCTAssertEqual(bottomAreas[.blue]?.bonusTitle, AppStrings.GameBoard.recoverFromDiscardOrDraw)
+        XCTAssertEqual(bottomAreas[.blue]?.bonusDetailText, AppStrings.GameBoard.discardPileEmptyDrawAlternative)
+        XCTAssertEqual(bottomAreas[.purple]?.bonusKind, .placeEgg)
+        XCTAssertEqual(bottomAreas[.purple]?.bonusTitle, AppStrings.GameBoard.gainOneEgg)
+        XCTAssertEqual(bottomAreas[.green]?.bonusKind, .moveYoungOrSchool)
+        XCTAssertEqual(bottomAreas[.green]?.bonusTitle, AppStrings.GameBoard.moveYoungOrSchool)
+        XCTAssertEqual(bottomAreas[.green]?.statusText, AppStrings.GameBoard.bottomBonusClaimedThisWeek)
+        XCTAssertEqual(bottomAreas[.green]?.isAlreadyReachedThisWeek, true)
+        XCTAssertEqual(bottomAreas[.green]?.isFirstBottomThisWeekAvailable, false)
+        XCTAssertEqual(bottomAreas[.blue]?.statusText, AppStrings.GameBoard.bottomBonusAvailableThisWeek)
+    }
+
+    func testBottomBonusQueueStepHighlightsOnlyMatchingBottomArea() {
+        let service = makeService(
+            hand: ["fish-1", "fish-6"],
+            activeDiveQueue: activeDiveQueue(diveSite: .purple, source: .bottomBonus)
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.highlightedBottomBonusDiveSite, .purple)
+        XCTAssertEqual(
+            viewModel.bottomAreas.first { $0.diveSite == .purple }?.isHighlightedByDiveQueue,
+            true
+        )
+        XCTAssertEqual(
+            viewModel.bottomAreas.first { $0.diveSite == .purple }?.highlightReasonText,
+            AppStrings.GameBoard.triggeringFirstBottomBonus
+        )
+        XCTAssertFalse(
+            viewModel.bottomAreas
+                .filter { $0.diveSite != .purple }
+                .contains { $0.isHighlightedByDiveQueue }
+        )
+        XCTAssertFalse(
+            viewModel.oceanSlots
+                .filter { $0.address.rowIndex == 5 }
+                .contains { $0.isHighlightedByDiveQueue }
+        )
+    }
+
+    func testMidnightPrintedDiveBonusHighlightsRowsFourAndFiveWithoutBottomArea() {
+        let service = makeService(
+            hand: ["fish-1", "fish-6"],
+            activeDiveQueue: activeDiveQueue(diveSite: .blue, source: .printedDiveBonus(.midnight))
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        let highlightedRows = viewModel.oceanSlots
+            .filter { $0.address.diveSite == .blue && $0.isHighlightedByDiveQueue }
+            .map(\.address.rowIndex)
+
+        XCTAssertEqual(Set(highlightedRows), [4, 5])
+        XCTAssertNil(viewModel.highlightedBottomBonusDiveSite)
+        XCTAssertFalse(viewModel.bottomAreas.contains { $0.isHighlightedByDiveQueue })
+    }
+
+    func testPendingChoiceSlotTargetsNeverIncludeBottomArea() {
+        let choices = [
+            pendingChoice(kind: .placeEgg),
+            pendingChoice(kind: .hatchEgg),
+            pendingChoice(kind: .moveYoungOrSchool)
+        ]
+        let service = makeService(
+            hand: ["fish-2"],
+            pendingChoices: Dictionary(uniqueKeysWithValues: choices.map { ($0.choiceId, $0) })
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        let oceanSlotAddresses = Set(viewModel.oceanSlots.map(\.address))
+
+        XCTAssertTrue(
+            viewModel.pendingChoiceTargets(for: choices[0])
+                .map(\.address)
+                .allSatisfy { oceanSlotAddresses.contains($0) }
+        )
+        XCTAssertTrue(
+            viewModel.pendingChoiceTargets(for: choices[1])
+                .map(\.address)
+                .allSatisfy { oceanSlotAddresses.contains($0) }
+        )
+        XCTAssertTrue(
+            viewModel.pendingChoiceMoveTargets(for: choices[2])
+                .allSatisfy {
+                    oceanSlotAddresses.contains($0.source)
+                        && oceanSlotAddresses.contains($0.target)
+                }
+        )
     }
 
     func testSubmitDiveBuildsPlayerCommand() {
@@ -888,6 +992,7 @@ final class GameBoardViewModelTests: XCTestCase {
         phase: GamePhase = .playing,
         currentWeek: Int = 1,
         activePlayerId: PlayerID? = "player-1",
+        activeDiveQueue: DiveResolutionQueue? = nil,
         discardPile: [CardID] = [],
         fishDrawPile: [CardID] = [],
         resourceSourceResources: [ResourceQuantity] = [
@@ -895,6 +1000,7 @@ final class GameBoardViewModelTests: XCTestCase {
             ResourceQuantity(kind: .young, amount: 1),
             ResourceQuantity(kind: .school, amount: 1)
         ],
+        diveSitesReachedBottomThisWeek: Set<DiveActionSite> = [],
         weeklyAchievementResults: [WeeklyAchievementResult] = [],
         finalScoreResult: FinalScoreResult? = nil
     ) -> CapturingRoomService {
@@ -943,7 +1049,8 @@ final class GameBoardViewModelTests: XCTestCase {
                         discardPile: discardPile,
                         availableDivers: availableDivers,
                         usedDivers: 6 - availableDivers,
-                        ocean: ocean
+                        ocean: ocean,
+                        diveSitesReachedBottomThisWeek: diveSitesReachedBottomThisWeek
                     )
                 ],
                 deckState: DeckState(
@@ -952,10 +1059,60 @@ final class GameBoardViewModelTests: XCTestCase {
                     discardPile: []
                 ),
                 pendingChoices: pendingChoices,
+                activeDiveQueue: activeDiveQueue,
                 weeklyAchievementResults: weeklyAchievementResults,
                 finalScoreResult: finalScoreResult
             )
         )
+    }
+
+    private func activeDiveQueue(
+        diveSite: DiveActionSite,
+        source: DiveResolutionStepSource
+    ) -> DiveResolutionQueue {
+        DiveResolutionQueue(
+            queueId: "queue-1",
+            playerId: "player-1",
+            diveSite: diveSite,
+            steps: [
+                DiveResolutionStep(
+                    stepId: "step-1",
+                    source: source,
+                    pendingChoice: PendingChoice(
+                        choiceId: "choice-queue-1",
+                        playerId: "player-1",
+                        source: .diveBonus(diveSite),
+                        diveQueueId: "queue-1",
+                        diveStepId: "step-1",
+                        kind: pendingChoiceKind(for: source),
+                        options: [],
+                        expectedInput: expectedInput(for: pendingChoiceKind(for: source)),
+                        isOptional: true,
+                        createdAtSequence: 2
+                    )
+                )
+            ],
+            currentStepIndex: 0
+        )
+    }
+
+    private func pendingChoiceKind(for source: DiveResolutionStepSource) -> PendingChoiceKind {
+        switch source {
+        case .bottomBonus:
+            return .bottomBonus
+        case let .printedDiveBonus(zone):
+            switch zone {
+            case .sunlit:
+                return .drawFish
+            case .twilight:
+                return .placeEgg
+            case .midnight:
+                return .moveYoungOrSchool
+            }
+        case .fishAbility,
+             .compoundFishAbility:
+            return .unsupported
+        }
     }
 
     private func pendingChoice(
@@ -1006,6 +1163,8 @@ final class GameBoardViewModelTests: XCTestCase {
                 resourcesText: "",
                 isOccupied: false,
                 isSelected: false,
+                isHighlightedByDiveQueue: false,
+                highlightReasonText: nil,
                 playFishPreview: PlayFishSlotPreview(
                     availability: .unavailable,
                     unavailableReason: .noSelectedCard,

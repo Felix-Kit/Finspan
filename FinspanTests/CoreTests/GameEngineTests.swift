@@ -1201,6 +1201,58 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(choice.diveStepId, diverMoved.diveResolutionQueue?.currentStep?.stepId)
     }
 
+    func testPurpleBottomBonusCreatesPlaceEggPendingChoice() throws {
+        let engine = GameEngine()
+        let state = playFishState()
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "dive-purple",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .dive(DiveCommand(diveSite: .purple))
+            ),
+            in: state
+        )
+
+        guard case let .diverMoved(diverMoved) = drafts[0],
+              case let .pendingChoiceCreated(choice) = drafts[1]
+        else {
+            return XCTFail("Expected purple bottom bonus pending choice.")
+        }
+
+        XCTAssertEqual(diverMoved.diveResolutionQueue?.steps.count, 1)
+        XCTAssertEqual(diverMoved.diveResolutionQueue?.currentStep?.source, .bottomBonus)
+        XCTAssertEqual(choice.kind, .placeEgg)
+        XCTAssertEqual(choice.source, .diveBonus(.purple))
+    }
+
+    func testGreenBottomBonusCreatesMoveYoungOrSchoolPendingChoice() throws {
+        let engine = GameEngine()
+        let state = playFishState()
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "dive-green",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .dive(DiveCommand(diveSite: .green))
+            ),
+            in: state
+        )
+
+        guard case let .diverMoved(diverMoved) = drafts[0],
+              case let .pendingChoiceCreated(choice) = drafts[1]
+        else {
+            return XCTFail("Expected green bottom bonus pending choice.")
+        }
+
+        XCTAssertEqual(diverMoved.diveResolutionQueue?.steps.count, 1)
+        XCTAssertEqual(diverMoved.diveResolutionQueue?.currentStep?.source, .bottomBonus)
+        XCTAssertEqual(choice.kind, .moveYoungOrSchool)
+        XCTAssertEqual(choice.source, .diveBonus(.green))
+    }
+
     func testDiveReducerConsumesDiverRecordsBottomBonusWithoutAdvancingActivePlayer() {
         let engine = GameEngine()
         var state = playFishState()
@@ -1638,13 +1690,13 @@ final class GameEngineTests: XCTestCase {
             DiveBonusDefinition(diveSite: .green, position: .zone(.sunlit), kind: .placeEgg, amount: 1),
             DiveBonusDefinition(diveSite: .green, position: .zone(.twilight), kind: .placeEgg, amount: 1),
             DiveBonusDefinition(diveSite: .green, position: .zone(.midnight), kind: .placeEgg, amount: 1),
-            DiveBonusDefinition(diveSite: .green, position: .bottom, kind: .placeEgg, amount: 1)
+            DiveBonusDefinition(diveSite: .green, position: .bottom, kind: .moveYoungOrSchool, amount: 1)
         ])
         XCTAssertEqual(layout.bonuses(for: .purple), [
             DiveBonusDefinition(diveSite: .purple, position: .zone(.sunlit), kind: .hatchEgg, amount: 1),
             DiveBonusDefinition(diveSite: .purple, position: .zone(.twilight), kind: .hatchEgg, amount: 1),
             DiveBonusDefinition(diveSite: .purple, position: .zone(.midnight), kind: .moveYoungOrSchool, amount: 1),
-            DiveBonusDefinition(diveSite: .purple, position: .bottom, kind: .moveYoungOrSchool, amount: 1)
+            DiveBonusDefinition(diveSite: .purple, position: .bottom, kind: .placeEgg, amount: 1)
         ])
     }
 

@@ -21,6 +21,8 @@ struct OceanSlotViewData: Identifiable, Equatable {
     let resourcesText: String
     let isOccupied: Bool
     let isSelected: Bool
+    let isHighlightedByDiveQueue: Bool
+    let highlightReasonText: String?
     let playFishPreview: PlayFishSlotPreview
 }
 
@@ -30,6 +32,21 @@ struct OceanDiveSiteColumnViewData: Identifiable, Equatable {
     let diveSite: DiveSite
     let title: String
     let slots: [OceanSlotViewData]
+}
+
+struct DiveSiteBottomAreaViewState: Identifiable, Equatable {
+    var id: String { diveSite.rawValue }
+
+    let diveSite: DiveActionSite
+    let diveSiteTitle: String
+    let bonusTitle: String
+    let bonusKind: DiveBonusKind
+    let bonusDetailText: String?
+    let isFirstBottomThisWeekAvailable: Bool
+    let isAlreadyReachedThisWeek: Bool
+    let statusText: String
+    let isHighlightedByDiveQueue: Bool
+    let highlightReasonText: String?
 }
 
 struct SelectedFishCardViewData: Equatable {
@@ -450,6 +467,19 @@ final class GameBoardViewModel: ObservableObject {
                 slots: oceanSlots.filter { $0.address.diveSite == diveSite }
             )
         }
+    }
+
+    var bottomAreas: [DiveSiteBottomAreaViewState] {
+        [.blue, .purple, .green].map(bottomAreaViewState)
+    }
+
+    var highlightedBottomBonusDiveSite: DiveActionSite? {
+        guard let queue = state.activeDiveQueue,
+              queue.currentStep?.source == .bottomBonus
+        else {
+            return nil
+        }
+        return queue.diveSite
     }
 
     var selectedFishCardDetails: SelectedFishCardViewData? {
@@ -1238,15 +1268,115 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     private func oceanSlotViewData(_ slot: OceanSlot) -> OceanSlotViewData {
-        OceanSlotViewData(
+        let isHighlighted = slotIsHighlightedByDiveQueue(slot)
+        return OceanSlotViewData(
             address: slot.address,
             title: slotTitle(slot.address),
             subtitle: slotContentText(slot.content),
             resourcesText: resourcesText(slot.resources),
             isOccupied: slot.content != .empty,
             isSelected: selectedTargetSlot == slot.address,
+            isHighlightedByDiveQueue: isHighlighted,
+            highlightReasonText: isHighlighted ? slotDiveQueueHighlightText(slot) : nil,
             playFishPreview: playFishSlotPreview(for: slot)
         )
+    }
+
+    private func bottomAreaViewState(for diveSite: DiveActionSite) -> DiveSiteBottomAreaViewState {
+        let definition = bottomBonusDefinition(for: diveSite)
+        let bonusKind = definition?.kind ?? .unsupported
+        let isAlreadyReached = activePlayerState?.diveSitesReachedBottomThisWeek.contains(diveSite) ?? false
+        let isHighlighted = highlightedBottomBonusDiveSite == diveSite
+        return DiveSiteBottomAreaViewState(
+            diveSite: diveSite,
+            diveSiteTitle: AppStrings.diveActionSiteName(diveSite),
+            bonusTitle: bottomBonusTitle(for: bonusKind),
+            bonusKind: bonusKind,
+            bonusDetailText: bottomBonusDetailText(for: bonusKind),
+            isFirstBottomThisWeekAvailable: !isAlreadyReached,
+            isAlreadyReachedThisWeek: isAlreadyReached,
+            statusText: isAlreadyReached
+                ? AppStrings.GameBoard.bottomBonusClaimedThisWeek
+                : AppStrings.GameBoard.bottomBonusAvailableThisWeek,
+            isHighlightedByDiveQueue: isHighlighted,
+            highlightReasonText: isHighlighted ? AppStrings.GameBoard.triggeringFirstBottomBonus : nil
+        )
+    }
+
+    private func bottomBonusDefinition(for diveSite: DiveActionSite) -> DiveBonusDefinition? {
+        DiveSiteBonusLayout.baseGame
+            .bonuses(for: diveSite)
+            .first { bonus in
+                if case .bottom = bonus.position {
+                    return true
+                }
+                return false
+            }
+    }
+
+    private func bottomBonusTitle(for kind: DiveBonusKind) -> String {
+        switch kind {
+        case .recoverFromDiscardOrDraw:
+            return AppStrings.GameBoard.recoverFromDiscardOrDraw
+        case .placeEgg:
+            return AppStrings.GameBoard.gainOneEgg
+        case .moveYoungOrSchool:
+            return AppStrings.GameBoard.moveYoungOrSchool
+        case .drawFish:
+            return AppStrings.GameBoard.drawOneFishCard
+        case .hatchEgg:
+            return AppStrings.pendingChoiceKindName(.hatchEgg)
+        case .unsupported:
+            return AppStrings.GameBoard.unsupportedSkippableChoice
+        }
+    }
+
+    private func bottomBonusDetailText(for kind: DiveBonusKind) -> String? {
+        switch kind {
+        case .recoverFromDiscardOrDraw:
+            return AppStrings.GameBoard.discardPileEmptyDrawAlternative
+        case .placeEgg,
+             .moveYoungOrSchool,
+             .drawFish,
+             .hatchEgg,
+             .unsupported:
+            return nil
+        }
+    }
+
+    private func slotIsHighlightedByDiveQueue(_ slot: OceanSlot) -> Bool {
+        guard let queue = state.activeDiveQueue,
+              let currentStep = queue.currentStep,
+              let highlightedDiveSite = DiveSiteBonusLayout.baseGame.oceanDiveSite(for: queue.diveSite),
+              slot.address.diveSite == highlightedDiveSite
+        else {
+            return false
+        }
+
+        switch currentStep.source {
+        case let .printedDiveBonus(zone):
+            return slot.address.zone == zone
+        case .bottomBonus,
+             .fishAbility,
+             .compoundFishAbility:
+            return false
+        }
+    }
+
+    private func slotDiveQueueHighlightText(_ slot: OceanSlot) -> String? {
+        guard let queue = state.activeDiveQueue,
+              let currentStep = queue.currentStep,
+              let highlightedDiveSite = DiveSiteBonusLayout.baseGame.oceanDiveSite(for: queue.diveSite),
+              slot.address.diveSite == highlightedDiveSite
+        else {
+            return nil
+        }
+
+        if case let .printedDiveBonus(zone) = currentStep.source,
+           slot.address.zone == zone {
+            return "正在触发：\(AppStrings.oceanZoneName(zone))奖励"
+        }
+        return nil
     }
 
     private func slotTitle(_ address: OceanSlotAddress) -> String {

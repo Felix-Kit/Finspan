@@ -189,24 +189,36 @@ struct GameBoardView: View {
                     systemImage: "square.grid.3x3"
                 )
             } else {
-                HStack(alignment: .top, spacing: 12) {
-                    ForEach(viewModel.oceanColumns) { column in
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text(column.title)
-                                .font(.headline)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top, spacing: 12) {
+                        ForEach(viewModel.oceanColumns) { column in
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text(column.title)
+                                    .font(.headline)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                            ForEach(column.slots) { slot in
-                                Button {
-                                    viewModel.selectTargetSlot(slot.address)
-                                } label: {
-                                    slotButton(slot)
+                                ForEach(column.slots) { slot in
+                                    Button {
+                                        viewModel.selectTargetSlot(slot.address)
+                                    } label: {
+                                        slotButton(slot)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(!slot.playFishPreview.isSelectable)
                                 }
-                                .buttonStyle(.plain)
-                                .disabled(!slot.playFishPreview.isSelectable)
                             }
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
                         }
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                    }
+
+                    Text(AppStrings.GameBoard.bottomBonus)
+                        .font(.headline)
+
+                    HStack(alignment: .top, spacing: 12) {
+                        ForEach(viewModel.bottomAreas) { bottomArea in
+                            bottomAreaPanel(bottomArea)
+                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                        }
                     }
                 }
             }
@@ -506,17 +518,96 @@ struct GameBoardView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(slot.playFishPreview.isSelectable ? .green : .secondary)
                 .lineLimit(1)
+
+            if let highlightReasonText = slot.highlightReasonText {
+                Text(highlightReasonText)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.orange)
+                    .lineLimit(2)
+            }
         }
         .padding(12)
         .frame(maxWidth: .infinity, minHeight: 132, alignment: .topLeading)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(slot.isSelected ? Color.accentColor.opacity(0.16) : Color(.secondarySystemBackground))
+                .fill(slotBackgroundColor(slot))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(slot.isSelected ? Color.accentColor : Color.clear, lineWidth: 1.5)
+                .stroke(slotBorderColor(slot), lineWidth: slot.isHighlightedByDiveQueue ? 2 : 1.5)
         )
+    }
+
+    private func bottomAreaPanel(_ bottomArea: DiveSiteBottomAreaViewState) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(bottomArea.diveSiteTitle)
+                    .font(.headline)
+                    .lineLimit(2)
+                Spacer()
+                if bottomArea.isAlreadyReachedThisWeek {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                }
+            }
+
+            Text(AppStrings.GameBoard.firstBottomBonus)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Text(bottomArea.bonusTitle)
+                .font(.callout.weight(.semibold))
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let bonusDetailText = bottomArea.bonusDetailText {
+                Text(bonusDetailText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Text(bottomArea.statusText)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(bottomArea.isFirstBottomThisWeekAvailable ? .green : .secondary)
+
+            if let highlightReasonText = bottomArea.highlightReasonText {
+                Text(highlightReasonText)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.orange)
+                    .lineLimit(2)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: 128, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(bottomArea.isHighlightedByDiveQueue ? Color.orange.opacity(0.14) : Color(.tertiarySystemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(bottomArea.isHighlightedByDiveQueue ? Color.orange : Color.secondary.opacity(0.2), lineWidth: bottomArea.isHighlightedByDiveQueue ? 2 : 1)
+        )
+    }
+
+    private func slotBackgroundColor(_ slot: OceanSlotViewData) -> Color {
+        if slot.isHighlightedByDiveQueue {
+            return Color.orange.opacity(0.14)
+        }
+        if slot.isSelected {
+            return Color.accentColor.opacity(0.16)
+        }
+        return Color(.secondarySystemBackground)
+    }
+
+    private func slotBorderColor(_ slot: OceanSlotViewData) -> Color {
+        if slot.isHighlightedByDiveQueue {
+            return .orange
+        }
+        if slot.isSelected {
+            return .accentColor
+        }
+        return .clear
     }
 
     private func selectedFishInfoRow(_ label: String, _ value: String) -> some View {
