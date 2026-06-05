@@ -19,6 +19,10 @@ enum HandCardHighlightStyle: Equatable {
 struct HandCardViewState: Identifiable, Equatable {
     var id: CardID { cardId }
 
+    static let fixedCardWidth: Double = 164
+    static let fixedCardHeight: Double = 224
+    static let fixedScale: Double = 1
+
     let cardId: CardID
     let displayName: String
     let shortName: String
@@ -43,6 +47,9 @@ struct HandCardViewState: Identifiable, Equatable {
     let stackOffsetY: Double
     let stackZIndex: Double
     let visibleHeightRatio: Double
+    let cardWidth: Double
+    let cardHeight: Double
+    let scale: Double
 }
 
 struct HandViewState: Equatable {
@@ -94,6 +101,8 @@ struct OceanSlotViewData: Identifiable, Equatable {
     let isDropTarget: Bool
     let isValidDropTarget: Bool
     let dropTargetReasonText: String?
+    let isHighlightedByRewardSelection: Bool
+    let rewardSelectionReasonText: String?
 }
 
 struct SlotResourceTokenViewState: Identifiable, Equatable {
@@ -117,6 +126,17 @@ struct OceanDiveSiteColumnViewData: Identifiable, Equatable {
     let diveSite: DiveSite
     let title: String
     let slots: [OceanSlotViewData]
+    let zoneSections: [OceanZoneSectionViewData]
+}
+
+struct OceanZoneSectionViewData: Identifiable, Equatable {
+    var id: String { "\(diveSite.rawValue)-\(zone.rawValue)" }
+
+    let diveSite: DiveSite
+    let zone: OceanZone
+    let title: String
+    let slots: [OceanSlotViewData]
+    let isHighlightedByDiveQueue: Bool
 }
 
 struct DiveSiteBottomAreaViewState: Identifiable, Equatable {
@@ -338,6 +358,62 @@ struct FinalScoreViewState: Codable, Equatable, Sendable {
     let legendItems: [ScoreLegendItemViewState]
 }
 
+struct RewardPoolViewState: Equatable {
+    let isActive: Bool
+    let titleText: String
+    let sourceText: String?
+    let rewards: [RewardTokenViewState]
+    let blockingMessage: String?
+    let selectedRewardTokenId: String?
+    let instructionText: String
+}
+
+struct RewardTokenViewState: Identifiable, Equatable {
+    let id: String
+    let kind: RewardTokenKind
+    let title: String
+    let subtitle: String
+    let iconText: String
+    let symbolName: String?
+    let countText: String?
+    let isSelectable: Bool
+    let isSelected: Bool
+    let isCompleted: Bool
+    let isUnsupported: Bool
+    let unavailableReasonText: String?
+}
+
+enum RewardTokenKind: String, Equatable {
+    case drawFish
+    case recoverFromDiscardOrDraw
+    case placeEgg
+    case hatchEgg
+    case moveYoung
+    case moveSchool
+    case moveYoungOrSchool
+    case compoundPlaceEgg
+    case compoundHatchEgg
+    case skipOrEnd
+    case gainCoral
+    case scatterSchool
+    case consumeFish
+    case playFishForFree
+    case unsupported
+}
+
+private enum RewardTokenAction: Equatable {
+    case direct(choiceId: PendingChoiceID, resolution: PendingChoiceResolution)
+    case chooseTarget(choiceId: PendingChoiceID, kind: PendingChoiceKind)
+    case chooseMoveSource(choiceId: PendingChoiceID)
+    case unsupported
+}
+
+private enum RewardSelectionMode: Equatable {
+    case target(choiceId: PendingChoiceID, tokenId: String, kind: PendingChoiceKind)
+    case moveSource(choiceId: PendingChoiceID, tokenId: String)
+    case moveTarget(choiceId: PendingChoiceID, tokenId: String, source: OceanSlotAddress, kind: ResourceKind)
+}
+
 enum PendingChoiceAction: String, Equatable {
     case drawFish
     case drawFromDeck
@@ -361,6 +437,9 @@ final class GameBoardViewModel: ObservableObject {
     @Published var selectedYoungSources: [OceanSlotAddress] = []
     @Published private var selectedResourcePaymentTokens: Set<ResourcePaymentTokenKey> = []
     @Published private(set) var draggingHandCardId: CardID?
+    @Published private(set) var dragHoverSlotAddress: OceanSlotAddress?
+    @Published private(set) var selectedRewardTokenId: String?
+    @Published private var rewardSelectionMode: RewardSelectionMode?
 
     private let roomService: any RoomService
     private let cardCatalog: any CardCatalog
@@ -463,6 +542,17 @@ final class GameBoardViewModel: ObservableObject {
                     actions: pendingChoiceActionButtons(for: choice)
                 )
             }
+    }
+
+    private var activeRewardChoice: PendingChoice? {
+        state.pendingChoices.values
+            .sorted {
+                if $0.createdAtSequence == $1.createdAtSequence {
+                    return $0.choiceId < $1.choiceId
+                }
+                return $0.createdAtSequence < $1.createdAtSequence
+            }
+            .first { $0.playerId == state.activePlayerId || state.activePlayerId == nil }
     }
 
     var weeklyAchievementResults: [WeeklyAchievementResultViewData] {
@@ -617,12 +707,49 @@ final class GameBoardViewModel: ObservableObject {
 
     var oceanColumns: [OceanDiveSiteColumnViewData] {
         DiveSite.allCases.map { diveSite in
-            OceanDiveSiteColumnViewData(
+            let columnSlots = oceanSlots.filter { $0.address.diveSite == diveSite }
+            return OceanDiveSiteColumnViewData(
                 diveSite: diveSite,
                 title: AppStrings.oceanDiveSiteName(diveSite),
-                slots: oceanSlots.filter { $0.address.diveSite == diveSite }
+                slots: columnSlots,
+                zoneSections: OceanZone.allCases.map { zone in
+                    OceanZoneSectionViewData(
+                        diveSite: diveSite,
+                        zone: zone,
+                        title: AppStrings.oceanZoneName(zone),
+                        slots: columnSlots.filter { $0.address.zone == zone },
+                        isHighlightedByDiveQueue: columnSlots.contains {
+                            $0.address.zone == zone && $0.isHighlightedByDiveQueue
+                        }
+                    )
+                }
             )
         }
+    }
+
+    var rewardPoolViewState: RewardPoolViewState {
+        guard let choice = activeRewardChoice else {
+            return RewardPoolViewState(
+                isActive: false,
+                titleText: AppStrings.GameBoard.currentRewards,
+                sourceText: nil,
+                rewards: [],
+                blockingMessage: nil,
+                selectedRewardTokenId: selectedRewardTokenId,
+                instructionText: AppStrings.GameBoard.noCurrentRewards
+            )
+        }
+
+        let entries = rewardTokenEntries(for: choice)
+        return RewardPoolViewState(
+            isActive: true,
+            titleText: AppStrings.GameBoard.currentRewards,
+            sourceText: rewardSourceText(for: choice),
+            rewards: entries.map(\.token),
+            blockingMessage: canResolvePendingChoice(choice) ? nil : AppStrings.GameBoard.resolveCurrentRewardFirst,
+            selectedRewardTokenId: selectedRewardTokenId,
+            instructionText: rewardInstructionText(for: choice)
+        )
     }
 
     var bottomAreas: [DiveSiteBottomAreaViewState] {
@@ -828,6 +955,18 @@ final class GameBoardViewModel: ObservableObject {
         -18
     }
 
+    private static var fixedHandCardWidth: Double {
+        HandCardViewState.fixedCardWidth
+    }
+
+    private static var fixedHandCardHeight: Double {
+        HandCardViewState.fixedCardHeight
+    }
+
+    private static var fixedHandCardScale: Double {
+        HandCardViewState.fixedScale
+    }
+
     private var slotAspectRatio: Double {
         0.72
     }
@@ -911,14 +1050,17 @@ final class GameBoardViewModel: ObservableObject {
         selectedDiscardCardIds = []
         clearResourcePaymentSelection()
         draggingHandCardId = cardId
+        dragHoverSlotAddress = nil
         errorMessage = nil
         return true
     }
 
     func updateDragTarget(_ address: OceanSlotAddress?) {
         guard draggingHandCardId != nil else {
+            dragHoverSlotAddress = nil
             return
         }
+        dragHoverSlotAddress = address
         guard let address,
               let activePlayerState,
               let slot = activePlayerState.ocean.slots.first(where: { $0.address == address })
@@ -955,12 +1097,14 @@ final class GameBoardViewModel: ObservableObject {
         guard preview.isSelectable else {
             selectedTargetSlot = nil
             draggingHandCardId = nil
+            dragHoverSlotAddress = nil
             errorMessage = preview.message
             return false
         }
 
         selectedTargetSlot = targetAddress
         draggingHandCardId = nil
+        dragHoverSlotAddress = nil
         errorMessage = hasCompleteResourcePayment && hasCompleteDiscardPayment
             ? AppStrings.GameBoard.dragPlayTargetSelected
             : AppStrings.GameBoard.payCostsFirst
@@ -969,6 +1113,7 @@ final class GameBoardViewModel: ObservableObject {
 
     func cancelHandCardDrag() {
         draggingHandCardId = nil
+        dragHoverSlotAddress = nil
     }
 
     func selectCard(_ cardId: CardID) {
@@ -976,6 +1121,9 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     func selectTargetSlot(_ address: OceanSlotAddress) {
+        if handleRewardSlotTap(address) {
+            return
+        }
         guard let activePlayerState,
               let slot = activePlayerState.ocean.slots.first(where: { $0.address == address }),
               playFishSlotPreview(for: slot).isSelectable
@@ -984,6 +1132,89 @@ final class GameBoardViewModel: ObservableObject {
         }
         selectedTargetSlot = address
         errorMessage = nil
+    }
+
+    func selectRewardToken(_ tokenId: String) {
+        guard let choice = activeRewardChoice,
+              let entry = rewardTokenEntries(for: choice).first(where: { $0.token.id == tokenId })
+        else {
+            errorMessage = AppStrings.GameBoard.pendingChoiceNotFound
+            return
+        }
+        guard entry.token.isSelectable else {
+            errorMessage = entry.token.unavailableReasonText ?? AppStrings.GameBoard.abilityUnsupported
+            return
+        }
+
+        selectedRewardTokenId = tokenId
+        switch entry.action {
+        case let .direct(choiceId, resolution):
+            rewardSelectionMode = nil
+            resolvePendingChoice(choiceId, resolution: resolution)
+        case let .chooseTarget(choiceId, kind):
+            rewardSelectionMode = .target(choiceId: choiceId, tokenId: tokenId, kind: kind)
+            errorMessage = AppStrings.GameBoard.chooseLeftTarget
+        case let .chooseMoveSource(choiceId):
+            rewardSelectionMode = .moveSource(choiceId: choiceId, tokenId: tokenId)
+            errorMessage = AppStrings.GameBoard.chooseSource
+        case .unsupported:
+            rewardSelectionMode = nil
+            errorMessage = AppStrings.GameBoard.abilityUnsupported
+        }
+    }
+
+    @discardableResult
+    private func handleRewardSlotTap(_ address: OceanSlotAddress) -> Bool {
+        guard let rewardSelectionMode else {
+            return false
+        }
+
+        switch rewardSelectionMode {
+        case let .target(choiceId, _, kind):
+            guard let choice = state.pendingChoices[choiceId],
+                  let playerState = state.playerGameStates[choice.playerId],
+                  let slot = playerState.ocean.slots.first(where: { $0.address == address }),
+                  pendingChoiceTargetIsLegal(slot, for: choice),
+                  choice.kind == kind
+            else {
+                errorMessage = AppStrings.GameBoard.chooseLeftTarget
+                return true
+            }
+            resolvePendingChoice(choiceId, resolution: .chooseTarget(address))
+            return true
+        case let .moveSource(choiceId, tokenId):
+            guard let choice = state.pendingChoices[choiceId],
+                  let playerState = state.playerGameStates[choice.playerId],
+                  let source = playerState.ocean.slots.first(where: { $0.address == address }),
+                  let kind = preferredMoveResourceKind(in: source)
+            else {
+                errorMessage = AppStrings.GameBoard.chooseSource
+                return true
+            }
+            self.rewardSelectionMode = .moveTarget(
+                choiceId: choiceId,
+                tokenId: tokenId,
+                source: address,
+                kind: kind
+            )
+            errorMessage = AppStrings.GameBoard.chooseTarget
+            return true
+        case let .moveTarget(choiceId, _, sourceAddress, kind):
+            guard let choice = state.pendingChoices[choiceId],
+                  let playerState = state.playerGameStates[choice.playerId],
+                  let source = playerState.ocean.slots.first(where: { $0.address == sourceAddress }),
+                  let target = playerState.ocean.slots.first(where: { $0.address == address }),
+                  moveTargetIsLegal(target, from: source, kind: kind)
+            else {
+                errorMessage = AppStrings.GameBoard.chooseTarget
+                return true
+            }
+            resolvePendingChoice(
+                choiceId,
+                resolution: .moveResource(source: sourceAddress, target: address, kind: kind)
+            )
+            return true
+        }
     }
 
     func cancelPlayFishSelection() {
@@ -1157,6 +1388,8 @@ final class GameBoardViewModel: ObservableObject {
                 )
             )
             errorMessage = nil
+            selectedRewardTokenId = nil
+            rewardSelectionMode = nil
             refresh()
         } catch {
             errorMessage = localizedErrorMessage(for: error)
@@ -1336,6 +1569,7 @@ final class GameBoardViewModel: ObservableObject {
         selectedCardId = nil
         selectedTargetSlot = nil
         draggingHandCardId = nil
+        dragHoverSlotAddress = nil
         selectedDiscardCardIds = []
         clearResourcePaymentSelection()
     }
@@ -1413,7 +1647,10 @@ final class GameBoardViewModel: ObservableObject {
             stackOffsetX: Double(stackIndex) * handStackOverlapOffsetX,
             stackOffsetY: isPulledOutFromStack ? handStackPulledOutOffsetY : handStackRestingOffsetY,
             stackZIndex: isPulledOutFromStack ? 1_000 : Double(stackIndex),
-            visibleHeightRatio: isPulledOutFromStack ? 1 : 0.48
+            visibleHeightRatio: isPulledOutFromStack ? 1 : 0.48,
+            cardWidth: Self.fixedHandCardWidth,
+            cardHeight: Self.fixedHandCardHeight,
+            scale: Self.fixedHandCardScale
         )
     }
 
@@ -1807,6 +2044,206 @@ final class GameBoardViewModel: ObservableObject {
         return actions
     }
 
+    private func rewardTokenEntries(
+        for choice: PendingChoice
+    ) -> [(token: RewardTokenViewState, action: RewardTokenAction)] {
+        let canResolve = canResolvePendingChoice(choice)
+        switch choice.kind {
+        case .drawFish:
+            let tokenId = "\(choice.choiceId)-drawFish"
+            return [(
+                rewardToken(
+                    id: tokenId,
+                    kind: .drawFish,
+                    title: AppStrings.GameBoard.drawOneFishCard,
+                    subtitle: rewardSourceText(for: choice),
+                    iconText: "牌",
+                    symbolName: "rectangle.stack",
+                    isSelectable: canResolve
+                ),
+                .direct(choiceId: choice.choiceId, resolution: .draw(count: 1))
+            )]
+        case .recoverFromDiscardOrDraw:
+            guard let playerState = state.playerGameStates[choice.playerId] else {
+                return []
+            }
+            if playerState.discardPile.isEmpty {
+                let tokenId = "\(choice.choiceId)-drawFromDeck"
+                return [(
+                    rewardToken(
+                        id: tokenId,
+                        kind: .recoverFromDiscardOrDraw,
+                        title: AppStrings.GameBoard.drawOneFishCard,
+                        subtitle: AppStrings.GameBoard.discardPileEmptyDrawAlternative,
+                        iconText: "牌",
+                        symbolName: "rectangle.stack",
+                        isSelectable: canResolve && !state.deckState.fishDrawPile.isEmpty,
+                        unavailableReasonText: state.deckState.fishDrawPile.isEmpty ? AppStrings.GameBoard.fishDrawPileEmpty : nil
+                    ),
+                    .direct(choiceId: choice.choiceId, resolution: .drawFromDeck)
+                )]
+            }
+            return playerState.discardPile.map { cardId in
+                let tokenId = "\(choice.choiceId)-recover-\(cardId)"
+                return (
+                    rewardToken(
+                        id: tokenId,
+                        kind: .recoverFromDiscardOrDraw,
+                        title: AppStrings.GameBoard.recoverOneFromDiscard,
+                        subtitle: cardTitle(cardId),
+                        iconText: "回",
+                        symbolName: "arrow.uturn.backward",
+                        isSelectable: canResolve
+                    ),
+                    .direct(choiceId: choice.choiceId, resolution: .recoverCard(cardId))
+                )
+            }
+        case .placeEgg:
+            let tokenId = "\(choice.choiceId)-placeEgg"
+            return [(
+                rewardToken(
+                    id: tokenId,
+                    kind: .placeEgg,
+                    title: AppStrings.GameBoard.placeEggAbilityAction,
+                    subtitle: AppStrings.GameBoard.chooseLeftTarget,
+                    iconText: "卵",
+                    symbolName: "circle",
+                    isSelectable: canResolve
+                ),
+                .chooseTarget(choiceId: choice.choiceId, kind: .placeEgg)
+            )]
+        case .hatchEgg:
+            let tokenId = "\(choice.choiceId)-hatchEgg"
+            return [(
+                rewardToken(
+                    id: tokenId,
+                    kind: .hatchEgg,
+                    title: AppStrings.GameBoard.hatchEggAbilityAction,
+                    subtitle: AppStrings.GameBoard.chooseLeftTarget,
+                    iconText: "孵",
+                    symbolName: "circle.dotted",
+                    isSelectable: canResolve
+                ),
+                .chooseTarget(choiceId: choice.choiceId, kind: .hatchEgg)
+            )]
+        case .moveYoungOrSchool:
+            let tokenId = "\(choice.choiceId)-moveYoungOrSchool"
+            return [(
+                rewardToken(
+                    id: tokenId,
+                    kind: .moveYoungOrSchool,
+                    title: AppStrings.GameBoard.moveYoungOrSchool,
+                    subtitle: AppStrings.GameBoard.chooseSource,
+                    iconText: "移",
+                    symbolName: "arrow.up.and.down.and.arrow.left.and.right",
+                    isSelectable: canResolve
+                ),
+                .chooseMoveSource(choiceId: choice.choiceId)
+            )]
+        case .compoundAbility:
+            var entries: [(token: RewardTokenViewState, action: RewardTokenAction)] = []
+            if let progress = choice.compoundAbilityProgress {
+                let remainingPlaceEggs = abilityEffectCount(.placeEgg(count: 1), in: progress.remainingEffects)
+                for index in 0..<remainingPlaceEggs {
+                    let tokenId = "\(choice.choiceId)-compoundPlaceEgg-\(index)"
+                    entries.append((
+                        rewardToken(
+                            id: tokenId,
+                            kind: .compoundPlaceEgg,
+                            title: AppStrings.GameBoard.placeEggAbilityAction,
+                            subtitle: AppStrings.GameBoard.chooseLeftTarget,
+                            iconText: "卵",
+                            symbolName: "circle",
+                            countText: "\(index + 1)/\(remainingPlaceEggs)",
+                            isSelectable: canResolve
+                        ),
+                        .direct(choiceId: choice.choiceId, resolution: .chooseAbilityEffect(.placeEgg(count: 1)))
+                    ))
+                }
+
+                let remainingHatches = abilityEffectCount(.hatchEgg(count: 1), in: progress.remainingEffects)
+                for index in 0..<remainingHatches {
+                    let tokenId = "\(choice.choiceId)-compoundHatchEgg-\(index)"
+                    entries.append((
+                        rewardToken(
+                            id: tokenId,
+                            kind: .compoundHatchEgg,
+                            title: AppStrings.GameBoard.hatchEggAbilityAction,
+                            subtitle: AppStrings.GameBoard.chooseLeftTarget,
+                            iconText: "孵",
+                            symbolName: "circle.dotted",
+                            countText: "\(index + 1)/\(remainingHatches)",
+                            isSelectable: canResolve
+                        ),
+                        .direct(choiceId: choice.choiceId, resolution: .chooseAbilityEffect(.hatchEgg(count: 1)))
+                    ))
+                }
+            }
+            let tokenId = "\(choice.choiceId)-finishAbility"
+            entries.append((
+                rewardToken(
+                    id: tokenId,
+                    kind: .skipOrEnd,
+                    title: AppStrings.GameBoard.finishAbility,
+                    subtitle: choice.isOptional ? AppStrings.GameBoard.optionalChoice : AppStrings.GameBoard.requiredChoice,
+                    iconText: "止",
+                    symbolName: "checkmark.circle",
+                    isSelectable: canResolve && choice.isOptional,
+                    unavailableReasonText: choice.isOptional ? nil : AppStrings.GameBoard.pendingChoiceRequired
+                ),
+                .direct(choiceId: choice.choiceId, resolution: .finishAbility)
+            ))
+            return entries
+        case .bottomBonus,
+             .placeholder,
+             .unsupported:
+            let tokenId = "\(choice.choiceId)-unsupported"
+            return [(
+                rewardToken(
+                    id: tokenId,
+                    kind: .unsupported,
+                    title: AppStrings.GameBoard.abilityUnsupported,
+                    subtitle: rewardSourceText(for: choice),
+                    iconText: "?",
+                    symbolName: "questionmark.circle",
+                    isSelectable: false,
+                    isUnsupported: true,
+                    unavailableReasonText: AppStrings.GameBoard.abilityUnsupported
+                ),
+                .unsupported
+            )]
+        }
+    }
+
+    private func rewardToken(
+        id: String,
+        kind: RewardTokenKind,
+        title: String,
+        subtitle: String,
+        iconText: String,
+        symbolName: String?,
+        countText: String? = nil,
+        isSelectable: Bool,
+        isCompleted: Bool = false,
+        isUnsupported: Bool = false,
+        unavailableReasonText: String? = nil
+    ) -> RewardTokenViewState {
+        RewardTokenViewState(
+            id: id,
+            kind: kind,
+            title: title,
+            subtitle: subtitle,
+            iconText: iconText,
+            symbolName: symbolName,
+            countText: countText,
+            isSelectable: isSelectable,
+            isSelected: selectedRewardTokenId == id,
+            isCompleted: isCompleted,
+            isUnsupported: isUnsupported,
+            unavailableReasonText: unavailableReasonText
+        )
+    }
+
     func pendingChoiceTargets(for choice: PendingChoice) -> [PendingChoiceTargetViewData] {
         guard let playerState = state.playerGameStates[choice.playerId],
               choice.kind == .placeEgg || choice.kind == .hatchEgg
@@ -1885,7 +2322,8 @@ final class GameBoardViewModel: ObservableObject {
 
     private func moveTargetIsLegal(_ target: OceanSlot, from source: OceanSlot, kind: ResourceKind) -> Bool {
         guard source.address != target.address,
-              source.address.playerId == target.address.playerId
+              source.address.playerId == target.address.playerId,
+              moveDistance(from: source.address, to: target.address) == 1
         else {
             return false
         }
@@ -1893,6 +2331,12 @@ final class GameBoardViewModel: ObservableObject {
             return resourceAmount(.school, in: target) == 0
         }
         return kind == .young
+    }
+
+    private func moveDistance(from source: OceanSlotAddress, to target: OceanSlotAddress) -> Int {
+        let diveSiteDistance = abs(diveSiteSortIndex(source.diveSite) - diveSiteSortIndex(target.diveSite))
+        let rowDistance = abs(source.rowIndex - target.rowIndex)
+        return max(diveSiteDistance, rowDistance)
     }
 
     private func pendingChoiceTargetIsLegal(_ slot: OceanSlot, for choice: PendingChoice) -> Bool {
@@ -1950,6 +2394,64 @@ final class GameBoardViewModel: ObservableObject {
         return nil
     }
 
+    private func rewardSourceText(for choice: PendingChoice) -> String {
+        switch choice.source {
+        case let .diveBonus(diveSite):
+            let prefix = AppStrings.GameBoard.triggering
+            return "\(prefix)：\(AppStrings.diveActionSiteName(diveSite))"
+        case let .fishAbility(cardId):
+            let prefix = AppStrings.GameBoard.activating
+            return "\(prefix)：\(cardTitle(cardId))"
+        case .endGameAbility:
+            return "\(AppStrings.GameBoard.activating)：\(AppStrings.GameBoard.finalScoreGameEndAbility)"
+        case .allPlayers:
+            return AppStrings.GameBoard.players
+        case let .expansion(expansionId):
+            return "\(AppStrings.GameBoard.triggering)：\(expansionId)"
+        case let .placeholder(value):
+            return "\(AppStrings.GameBoard.triggering)：\(value)"
+        }
+    }
+
+    private func rewardInstructionText(for choice: PendingChoice) -> String {
+        if let mode = rewardSelectionMode {
+            switch mode {
+            case .target:
+                return AppStrings.GameBoard.chooseLeftTarget
+            case .moveSource:
+                return AppStrings.GameBoard.chooseSource
+            case .moveTarget:
+                return AppStrings.GameBoard.chooseTarget
+            }
+        }
+
+        switch choice.kind {
+        case .drawFish,
+             .recoverFromDiscardOrDraw,
+             .compoundAbility:
+            return AppStrings.GameBoard.chooseRewardToken
+        case .placeEgg,
+             .hatchEgg:
+            return AppStrings.GameBoard.chooseRewardThenTarget
+        case .moveYoungOrSchool:
+            return AppStrings.GameBoard.chooseRewardThenSource
+        case .bottomBonus,
+             .placeholder,
+             .unsupported:
+            return AppStrings.GameBoard.abilityUnsupported
+        }
+    }
+
+    private func preferredMoveResourceKind(in slot: OceanSlot) -> ResourceKind? {
+        if resourceAmount(.young, in: slot) > 0 {
+            return .young
+        }
+        if resourceAmount(.school, in: slot) > 0 {
+            return .school
+        }
+        return nil
+    }
+
     private func pendingChoiceResolutionName(_ resolution: PendingChoiceResolution) -> String {
         switch resolution {
         case .skip:
@@ -1986,6 +2488,7 @@ final class GameBoardViewModel: ObservableObject {
         let isHighlighted = slotIsHighlightedByDiveQueue(slot)
         let preview = playFishSlotPreview(for: slot)
         let isDropTarget = draggingHandCardId != nil
+        let rewardHighlightText = rewardSelectionHighlightText(for: slot)
         return OceanSlotViewData(
             address: slot.address,
             title: slotTitle(slot.address),
@@ -2001,9 +2504,54 @@ final class GameBoardViewModel: ObservableObject {
             isDropTarget: isDropTarget,
             isValidDropTarget: isDropTarget && preview.isSelectable,
             dropTargetReasonText: isDropTarget
-                ? (preview.isSelectable ? AppStrings.GameBoard.dragToPlayHere : "\(AppStrings.GameBoard.slotCannotPlayHere)：\(preview.message)")
-                : nil
+                ? dropTargetReasonText(preview: preview)
+                : nil,
+            isHighlightedByRewardSelection: rewardHighlightText != nil,
+            rewardSelectionReasonText: rewardHighlightText
         )
+    }
+
+    private func rewardSelectionHighlightText(for slot: OceanSlot) -> String? {
+        guard let rewardSelectionMode else {
+            return nil
+        }
+
+        switch rewardSelectionMode {
+        case let .target(choiceId, _, _):
+            guard let choice = state.pendingChoices[choiceId],
+                  pendingChoiceTargetIsLegal(slot, for: choice)
+            else {
+                return nil
+            }
+            return AppStrings.GameBoard.chooseLeftTarget
+        case let .moveSource(choiceId, _):
+            guard let choice = state.pendingChoices[choiceId],
+                  slot.address.playerId == choice.playerId,
+                  preferredMoveResourceKind(in: slot) != nil
+            else {
+                return nil
+            }
+            return AppStrings.GameBoard.chooseSource
+        case let .moveTarget(choiceId, _, sourceAddress, kind):
+            guard let choice = state.pendingChoices[choiceId],
+                  let playerState = state.playerGameStates[choice.playerId],
+                  let source = playerState.ocean.slots.first(where: { $0.address == sourceAddress }),
+                  moveTargetIsLegal(slot, from: source, kind: kind)
+            else {
+                return nil
+            }
+            return AppStrings.GameBoard.chooseTarget
+        }
+    }
+
+    private func dropTargetReasonText(preview: PlayFishSlotPreview) -> String {
+        guard preview.isSelectable else {
+            return "\(AppStrings.GameBoard.slotCannotPlayHere)：\(preview.message)"
+        }
+        if preview.message == AppStrings.GameBoard.canCoverShorterFish {
+            return preview.message
+        }
+        return AppStrings.GameBoard.dragToPlayHere
     }
 
     private func resourceTokens(for slot: OceanSlot) -> [SlotResourceTokenViewState] {

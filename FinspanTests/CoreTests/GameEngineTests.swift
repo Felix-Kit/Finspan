@@ -1681,6 +1681,34 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(choice.kind, .drawFish)
     }
 
+    func testGreenDiveResolutionQueueUsesPrintedHatchAndMoveBonuses() throws {
+        let engine = GameEngine()
+        let state = diveQueueState(diveSite: .green)
+
+        let drafts = try engine.makeEventDrafts(
+            for: diveCommand(commandId: "dive-green-queue-order", diveSite: .green),
+            in: state
+        )
+
+        guard case let .diverMoved(diverMoved) = drafts.first,
+              let queue = diverMoved.diveResolutionQueue,
+              case let .pendingChoiceCreated(choice) = drafts.last
+        else {
+            return XCTFail("Expected a green dive queue and its first pending choice.")
+        }
+
+        XCTAssertEqual(
+            queue.steps.map(\.pendingChoice.kind),
+            [
+                .hatchEgg,
+                .hatchEgg,
+                .moveYoungOrSchool,
+                .moveYoungOrSchool
+            ]
+        )
+        XCTAssertEqual(choice.kind, .hatchEgg)
+    }
+
     func testResolveDiveQueueStepCreatesNextPendingChoiceWithoutAdvancingPlayer() throws {
         let engine = GameEngine()
         var state = applying(
@@ -1868,7 +1896,7 @@ final class GameEngineTests: XCTestCase {
             to: initialState,
             using: engine
         )
-        let target = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 0)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 0)
 
         XCTAssertThrowsError(
             try engine.makeEventDrafts(
@@ -1906,15 +1934,15 @@ final class GameEngineTests: XCTestCase {
             DiveBonusDefinition(diveSite: .blue, position: .bottom, kind: .recoverFromDiscardOrDraw, amount: 1)
         ])
         XCTAssertEqual(layout.bonuses(for: .green), [
-            DiveBonusDefinition(diveSite: .green, position: .zone(.sunlit), kind: .placeEgg, amount: 1),
-            DiveBonusDefinition(diveSite: .green, position: .zone(.twilight), kind: .placeEgg, amount: 1),
-            DiveBonusDefinition(diveSite: .green, position: .zone(.midnight), kind: .placeEgg, amount: 1),
+            DiveBonusDefinition(diveSite: .green, position: .zone(.sunlit), kind: .hatchEgg, amount: 1),
+            DiveBonusDefinition(diveSite: .green, position: .zone(.twilight), kind: .hatchEgg, amount: 1),
+            DiveBonusDefinition(diveSite: .green, position: .zone(.midnight), kind: .moveYoungOrSchool, amount: 1),
             DiveBonusDefinition(diveSite: .green, position: .bottom, kind: .moveYoungOrSchool, amount: 1)
         ])
         XCTAssertEqual(layout.bonuses(for: .purple), [
-            DiveBonusDefinition(diveSite: .purple, position: .zone(.sunlit), kind: .hatchEgg, amount: 1),
-            DiveBonusDefinition(diveSite: .purple, position: .zone(.twilight), kind: .hatchEgg, amount: 1),
-            DiveBonusDefinition(diveSite: .purple, position: .zone(.midnight), kind: .moveYoungOrSchool, amount: 1),
+            DiveBonusDefinition(diveSite: .purple, position: .zone(.sunlit), kind: .placeEgg, amount: 1),
+            DiveBonusDefinition(diveSite: .purple, position: .zone(.twilight), kind: .placeEgg, amount: 1),
+            DiveBonusDefinition(diveSite: .purple, position: .zone(.midnight), kind: .placeEgg, amount: 1),
             DiveBonusDefinition(diveSite: .purple, position: .bottom, kind: .placeEgg, amount: 1)
         ])
     }
@@ -2048,7 +2076,7 @@ final class GameEngineTests: XCTestCase {
         var state = playFishState()
         let choice = pendingChoice(kind: .moveYoungOrSchool)
         let source = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
-        let target = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 0)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 0)
         state.pendingChoices[choice.choiceId] = choice
         setResources([ResourceQuantity(kind: .young, amount: 2)], at: source, in: &state)
         setResources([], at: target, in: &state)
@@ -2091,7 +2119,7 @@ final class GameEngineTests: XCTestCase {
         var state = playFishState()
         let choice = pendingChoice(kind: .moveYoungOrSchool)
         let source = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
-        let target = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 0)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 0)
         state.pendingChoices[choice.choiceId] = choice
         setResources([ResourceQuantity(kind: .young, amount: 1)], at: source, in: &state)
         setResources([ResourceQuantity(kind: .young, amount: 2)], at: target, in: &state)
@@ -2134,7 +2162,7 @@ final class GameEngineTests: XCTestCase {
         var state = playFishState()
         let choice = pendingChoice(kind: .moveYoungOrSchool)
         let source = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
-        let target = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 0)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 0)
         state.pendingChoices[choice.choiceId] = choice
         setResources([ResourceQuantity(kind: .school, amount: 1)], at: source, in: &state)
         setResources([ResourceQuantity(kind: .school, amount: 1)], at: target, in: &state)
@@ -2159,12 +2187,42 @@ final class GameEngineTests: XCTestCase {
         }
     }
 
+    func testMoveYoungOrSchoolRejectsNonAdjacentMove() {
+        let engine = GameEngine()
+        var state = playFishState()
+        let choice = pendingChoice(kind: .moveYoungOrSchool)
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 5)
+        state.pendingChoices[choice.choiceId] = choice
+        setResources([ResourceQuantity(kind: .young, amount: 1)], at: source, in: &state)
+        setResources([], at: target, in: &state)
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: PlayerCommand(
+                    commandId: "move-young-non-adjacent",
+                    playerId: "player-1",
+                    roomId: roomId,
+                    payload: .resolvePendingChoice(
+                        ResolvePendingChoiceCommand(
+                            choiceId: choice.choiceId,
+                            resolution: .moveResource(source: source, target: target, kind: .young)
+                        )
+                    )
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .invalidPendingChoiceResolution(choice.choiceId))
+        }
+    }
+
     func testMoveSchoolMovesOneSchoolToEmptySchoolTarget() throws {
         let engine = GameEngine()
         var state = playFishState()
         let choice = pendingChoice(kind: .moveYoungOrSchool)
         let source = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
-        let target = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 0)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 0)
         state.pendingChoices[choice.choiceId] = choice
         setResources([ResourceQuantity(kind: .school, amount: 1)], at: source, in: &state)
         setResources([], at: target, in: &state)
@@ -3406,11 +3464,15 @@ final class GameEngineTests: XCTestCase {
     }
 
     private func blueDiveQueueState() -> GameState {
+        diveQueueState(diveSite: .blue)
+    }
+
+    private func diveQueueState(diveSite: DiveSite) -> GameState {
         var state = playFishState()
         for rowIndex in [0, 3, 4] {
             setContent(
                 .fishCard("fish-\(rowIndex + 10)"),
-                at: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: rowIndex),
+                at: OceanSlotAddress(playerId: "player-1", diveSite: diveSite, rowIndex: rowIndex),
                 in: &state
             )
         }
@@ -3462,12 +3524,15 @@ final class GameEngineTests: XCTestCase {
         return state
     }
 
-    private func diveCommand(commandId: CommandID) -> PlayerCommand {
+    private func diveCommand(
+        commandId: CommandID,
+        diveSite: DiveActionSite = .blue
+    ) -> PlayerCommand {
         PlayerCommand(
             commandId: commandId,
             playerId: "player-1",
             roomId: roomId,
-            payload: .dive(DiveCommand(diveSite: .blue))
+            payload: .dive(DiveCommand(diveSite: diveSite))
         )
     }
 

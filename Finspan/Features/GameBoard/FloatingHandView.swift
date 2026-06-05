@@ -1,11 +1,15 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct FloatingHandView: View {
     let viewState: HandViewState
     let onSelectCard: (CardID) -> Void
     let onBeginDrag: (CardID) -> Bool
+    let onDragChanged: (CardID, CGPoint) -> Void
+    let onDropOnBoard: (CardID, CGPoint) -> Bool
     let onCancelSelection: () -> Void
+
+    @State private var activeDragCardId: CardID?
+    @State private var activeDragTranslation: CGSize = .zero
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -32,7 +36,7 @@ struct FloatingHandView: View {
                     }
                     .frame(
                         width: handStackWidth,
-                        height: viewState.pulledOutCardId == nil ? 164 : 252,
+                        height: 252,
                         alignment: .bottomLeading
                     )
                     .padding(.horizontal, 18)
@@ -49,30 +53,63 @@ struct FloatingHandView: View {
         guard let lastCard = viewState.cards.last else {
             return 0
         }
-        let trailingWidth: CGFloat = lastCard.isPulledOutFromStack ? 210 : 172
+        let trailingWidth = CGFloat(lastCard.cardWidth) + 24
         return CGFloat(lastCard.stackOffsetX) + trailingWidth
     }
 
     @ViewBuilder
     private func stackedCardButton(_ card: HandCardViewState) -> some View {
-        let button = Button {
-            onSelectCard(card.cardId)
-        } label: {
-            HandStackCardView(card: card)
-        }
-        .buttonStyle(.plain)
-        .disabled(!viewState.canSelectCards)
-        .offset(x: card.stackOffsetX, y: card.stackOffsetY)
-        .zIndex(card.stackZIndex)
-
-        if viewState.canSelectCards {
-            button.onDrag {
-                _ = onBeginDrag(card.cardId)
-                return NSItemProvider(object: card.cardId as NSString)
+        HandStackCardView(card: card)
+            .contentShape(RoundedRectangle(cornerRadius: 8))
+            .onTapGesture {
+                guard viewState.canSelectCards else {
+                    return
+                }
+                onSelectCard(card.cardId)
             }
-        } else {
-            button
-        }
+            .gesture(dragGesture(for: card))
+            .offset(
+                x: CGFloat(card.stackOffsetX) + activeDragOffset(for: card).width,
+                y: CGFloat(card.stackOffsetY) + activeDragOffset(for: card).height
+            )
+            .zIndex(activeDragCardId == card.cardId ? 2_000 : card.stackZIndex)
+    }
+
+    private func dragGesture(for card: HandCardViewState) -> some Gesture {
+        DragGesture(minimumDistance: 6, coordinateSpace: .global)
+            .onChanged { value in
+                guard viewState.canSelectCards else {
+                    return
+                }
+                if activeDragCardId == nil {
+                    guard onBeginDrag(card.cardId) else {
+                        return
+                    }
+                    activeDragCardId = card.cardId
+                }
+                guard activeDragCardId == card.cardId else {
+                    return
+                }
+                activeDragTranslation = value.translation
+                onDragChanged(card.cardId, value.location)
+            }
+            .onEnded { value in
+                guard activeDragCardId == card.cardId else {
+                    resetActiveDrag()
+                    return
+                }
+                _ = onDropOnBoard(card.cardId, value.location)
+                resetActiveDrag()
+            }
+    }
+
+    private func activeDragOffset(for card: HandCardViewState) -> CGSize {
+        activeDragCardId == card.cardId ? activeDragTranslation : .zero
+    }
+
+    private func resetActiveDrag() {
+        activeDragCardId = nil
+        activeDragTranslation = .zero
     }
 }
 
@@ -80,7 +117,7 @@ struct HandStackCardView: View {
     let card: HandCardViewState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: card.isPulledOutFromStack ? 10 : 6) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 8) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(card.costSummaryText)
@@ -88,8 +125,8 @@ struct HandStackCardView: View {
                         .lineLimit(1)
 
                     Text(card.shortName)
-                        .font(card.isPulledOutFromStack ? .headline.weight(.bold) : .callout.weight(.bold))
-                        .lineLimit(card.isPulledOutFromStack ? 2 : 1)
+                        .font(.callout.weight(.bold))
+                        .lineLimit(2)
                 }
 
                 Spacer(minLength: 0)
@@ -101,14 +138,11 @@ struct HandStackCardView: View {
                     .background(Circle().fill(scoreColor))
             }
 
-            if card.isPulledOutFromStack {
-                expandedContent
-            } else {
-                compactContent
-            }
+            expandedContent
         }
         .padding(12)
-        .frame(width: card.isPulledOutFromStack ? 180 : 148, height: card.isPulledOutFromStack ? 244 : 196, alignment: .topLeading)
+        .frame(width: CGFloat(card.cardWidth), height: CGFloat(card.cardHeight), alignment: .topLeading)
+        .scaleEffect(card.scale)
         .background(cardBackground)
         .overlay(cardBorder)
         .overlay(discardOverlay)

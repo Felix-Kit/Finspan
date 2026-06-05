@@ -120,6 +120,9 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(selectedCardsInStack[0].stackOffsetY, -18)
         XCTAssertEqual(selectedCardsInStack[0].stackZIndex, 1_000)
         XCTAssertEqual(selectedCardsInStack[0].visibleHeightRatio, 1)
+        XCTAssertTrue(hand.cards.allSatisfy { $0.cardWidth == HandCardViewState.fixedCardWidth })
+        XCTAssertTrue(hand.cards.allSatisfy { $0.cardHeight == HandCardViewState.fixedCardHeight })
+        XCTAssertTrue(hand.cards.allSatisfy { $0.scale == HandCardViewState.fixedScale })
     }
 
     func testSwitchingSelectedHandCardReturnsOldCardAndPullsOutNewCard() {
@@ -167,6 +170,67 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.draggingHandCardId, "fish-6")
     }
 
+    func testHoveringLegalEmptySlotUpdatesDragHoverSlotAddress() {
+        let service = makeService(hand: ["fish-1", "fish-6"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertTrue(viewModel.beginDraggingHandCard("fish-1"))
+        viewModel.updateDragTarget(Self.slotAddress)
+
+        XCTAssertEqual(viewModel.dragHoverSlotAddress, Self.slotAddress)
+        let hoverSlot = oceanSlot(in: viewModel, address: Self.slotAddress)
+        XCTAssertTrue(hoverSlot.isDropTarget)
+        XCTAssertTrue(hoverSlot.isValidDropTarget)
+        XCTAssertEqual(hoverSlot.dropTargetReasonText, AppStrings.GameBoard.dragToPlayHere)
+    }
+
+    func testHoveringLegalShorterForageFishSlotShowsCoverMessage() {
+        let service = makeService(hand: ["fish-6"], emptySlots: [])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertTrue(viewModel.beginDraggingHandCard("fish-6"))
+        viewModel.updateDragTarget(Self.forageTargetAddress)
+
+        XCTAssertEqual(viewModel.dragHoverSlotAddress, Self.forageTargetAddress)
+        let hoverSlot = oceanSlot(in: viewModel, address: Self.forageTargetAddress)
+        XCTAssertTrue(hoverSlot.isDropTarget)
+        XCTAssertTrue(hoverSlot.isValidDropTarget)
+        XCTAssertEqual(hoverSlot.dropTargetReasonText, AppStrings.GameBoard.canCoverShorterFish)
+    }
+
+    func testHoveringLegalShorterFishCardSlotShowsCoverMessage() {
+        let service = makeService(hand: ["fish-6"], emptySlots: [Self.slotAddress])
+        setContent(.fishCard("starter-fish-1"), at: Self.slotAddress, in: service)
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertTrue(viewModel.beginDraggingHandCard("fish-6"))
+        viewModel.updateDragTarget(Self.slotAddress)
+
+        XCTAssertEqual(viewModel.dragHoverSlotAddress, Self.slotAddress)
+        let hoverSlot = oceanSlot(in: viewModel, address: Self.slotAddress)
+        XCTAssertTrue(hoverSlot.isDropTarget)
+        XCTAssertTrue(hoverSlot.isValidDropTarget)
+        XCTAssertEqual(hoverSlot.dropTargetReasonText, AppStrings.GameBoard.canCoverShorterFish)
+    }
+
+    func testHoveringIllegalOccupiedSlotShowsReason() {
+        let service = makeService(hand: ["starter-fish-1"], emptySlots: [])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertTrue(viewModel.beginDraggingHandCard("starter-fish-1"))
+        viewModel.updateDragTarget(Self.forageYoungAddress)
+
+        XCTAssertEqual(viewModel.dragHoverSlotAddress, Self.forageYoungAddress)
+        let hoverSlot = oceanSlot(in: viewModel, address: Self.forageYoungAddress)
+        XCTAssertTrue(hoverSlot.isDropTarget)
+        XCTAssertFalse(hoverSlot.isValidDropTarget)
+        XCTAssertEqual(
+            hoverSlot.dropTargetReasonText,
+            "\(AppStrings.GameBoard.slotCannotPlayHere)：\(AppStrings.GameBoard.cannotCoverLongerOrSameFish)"
+        )
+        XCTAssertEqual(viewModel.errorMessage, AppStrings.GameBoard.cannotCoverLongerOrSameFish)
+    }
+
     func testDroppingHandCardOnLegalSlotSelectsTargetSlot() {
         let service = makeService(hand: ["fish-6"], emptySlots: [])
         let viewModel = GameBoardViewModel(roomService: service)
@@ -176,7 +240,7 @@ final class GameBoardViewModelTests: XCTestCase {
         let dropTarget = oceanSlot(in: viewModel, address: Self.forageTargetAddress)
         XCTAssertTrue(dropTarget.isDropTarget)
         XCTAssertTrue(dropTarget.isValidDropTarget)
-        XCTAssertEqual(dropTarget.dropTargetReasonText, AppStrings.GameBoard.dragToPlayHere)
+        XCTAssertEqual(dropTarget.dropTargetReasonText, AppStrings.GameBoard.canCoverShorterFish)
 
         XCTAssertTrue(viewModel.dropHandCard(targetAddress: Self.forageTargetAddress))
 
@@ -185,13 +249,24 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.draggingHandCardId)
     }
 
+    func testDroppingHandCardOnLegalSlotDoesNotSubmitPlayFishCommand() {
+        let service = makeService(hand: ["starter-fish-1"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertTrue(viewModel.beginDraggingHandCard("starter-fish-1"))
+        XCTAssertTrue(viewModel.dropHandCard(targetAddress: Self.slotAddress))
+
+        XCTAssertEqual(viewModel.selectedTargetSlot, Self.slotAddress)
+        XCTAssertTrue(service.submittedCommands.isEmpty)
+    }
+
     func testDroppingHandCardOnIllegalSlotKeepsCardSelectedWithoutTarget() {
         let service = makeService(hand: ["starter-fish-1"], emptySlots: [])
         let viewModel = GameBoardViewModel(roomService: service)
 
         XCTAssertTrue(viewModel.beginDraggingHandCard("starter-fish-1"))
 
-        let dropTarget = oceanSlot(in: viewModel, address: Self.forageTargetAddress)
+        let dropTarget = oceanSlot(in: viewModel, address: Self.forageYoungAddress)
         XCTAssertTrue(dropTarget.isDropTarget)
         XCTAssertFalse(dropTarget.isValidDropTarget)
         XCTAssertEqual(
@@ -199,7 +274,7 @@ final class GameBoardViewModelTests: XCTestCase {
             "\(AppStrings.GameBoard.slotCannotPlayHere)：\(AppStrings.GameBoard.cannotCoverLongerOrSameFish)"
         )
 
-        XCTAssertFalse(viewModel.dropHandCard(targetAddress: Self.forageTargetAddress))
+        XCTAssertFalse(viewModel.dropHandCard(targetAddress: Self.forageYoungAddress))
 
         XCTAssertEqual(viewModel.selectedCardId, "starter-fish-1")
         XCTAssertNil(viewModel.selectedTargetSlot)
@@ -609,7 +684,7 @@ final class GameBoardViewModelTests: XCTestCase {
 
         viewModel.selectCard("starter-fish-1")
 
-        let slot = oceanSlot(in: viewModel, address: Self.forageTargetAddress)
+        let slot = oceanSlot(in: viewModel, address: Self.forageYoungAddress)
         XCTAssertEqual(slot.playFishPreview.availability, .unavailable)
         XCTAssertEqual(slot.playFishPreview.unavailableReason, .coverLengthTooShort)
         XCTAssertEqual(slot.playFishPreview.message, AppStrings.GameBoard.cannotCoverLongerOrSameFish)
@@ -1715,6 +1790,257 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(pendingChoice.actions.map(\.isEnabled), [true])
     }
 
+    func testDrawFishPendingChoiceGeneratesRewardToken() {
+        let choice = pendingChoice(kind: .drawFish)
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let rewardPool = viewModel.rewardPoolViewState
+
+        XCTAssertTrue(rewardPool.isActive)
+        XCTAssertEqual(rewardPool.rewards.map(\.kind), [.drawFish])
+        XCTAssertEqual(rewardPool.rewards.map(\.title), [AppStrings.GameBoard.drawOneFishCard])
+        XCTAssertEqual(rewardPool.instructionText, AppStrings.GameBoard.chooseRewardToken)
+    }
+
+    func testPlaceEggPendingChoiceGeneratesEggRewardToken() {
+        let choice = pendingChoice(kind: .placeEgg)
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let rewardPool = viewModel.rewardPoolViewState
+
+        XCTAssertEqual(rewardPool.rewards.map(\.kind), [.placeEgg])
+        XCTAssertEqual(rewardPool.rewards.first?.title, AppStrings.GameBoard.placeEggAbilityAction)
+        XCTAssertEqual(rewardPool.instructionText, AppStrings.GameBoard.chooseRewardThenTarget)
+    }
+
+    func testHatchEggPendingChoiceGeneratesHatchRewardToken() {
+        let choice = pendingChoice(kind: .hatchEgg)
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let rewardPool = viewModel.rewardPoolViewState
+
+        XCTAssertEqual(rewardPool.rewards.map(\.kind), [.hatchEgg])
+        XCTAssertEqual(rewardPool.rewards.first?.title, AppStrings.GameBoard.hatchEggAbilityAction)
+        XCTAssertEqual(rewardPool.instructionText, AppStrings.GameBoard.chooseRewardThenTarget)
+    }
+
+    func testMoveYoungOrSchoolPendingChoiceGeneratesMoveRewardToken() {
+        let choice = pendingChoice(kind: .moveYoungOrSchool)
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let rewardPool = viewModel.rewardPoolViewState
+
+        XCTAssertEqual(rewardPool.rewards.map(\.kind), [.moveYoungOrSchool])
+        XCTAssertEqual(rewardPool.rewards.first?.title, AppStrings.GameBoard.moveYoungOrSchool)
+        XCTAssertEqual(rewardPool.instructionText, AppStrings.GameBoard.chooseRewardThenSource)
+    }
+
+    func testCompoundAbilityPendingChoiceGeneratesRemainingRewardTokens() {
+        let choice = compoundAbilityPendingChoice()
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let rewards = viewModel.rewardPoolViewState.rewards
+
+        XCTAssertEqual(rewards.map(\.kind), [
+            .compoundPlaceEgg,
+            .compoundPlaceEgg,
+            .compoundHatchEgg,
+            .skipOrEnd
+        ])
+        XCTAssertEqual(
+            rewards.map(\.title),
+            [
+                AppStrings.GameBoard.placeEggAbilityAction,
+                AppStrings.GameBoard.placeEggAbilityAction,
+                AppStrings.GameBoard.hatchEggAbilityAction,
+                AppStrings.GameBoard.finishAbility
+            ]
+        )
+    }
+
+    func testSelectingEggRewardTokenEntersPlaceEggTargetSelectionMode() {
+        let choice = pendingChoice(kind: .placeEgg)
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let token = viewModel.rewardPoolViewState.rewards[0]
+
+        viewModel.selectRewardToken(token.id)
+
+        XCTAssertEqual(viewModel.selectedRewardTokenId, token.id)
+        XCTAssertEqual(viewModel.rewardPoolViewState.instructionText, AppStrings.GameBoard.chooseLeftTarget)
+        XCTAssertTrue(
+            viewModel.oceanSlots.contains {
+                $0.isHighlightedByRewardSelection
+                    && $0.rewardSelectionReasonText == AppStrings.GameBoard.chooseLeftTarget
+            }
+        )
+        XCTAssertTrue(service.submittedCommands.isEmpty)
+    }
+
+    func testSelectingHatchRewardTokenEntersHatchEggTargetSelectionMode() {
+        let choice = pendingChoice(kind: .hatchEgg)
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let token = viewModel.rewardPoolViewState.rewards[0]
+
+        viewModel.selectRewardToken(token.id)
+
+        XCTAssertEqual(viewModel.selectedRewardTokenId, token.id)
+        XCTAssertEqual(viewModel.rewardPoolViewState.instructionText, AppStrings.GameBoard.chooseLeftTarget)
+        XCTAssertTrue(
+            viewModel.oceanSlots.contains {
+                $0.address == Self.resourceSourceAddress
+                    && $0.isHighlightedByRewardSelection
+            }
+        )
+        XCTAssertTrue(service.submittedCommands.isEmpty)
+    }
+
+    func testSelectingMoveRewardTokenEntersMoveSourceSelectionMode() {
+        let choice = pendingChoice(kind: .moveYoungOrSchool)
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let token = viewModel.rewardPoolViewState.rewards[0]
+
+        viewModel.selectRewardToken(token.id)
+
+        XCTAssertEqual(viewModel.rewardPoolViewState.instructionText, AppStrings.GameBoard.chooseSource)
+        XCTAssertTrue(
+            viewModel.oceanSlots.contains {
+                $0.address == Self.resourceSourceAddress
+                    && $0.rewardSelectionReasonText == AppStrings.GameBoard.chooseSource
+            }
+        )
+    }
+
+    func testClickingDrawRewardTokenBuildsDrawResolveCommand() {
+        let choice = pendingChoice(kind: .drawFish)
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let token = viewModel.rewardPoolViewState.rewards[0]
+
+        viewModel.selectRewardToken(token.id)
+
+        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolvePendingChoice command.")
+        }
+        XCTAssertEqual(payload.choiceId, choice.choiceId)
+        XCTAssertEqual(payload.resolution, .draw(count: 1))
+    }
+
+    func testRecoverRewardTokenDrawsFromDeckWhenDiscardPileIsEmpty() {
+        let choice = pendingChoice(kind: .recoverFromDiscardOrDraw)
+        let service = makeService(
+            hand: ["fish-2"],
+            pendingChoices: [choice.choiceId: choice],
+            discardPile: [],
+            fishDrawPile: ["fish-9"]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        let token = viewModel.rewardPoolViewState.rewards[0]
+
+        XCTAssertEqual(token.kind, .recoverFromDiscardOrDraw)
+        XCTAssertEqual(token.subtitle, AppStrings.GameBoard.discardPileEmptyDrawAlternative)
+
+        viewModel.selectRewardToken(token.id)
+
+        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolvePendingChoice command.")
+        }
+        XCTAssertEqual(payload.resolution, .drawFromDeck)
+    }
+
+    func testRecoverRewardTokenRecoversDiscardCardWhenDiscardPileHasCards() {
+        let choice = pendingChoice(kind: .recoverFromDiscardOrDraw)
+        let service = makeService(
+            hand: ["fish-2"],
+            pendingChoices: [choice.choiceId: choice],
+            discardPile: ["fish-9"]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        let token = viewModel.rewardPoolViewState.rewards[0]
+
+        XCTAssertEqual(token.kind, .recoverFromDiscardOrDraw)
+        XCTAssertEqual(token.subtitle, "Fish 9")
+
+        viewModel.selectRewardToken(token.id)
+
+        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolvePendingChoice command.")
+        }
+        XCTAssertEqual(payload.resolution, .recoverCard("fish-9"))
+    }
+
+    func testClickingEndAbilityRewardTokenBuildsFinishAbilityCommand() throws {
+        let choice = compoundAbilityPendingChoice()
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let token = viewModel.rewardPoolViewState.rewards.first { $0.kind == .skipOrEnd }
+
+        viewModel.selectRewardToken(try XCTUnwrap(token).id)
+
+        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolvePendingChoice command.")
+        }
+        XCTAssertEqual(payload.choiceId, choice.choiceId)
+        XCTAssertEqual(payload.resolution, .finishAbility)
+    }
+
+    func testUnsupportedPendingChoiceGeneratesUnsupportedRewardToken() {
+        let choice = pendingChoice(kind: .unsupported, source: .placeholder("sample-dlc"))
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let token = viewModel.rewardPoolViewState.rewards[0]
+
+        XCTAssertEqual(token.kind, .unsupported)
+        XCTAssertTrue(token.isUnsupported)
+        XCTAssertEqual(token.title, AppStrings.GameBoard.abilityUnsupported)
+        XCTAssertFalse(token.isSelectable)
+    }
+
+    func testOceanColumnsExposeSunlightTwilightMidnightZoneSections() {
+        let service = makeService(hand: ["fish-2"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        for column in viewModel.oceanColumns {
+            XCTAssertEqual(column.zoneSections.map(\.zone), [.sunlit, .twilight, .midnight])
+            XCTAssertEqual(column.zoneSections.map { $0.slots.count }, [3, 1, 2])
+        }
+    }
+
+    func testBottomBonusIsSeparateFromOceanZoneSections() {
+        let queue = activeDiveQueue(diveSite: .blue, source: .bottomBonus)
+        let service = makeService(hand: ["fish-2"], activeDiveQueue: queue)
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.bottomAreas.count, 3)
+        XCTAssertEqual(viewModel.highlightedBottomBonusDiveSite, .blue)
+        XCTAssertTrue(viewModel.bottomAreas.contains { $0.diveSite == .blue && $0.isHighlightedByDiveQueue })
+        XCTAssertTrue(viewModel.oceanColumns.flatMap(\.zoneSections).allSatisfy { !$0.isHighlightedByDiveQueue })
+        XCTAssertTrue(viewModel.oceanColumns.flatMap(\.zoneSections).flatMap(\.slots).contains {
+            $0.address.rowIndex == 5
+        })
+    }
+
+    func testPrintedDiveBonusHighlightsMatchingZoneSectionOnly() throws {
+        let queue = activeDiveQueue(diveSite: .blue, source: .printedDiveBonus(.twilight))
+        let service = makeService(hand: ["fish-2"], activeDiveQueue: queue)
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let blueColumn = viewModel.oceanColumns.first { $0.diveSite == .blue }
+        let highlightedZones = try XCTUnwrap(blueColumn).zoneSections
+            .filter(\.isHighlightedByDiveQueue)
+            .map(\.zone)
+
+        XCTAssertEqual(highlightedZones, [.twilight])
+        XCTAssertNil(viewModel.highlightedBottomBonusDiveSite)
+    }
+
     func testPerformSkipPendingChoiceActionBuildsResolvePendingChoiceCommand() {
         let choice = pendingChoice(kind: .placeEgg)
         let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
@@ -2089,7 +2415,9 @@ final class GameBoardViewModelTests: XCTestCase {
                 aspectRatio: 0.72,
                 isDropTarget: false,
                 isValidDropTarget: false,
-                dropTargetReasonText: nil
+                dropTargetReasonText: nil,
+                isHighlightedByRewardSelection: false,
+                rewardSelectionReasonText: nil
             )
         }
         return slot

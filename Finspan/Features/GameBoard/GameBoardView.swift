@@ -1,8 +1,19 @@
 import SwiftUI
-import UniformTypeIdentifiers
+
+private struct SlotFramePreferenceKey: PreferenceKey {
+    static var defaultValue: [OceanSlotAddress: CGRect] = [:]
+
+    static func reduce(
+        value: inout [OceanSlotAddress: CGRect],
+        nextValue: () -> [OceanSlotAddress: CGRect]
+    ) {
+        value.merge(nextValue(), uniquingKeysWith: { _, newValue in newValue })
+    }
+}
 
 struct GameBoardView: View {
     @StateObject var viewModel: GameBoardViewModel
+    @State private var slotFrames: [OceanSlotAddress: CGRect] = [:]
 
     var body: some View {
         Group {
@@ -26,7 +37,7 @@ struct GameBoardView: View {
 
                             Divider()
 
-                            eventLogPanel
+                            rightSidePanel
                                 .frame(width: 300, alignment: .topLeading)
                         }
                         .padding(.horizontal, 18)
@@ -40,6 +51,16 @@ struct GameBoardView: View {
                             onBeginDrag: { cardId in
                                 viewModel.beginDraggingHandCard(cardId)
                             },
+                            onDragChanged: { _, location in
+                                viewModel.updateDragTarget(slotAddress(at: location))
+                            },
+                            onDropOnBoard: { cardId, location in
+                                guard let address = slotAddress(at: location) else {
+                                    viewModel.cancelHandCardDrag()
+                                    return false
+                                }
+                                return viewModel.dropHandCard(cardId, targetAddress: address)
+                            },
                             onCancelSelection: {
                                 viewModel.cancelPlayFishSelection()
                             }
@@ -50,9 +71,18 @@ struct GameBoardView: View {
                 }
             }
         }
+        .onPreferenceChange(SlotFramePreferenceKey.self) { frames in
+            slotFrames = frames
+        }
         .onAppear {
             viewModel.refresh()
         }
+    }
+
+    private func slotAddress(at globalLocation: CGPoint) -> OceanSlotAddress? {
+        slotFrames.first { _, frame in
+            frame.contains(globalLocation)
+        }?.key
     }
 
     private var turnPanel: some View {
@@ -105,9 +135,18 @@ struct GameBoardView: View {
                 oceanPanel
                 paymentPanel
                 divePanel
-                pendingChoicePanel
             }
             .padding(.bottom, 230)
+        }
+    }
+
+    private var rightSidePanel: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            rewardPoolPanel
+                .frame(maxHeight: 360, alignment: .topLeading)
+            Divider()
+            eventLogPanel
+                .frame(maxHeight: 320, alignment: .topLeading)
         }
     }
 
@@ -180,8 +219,8 @@ struct GameBoardView: View {
                                     .font(.headline)
                                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                                ForEach(column.slots) { slot in
-                                    slotPanel(slot)
+                                ForEach(column.zoneSections) { section in
+                                    zoneSectionPanel(section)
                                 }
                             }
                             .frame(maxWidth: .infinity, minHeight: 0, alignment: .topLeading)
@@ -200,6 +239,147 @@ struct GameBoardView: View {
                 }
             }
         }
+    }
+
+    private var rewardPoolPanel: some View {
+        let rewardPool = viewModel.rewardPoolViewState
+        return VStack(alignment: .leading, spacing: 12) {
+            Text(rewardPool.titleText)
+                .font(.title2.weight(.semibold))
+
+            if let sourceText = rewardPool.sourceText {
+                Text(sourceText)
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Text(rewardPool.instructionText)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(rewardPool.isActive ? .primary : .secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let blockingMessage = rewardPool.blockingMessage {
+                Text(blockingMessage)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.red)
+            }
+
+            if rewardPool.rewards.isEmpty {
+                ContentUnavailableView(
+                    AppStrings.GameBoard.noCurrentRewards,
+                    systemImage: "tray"
+                )
+                .frame(maxWidth: .infinity, minHeight: 140)
+            } else {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 116), spacing: 8)], spacing: 8) {
+                    ForEach(rewardPool.rewards) { token in
+                        Button {
+                            viewModel.selectRewardToken(token.id)
+                        } label: {
+                            rewardToken(token)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(!token.isSelectable)
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(.secondarySystemBackground))
+        )
+    }
+
+    private func rewardToken(_ token: RewardTokenViewState) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 8) {
+                ZStack {
+                    Circle()
+                        .fill(rewardTokenIconBackground(token))
+                    if let symbolName = token.symbolName {
+                        Image(systemName: symbolName)
+                            .font(.caption.weight(.bold))
+                    } else {
+                        Text(token.iconText)
+                            .font(.caption.weight(.black))
+                    }
+                }
+                .foregroundStyle(rewardTokenIconForeground(token))
+                .frame(width: 30, height: 30)
+
+                Spacer(minLength: 0)
+
+                if let countText = token.countText {
+                    Text(countText)
+                        .font(.caption2.weight(.black))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(Color.accentColor))
+                }
+            }
+
+            Text(token.title)
+                .font(.caption.weight(.bold))
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(token.subtitle)
+                .font(.caption2)
+                .foregroundStyle(token.isUnsupported ? .red : .secondary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let reason = token.unavailableReasonText {
+                Text(reason)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.red)
+                    .lineLimit(2)
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, minHeight: 118, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(rewardTokenBackground(token))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(rewardTokenBorder(token), lineWidth: token.isSelected ? 2 : 1)
+        )
+        .opacity(token.isSelectable ? 1 : 0.72)
+    }
+
+    private func zoneSectionPanel(_ section: OceanZoneSectionViewData) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 6) {
+                Text(section.title)
+                    .font(.caption.weight(.black))
+                    .foregroundStyle(zoneForeground(section.zone))
+                Rectangle()
+                    .fill(zoneForeground(section.zone).opacity(0.35))
+                    .frame(height: 1)
+            }
+
+            ForEach(section.slots) { slot in
+                slotPanel(slot)
+            }
+        }
+        .padding(8)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(zoneBackground(section.zone, isHighlighted: section.isHighlightedByDiveQueue))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(
+                    section.isHighlightedByDiveQueue ? zoneForeground(section.zone) : zoneForeground(section.zone).opacity(0.2),
+                    lineWidth: section.isHighlightedByDiveQueue ? 2 : 1
+                )
+        )
     }
 
     private var paymentPanel: some View {
@@ -449,80 +629,78 @@ struct GameBoardView: View {
     }
 
     private func slotPanel(_ slot: OceanSlotViewData) -> some View {
-        GeometryReader { proxy in
-            VStack(alignment: .leading, spacing: 7) {
-                Button {
-                    viewModel.selectTargetSlot(slot.address)
-                } label: {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(alignment: .firstTextBaseline) {
-                            Text(slot.title)
-                                .font(.subheadline.weight(.semibold))
-                                .lineLimit(2)
-                            Spacer()
-                            if slot.isSelected {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.green)
-                            }
-                        }
-
-                        Text(slot.subtitle)
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(slot.isOccupied ? .secondary : .primary)
-                            .lineLimit(2)
-
-                        Text(slot.playFishPreview.message)
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(slot.playFishPreview.isSelectable ? .green : .secondary)
-                            .lineLimit(1)
-
-                        if let highlightReasonText = slot.highlightReasonText {
-                            Text(highlightReasonText)
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(.orange)
-                                .lineLimit(2)
-                        }
-
-                        if let dropTargetReasonText = slot.dropTargetReasonText {
-                            Text(dropTargetReasonText)
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(slot.isValidDropTarget ? .green : .red)
-                                .lineLimit(2)
-                        }
+        VStack(alignment: .leading, spacing: 7) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(slot.title)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(2)
+                    Spacer()
+                    if slot.isSelected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
                     }
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
-                .buttonStyle(.plain)
-                .disabled(!slot.playFishPreview.isSelectable)
 
-                Spacer(minLength: 0)
+                Text(slot.subtitle)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(slot.isOccupied ? .secondary : .primary)
+                    .lineLimit(2)
 
-                if slot.resourceTokens.isEmpty {
-                    Text(AppStrings.GameBoard.noResources)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                } else {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 38), spacing: 4)], alignment: .leading, spacing: 4) {
-                        ForEach(slot.resourceTokens) { token in
-                            Button {
-                                viewModel.toggleResourcePayment(
-                                    address: token.address,
-                                    kind: token.kind,
-                                    tokenIndex: token.tokenIndex
-                                )
-                            } label: {
-                                resourceToken(token)
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(!token.isSelectable)
+                Text(slot.playFishPreview.message)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(slot.playFishPreview.isSelectable ? .green : .secondary)
+                    .lineLimit(1)
+
+                if let highlightReasonText = slot.highlightReasonText {
+                    Text(highlightReasonText)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.orange)
+                        .lineLimit(2)
+                }
+
+                if let dropTargetReasonText = slot.dropTargetReasonText {
+                    Text(dropTargetReasonText)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(slot.isValidDropTarget ? .green : .red)
+                        .lineLimit(2)
+                }
+
+                if let rewardSelectionReasonText = slot.rewardSelectionReasonText {
+                    Text(rewardSelectionReasonText)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.blue)
+                        .lineLimit(2)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+
+            Spacer(minLength: 0)
+
+            if slot.resourceTokens.isEmpty {
+                Text(AppStrings.GameBoard.noResources)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            } else {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 38), spacing: 4)], alignment: .leading, spacing: 4) {
+                    ForEach(slot.resourceTokens) { token in
+                        Button {
+                            viewModel.toggleResourcePayment(
+                                address: token.address,
+                                kind: token.kind,
+                                tokenIndex: token.tokenIndex
+                            )
+                        } label: {
+                            resourceToken(token)
                         }
+                        .buttonStyle(.plain)
+                        .disabled(!token.isSelectable)
                     }
                 }
             }
-            .padding(10)
-            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
         }
+        .padding(10)
         .aspectRatio(slot.aspectRatio, contentMode: .fit)
         .frame(maxWidth: .infinity)
         .background(
@@ -533,8 +711,17 @@ struct GameBoardView: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(slotBorderColor(slot), lineWidth: slot.isHighlightedByDiveQueue || slot.isDropTarget ? 2 : 1.5)
         )
-        .onDrop(of: [UTType.plainText], isTargeted: nil) { _ in
-            viewModel.dropHandCard(targetAddress: slot.address)
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: SlotFramePreferenceKey.self,
+                    value: [slot.address: proxy.frame(in: .global)]
+                )
+            }
+        )
+        .contentShape(RoundedRectangle(cornerRadius: 8))
+        .onTapGesture {
+            viewModel.selectTargetSlot(slot.address)
         }
     }
 
@@ -660,6 +847,9 @@ struct GameBoardView: View {
         if slot.isHighlightedByDiveQueue {
             return Color.orange.opacity(0.14)
         }
+        if slot.isHighlightedByRewardSelection {
+            return Color.blue.opacity(0.12)
+        }
         if slot.isDropTarget {
             return slot.isValidDropTarget ? Color.green.opacity(0.12) : Color.red.opacity(0.08)
         }
@@ -673,6 +863,9 @@ struct GameBoardView: View {
         if slot.isHighlightedByDiveQueue {
             return .orange
         }
+        if slot.isHighlightedByRewardSelection {
+            return .blue
+        }
         if slot.isDropTarget {
             return slot.isValidDropTarget ? .green : .red.opacity(0.55)
         }
@@ -680,6 +873,79 @@ struct GameBoardView: View {
             return .accentColor
         }
         return .clear
+    }
+
+    private func rewardTokenBackground(_ token: RewardTokenViewState) -> Color {
+        if token.isSelected {
+            return Color.accentColor.opacity(0.18)
+        }
+        if token.isUnsupported {
+            return Color.red.opacity(0.08)
+        }
+        return Color(.tertiarySystemBackground)
+    }
+
+    private func rewardTokenBorder(_ token: RewardTokenViewState) -> Color {
+        if token.isSelected {
+            return .accentColor
+        }
+        if token.isUnsupported {
+            return .red.opacity(0.45)
+        }
+        return .secondary.opacity(0.2)
+    }
+
+    private func rewardTokenIconBackground(_ token: RewardTokenViewState) -> Color {
+        switch token.kind {
+        case .drawFish,
+             .recoverFromDiscardOrDraw:
+            return .blue.opacity(0.18)
+        case .placeEgg,
+             .compoundPlaceEgg:
+            return .yellow.opacity(0.25)
+        case .hatchEgg,
+             .compoundHatchEgg:
+            return .cyan.opacity(0.18)
+        case .moveYoung,
+             .moveSchool,
+             .moveYoungOrSchool:
+            return .green.opacity(0.18)
+        case .skipOrEnd:
+            return .accentColor.opacity(0.18)
+        case .gainCoral,
+             .scatterSchool,
+             .consumeFish,
+             .playFishForFree,
+             .unsupported:
+            return .red.opacity(0.12)
+        }
+    }
+
+    private func rewardTokenIconForeground(_ token: RewardTokenViewState) -> Color {
+        token.isUnsupported ? .red : .primary
+    }
+
+    private func zoneBackground(_ zone: OceanZone, isHighlighted: Bool) -> Color {
+        let opacity = isHighlighted ? 0.22 : 0.1
+        switch zone {
+        case .sunlit:
+            return Color.yellow.opacity(opacity)
+        case .twilight:
+            return Color.cyan.opacity(opacity)
+        case .midnight:
+            return Color.indigo.opacity(opacity)
+        }
+    }
+
+    private func zoneForeground(_ zone: OceanZone) -> Color {
+        switch zone {
+        case .sunlit:
+            return .orange
+        case .twilight:
+            return .cyan
+        case .midnight:
+            return .indigo
+        }
     }
 
     private func resourceTokenBackgroundColor(_ token: SlotResourceTokenViewState) -> Color {

@@ -722,7 +722,17 @@ struct GameEngine {
             throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
         }
 
-        // TODO: Enforce the full straight-line movement and occupied-school path rules.
+        guard moveDistance(from: source, to: target) == 1 else {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+
+        // TODO: Expand this to the full straight-line movement and path rules.
+    }
+
+    private func moveDistance(from source: OceanSlotAddress, to target: OceanSlotAddress) -> Int {
+        let diveSiteDistance = abs(diveSiteSortIndex(source.diveSite) - diveSiteSortIndex(target.diveSite))
+        let rowDistance = abs(source.rowIndex - target.rowIndex)
+        return max(diveSiteDistance, rowDistance)
     }
 
     private func hasBlockingPendingChoices(for playerId: PlayerID, in state: GameState) -> Bool {
@@ -1699,6 +1709,17 @@ struct GameEngine {
 
     private func card(withId cardId: CardID) -> Card? {
         (cardCatalog.starterFishCards + cardCatalog.fishCards).first { $0.id == cardId }
+    }
+
+    private func diveSiteSortIndex(_ diveSite: DiveSite) -> Int {
+        switch diveSite {
+        case .blue:
+            return 0
+        case .purple:
+            return 1
+        case .green:
+            return 2
+        }
     }
 }
 
