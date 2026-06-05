@@ -24,6 +24,22 @@ struct OceanSlotViewData: Identifiable, Equatable {
     let isHighlightedByDiveQueue: Bool
     let highlightReasonText: String?
     let playFishPreview: PlayFishSlotPreview
+    let resourceTokens: [SlotResourceTokenViewState]
+}
+
+struct SlotResourceTokenViewState: Identifiable, Equatable {
+    var id: String { "\(kind.rawValue)-\(tokenIndex)" }
+
+    let address: OceanSlotAddress
+    let kind: ResourceKind
+    let tokenIndex: Int
+    let title: String
+    let iconText: String
+    let isSelectable: Bool
+    let isSelectedForPayment: Bool
+    let selectionMarkerText: String?
+    let unavailableReasonText: String?
+    let warningText: String?
 }
 
 struct OceanDiveSiteColumnViewData: Identifiable, Equatable {
@@ -92,6 +108,23 @@ struct ResourceSourceViewData: Identifiable, Equatable {
     let title: String
     let availableCount: Int
     let selectedCount: Int
+}
+
+struct ResourcePaymentProgressViewState: Identifiable, Equatable {
+    var id: String { kind.rawValue }
+
+    let kind: ResourceKind
+    let title: String
+    let selectedCount: Int
+    let requiredCount: Int
+    let progressText: String
+    let isComplete: Bool
+}
+
+private struct ResourcePaymentTokenKey: Hashable {
+    let address: OceanSlotAddress
+    let kind: ResourceKind
+    let tokenIndex: Int
 }
 
 struct DiveActionSiteViewData: Identifiable, Equatable {
@@ -252,6 +285,7 @@ final class GameBoardViewModel: ObservableObject {
     @Published var selectedDiscardCardIds: Set<CardID> = []
     @Published var selectedEggSources: [OceanSlotAddress] = []
     @Published var selectedYoungSources: [OceanSlotAddress] = []
+    @Published private var selectedResourcePaymentTokens: Set<ResourcePaymentTokenKey> = []
 
     private let roomService: any RoomService
     private let cardCatalog: any CardCatalog
@@ -518,6 +552,28 @@ final class GameBoardViewModel: ObservableObject {
         return nil
     }
 
+    var resourcePaymentProgress: [ResourcePaymentProgressViewState] {
+        resourcePaymentKinds.compactMap { kind in
+            let requiredCount = resourceCostCount(kind, for: selectedCard)
+            guard requiredCount > 0 else {
+                return nil
+            }
+            let selectedCount = selectedSources(for: kind).count
+            return ResourcePaymentProgressViewState(
+                kind: kind,
+                title: resourceName(kind),
+                selectedCount: selectedCount,
+                requiredCount: requiredCount,
+                progressText: AppStrings.GameBoard.resourcePaymentProgressText(
+                    resourceName: resourceName(kind),
+                    selectedCount: selectedCount,
+                    requiredCount: requiredCount
+                ),
+                isComplete: selectedCount == requiredCount
+            )
+        }
+    }
+
     var discardPaymentOptions: [GameBoardCardViewData] {
         guard let selectedCardId,
               let activePlayerState,
@@ -569,6 +625,14 @@ final class GameBoardViewModel: ObservableObject {
         selectedCardId.flatMap { cardsById[$0] }
     }
 
+    private var displayResourceKinds: [ResourceKind] {
+        [.egg, .young, .school]
+    }
+
+    private var resourcePaymentKinds: [ResourceKind] {
+        [.egg, .young]
+    }
+
     private var selectedTargetSlotIsAvailable: Bool {
         guard let selectedTargetSlot,
               let activePlayerState,
@@ -616,8 +680,7 @@ final class GameBoardViewModel: ObservableObject {
         selectedCardId = cardId
         selectedTargetSlot = nil
         selectedDiscardCardIds = []
-        selectedEggSources = []
-        selectedYoungSources = []
+        clearResourcePaymentSelection()
         errorMessage = nil
     }
 
@@ -652,6 +715,42 @@ final class GameBoardViewModel: ObservableObject {
 
     func toggleYoungSource(_ address: OceanSlotAddress) {
         cycleResourceSource(address, kind: .young)
+    }
+
+    func toggleResourcePayment(address: OceanSlotAddress, kind: ResourceKind, tokenIndex: Int) {
+        guard !hasBlockingPendingChoices else {
+            return
+        }
+        guard isSelectingPlayFish else {
+            return
+        }
+        guard let activePlayerState else {
+            return
+        }
+        let tokenCount = resourceTokenCount(kind, at: address, in: activePlayerState)
+        guard tokenIndex >= 0, tokenIndex < tokenCount else {
+            return
+        }
+        let requiredCount = resourceCostCount(kind, for: selectedCard)
+        guard resourcePaymentKinds.contains(kind), requiredCount > 0 else {
+            return
+        }
+
+        let key = ResourcePaymentTokenKey(address: address, kind: kind, tokenIndex: tokenIndex)
+        if selectedResourcePaymentTokens.contains(key) {
+            selectedResourcePaymentTokens.remove(key)
+        } else {
+            guard selectedResourcePaymentTokens.filter({ $0.kind == kind }).count < requiredCount else {
+                return
+            }
+            selectedResourcePaymentTokens.insert(key)
+        }
+        syncSelectedResourceSourcesFromTokens()
+        errorMessage = nil
+    }
+
+    func toggleResourcePayment(address: OceanSlotAddress, kind: ResourceKind) {
+        toggleResourcePayment(address: address, kind: kind, tokenIndex: 0)
     }
 
     func submitPlayFish() {
@@ -897,19 +996,18 @@ final class GameBoardViewModel: ObservableObject {
            !activePlayerState.hand.contains(selectedCardId) {
             self.selectedCardId = nil
             selectedDiscardCardIds = []
-            selectedEggSources = []
-            selectedYoungSources = []
+            clearResourcePaymentSelection()
         }
 
         selectedDiscardCardIds = selectedDiscardCardIds.filter {
             activePlayerState.hand.contains($0) && $0 != selectedCardId
         }
-        selectedEggSources = selectedEggSources.filter {
-            resourceAmount(.egg, at: $0, in: activePlayerState) > 0
+        selectedResourcePaymentTokens = selectedResourcePaymentTokens.filter { key in
+            resourceTokenCount(key.kind, at: key.address, in: activePlayerState) > key.tokenIndex
+                && resourceCostCount(key.kind, for: selectedCard) > 0
         }
-        selectedYoungSources = selectedYoungSources.filter {
-            resourceAmount(.young, at: $0, in: activePlayerState) > 0
-        }
+        trimSelectedResourcePaymentTokensToRequiredCounts()
+        syncSelectedResourceSourcesFromTokens()
 
         if let selectedTargetSlot,
            !activePlayerState.ocean.slots.contains(where: { $0.address == selectedTargetSlot && playFishSlotPreview(for: $0).isSelectable }) {
@@ -921,8 +1019,7 @@ final class GameBoardViewModel: ObservableObject {
         selectedCardId = nil
         selectedTargetSlot = nil
         selectedDiscardCardIds = []
-        selectedEggSources = []
-        selectedYoungSources = []
+        clearResourcePaymentSelection()
     }
 
     private func cardTitle(_ cardId: CardID) -> String {
@@ -1025,6 +1122,19 @@ final class GameBoardViewModel: ObservableObject {
             return "鱼群"
         }
         return kind.rawValue
+    }
+
+    private func resourceIconText(_ kind: ResourceKind) -> String {
+        if kind == .egg {
+            return "卵"
+        }
+        if kind == .young {
+            return "幼"
+        }
+        if kind == .school {
+            return "群"
+        }
+        return "?"
     }
 
     private func pendingChoiceSubtitle(_ choice: PendingChoice) -> String {
@@ -1278,8 +1388,133 @@ final class GameBoardViewModel: ObservableObject {
             isSelected: selectedTargetSlot == slot.address,
             isHighlightedByDiveQueue: isHighlighted,
             highlightReasonText: isHighlighted ? slotDiveQueueHighlightText(slot) : nil,
-            playFishPreview: playFishSlotPreview(for: slot)
+            playFishPreview: playFishSlotPreview(for: slot),
+            resourceTokens: resourceTokens(for: slot)
         )
+    }
+
+    private func resourceTokens(for slot: OceanSlot) -> [SlotResourceTokenViewState] {
+        var tokens: [SlotResourceTokenViewState] = []
+        for kind in displayResourceKinds {
+            let tokenCount = resourceTokenCount(kind, in: slot)
+            guard tokenCount > 0 else {
+                continue
+            }
+            for tokenIndex in 0..<tokenCount {
+                tokens.append(resourceToken(for: slot, kind: kind, tokenIndex: tokenIndex))
+            }
+        }
+        return tokens
+    }
+
+    private func resourceToken(
+        for slot: OceanSlot,
+        kind: ResourceKind,
+        tokenIndex: Int
+    ) -> SlotResourceTokenViewState {
+        let key = ResourcePaymentTokenKey(
+            address: slot.address,
+            kind: kind,
+            tokenIndex: tokenIndex
+        )
+        let isSelected = selectedResourcePaymentTokens.contains(key)
+        let isSelectable = resourceTokenIsSelectable(kind: kind, isSelected: isSelected)
+        return SlotResourceTokenViewState(
+            address: slot.address,
+            kind: kind,
+            tokenIndex: tokenIndex,
+            title: resourceName(kind),
+            iconText: resourceIconText(kind),
+            isSelectable: isSelectable,
+            isSelectedForPayment: isSelected,
+            selectionMarkerText: isSelected ? AppStrings.GameBoard.paymentSelectionMarker : nil,
+            unavailableReasonText: resourceTokenUnavailableReason(
+                kind: kind,
+                isSelected: isSelected,
+                isSelectable: isSelectable
+            ),
+            warningText: resourceTokenWarningText(kind: kind, in: slot)
+        )
+    }
+
+    private func resourceTokenIsSelectable(
+        kind: ResourceKind,
+        isSelected: Bool
+    ) -> Bool {
+        guard !hasBlockingPendingChoices,
+              isSelectingPlayFish,
+              resourcePaymentKinds.contains(kind),
+              resourceCostCount(kind, for: selectedCard) > 0
+        else {
+            return false
+        }
+        if isSelected {
+            return true
+        }
+        return selectedResourcePaymentTokens.filter { $0.kind == kind }.count < resourceCostCount(kind, for: selectedCard)
+    }
+
+    private func resourceTokenUnavailableReason(
+        kind: ResourceKind,
+        isSelected: Bool,
+        isSelectable: Bool
+    ) -> String? {
+        guard !isSelectable else {
+            return nil
+        }
+        if isSelected {
+            return nil
+        }
+        if hasBlockingPendingChoices {
+            return AppStrings.GameBoard.resolveCurrentRewardFirst
+        }
+        guard isSelectingPlayFish else {
+            return nil
+        }
+        guard resourcePaymentKinds.contains(kind) else {
+            return AppStrings.GameBoard.resourceTokenUnsupportedPayment
+        }
+        let requiredCount = resourceCostCount(kind, for: selectedCard)
+        guard requiredCount > 0 else {
+            return AppStrings.GameBoard.resourceTokenNotRequired
+        }
+        if selectedSources(for: kind).count >= requiredCount {
+            return AppStrings.GameBoard.resourcePaymentAlreadyComplete
+        }
+        return nil
+    }
+
+    private func resourceTokenWarningText(kind: ResourceKind, in slot: OceanSlot) -> String? {
+        let amount = resourceAmount(kind, in: slot)
+        if kind == .egg, amount > 1 {
+            return AppStrings.GameBoard.resourceTokenIllegalMultipleEggs
+        }
+        if kind == .school, amount > 1 {
+            return AppStrings.GameBoard.resourceTokenIllegalMultipleSchools
+        }
+        if kind == .young, amount >= 3, !slot.hasSchool {
+            return AppStrings.GameBoard.resourceTokenIllegalYoungWithoutSchool
+        }
+        return nil
+    }
+
+    private func resourceTokenCount(_ kind: ResourceKind, in slot: OceanSlot) -> Int {
+        let amount = max(resourceAmount(kind, in: slot), 0)
+        if kind == .egg || kind == .school {
+            return min(amount, 1)
+        }
+        return amount
+    }
+
+    private func resourceTokenCount(
+        _ kind: ResourceKind,
+        at address: OceanSlotAddress,
+        in playerState: PlayerGameState
+    ) -> Int {
+        guard let slot = playerState.ocean.slots.first(where: { $0.address == address }) else {
+            return 0
+        }
+        return resourceTokenCount(kind, in: slot)
     }
 
     private func bottomAreaViewState(for diveSite: DiveActionSite) -> DiveSiteBottomAreaViewState {
@@ -1611,45 +1846,82 @@ final class GameBoardViewModel: ObservableObject {
             return
         }
 
-        let availableCount = resourceAmount(kind, at: address, in: activePlayerState)
-        guard availableCount > 0 else {
+        let availableCount = resourceTokenCount(kind, at: address, in: activePlayerState)
+        guard availableCount > 0, resourcePaymentKinds.contains(kind) else {
             return
         }
 
-        if kind == .egg {
-            selectedEggSources = cycledSources(
-                selectedEggSources,
-                address: address,
-                maxForSource: availableCount,
-                requiredCount: requiredCount
-            )
-        } else if kind == .young {
-            selectedYoungSources = cycledSources(
-                selectedYoungSources,
-                address: address,
-                maxForSource: availableCount,
-                requiredCount: requiredCount
-            )
+        let selectedKeysForSlot = selectedResourcePaymentTokens.filter {
+            $0.address == address && $0.kind == kind
         }
+        if selectedKeysForSlot.count >= min(availableCount, requiredCount)
+            || (!selectedKeysForSlot.isEmpty && selectedResourcePaymentTokens.filter({ $0.kind == kind }).count >= requiredCount) {
+            selectedResourcePaymentTokens.subtract(selectedKeysForSlot)
+            syncSelectedResourceSourcesFromTokens()
+            errorMessage = nil
+            return
+        }
+
+        guard selectedResourcePaymentTokens.filter({ $0.kind == kind }).count < requiredCount else {
+            return
+        }
+
+        let selectedIndexes = Set(selectedKeysForSlot.map(\.tokenIndex))
+        guard let nextTokenIndex = (0..<availableCount).first(where: { !selectedIndexes.contains($0) }) else {
+            return
+        }
+        selectedResourcePaymentTokens.insert(
+            ResourcePaymentTokenKey(address: address, kind: kind, tokenIndex: nextTokenIndex)
+        )
+        syncSelectedResourceSourcesFromTokens()
         errorMessage = nil
     }
 
-    private func cycledSources(
-        _ sources: [OceanSlotAddress],
-        address: OceanSlotAddress,
-        maxForSource: Int,
-        requiredCount: Int
-    ) -> [OceanSlotAddress] {
-        let currentCount = sources.filter { $0 == address }.count
-        if currentCount >= min(maxForSource, requiredCount) {
-            return sources.filter { $0 != address }
-        }
+    private func clearResourcePaymentSelection() {
+        selectedResourcePaymentTokens = []
+        selectedEggSources = []
+        selectedYoungSources = []
+    }
 
-        guard sources.count < requiredCount else {
-            return sources
+    private func trimSelectedResourcePaymentTokensToRequiredCounts() {
+        for kind in resourcePaymentKinds {
+            let requiredCount = resourceCostCount(kind, for: selectedCard)
+            let selectedKeys = selectedResourcePaymentTokens
+                .filter { $0.kind == kind }
+                .sorted(by: resourcePaymentTokenSort)
+            guard selectedKeys.count > requiredCount else {
+                continue
+            }
+            for key in selectedKeys.dropFirst(requiredCount) {
+                selectedResourcePaymentTokens.remove(key)
+            }
         }
+    }
 
-        return sources + [address]
+    private func syncSelectedResourceSourcesFromTokens() {
+        let selectedKeys = selectedResourcePaymentTokens.sorted(by: resourcePaymentTokenSort)
+        selectedEggSources = selectedKeys
+            .filter { $0.kind == .egg }
+            .map(\.address)
+        selectedYoungSources = selectedKeys
+            .filter { $0.kind == .young }
+            .map(\.address)
+    }
+
+    private func resourcePaymentTokenSort(
+        _ left: ResourcePaymentTokenKey,
+        _ right: ResourcePaymentTokenKey
+    ) -> Bool {
+        if left.address.diveSite != right.address.diveSite {
+            return diveSiteSortIndex(left.address.diveSite) < diveSiteSortIndex(right.address.diveSite)
+        }
+        if left.address.rowIndex != right.address.rowIndex {
+            return left.address.rowIndex < right.address.rowIndex
+        }
+        if left.kind.rawValue != right.kind.rawValue {
+            return left.kind.rawValue < right.kind.rawValue
+        }
+        return left.tokenIndex < right.tokenIndex
     }
 
     private func resourceAmount(

@@ -124,6 +124,14 @@ enum AppStrings {
         static let anyResourceSourceHint = "可从任意已有资源的格子选择来源。"
         static let eggPaymentIncomplete = "请选择足够数量的鱼卵来源。"
         static let youngPaymentIncomplete = "请选择足够数量的幼鱼来源。"
+        static let resourcePaymentProgress = "资源支付进度"
+        static let resourcePaymentAlreadyComplete = "已选足够"
+        static let resourceTokenNotRequired = "当前不需要"
+        static let resourceTokenUnsupportedPayment = "暂不支持支付"
+        static let resourceTokenIllegalMultipleEggs = "鱼卵数量异常"
+        static let resourceTokenIllegalMultipleSchools = "鱼群数量异常"
+        static let resourceTokenIllegalYoungWithoutSchool = "幼鱼应形成鱼群"
+        static let paymentSelectionMarker = "×"
         static let sourceSelectedCount = "已选"
         static let sourceAvailableCount = "可用"
         static let playFish = "出牌"
@@ -224,6 +232,14 @@ enum AppStrings {
                 return "游戏结束，最终计分已完成"
             }
             return "游戏结束，获胜玩家：\(winnerNames.joined(separator: "、"))"
+        }
+
+        static func resourcePaymentProgressText(
+            resourceName: String,
+            selectedCount: Int,
+            requiredCount: Int
+        ) -> String {
+            "\(resourceName)：已选择 \(selectedCount) / \(requiredCount)"
         }
     }
 

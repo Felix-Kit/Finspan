@@ -277,6 +277,252 @@ final class GameBoardViewModelTests: XCTestCase {
         )
     }
 
+    func testOceanSlotResourceTokensShowEggYoungAndSchool() {
+        let service = makeService(hand: ["fish-2"])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let slot = oceanSlot(in: viewModel, address: Self.resourceSourceAddress)
+
+        XCTAssertEqual(slot.resourceTokens.map(\.kind), [.egg, .young, .school])
+        XCTAssertEqual(slot.resourceTokens.map(\.title), ["鱼卵", "幼鱼", "鱼群"])
+        XCTAssertEqual(slot.resourceTokens.map(\.tokenIndex), [0, 0, 0])
+    }
+
+    func testMultipleEggsProduceSingleTokenWithWarning() {
+        let service = makeService(
+            hand: ["fish-2"],
+            resourceSourceResources: [ResourceQuantity(kind: .egg, amount: 2)]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        let eggTokens = oceanSlot(in: viewModel, address: Self.resourceSourceAddress)
+            .resourceTokens
+            .filter { $0.kind == .egg }
+
+        XCTAssertEqual(eggTokens.count, 1)
+        XCTAssertEqual(eggTokens.first?.warningText, AppStrings.GameBoard.resourceTokenIllegalMultipleEggs)
+    }
+
+    func testTwoYoungWithoutSchoolProduceTwoIndependentYoungTokens() {
+        let service = makeService(
+            hand: ["fish-3"],
+            resourceSourceResources: [ResourceQuantity(kind: .young, amount: 2)]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        let youngTokens = oceanSlot(in: viewModel, address: Self.resourceSourceAddress)
+            .resourceTokens
+            .filter { $0.kind == .young }
+
+        XCTAssertEqual(youngTokens.map(\.tokenIndex), [0, 1])
+        XCTAssertEqual(youngTokens.map(\.id), ["young-0", "young-1"])
+    }
+
+    func testFormedSchoolStateDoesNotDisplayThreeYoungTokens() {
+        let service = makeService(
+            hand: ["fish-3"],
+            resourceSourceResources: [ResourceQuantity(kind: .school, amount: 1)]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        let tokens = oceanSlot(in: viewModel, address: Self.resourceSourceAddress).resourceTokens
+
+        XCTAssertEqual(tokens.filter { $0.kind == .young }.count, 0)
+        XCTAssertEqual(tokens.filter { $0.kind == .school }.count, 1)
+    }
+
+    func testExistingSchoolCanDisplayOneSchoolAndExtraYoungTokens() {
+        let service = makeService(
+            hand: ["fish-3"],
+            resourceSourceResources: [
+                ResourceQuantity(kind: .young, amount: 3),
+                ResourceQuantity(kind: .school, amount: 1)
+            ]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        let tokens = oceanSlot(in: viewModel, address: Self.resourceSourceAddress).resourceTokens
+
+        XCTAssertEqual(tokens.filter { $0.kind == .school }.count, 1)
+        XCTAssertEqual(tokens.filter { $0.kind == .young }.map(\.tokenIndex), [0, 1, 2])
+    }
+
+    func testMultipleSchoolsProduceSingleTokenWithWarning() {
+        let service = makeService(
+            hand: ["fish-3"],
+            resourceSourceResources: [ResourceQuantity(kind: .school, amount: 2)]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        let schoolTokens = oceanSlot(in: viewModel, address: Self.resourceSourceAddress)
+            .resourceTokens
+            .filter { $0.kind == .school }
+
+        XCTAssertEqual(schoolTokens.count, 1)
+        XCTAssertEqual(schoolTokens.first?.warningText, AppStrings.GameBoard.resourceTokenIllegalMultipleSchools)
+    }
+
+    func testEggResourceTokenIsSelectableWhenSelectedFishRequiresEggPayment() {
+        let service = makeService(hand: ["fish-2"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectCard("fish-2")
+
+        let token = resourceToken(in: viewModel, address: Self.resourceSourceAddress, kind: .egg)
+        XCTAssertTrue(token.isSelectable)
+        XCTAssertFalse(token.isSelectedForPayment)
+    }
+
+    func testClickingEggResourceTokenSelectsAndThenClearsSelection() {
+        let service = makeService(hand: ["fish-2"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectCard("fish-2")
+        viewModel.toggleResourcePayment(address: Self.resourceSourceAddress, kind: .egg, tokenIndex: 0)
+
+        XCTAssertEqual(viewModel.selectedEggSources, [Self.resourceSourceAddress])
+        XCTAssertTrue(resourceToken(in: viewModel, address: Self.resourceSourceAddress, kind: .egg).isSelectedForPayment)
+
+        viewModel.toggleResourcePayment(address: Self.resourceSourceAddress, kind: .egg, tokenIndex: 0)
+
+        XCTAssertTrue(viewModel.selectedEggSources.isEmpty)
+        XCTAssertFalse(resourceToken(in: viewModel, address: Self.resourceSourceAddress, kind: .egg).isSelectedForPayment)
+    }
+
+    func testResourceTokenSelectionDoesNotExceedAvailableCountForSlot() {
+        let cardCatalog = TestCardCatalog(
+            fishCards: [
+                Card(
+                    id: "fish-egg-2",
+                    name: "Fish Egg 2",
+                    costs: [.resource(kind: .egg, count: 2)],
+                    allowedZones: [.sunlit]
+                )
+            ]
+        )
+        let service = makeService(
+            hand: ["fish-egg-2"],
+            resourceSourceResources: [ResourceQuantity(kind: .egg, amount: 1)]
+        )
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: cardCatalog)
+
+        viewModel.selectCard("fish-egg-2")
+        viewModel.toggleResourcePayment(address: Self.resourceSourceAddress, kind: .egg, tokenIndex: 0)
+        viewModel.toggleResourcePayment(address: Self.resourceSourceAddress, kind: .egg, tokenIndex: 1)
+
+        XCTAssertLessThanOrEqual(viewModel.selectedEggSources.count, 1)
+    }
+
+    func testEnoughEggPaymentAllowsPlayFishSubmission() {
+        let service = makeService(hand: ["fish-2"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectCard("fish-2")
+        viewModel.selectTargetSlot(Self.slotAddress)
+        XCTAssertFalse(viewModel.canSubmitPlayFish)
+
+        viewModel.toggleResourcePayment(address: Self.resourceSourceAddress, kind: .egg, tokenIndex: 0)
+
+        XCTAssertTrue(viewModel.canSubmitPlayFish)
+        viewModel.submitPlayFish()
+
+        guard case let .playFish(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected playFish command.")
+        }
+        XCTAssertEqual(payload.payment.eggSources, [Self.resourceSourceAddress])
+    }
+
+    func testYoungResourcePaymentUsesIndependentTokenSelection() {
+        let service = makeService(hand: ["fish-3"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectCard("fish-3")
+        viewModel.selectTargetSlot(Self.slotAddress)
+        XCTAssertFalse(viewModel.canSubmitPlayFish)
+
+        viewModel.toggleResourcePayment(address: Self.resourceSourceAddress, kind: .young, tokenIndex: 0)
+
+        XCTAssertEqual(viewModel.selectedYoungSources, [Self.resourceSourceAddress])
+        XCTAssertTrue(viewModel.canSubmitPlayFish)
+        XCTAssertEqual(
+            viewModel.resourcePaymentProgress.map(\.progressText),
+            ["幼鱼：已选择 1 / 1"]
+        )
+    }
+
+    func testTwoYoungTokensCanBeSelectedIndependentlyFromSameSlot() {
+        let cardCatalog = TestCardCatalog(
+            fishCards: [
+                Card(
+                    id: "fish-young-2",
+                    name: "Fish Young 2",
+                    costs: [.resource(kind: .young, count: 2)],
+                    allowedZones: [.sunlit]
+                )
+            ]
+        )
+        let service = makeService(
+            hand: ["fish-young-2"],
+            resourceSourceResources: [ResourceQuantity(kind: .young, amount: 2)]
+        )
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: cardCatalog)
+
+        viewModel.selectCard("fish-young-2")
+        viewModel.toggleResourcePayment(address: Self.resourceSourceAddress, kind: .young, tokenIndex: 0)
+
+        XCTAssertTrue(resourceToken(in: viewModel, address: Self.resourceSourceAddress, kind: .young, tokenIndex: 0).isSelectedForPayment)
+        XCTAssertFalse(resourceToken(in: viewModel, address: Self.resourceSourceAddress, kind: .young, tokenIndex: 1).isSelectedForPayment)
+        XCTAssertFalse(viewModel.canSubmitPlayFish)
+
+        viewModel.toggleResourcePayment(address: Self.resourceSourceAddress, kind: .young, tokenIndex: 1)
+
+        XCTAssertEqual(viewModel.selectedYoungSources, [Self.resourceSourceAddress, Self.resourceSourceAddress])
+        XCTAssertTrue(resourceToken(in: viewModel, address: Self.resourceSourceAddress, kind: .young, tokenIndex: 1).isSelectedForPayment)
+    }
+
+    func testSelectingAnotherFishClearsResourcePaymentSelection() {
+        let service = makeService(hand: ["fish-2", "fish-3"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectCard("fish-2")
+        viewModel.toggleResourcePayment(address: Self.resourceSourceAddress, kind: .egg, tokenIndex: 0)
+        viewModel.selectCard("fish-3")
+
+        XCTAssertTrue(viewModel.selectedEggSources.isEmpty)
+        XCTAssertTrue(viewModel.selectedYoungSources.isEmpty)
+        XCTAssertEqual(
+            resourceToken(in: viewModel, address: Self.resourceSourceAddress, kind: .egg).isSelectedForPayment,
+            false
+        )
+    }
+
+    func testCancelPlayFishSelectionClearsResourcePaymentSelection() {
+        let service = makeService(hand: ["fish-2"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectCard("fish-2")
+        viewModel.toggleResourcePayment(address: Self.resourceSourceAddress, kind: .egg, tokenIndex: 0)
+        viewModel.cancelPlayFishSelection()
+
+        XCTAssertNil(viewModel.selectedCardId)
+        XCTAssertTrue(viewModel.selectedEggSources.isEmpty)
+        XCTAssertEqual(
+            resourceToken(in: viewModel, address: Self.resourceSourceAddress, kind: .egg).isSelectedForPayment,
+            false
+        )
+    }
+
+    func testPendingChoicePreventsResourcePaymentTokenSelection() {
+        let choice = pendingChoice(kind: .drawFish)
+        let service = makeService(
+            hand: ["fish-2"],
+            pendingChoices: [choice.choiceId: choice]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        viewModel.selectedCardId = "fish-2"
+
+        viewModel.toggleResourcePayment(address: Self.resourceSourceAddress, kind: .egg)
+
+        XCTAssertTrue(viewModel.selectedEggSources.isEmpty)
+        XCTAssertFalse(
+            resourceToken(in: viewModel, address: Self.resourceSourceAddress, kind: .egg).isSelectable
+        )
+    }
+
     func testSubmitDiveBuildsPlayerCommand() {
         let service = makeService(hand: ["fish-2"])
         let viewModel = GameBoardViewModel(roomService: service)
@@ -1169,10 +1415,38 @@ final class GameBoardViewModelTests: XCTestCase {
                     availability: .unavailable,
                     unavailableReason: .noSelectedCard,
                     message: ""
-                )
+                ),
+                resourceTokens: []
             )
         }
         return slot
+    }
+
+    private func resourceToken(
+        in viewModel: GameBoardViewModel,
+        address: OceanSlotAddress,
+        kind: ResourceKind,
+        tokenIndex: Int = 0,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> SlotResourceTokenViewState {
+        let slot = oceanSlot(in: viewModel, address: address, file: file, line: line)
+        guard let token = slot.resourceTokens.first(where: { $0.kind == kind && $0.tokenIndex == tokenIndex }) else {
+            XCTFail("Expected resource token.", file: file, line: line)
+            return SlotResourceTokenViewState(
+                address: address,
+                kind: kind,
+                tokenIndex: tokenIndex,
+                title: "",
+                iconText: "",
+                isSelectable: false,
+                isSelectedForPayment: false,
+                selectionMarkerText: nil,
+                unavailableReasonText: nil,
+                warningText: nil
+            )
+        }
+        return token
     }
 }
 
@@ -1205,4 +1479,9 @@ private final class CapturingRoomService: RoomService {
         submittedCommands.append(command)
         return []
     }
+}
+
+private struct TestCardCatalog: CardCatalog {
+    var starterFishCards: [Card] = []
+    var fishCards: [Card]
 }

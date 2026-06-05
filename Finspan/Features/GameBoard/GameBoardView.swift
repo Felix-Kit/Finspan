@@ -198,13 +198,7 @@ struct GameBoardView: View {
                                     .frame(maxWidth: .infinity, alignment: .leading)
 
                                 ForEach(column.slots) { slot in
-                                    Button {
-                                        viewModel.selectTargetSlot(slot.address)
-                                    } label: {
-                                        slotButton(slot)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .disabled(!slot.playFishPreview.isSelectable)
+                                    slotPanel(slot)
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -277,10 +271,17 @@ struct GameBoardView: View {
                     .foregroundStyle(viewModel.selectedCardHasUnsupportedUICost ? .red : .secondary)
             }
 
-            if !viewModel.eggSourceOptions.isEmpty || !viewModel.youngSourceOptions.isEmpty {
-                Text(AppStrings.GameBoard.anyResourceSourceHint)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+            if !viewModel.resourcePaymentProgress.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(AppStrings.GameBoard.resourcePaymentProgress)
+                        .font(.headline)
+
+                    ForEach(viewModel.resourcePaymentProgress) { progress in
+                        Text(progress.progressText)
+                            .font(.callout.weight(.medium))
+                            .foregroundStyle(progress.isComplete ? .green : .secondary)
+                    }
+                }
             }
 
             if !viewModel.discardPaymentOptions.isEmpty {
@@ -297,22 +298,6 @@ struct GameBoardView: View {
                         .buttonStyle(.plain)
                     }
                 }
-            }
-
-            if !viewModel.eggSourceOptions.isEmpty {
-                resourceSourceSection(
-                    title: AppStrings.GameBoard.chooseEggSources,
-                    sources: viewModel.eggSourceOptions,
-                    action: viewModel.toggleEggSource
-                )
-            }
-
-            if !viewModel.youngSourceOptions.isEmpty {
-                resourceSourceSection(
-                    title: AppStrings.GameBoard.chooseYoungSources,
-                    sources: viewModel.youngSourceOptions,
-                    action: viewModel.toggleYoungSource
-                )
             }
         }
     }
@@ -491,39 +476,65 @@ struct GameBoardView: View {
         )
     }
 
-    private func slotButton(_ slot: OceanSlotViewData) -> some View {
+    private func slotPanel(_ slot: OceanSlotViewData) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(slot.title)
-                    .font(.headline)
-                    .lineLimit(2)
-                Spacer()
-                if slot.isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+            Button {
+                viewModel.selectTargetSlot(slot.address)
+            } label: {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(slot.title)
+                            .font(.headline)
+                            .lineLimit(2)
+                        Spacer()
+                        if slot.isSelected {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                        }
+                    }
+
+                    Text(slot.subtitle)
+                        .font(.callout.weight(.medium))
+                        .foregroundStyle(slot.isOccupied ? .secondary : .primary)
+                        .lineLimit(2)
+
+                    Text(slot.playFishPreview.message)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(slot.playFishPreview.isSelectable ? .green : .secondary)
+                        .lineLimit(1)
+
+                    if let highlightReasonText = slot.highlightReasonText {
+                        Text(highlightReasonText)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.orange)
+                            .lineLimit(2)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
             }
+            .buttonStyle(.plain)
+            .disabled(!slot.playFishPreview.isSelectable)
 
-            Text(slot.subtitle)
-                .font(.callout.weight(.medium))
-                .foregroundStyle(slot.isOccupied ? .secondary : .primary)
-                .lineLimit(2)
-
-            Text("\(AppStrings.GameBoard.resources)：\(slot.resourcesText)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
-
-            Text(slot.playFishPreview.message)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(slot.playFishPreview.isSelectable ? .green : .secondary)
-                .lineLimit(1)
-
-            if let highlightReasonText = slot.highlightReasonText {
-                Text(highlightReasonText)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.orange)
-                    .lineLimit(2)
+            if slot.resourceTokens.isEmpty {
+                Text(AppStrings.GameBoard.noResources)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 48), spacing: 6)], alignment: .leading, spacing: 6) {
+                    ForEach(slot.resourceTokens) { token in
+                        Button {
+                            viewModel.toggleResourcePayment(
+                                address: token.address,
+                                kind: token.kind,
+                                tokenIndex: token.tokenIndex
+                            )
+                        } label: {
+                            resourceToken(token)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(!token.isSelectable)
+                    }
+                }
             }
         }
         .padding(12)
@@ -535,6 +546,67 @@ struct GameBoardView: View {
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .stroke(slotBorderColor(slot), lineWidth: slot.isHighlightedByDiveQueue ? 2 : 1.5)
+        )
+    }
+
+    private func resourceToken(_ token: SlotResourceTokenViewState) -> some View {
+        VStack(spacing: 3) {
+            ZStack(alignment: .topTrailing) {
+                Text(token.iconText)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(resourceTokenForegroundColor(token))
+                    .frame(width: 26, height: 26)
+                    .background(
+                        Circle()
+                            .fill(resourceTokenBackgroundColor(token))
+                    )
+                    .overlay(
+                        Circle().stroke(
+                            resourceTokenBorderColor(token),
+                            lineWidth: token.isSelectedForPayment ? 2 : 1
+                        )
+                    )
+
+                if let marker = token.selectionMarkerText {
+                    Text(marker)
+                        .font(.caption2.weight(.black))
+                        .foregroundStyle(.white)
+                        .frame(width: 14, height: 14)
+                        .background(Circle().fill(Color.red))
+                        .offset(x: 3, y: -3)
+                }
+            }
+
+            Text(token.title)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(token.isSelectable || token.isSelectedForPayment ? .primary : .secondary)
+                .lineLimit(1)
+
+            if token.isSelectedForPayment {
+                Text(AppStrings.GameBoard.sourceSelectedCount)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.red)
+            } else if let warning = token.warningText {
+                Text(warning)
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+                    .lineLimit(1)
+            } else if let reason = token.unavailableReasonText {
+                Text(reason)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 5)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(token.isSelectedForPayment ? Color.red.opacity(0.12) : Color(.tertiarySystemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(token.isSelectedForPayment ? Color.red.opacity(0.65) : Color.secondary.opacity(0.18), lineWidth: 1)
         )
     }
 
@@ -608,6 +680,45 @@ struct GameBoardView: View {
             return .accentColor
         }
         return .clear
+    }
+
+    private func resourceTokenBackgroundColor(_ token: SlotResourceTokenViewState) -> Color {
+        if token.isSelectedForPayment {
+            return .red.opacity(0.2)
+        }
+        if token.isSelectable {
+            return .green.opacity(0.18)
+        }
+        if token.kind == .egg {
+            return .yellow.opacity(0.22)
+        }
+        if token.kind == .young {
+            return .cyan.opacity(0.16)
+        }
+        if token.kind == .school {
+            return .blue.opacity(0.16)
+        }
+        return Color(.secondarySystemBackground)
+    }
+
+    private func resourceTokenBorderColor(_ token: SlotResourceTokenViewState) -> Color {
+        if token.isSelectedForPayment {
+            return .red
+        }
+        if token.isSelectable {
+            return .green
+        }
+        return .secondary.opacity(0.25)
+    }
+
+    private func resourceTokenForegroundColor(_ token: SlotResourceTokenViewState) -> Color {
+        if token.isSelectedForPayment {
+            return .red
+        }
+        if token.isSelectable {
+            return .green
+        }
+        return .primary
     }
 
     private func selectedFishInfoRow(_ label: String, _ value: String) -> some View {

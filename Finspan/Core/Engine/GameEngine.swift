@@ -1177,6 +1177,8 @@ struct GameEngine {
         if kind == .young && amount > 0 {
             applySchoolFormationIfNeeded(to: &playerState.ocean.slots[slotIndex])
         }
+        // TODO: If moving a school away leaves 3+ young and no school, resolve
+        // source-slot school formation here as a rules-layer event effect.
 
         state.playerGameStates[target.playerId] = playerState
     }
