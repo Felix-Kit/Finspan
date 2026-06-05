@@ -89,6 +89,36 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.handViewState.cards.first?.abilitySummaryText, AppStrings.GameBoard.unsupportedAbilityInUI)
     }
 
+    func testHandViewStateShowsRegistryAbilityCopy() {
+        let service = makeService(hand: ["fish-30"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(
+            viewModel.handViewState.cards.first?.abilitySummaryText,
+            "发动时：抽 1 张鱼牌"
+        )
+    }
+
+    func testHandViewStateShowsUnsupportedAbilityCopyForUnknownAbilityId() {
+        let card = Card(
+            id: "unknown-ability-fish",
+            name: "Unknown Ability Fish",
+            abilityIds: ["test.unknown.ability"],
+            printedPoints: 1,
+            lengthCm: 9
+        )
+        let service = makeService(hand: [card.id])
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalog: TestCardCatalog(fishCards: [card])
+        )
+
+        XCTAssertEqual(
+            viewModel.handViewState.cards.first?.abilitySummaryText,
+            AppStrings.GameBoard.abilityUnsupported
+        )
+    }
+
     func testHandViewStateUsesStackedPresentationByDefault() {
         let service = makeService(hand: ["starter-fish-1", "fish-2", "fish-3"])
         let viewModel = GameBoardViewModel(roomService: service)

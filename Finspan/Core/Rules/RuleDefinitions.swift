@@ -34,6 +34,8 @@ struct AbilityEffect: Codable, Equatable, Sendable {
     var value: String
 }
 
+typealias AbilityID = String
+
 enum AbilityTrigger: String, Codable, Equatable, Sendable {
     case whenPlayed
     case ifActivated
@@ -41,15 +43,15 @@ enum AbilityTrigger: String, Codable, Equatable, Sendable {
 }
 
 struct AbilityDefinition: Codable, Equatable, Sendable {
-    var abilityId: String
+    var abilityId: AbilityID
     var trigger: AbilityTrigger
     var effects: [AbilityEffectUnit]
     var canResolveInAnyOrder: Bool
     var isOptional: Bool
     var displayText: String
 
-    init(
-        abilityId: String,
+    nonisolated init(
+        abilityId: AbilityID,
         trigger: AbilityTrigger,
         effects: [AbilityEffectUnit],
         canResolveInAnyOrder: Bool = false,

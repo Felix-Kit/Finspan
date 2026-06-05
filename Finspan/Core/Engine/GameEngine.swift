@@ -6,6 +6,7 @@ struct GameEngine {
 
     private let rules: GameRuleSet
     private let cardCatalog: any CardCatalog
+    private let abilityResolver: AbilityResolver
     private let diveBonusLayout: DiveSiteBonusLayout
     private let weeklyAchievementScorer: SideAWeeklyAchievementScorer
     private let finalScoreCalculator: FinalScoreCalculator
@@ -13,12 +14,14 @@ struct GameEngine {
     init(
         rules: GameRuleSet = GameRuleSet(),
         cardCatalog: any CardCatalog = SampleCardCatalog(),
+        abilityResolver: AbilityResolver = AbilityResolver(),
         diveBonusLayout: DiveSiteBonusLayout = .baseGame,
         weeklyAchievementScorer: SideAWeeklyAchievementScorer = SideAWeeklyAchievementScorer(),
         finalScoreCalculator: FinalScoreCalculator = FinalScoreCalculator()
     ) {
         self.rules = rules
         self.cardCatalog = cardCatalog
+        self.abilityResolver = abilityResolver
         self.diveBonusLayout = diveBonusLayout
         self.weeklyAchievementScorer = weeklyAchievementScorer
         self.finalScoreCalculator = finalScoreCalculator
@@ -1041,8 +1044,7 @@ struct GameEngine {
                 else {
                     return []
                 }
-                return card.abilities
-                    .filter { $0.trigger == .ifActivated }
+                return abilityResolver.abilityDefinitions(for: card, trigger: .ifActivated)
                     .enumerated()
                     .map { abilityIndex, ability in
                         let choiceId = "\(commandId)-if-activated-\(slot.address.diveSite.rawValue)-\(slot.address.rowIndex)-\(abilityIndex)"
@@ -1070,7 +1072,9 @@ struct GameEngine {
         choiceId: PendingChoiceID,
         playerId: PlayerID
     ) -> PendingChoice? {
-        guard let ability = card(withId: cardId)?.abilities.first(where: { $0.trigger == .whenPlayed }) else {
+        guard let card = card(withId: cardId),
+              let ability = abilityResolver.abilityDefinitions(for: card, trigger: .whenPlayed).first
+        else {
             return nil
         }
         return abilityPendingChoice(

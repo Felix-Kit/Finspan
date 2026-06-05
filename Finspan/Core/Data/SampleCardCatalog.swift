@@ -74,14 +74,7 @@ private enum SampleCardFixtures {
                 return Card(
                     id: "fish-\(index)",
                     name: "Fish A",
-                    abilities: [
-                        AbilityDefinition(
-                            abilityId: "sample-fish-a-if-activated",
-                            trigger: .ifActivated,
-                            effects: [.drawFish(count: 1)],
-                            displayText: "发动时：抽 1 张鱼牌"
-                        )
-                    ],
+                    abilityIds: [SampleAbilityIDs.fishAIfActivatedDrawFishOne],
                     printedPoints: 2,
                     lengthCm: 30
                 )
@@ -89,19 +82,7 @@ private enum SampleCardFixtures {
                 return Card(
                     id: "fish-\(index)",
                     name: "Fish B",
-                    abilities: [
-                        AbilityDefinition(
-                            abilityId: "sample-fish-b-if-activated",
-                            trigger: .ifActivated,
-                            effects: [
-                                .placeEgg(count: 2),
-                                .hatchEgg(count: 1)
-                            ],
-                            canResolveInAnyOrder: true,
-                            isOptional: true,
-                            displayText: "发动时：放置 2 个鱼卵，孵化 1 个鱼卵，可任选顺序"
-                        )
-                    ],
+                    abilityIds: [SampleAbilityIDs.fishBIfActivatedPlaceTwoEggsHatchOne],
                     printedPoints: 3,
                     lengthCm: 31
                 )
@@ -109,14 +90,7 @@ private enum SampleCardFixtures {
                 return Card(
                     id: "fish-\(index)",
                     name: "Fish C",
-                    abilities: [
-                        AbilityDefinition(
-                            abilityId: "sample-fish-c-when-played",
-                            trigger: .whenPlayed,
-                            effects: [.drawFish(count: 1)],
-                            displayText: "打出时：抽 1 张鱼牌"
-                        )
-                    ],
+                    abilityIds: [SampleAbilityIDs.fishCWhenPlayedDrawFishOne],
                     printedPoints: 4,
                     lengthCm: 32
                 )

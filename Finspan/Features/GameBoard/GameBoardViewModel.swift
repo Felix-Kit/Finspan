@@ -443,6 +443,7 @@ final class GameBoardViewModel: ObservableObject {
 
     private let roomService: any RoomService
     private let cardCatalog: any CardCatalog
+    private let abilityResolver: AbilityResolver
     private var commandCounter = 0
     private var cardsById: [CardID: Card] {
         Dictionary(
@@ -997,9 +998,14 @@ final class GameBoardViewModel: ObservableObject {
         self.init(roomService: roomService, cardCatalog: SampleCardCatalog())
     }
 
-    init(roomService: any RoomService, cardCatalog: any CardCatalog) {
+    init(
+        roomService: any RoomService,
+        cardCatalog: any CardCatalog,
+        abilityResolver: AbilityResolver = AbilityResolver()
+    ) {
         self.roomService = roomService
         self.cardCatalog = cardCatalog
+        self.abilityResolver = abilityResolver
         refresh()
     }
 
@@ -1686,8 +1692,11 @@ final class GameBoardViewModel: ObservableObject {
         guard let card else {
             return AppStrings.GameBoard.unknownCard
         }
-        if !card.abilities.isEmpty {
-            return card.abilities.map(\.displayText).filter { !$0.isEmpty }.joined(separator: "；")
+        let abilityTexts = abilityResolver.abilityDefinitions(for: card)
+            .map(abilityDisplayText)
+            .filter { !$0.isEmpty }
+        if !abilityTexts.isEmpty {
+            return abilityTexts.joined(separator: "；")
         }
         return AppStrings.GameBoard.unsupportedAbilityInUI
     }
@@ -2946,10 +2955,26 @@ final class GameBoardViewModel: ObservableObject {
         if !card.requirements.isEmpty {
             items.append(AppStrings.GameBoard.unsupportedRequirementInUI)
         }
-        if !card.abilities.isEmpty {
+        if abilityResolver.abilityDefinitions(for: card).contains(where: abilityIsUnsupported) {
             items.append(AppStrings.GameBoard.unsupportedAbilityInUI)
         }
         return items
+    }
+
+    private func abilityDisplayText(_ ability: AbilityDefinition) -> String {
+        if abilityIsUnsupported(ability) {
+            return AppStrings.GameBoard.abilityUnsupported
+        }
+        return ability.displayText
+    }
+
+    private func abilityIsUnsupported(_ ability: AbilityDefinition) -> Bool {
+        ability.effects.contains { effect in
+            if case .unsupported = effect {
+                return true
+            }
+            return false
+        }
     }
 
     private func countPrompt(_ label: String, _ count: Int?) -> String? {

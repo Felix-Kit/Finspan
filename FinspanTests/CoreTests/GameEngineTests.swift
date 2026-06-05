@@ -3032,6 +3032,148 @@ final class GameEngineTests: XCTestCase {
         )
     }
 
+    func testFishAIfActivatedAbilityUsesRegistryAbilityId() throws {
+        let cardId = "registry-fish-a"
+        let engine = GameEngine(
+            cardCatalog: TestCardCatalog(
+                fishCards: [
+                    Card(
+                        id: cardId,
+                        name: "Registry Fish A",
+                        abilityIds: [SampleAbilityIDs.fishAIfActivatedDrawFishOne],
+                        printedPoints: 2,
+                        lengthCm: 12
+                    )
+                ]
+            )
+        )
+        let state = abilityDiveState(cardId: cardId)
+
+        let drafts = try engine.makeEventDrafts(
+            for: diveCommand(commandId: "dive-registry-fish-a"),
+            in: state
+        )
+
+        guard case let .diverMoved(event) = drafts.first,
+              let abilityStep = event.diveResolutionQueue?.steps.first(where: {
+                  if case .fishAbility = $0.source {
+                      return true
+                  }
+                  return false
+              })
+        else {
+            return XCTFail("Expected registry-backed Fish A ability step.")
+        }
+
+        XCTAssertEqual(abilityStep.pendingChoice.kind, .drawFish)
+        XCTAssertEqual(abilityStep.pendingChoice.abilityDefinition?.abilityId, SampleAbilityIDs.fishAIfActivatedDrawFishOne)
+    }
+
+    func testFishBCompoundAbilityUsesRegistryAbilityId() throws {
+        let engine = GameEngine()
+        var state = try fishBCompoundSelectorState(engine: engine)
+        let selector = try XCTUnwrap(state.pendingChoices.values.first)
+
+        XCTAssertEqual(selector.kind, .compoundAbility)
+        XCTAssertEqual(selector.abilityDefinition?.abilityId, SampleAbilityIDs.fishBIfActivatedPlaceTwoEggsHatchOne)
+        XCTAssertEqual(
+            selector.compoundAbilityProgress?.remainingEffects,
+            [.placeEgg(count: 2), .hatchEgg(count: 1)]
+        )
+    }
+
+    func testFishCWhenPlayedAbilityUsesRegistryAbilityId() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        state.playerGameStates["player-1"]?.hand = ["fish-32"]
+        state.deckState.fishDrawPile = ["fish-9"]
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "play-fish-c-registry",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .playFish(PlayFishCommand(cardId: "fish-32", targetSlot: target, payment: .empty))
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceCreated(choice) = drafts.last else {
+            return XCTFail("Expected registry-backed Fish C pending choice.")
+        }
+        XCTAssertEqual(choice.kind, .drawFish)
+        XCTAssertEqual(choice.abilityDefinition?.abilityId, SampleAbilityIDs.fishCWhenPlayedDrawFishOne)
+    }
+
+    func testUnsupportedRegistryAbilityCreatesSkippablePendingChoice() throws {
+        let unsupportedAbilityId: AbilityID = "test.unsupported.ifActivated"
+        let engine = GameEngine(
+            cardCatalog: TestCardCatalog(
+                fishCards: [
+                    Card(
+                        id: "unsupported-fish",
+                        name: "Unsupported Fish",
+                        abilityIds: [unsupportedAbilityId],
+                        printedPoints: 1,
+                        lengthCm: 10
+                    )
+                ]
+            ),
+            abilityResolver: AbilityResolver(
+                provider: AbilityRegistry(
+                    definitions: [
+                        AbilityDefinition(
+                            abilityId: unsupportedAbilityId,
+                            trigger: .ifActivated,
+                            effects: [.unsupported],
+                            isOptional: true
+                        )
+                    ]
+                )
+            )
+        )
+        var state = applying(
+            try engine.makeEventDrafts(
+                for: diveCommand(commandId: "dive-unsupported-ability"),
+                in: abilityDiveState(cardId: "unsupported-fish")
+            ),
+            to: abilityDiveState(cardId: "unsupported-fish"),
+            using: engine
+        )
+        let printedChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "skip-unsupported-printed",
+                    choiceId: printedChoice.choiceId,
+                    resolution: .skip
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        let unsupportedChoice = try XCTUnwrap(state.pendingChoices.values.first)
+
+        XCTAssertEqual(unsupportedChoice.kind, .unsupported)
+        XCTAssertEqual(unsupportedChoice.abilityDefinition?.abilityId, unsupportedAbilityId)
+
+        let skipDrafts = try engine.makeEventDrafts(
+            for: resolveCommand(
+                commandId: "skip-unsupported-ability",
+                choiceId: unsupportedChoice.choiceId,
+                resolution: .skip
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(resolved) = skipDrafts.first else {
+            return XCTFail("Expected unsupported ability to be skippable.")
+        }
+        XCTAssertEqual(resolved.appliedEffects, [.none])
+    }
+
     func testForageAndConsumedFishDoNotGenerateAbilitySteps() throws {
         let engine = GameEngine()
         var forageState = playFishState()
