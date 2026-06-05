@@ -1047,6 +1047,95 @@ final class GameBoardViewModelTests: XCTestCase {
         )
     }
 
+    func testNormalAbilityPendingChoiceShowsFishAbilityCopy() {
+        let choice = abilityPendingChoice(cardId: "fish-30", kind: .drawFish)
+        let service = makeService(hand: ["starter-fish-1"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let pendingChoice = viewModel.pendingChoices.first
+
+        XCTAssertEqual(pendingChoice?.title, AppStrings.GameBoard.triggeringFishAbility(cardName: "Fish A"))
+        XCTAssertEqual(
+            pendingChoice?.actions.map(\.title),
+            [AppStrings.GameBoard.drawOneFishCard, AppStrings.GameBoard.skipChoice]
+        )
+    }
+
+    func testCompoundAbilityPendingChoiceShowsProgressAndActions() {
+        let choice = compoundAbilityPendingChoice()
+        let service = makeService(hand: ["starter-fish-1"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let pendingChoice = viewModel.pendingChoices.first
+
+        XCTAssertEqual(pendingChoice?.title, AppStrings.GameBoard.triggeringFishAbility(cardName: "Fish B"))
+        XCTAssertEqual(
+            pendingChoice?.progressLines,
+            [
+                AppStrings.GameBoard.compoundAbilityProgressText(
+                    title: AppStrings.GameBoard.placeEggAbilityAction,
+                    completedCount: 0,
+                    totalCount: 2
+                ),
+                AppStrings.GameBoard.compoundAbilityProgressText(
+                    title: AppStrings.GameBoard.hatchEggAbilityAction,
+                    completedCount: 0,
+                    totalCount: 1
+                )
+            ]
+        )
+        XCTAssertEqual(
+            pendingChoice?.actions.map(\.title),
+            [
+                AppStrings.GameBoard.placeEggAbilityAction,
+                AppStrings.GameBoard.hatchEggAbilityAction,
+                AppStrings.GameBoard.finishAbility,
+                AppStrings.GameBoard.skipChoice
+            ]
+        )
+    }
+
+    func testChoosingCompoundPlaceEggAndHatchEggSubeffectsBuildsResolveCommands() {
+        let choice = compoundAbilityPendingChoice()
+        let service = makeService(hand: ["starter-fish-1"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.performPendingChoiceAction(.choosePlaceEggAbilityEffect, for: choice.choiceId)
+        viewModel.performPendingChoiceAction(.chooseHatchEggAbilityEffect, for: choice.choiceId)
+
+        guard service.submittedCommands.count == 2,
+              case let .resolvePendingChoice(placePayload) = service.submittedCommands[0].payload,
+              case let .resolvePendingChoice(hatchPayload) = service.submittedCommands[1].payload
+        else {
+            return XCTFail("Expected resolvePendingChoice commands.")
+        }
+        XCTAssertEqual(placePayload.resolution, .chooseAbilityEffect(.placeEgg(count: 1)))
+        XCTAssertEqual(hatchPayload.resolution, .chooseAbilityEffect(.hatchEgg(count: 1)))
+    }
+
+    func testFinishingCompoundAbilityBuildsFinishAbilityCommand() {
+        let choice = compoundAbilityPendingChoice()
+        let service = makeService(hand: ["starter-fish-1"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.performPendingChoiceAction(.finishAbility, for: choice.choiceId)
+
+        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolvePendingChoice command.")
+        }
+        XCTAssertEqual(payload.resolution, .finishAbility)
+    }
+
+    func testAbilityPendingChoiceBlocksSelectingNewHandCard() {
+        let choice = abilityPendingChoice(cardId: "fish-30", kind: .drawFish)
+        let service = makeService(hand: ["starter-fish-1"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectHandCard("starter-fish-1")
+
+        XCTAssertNil(viewModel.selectedCardId)
+        XCTAssertEqual(viewModel.handViewState.canSelectCards, false)
+        XCTAssertEqual(viewModel.handViewState.blockingMessage, AppStrings.GameBoard.resolveCurrentRewardFirst)
+    }
+
     func testSubmitDiveBuildsPlayerCommand() {
         let service = makeService(hand: ["fish-2"])
         let viewModel = GameBoardViewModel(roomService: service)
@@ -1881,7 +1970,7 @@ final class GameBoardViewModelTests: XCTestCase {
             }
         case .fishAbility,
              .compoundFishAbility:
-            return .unsupported
+            return .compoundAbility
         }
     }
 
@@ -1901,6 +1990,61 @@ final class GameBoardViewModelTests: XCTestCase {
         )
     }
 
+    private func abilityPendingChoice(
+        cardId: CardID,
+        kind: PendingChoiceKind
+    ) -> PendingChoice {
+        PendingChoice(
+            choiceId: "choice-ability-\(cardId)",
+            playerId: "player-1",
+            source: .fishAbility(cardId),
+            kind: kind,
+            options: [],
+            expectedInput: expectedInput(for: kind),
+            isOptional: true,
+            abilityDefinition: AbilityDefinition(
+                abilityId: "ability-\(cardId)",
+                trigger: .ifActivated,
+                effects: [.drawFish(count: 1)],
+                displayText: "发动时：抽 1 张鱼牌"
+            ),
+            createdAtSequence: 2
+        )
+    }
+
+    private func compoundAbilityPendingChoice() -> PendingChoice {
+        let sourceAddress = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        let ability = AbilityDefinition(
+            abilityId: "sample-fish-b-if-activated",
+            trigger: .ifActivated,
+            effects: [.placeEgg(count: 2), .hatchEgg(count: 1)],
+            canResolveInAnyOrder: true,
+            isOptional: true,
+            displayText: "发动时：放置 2 个鱼卵，孵化 1 个鱼卵，可任选顺序"
+        )
+        return PendingChoice(
+            choiceId: "choice-compound-fish-b",
+            playerId: "player-1",
+            source: .fishAbility("fish-31"),
+            kind: .compoundAbility,
+            options: [],
+            expectedInput: .abilityEffectSelection,
+            isOptional: true,
+            abilityDefinition: ability,
+            compoundAbilityProgress: CompoundAbilityProgress(
+                abilityId: ability.abilityId,
+                playerId: "player-1",
+                sourceCardId: "fish-31",
+                sourceAddress: sourceAddress,
+                remainingEffects: ability.effects,
+                completedEffects: [],
+                canResolveInAnyOrder: true,
+                isOptional: true
+            ),
+            createdAtSequence: 2
+        )
+    }
+
     private func expectedInput(for kind: PendingChoiceKind) -> PendingChoiceExpectedInput {
         switch kind {
         case .placeEgg,
@@ -1911,6 +2055,7 @@ final class GameBoardViewModelTests: XCTestCase {
         case .moveYoungOrSchool:
             return .sourceAndTargetSlots
         case .drawFish,
+             .compoundAbility,
              .bottomBonus,
              .placeholder,
              .unsupported:

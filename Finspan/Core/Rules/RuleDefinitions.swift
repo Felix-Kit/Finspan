@@ -36,17 +36,33 @@ struct AbilityEffect: Codable, Equatable, Sendable {
 
 enum AbilityTrigger: String, Codable, Equatable, Sendable {
     case whenPlayed
-    case whenActivated
-    case endOfTurn
-    case endOfWeek
-    case endOfGame
+    case ifActivated
+    case gameEnd
 }
 
 struct AbilityDefinition: Codable, Equatable, Sendable {
-    var id: String
+    var abilityId: String
     var trigger: AbilityTrigger
-    var conditions: [AbilityCondition]
-    var effects: [AbilityEffect]
+    var effects: [AbilityEffectUnit]
+    var canResolveInAnyOrder: Bool
+    var isOptional: Bool
+    var displayText: String
+
+    init(
+        abilityId: String,
+        trigger: AbilityTrigger,
+        effects: [AbilityEffectUnit],
+        canResolveInAnyOrder: Bool = false,
+        isOptional: Bool = true,
+        displayText: String = ""
+    ) {
+        self.abilityId = abilityId
+        self.trigger = trigger
+        self.effects = effects
+        self.canResolveInAnyOrder = canResolveInAnyOrder
+        self.isOptional = isOptional
+        self.displayText = displayText
+    }
 }
 
 struct ScoreCategory: RawRepresentable, Codable, Equatable, Hashable, Sendable {

@@ -10,6 +10,8 @@ struct PendingChoice: Identifiable, Codable, Equatable, Sendable {
     var options: [PendingChoiceOption]
     var expectedInput: PendingChoiceExpectedInput?
     var isOptional: Bool
+    var abilityDefinition: AbilityDefinition? = nil
+    var compoundAbilityProgress: CompoundAbilityProgress? = nil
     var createdAtSequence: EventID
 
     var id: PendingChoiceID { choiceId }
@@ -30,6 +32,7 @@ enum PendingChoiceKind: String, Codable, Equatable, Sendable {
     case hatchEgg
     case recoverFromDiscardOrDraw
     case moveYoungOrSchool
+    case compoundAbility
     case bottomBonus
     case placeholder
     case unsupported
@@ -45,6 +48,7 @@ enum PendingChoiceExpectedInput: Codable, Equatable, Sendable {
     case targetSlot
     case cardSelection
     case sourceAndTargetSlots
+    case abilityEffectSelection
     case count(Int)
 }
 
@@ -56,6 +60,8 @@ enum PendingChoiceResolution: Codable, Equatable, Sendable {
     case drawFromDeck
     case moveResource(source: OceanSlotAddress, target: OceanSlotAddress, kind: ResourceKind)
     case chooseOption(String)
+    case chooseAbilityEffect(AbilityEffectUnit)
+    case finishAbility
 }
 
 enum PendingChoiceAppliedEffect: Codable, Equatable, Sendable {

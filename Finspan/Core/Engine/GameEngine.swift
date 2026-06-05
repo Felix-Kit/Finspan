@@ -199,7 +199,7 @@ struct GameEngine {
                 )
             )]
         case let .playFish(payload):
-            let drafts: [DomainEventDraft] = [.fishPlayed(
+            let fishPlayed = DomainEventDraft.fishPlayed(
                 FishPlayedEvent(
                     playerId: command.playerId,
                     cardId: payload.cardId,
@@ -207,7 +207,17 @@ struct GameEngine {
                     payment: payload.payment,
                     nextActivePlayerId: nil
                 )
-            )]
+            )
+            var drafts: [DomainEventDraft] = [fishPlayed]
+            if let choice = whenPlayedPendingChoice(
+                for: payload.cardId,
+                sourceAddress: payload.targetSlot,
+                choiceId: "\(command.commandId)-when-played-ability",
+                playerId: command.playerId
+            ) {
+                drafts.append(.pendingChoiceCreated(choice))
+                return drafts
+            }
             return drafts + actionCompletionDrafts(
                 afterApplying: drafts,
                 actorPlayerId: command.playerId,
@@ -642,6 +652,16 @@ struct GameEngine {
             )
         case .chooseOption:
             throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
+        case let .chooseAbilityEffect(effect):
+            guard choice.kind == .compoundAbility,
+                  abilityProgressCanChoose(effect, in: choice.compoundAbilityProgress)
+            else {
+                throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
+            }
+        case .finishAbility:
+            guard choice.kind == .compoundAbility, choice.isOptional else {
+                throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
+            }
         }
     }
 
@@ -671,6 +691,7 @@ struct GameEngine {
         case .drawFish,
              .recoverFromDiscardOrDraw,
              .moveYoungOrSchool,
+             .compoundAbility,
              .bottomBonus,
              .placeholder,
              .unsupported:
@@ -749,29 +770,58 @@ struct GameEngine {
 
         let queueId = "\(commandId)-dive-queue"
         let indexedBonuses = diveBonusLayout.bonuses(for: diveSite).enumerated().map { ($0.offset, $0.element) }
-        let orderedBonuses = OceanZone.allCases.flatMap { zone in
-            indexedBonuses.filter { _, bonus in
-                bonus.position == .zone(zone)
+        var stepInputs: [(source: DiveResolutionStepSource, pendingChoice: PendingChoice)] = []
+
+        for zone in OceanZone.allCases {
+            for (bonusIndex, bonus) in indexedBonuses where bonus.position == .zone(zone) {
+                if bonusIsAvailable(bonus, playerState: playerState, includeBottomBonus: includeBottomBonus) {
+                    stepInputs.append((
+                        source: diveResolutionStepSource(for: bonus.position),
+                        pendingChoice: pendingChoice(
+                            for: bonus,
+                            choiceId: "\(commandId)-dive-bonus-\(bonusIndex)",
+                            playerId: playerId,
+                            diveQueueId: queueId,
+                            diveStepId: ""
+                        )
+                    ))
+                }
             }
-        } + indexedBonuses.filter { _, bonus in
-            bonus.position == .bottom
+            stepInputs.append(
+                contentsOf: ifActivatedAbilityStepInputs(
+                    zone: zone,
+                    diveSite: diveSite,
+                    commandId: commandId,
+                    playerId: playerId,
+                    queueId: queueId,
+                    playerState: playerState
+                )
+            )
         }
-        let availableBonuses = orderedBonuses.filter { _, bonus in
-            bonusIsAvailable(bonus, playerState: playerState, includeBottomBonus: includeBottomBonus)
+
+        for (bonusIndex, bonus) in indexedBonuses where bonus.position == .bottom {
+            if bonusIsAvailable(bonus, playerState: playerState, includeBottomBonus: includeBottomBonus) {
+                stepInputs.append((
+                    source: diveResolutionStepSource(for: bonus.position),
+                    pendingChoice: pendingChoice(
+                        for: bonus,
+                        choiceId: "\(commandId)-dive-bonus-\(bonusIndex)",
+                        playerId: playerId,
+                        diveQueueId: queueId,
+                        diveStepId: ""
+                    )
+                ))
+            }
         }
-        let steps = availableBonuses.enumerated().map { stepIndex, indexedBonus in
-            let (bonusIndex, bonus) = indexedBonus
+
+        let steps = stepInputs.enumerated().map { stepIndex, input in
             let stepId = "\(queueId)-step-\(stepIndex)"
+            var choice = input.pendingChoice
+            choice.diveStepId = stepId
             return DiveResolutionStep(
                 stepId: stepId,
-                source: diveResolutionStepSource(for: bonus.position),
-                pendingChoice: pendingChoice(
-                    for: bonus,
-                    choiceId: "\(commandId)-dive-bonus-\(bonusIndex)",
-                    playerId: playerId,
-                    diveQueueId: queueId,
-                    diveStepId: stepId
-                )
+                source: input.source,
+                pendingChoice: choice
             )
         }
 
@@ -860,6 +910,14 @@ struct GameEngine {
             return (nil, nil)
         }
 
+        if let compoundUpdate = compoundDiveQueueProgressAfterResolving(
+            choice: choice,
+            resolution: payload.resolution,
+            queue: queue
+        ) {
+            return compoundUpdate
+        }
+
         queue.currentStepIndex += 1
         guard let nextChoice = queue.currentStep?.pendingChoice else {
             return (.completed(queueId: queue.queueId), nil)
@@ -934,13 +992,377 @@ struct GameEngine {
             case .drawFish,
                  .recoverFromDiscardOrDraw,
                  .moveYoungOrSchool,
+                 .compoundAbility,
                  .bottomBonus,
                  .placeholder,
                  .unsupported:
                 return [.none]
             }
-        case .chooseOption:
+        case .chooseOption,
+             .chooseAbilityEffect,
+             .finishAbility:
             return [.none]
+        }
+    }
+
+    private func ifActivatedAbilityStepInputs(
+        zone: OceanZone,
+        diveSite: DiveActionSite,
+        commandId: CommandID,
+        playerId: PlayerID,
+        queueId: DiveResolutionQueueID,
+        playerState: PlayerGameState
+    ) -> [(source: DiveResolutionStepSource, pendingChoice: PendingChoice)] {
+        guard let mappedDiveSite = diveBonusLayout.oceanDiveSite(for: diveSite) else {
+            return []
+        }
+
+        return playerState.ocean.slots
+            .filter { slot in
+                slot.address.diveSite == mappedDiveSite
+                    && slot.address.zone == zone
+            }
+            .sorted { left, right in
+                left.address.rowIndex < right.address.rowIndex
+            }
+            .flatMap { slot -> [(source: DiveResolutionStepSource, pendingChoice: PendingChoice)] in
+                guard case let .fishCard(cardId) = slot.content,
+                      let card = card(withId: cardId)
+                else {
+                    return []
+                }
+                return card.abilities
+                    .filter { $0.trigger == .ifActivated }
+                    .enumerated()
+                    .map { abilityIndex, ability in
+                        let choiceId = "\(commandId)-if-activated-\(slot.address.diveSite.rawValue)-\(slot.address.rowIndex)-\(abilityIndex)"
+                        return (
+                            source: ability.effects.count > 1 || ability.canResolveInAnyOrder
+                                ? .compoundFishAbility(cardId: cardId, address: slot.address)
+                                : .fishAbility(cardId: cardId, address: slot.address),
+                            pendingChoice: abilityPendingChoice(
+                                ability,
+                                cardId: cardId,
+                                sourceAddress: slot.address,
+                                choiceId: choiceId,
+                                playerId: playerId,
+                                diveQueueId: queueId,
+                                diveStepId: ""
+                            )
+                        )
+                    }
+            }
+    }
+
+    private func whenPlayedPendingChoice(
+        for cardId: CardID,
+        sourceAddress: OceanSlotAddress,
+        choiceId: PendingChoiceID,
+        playerId: PlayerID
+    ) -> PendingChoice? {
+        guard let ability = card(withId: cardId)?.abilities.first(where: { $0.trigger == .whenPlayed }) else {
+            return nil
+        }
+        return abilityPendingChoice(
+            ability,
+            cardId: cardId,
+            sourceAddress: sourceAddress,
+            choiceId: choiceId,
+            playerId: playerId,
+            diveQueueId: nil,
+            diveStepId: nil
+        )
+    }
+
+    private func abilityPendingChoice(
+        _ ability: AbilityDefinition,
+        cardId: CardID,
+        sourceAddress: OceanSlotAddress,
+        choiceId: PendingChoiceID,
+        playerId: PlayerID,
+        diveQueueId: DiveResolutionQueueID?,
+        diveStepId: DiveResolutionStepID?
+    ) -> PendingChoice {
+        let isCompound = ability.effects.count > 1 || ability.canResolveInAnyOrder
+        let progress = isCompound
+            ? CompoundAbilityProgress(
+                abilityId: ability.abilityId,
+                playerId: playerId,
+                sourceCardId: cardId,
+                sourceAddress: sourceAddress,
+                remainingEffects: ability.effects,
+                completedEffects: [],
+                canResolveInAnyOrder: ability.canResolveInAnyOrder,
+                isOptional: ability.isOptional
+            )
+            : nil
+        let firstEffect = ability.effects.first ?? .unsupported
+
+        return PendingChoice(
+            choiceId: choiceId,
+            playerId: playerId,
+            source: .fishAbility(cardId),
+            diveQueueId: diveQueueId,
+            diveStepId: diveStepId,
+            kind: isCompound ? .compoundAbility : pendingChoiceKind(for: firstEffect),
+            options: [],
+            expectedInput: isCompound ? .abilityEffectSelection : expectedInput(for: firstEffect),
+            isOptional: ability.isOptional,
+            abilityDefinition: ability,
+            compoundAbilityProgress: progress,
+            createdAtSequence: 0
+        )
+    }
+
+    private func compoundDiveQueueProgressAfterResolving(
+        choice: PendingChoice,
+        resolution: PendingChoiceResolution,
+        queue: DiveResolutionQueue
+    ) -> (update: DiveResolutionQueueUpdate?, nextChoice: PendingChoice?)? {
+        if choice.kind == .compoundAbility {
+            switch resolution {
+            case let .chooseAbilityEffect(effect):
+                guard let progress = choice.compoundAbilityProgress else {
+                    return nil
+                }
+                var updatedQueue = queue
+                var targetChoice = compoundTargetChoice(
+                    from: choice,
+                    progress: progress,
+                    effect: normalizedSingleEffect(effect)
+                )
+                targetChoice.diveStepId = choice.diveStepId
+                setCurrentStepPendingChoice(targetChoice, in: &updatedQueue)
+                return (.updated(updatedQueue), targetChoice)
+            case .finishAbility,
+                 .skip:
+                return advanceDiveQueue(queue)
+            default:
+                return nil
+            }
+        }
+
+        guard let progress = choice.compoundAbilityProgress,
+              compoundEffectUnit(for: choice.kind) != nil
+        else {
+            return nil
+        }
+
+        let completedEffect = compoundEffectUnit(for: choice.kind) ?? .unsupported
+        var updatedProgress = progress
+        updatedProgress.remainingEffects = decrement(completedEffect, from: progress.remainingEffects)
+        updatedProgress.completedEffects.append(completedEffect)
+
+        if abilityProgressIsComplete(updatedProgress) {
+            return advanceDiveQueue(queue)
+        }
+
+        var updatedQueue = queue
+        var selectorChoice = compoundSelectorChoice(
+            from: choice,
+            progress: updatedProgress
+        )
+        selectorChoice.diveStepId = choice.diveStepId
+        setCurrentStepPendingChoice(selectorChoice, in: &updatedQueue)
+        return (.updated(updatedQueue), selectorChoice)
+    }
+
+    private func advanceDiveQueue(
+        _ queue: DiveResolutionQueue
+    ) -> (update: DiveResolutionQueueUpdate?, nextChoice: PendingChoice?) {
+        var advancedQueue = queue
+        advancedQueue.currentStepIndex += 1
+        guard let nextChoice = advancedQueue.currentStep?.pendingChoice else {
+            return (.completed(queueId: advancedQueue.queueId), nil)
+        }
+        return (.advanced(advancedQueue), nextChoice)
+    }
+
+    private func setCurrentStepPendingChoice(_ choice: PendingChoice, in queue: inout DiveResolutionQueue) {
+        guard queue.steps.indices.contains(queue.currentStepIndex) else {
+            return
+        }
+        queue.steps[queue.currentStepIndex].pendingChoice = choice
+    }
+
+    private func compoundTargetChoice(
+        from choice: PendingChoice,
+        progress: CompoundAbilityProgress,
+        effect: AbilityEffectUnit
+    ) -> PendingChoice {
+        PendingChoice(
+            choiceId: "\(choice.choiceId)-target-\(abilityEffectKey(effect))-\(progress.completedEffects.count)",
+            playerId: choice.playerId,
+            source: choice.source,
+            diveQueueId: choice.diveQueueId,
+            diveStepId: choice.diveStepId,
+            kind: pendingChoiceKind(for: effect),
+            options: [],
+            expectedInput: expectedInput(for: effect),
+            isOptional: false,
+            abilityDefinition: choice.abilityDefinition,
+            compoundAbilityProgress: progress,
+            createdAtSequence: choice.createdAtSequence
+        )
+    }
+
+    private func compoundSelectorChoice(
+        from choice: PendingChoice,
+        progress: CompoundAbilityProgress
+    ) -> PendingChoice {
+        PendingChoice(
+            choiceId: "\(choice.choiceId)-select-\(progress.completedEffects.count)",
+            playerId: choice.playerId,
+            source: choice.source,
+            diveQueueId: choice.diveQueueId,
+            diveStepId: choice.diveStepId,
+            kind: .compoundAbility,
+            options: [],
+            expectedInput: .abilityEffectSelection,
+            isOptional: progress.isOptional,
+            abilityDefinition: choice.abilityDefinition,
+            compoundAbilityProgress: progress,
+            createdAtSequence: choice.createdAtSequence
+        )
+    }
+
+    private func abilityProgressCanChoose(
+        _ effect: AbilityEffectUnit,
+        in progress: CompoundAbilityProgress?
+    ) -> Bool {
+        guard let progress else {
+            return false
+        }
+        return effectCount(for: effect, in: progress.remainingEffects) > 0
+    }
+
+    private func abilityProgressIsComplete(_ progress: CompoundAbilityProgress) -> Bool {
+        progress.remainingEffects.allSatisfy { effectCount($0) <= 0 }
+    }
+
+    private func decrement(
+        _ effect: AbilityEffectUnit,
+        from effects: [AbilityEffectUnit]
+    ) -> [AbilityEffectUnit] {
+        var didDecrement = false
+        return effects.compactMap { current in
+            guard !didDecrement, abilityEffectKey(current) == abilityEffectKey(effect) else {
+                return current
+            }
+            didDecrement = true
+            let remainingCount = max(effectCount(current) - 1, 0)
+            return remainingCount > 0 ? effectWithCount(current, count: remainingCount) : nil
+        }
+    }
+
+    private func normalizedSingleEffect(_ effect: AbilityEffectUnit) -> AbilityEffectUnit {
+        effectWithCount(effect, count: 1)
+    }
+
+    private func effectCount(for effect: AbilityEffectUnit, in effects: [AbilityEffectUnit]) -> Int {
+        effects
+            .filter { abilityEffectKey($0) == abilityEffectKey(effect) }
+            .map(effectCount)
+            .reduce(0, +)
+    }
+
+    private func effectCount(_ effect: AbilityEffectUnit) -> Int {
+        switch effect {
+        case let .drawFish(count),
+             let .placeEgg(count),
+             let .hatchEgg(count),
+             let .moveYoungOrSchool(count),
+             let .recoverFromDiscardOrDraw(count):
+            return count
+        case .unsupported:
+            return 0
+        }
+    }
+
+    private func effectWithCount(_ effect: AbilityEffectUnit, count: Int) -> AbilityEffectUnit {
+        switch effect {
+        case .drawFish:
+            return .drawFish(count: count)
+        case .placeEgg:
+            return .placeEgg(count: count)
+        case .hatchEgg:
+            return .hatchEgg(count: count)
+        case .moveYoungOrSchool:
+            return .moveYoungOrSchool(count: count)
+        case .recoverFromDiscardOrDraw:
+            return .recoverFromDiscardOrDraw(count: count)
+        case .unsupported:
+            return .unsupported
+        }
+    }
+
+    private func abilityEffectKey(_ effect: AbilityEffectUnit) -> String {
+        switch effect {
+        case .drawFish:
+            return "drawFish"
+        case .placeEgg:
+            return "placeEgg"
+        case .hatchEgg:
+            return "hatchEgg"
+        case .moveYoungOrSchool:
+            return "moveYoungOrSchool"
+        case .recoverFromDiscardOrDraw:
+            return "recoverFromDiscardOrDraw"
+        case .unsupported:
+            return "unsupported"
+        }
+    }
+
+    private func pendingChoiceKind(for effect: AbilityEffectUnit) -> PendingChoiceKind {
+        switch effect {
+        case .drawFish:
+            return .drawFish
+        case .placeEgg:
+            return .placeEgg
+        case .hatchEgg:
+            return .hatchEgg
+        case .moveYoungOrSchool:
+            return .moveYoungOrSchool
+        case .recoverFromDiscardOrDraw:
+            return .recoverFromDiscardOrDraw
+        case .unsupported:
+            return .unsupported
+        }
+    }
+
+    private func expectedInput(for effect: AbilityEffectUnit) -> PendingChoiceExpectedInput {
+        switch effect {
+        case .drawFish:
+            return .none
+        case .placeEgg,
+             .hatchEgg:
+            return .targetSlot
+        case .moveYoungOrSchool:
+            return .sourceAndTargetSlots
+        case .recoverFromDiscardOrDraw:
+            return .cardSelection
+        case .unsupported:
+            return .none
+        }
+    }
+
+    private func compoundEffectUnit(for kind: PendingChoiceKind) -> AbilityEffectUnit? {
+        switch kind {
+        case .drawFish:
+            return .drawFish(count: 1)
+        case .placeEgg:
+            return .placeEgg(count: 1)
+        case .hatchEgg:
+            return .hatchEgg(count: 1)
+        case .moveYoungOrSchool:
+            return .moveYoungOrSchool(count: 1)
+        case .recoverFromDiscardOrDraw:
+            return .recoverFromDiscardOrDraw(count: 1)
+        case .compoundAbility,
+             .bottomBonus,
+             .placeholder,
+             .unsupported:
+            return nil
         }
     }
 
@@ -1061,6 +1483,8 @@ struct GameEngine {
         }
 
         switch update {
+        case let .updated(queue):
+            state.activeDiveQueue = queue
         case let .advanced(queue):
             state.activeDiveQueue = queue
         case let .completed(queueId):

@@ -72,6 +72,10 @@ enum AppStrings {
         static let requiredChoice = "必须处理"
         static let skipChoice = "跳过"
         static let drawOneFishCard = "抽 1 张鱼牌"
+        static let triggeringFishAbilityPrefix = "正在发动"
+        static let placeEggAbilityAction = "放置鱼卵"
+        static let hatchEggAbilityAction = "孵化鱼卵"
+        static let finishAbility = "结束此能力"
         static let chooseTargetUnsupported = "选择目标（暂未接入）"
         static let chooseTargetFromList = "请从目标列表中选择格子。"
         static let choosePlaceEggTarget = "选择放置鱼卵的格子"
@@ -266,6 +270,14 @@ enum AppStrings {
         static func discardPaymentProgressText(selectedCount: Int, requiredCount: Int) -> String {
             "手牌：已选择 \(selectedCount) / \(requiredCount)"
         }
+
+        static func triggeringFishAbility(cardName: String) -> String {
+            "\(triggeringFishAbilityPrefix)：\(cardName)"
+        }
+
+        static func compoundAbilityProgressText(title: String, completedCount: Int, totalCount: Int) -> String {
+            "\(title) \(completedCount) / \(totalCount)"
+        }
     }
 
     static func achievementKindName(_ kind: AchievementKind) -> String {
@@ -366,6 +378,8 @@ enum AppStrings {
             return "从弃牌堆拿回 1 张牌"
         case .moveYoungOrSchool:
             return "移动幼鱼或鱼群"
+        case .compoundAbility:
+            return "鱼牌能力"
         case .bottomBonus:
             return "底部奖励"
         case .placeholder:

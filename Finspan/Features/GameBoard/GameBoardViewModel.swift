@@ -212,6 +212,7 @@ struct PendingChoiceViewData: Identifiable, Equatable {
     let subtitle: String
     let sourceText: String
     let statusText: String
+    let progressLines: [String]
     let targetPrompt: String?
     let noTargetsText: String?
     let targets: [PendingChoiceTargetViewData]
@@ -341,6 +342,9 @@ enum PendingChoiceAction: String, Equatable {
     case drawFish
     case drawFromDeck
     case chooseTarget
+    case choosePlaceEggAbilityEffect
+    case chooseHatchEggAbilityEffect
+    case finishAbility
     case skip
 }
 
@@ -444,10 +448,11 @@ final class GameBoardViewModel: ObservableObject {
             .map { choice in
                 PendingChoiceViewData(
                     choiceId: choice.choiceId,
-                    title: AppStrings.pendingChoiceKindName(choice.kind),
+                    title: pendingChoiceTitle(choice),
                     subtitle: pendingChoiceSubtitle(choice),
                     sourceText: AppStrings.pendingChoiceSourceName(choice.source),
                     statusText: AppStrings.GameBoard.pendingChoiceWaiting,
+                    progressLines: compoundAbilityProgressLines(for: choice),
                     targetPrompt: pendingChoiceTargetPrompt(for: choice),
                     noTargetsText: noPendingChoiceTargetsText(for: choice),
                     targets: pendingChoiceTargets(for: choice),
@@ -1173,6 +1178,12 @@ final class GameBoardViewModel: ObservableObject {
             resolvePendingChoice(choiceId, resolution: .skip)
         case .chooseTarget:
             errorMessage = AppStrings.GameBoard.chooseTargetFromList
+        case .choosePlaceEggAbilityEffect:
+            resolvePendingChoice(choiceId, resolution: .chooseAbilityEffect(.placeEgg(count: 1)))
+        case .chooseHatchEggAbilityEffect:
+            resolvePendingChoice(choiceId, resolution: .chooseAbilityEffect(.hatchEgg(count: 1)))
+        case .finishAbility:
+            resolvePendingChoice(choiceId, resolution: .finishAbility)
         }
     }
 
@@ -1330,6 +1341,9 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     private func cardTitle(_ cardId: CardID) -> String {
+        if let cardName = cardsById[cardId]?.name {
+            return cardName
+        }
         if cardId.hasPrefix("starter-fish-") {
             return "起始鱼牌 \(cardId.replacingOccurrences(of: "starter-fish-", with: ""))"
         }
@@ -1432,8 +1446,11 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     private func cardAbilitySummaryText(_ card: Card?) -> String {
-        guard card != nil else {
+        guard let card else {
             return AppStrings.GameBoard.unknownCard
+        }
+        if !card.abilities.isEmpty {
+            return card.abilities.map(\.displayText).filter { !$0.isEmpty }.joined(separator: "；")
         }
         return AppStrings.GameBoard.unsupportedAbilityInUI
     }
@@ -1619,6 +1636,86 @@ final class GameBoardViewModel: ObservableObject {
         ].joined(separator: "，")
     }
 
+    private func pendingChoiceTitle(_ choice: PendingChoice) -> String {
+        guard case let .fishAbility(cardId) = choice.source else {
+            return AppStrings.pendingChoiceKindName(choice.kind)
+        }
+        return AppStrings.GameBoard.triggeringFishAbility(cardName: cardTitle(cardId))
+    }
+
+    private func compoundAbilityProgressLines(for choice: PendingChoice) -> [String] {
+        guard let progress = choice.compoundAbilityProgress else {
+            return []
+        }
+        return [
+            abilityProgressLine(
+                title: AppStrings.GameBoard.placeEggAbilityAction,
+                kind: .placeEgg(count: 1),
+                progress: progress
+            ),
+            abilityProgressLine(
+                title: AppStrings.GameBoard.hatchEggAbilityAction,
+                kind: .hatchEgg(count: 1),
+                progress: progress
+            )
+        ].compactMap { $0 }
+    }
+
+    private func abilityProgressLine(
+        title: String,
+        kind: AbilityEffectUnit,
+        progress: CompoundAbilityProgress
+    ) -> String? {
+        let completed = abilityEffectCount(kind, in: progress.completedEffects)
+        let remaining = abilityEffectCount(kind, in: progress.remainingEffects)
+        let total = completed + remaining
+        guard total > 0 else {
+            return nil
+        }
+        return AppStrings.GameBoard.compoundAbilityProgressText(
+            title: title,
+            completedCount: completed,
+            totalCount: total
+        )
+    }
+
+    private func abilityEffectCount(_ kind: AbilityEffectUnit, in effects: [AbilityEffectUnit]) -> Int {
+        effects
+            .filter { abilityEffectKey($0) == abilityEffectKey(kind) }
+            .map(abilityEffectCount)
+            .reduce(0, +)
+    }
+
+    private func abilityEffectCount(_ effect: AbilityEffectUnit) -> Int {
+        switch effect {
+        case let .drawFish(count),
+             let .placeEgg(count),
+             let .hatchEgg(count),
+             let .moveYoungOrSchool(count),
+             let .recoverFromDiscardOrDraw(count):
+            return count
+        case .unsupported:
+            return 0
+        }
+    }
+
+    private func abilityEffectKey(_ effect: AbilityEffectUnit) -> String {
+        switch effect {
+        case .drawFish:
+            return "drawFish"
+        case .placeEgg:
+            return "placeEgg"
+        case .hatchEgg:
+            return "hatchEgg"
+        case .moveYoungOrSchool:
+            return "moveYoungOrSchool"
+        case .recoverFromDiscardOrDraw:
+            return "recoverFromDiscardOrDraw"
+        case .unsupported:
+            return "unsupported"
+        }
+    }
+
     private func canResolvePendingChoice(_ choice: PendingChoice) -> Bool {
         state.activePlayerId == choice.playerId
     }
@@ -1652,6 +1749,37 @@ final class GameBoardViewModel: ObservableObject {
              .hatchEgg,
              .moveYoungOrSchool:
             break
+        case .compoundAbility:
+            if let progress = choice.compoundAbilityProgress {
+                if abilityEffectCount(.placeEgg(count: 1), in: progress.remainingEffects) > 0 {
+                    actions.append(
+                        PendingChoiceActionViewData(
+                            choiceId: choice.choiceId,
+                            action: .choosePlaceEggAbilityEffect,
+                            title: AppStrings.GameBoard.placeEggAbilityAction,
+                            isEnabled: canResolve
+                        )
+                    )
+                }
+                if abilityEffectCount(.hatchEgg(count: 1), in: progress.remainingEffects) > 0 {
+                    actions.append(
+                        PendingChoiceActionViewData(
+                            choiceId: choice.choiceId,
+                            action: .chooseHatchEggAbilityEffect,
+                            title: AppStrings.GameBoard.hatchEggAbilityAction,
+                            isEnabled: canResolve
+                        )
+                    )
+                }
+                actions.append(
+                    PendingChoiceActionViewData(
+                        choiceId: choice.choiceId,
+                        action: .finishAbility,
+                        title: AppStrings.GameBoard.finishAbility,
+                        isEnabled: canResolve && choice.isOptional
+                    )
+                )
+            }
         case .bottomBonus,
              .placeholder,
              .unsupported:
@@ -1780,6 +1908,7 @@ final class GameBoardViewModel: ObservableObject {
         case .drawFish,
              .recoverFromDiscardOrDraw,
              .moveYoungOrSchool,
+             .compoundAbility,
              .bottomBonus,
              .placeholder,
              .unsupported:
@@ -1800,6 +1929,7 @@ final class GameBoardViewModel: ObservableObject {
         case .moveYoungOrSchool:
             return AppStrings.GameBoard.moveYoungOrSchool
         case .drawFish,
+             .compoundAbility,
              .bottomBonus,
              .placeholder,
              .unsupported:
@@ -1836,6 +1966,10 @@ final class GameBoardViewModel: ObservableObject {
             return AppStrings.GameBoard.moveYoungOrSchool
         case .chooseOption:
             return AppStrings.GameBoard.chooseOption
+        case .chooseAbilityEffect:
+            return AppStrings.GameBoard.chooseOption
+        case .finishAbility:
+            return AppStrings.GameBoard.finishAbility
         }
     }
 

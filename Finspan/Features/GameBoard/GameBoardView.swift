@@ -849,6 +849,16 @@ struct GameBoardView: View {
                 }
             }
 
+            if !choice.progressLines.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(choice.progressLines, id: \.self) { line in
+                        Text(line)
+                            .font(.callout.weight(.medium))
+                            .foregroundStyle(.primary)
+                    }
+                }
+            }
+
             HStack(spacing: 10) {
                 ForEach(choice.actions) { action in
                     if action.action == .skip {

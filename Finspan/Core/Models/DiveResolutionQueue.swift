@@ -33,6 +33,7 @@ enum DiveResolutionStepSource: Codable, Equatable, Sendable {
 }
 
 enum DiveResolutionQueueUpdate: Codable, Equatable, Sendable {
+    case updated(DiveResolutionQueue)
     case advanced(DiveResolutionQueue)
     case completed(queueId: DiveResolutionQueueID)
 }

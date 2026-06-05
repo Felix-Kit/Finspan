@@ -70,6 +70,56 @@ private enum SampleCardFixtures {
                     printedPoints: 1,
                     lengthCm: 3
                 )
+            case 30:
+                return Card(
+                    id: "fish-\(index)",
+                    name: "Fish A",
+                    abilities: [
+                        AbilityDefinition(
+                            abilityId: "sample-fish-a-if-activated",
+                            trigger: .ifActivated,
+                            effects: [.drawFish(count: 1)],
+                            displayText: "发动时：抽 1 张鱼牌"
+                        )
+                    ],
+                    printedPoints: 2,
+                    lengthCm: 30
+                )
+            case 31:
+                return Card(
+                    id: "fish-\(index)",
+                    name: "Fish B",
+                    abilities: [
+                        AbilityDefinition(
+                            abilityId: "sample-fish-b-if-activated",
+                            trigger: .ifActivated,
+                            effects: [
+                                .placeEgg(count: 2),
+                                .hatchEgg(count: 1)
+                            ],
+                            canResolveInAnyOrder: true,
+                            isOptional: true,
+                            displayText: "发动时：放置 2 个鱼卵，孵化 1 个鱼卵，可任选顺序"
+                        )
+                    ],
+                    printedPoints: 3,
+                    lengthCm: 31
+                )
+            case 32:
+                return Card(
+                    id: "fish-\(index)",
+                    name: "Fish C",
+                    abilities: [
+                        AbilityDefinition(
+                            abilityId: "sample-fish-c-when-played",
+                            trigger: .whenPlayed,
+                            effects: [.drawFish(count: 1)],
+                            displayText: "打出时：抽 1 张鱼牌"
+                        )
+                    ],
+                    printedPoints: 4,
+                    lengthCm: 32
+                )
             default:
                 return Card(
                     id: "fish-\(index)",

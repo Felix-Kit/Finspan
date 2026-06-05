@@ -2948,6 +2948,351 @@ final class GameEngineTests: XCTestCase {
         XCTAssertNil(nextState.pendingChoices[choice.choiceId])
     }
 
+    func testDiveQueueInsertsIfActivatedAbilityAfterPrintedBonus() throws {
+        let engine = GameEngine()
+        var state = abilityDiveState(cardId: "fish-30")
+
+        let drafts = try engine.makeEventDrafts(
+            for: diveCommand(commandId: "dive-if-activated-order"),
+            in: state
+        )
+
+        guard case let .diverMoved(event) = drafts.first,
+              let queue = event.diveResolutionQueue
+        else {
+            return XCTFail("Expected dive queue.")
+        }
+        XCTAssertEqual(
+            queue.steps.map(\.source),
+            [
+                .printedDiveBonus(.sunlit),
+                .fishAbility(
+                    cardId: "fish-30",
+                    address: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+                )
+            ]
+        )
+    }
+
+    func testForageAndConsumedFishDoNotGenerateAbilitySteps() throws {
+        let engine = GameEngine()
+        var forageState = playFishState()
+        forageState.playerGameStates["player-1"]?.diveSitesReachedBottomThisWeek = [.blue]
+        clearOceanContent(for: "player-1", in: &forageState)
+        setContent(
+            .forageFish(
+                ForageFish(
+                    forageFishId: "forage-no-ability",
+                    name: "印刷小鱼",
+                    lengthCm: 1,
+                    diveSite: .blue,
+                    rowIndex: 0
+                )
+            ),
+            at: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0),
+            in: &forageState
+        )
+
+        let forageDrafts = try engine.makeEventDrafts(
+            for: diveCommand(commandId: "dive-forage-no-ability"),
+            in: forageState
+        )
+        guard case let .diverMoved(forageEvent) = forageDrafts.first else {
+            return XCTFail("Expected diver moved.")
+        }
+        XCTAssertEqual(forageEvent.diveResolutionQueue?.steps.map(\.source), [.printedDiveBonus(.sunlit)])
+
+        var consumedState = playFishState()
+        consumedState.playerGameStates["player-1"]?.diveSitesReachedBottomThisWeek = [.blue]
+        clearOceanContent(for: "player-1", in: &consumedState)
+        setConsumedFish(
+            [ConsumedFish(cardId: "fish-30")],
+            at: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0),
+            in: &consumedState
+        )
+
+        let consumedDrafts = try engine.makeEventDrafts(
+            for: diveCommand(commandId: "dive-consumed-no-ability"),
+            in: consumedState
+        )
+        guard case let .diverMoved(consumedEvent) = consumedDrafts.first else {
+            return XCTFail("Expected diver moved.")
+        }
+        XCTAssertNil(consumedEvent.diveResolutionQueue)
+    }
+
+    func testFishAAbilityResolveDrawsOneCardAndSkipDrawsNothing() throws {
+        let engine = GameEngine()
+        var state = applying(
+            try engine.makeEventDrafts(for: diveCommand(commandId: "dive-fish-a"), in: abilityDiveState(cardId: "fish-30")),
+            to: abilityDiveState(cardId: "fish-30"),
+            using: engine
+        )
+        let printedChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "skip-printed-a", choiceId: printedChoice.choiceId, resolution: .skip),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        state.deckState.fishDrawPile = ["fish-9"]
+        let abilityChoice = try XCTUnwrap(state.pendingChoices.values.first)
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(
+                commandId: "resolve-fish-a",
+                choiceId: abilityChoice.choiceId,
+                resolution: .draw(count: 1)
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(resolved) = drafts.first else {
+            return XCTFail("Expected resolved ability.")
+        }
+        XCTAssertEqual(resolved.appliedEffects, [.drawFish(playerId: "player-1", cardIds: ["fish-9"])])
+
+        var skipState = state
+        skipState.deckState.fishDrawPile = ["fish-10"]
+        let skipDrafts = try engine.makeEventDrafts(
+            for: resolveCommand(
+                commandId: "skip-fish-a",
+                choiceId: abilityChoice.choiceId,
+                resolution: .skip
+            ),
+            in: skipState
+        )
+        guard case let .pendingChoiceResolved(skipped) = skipDrafts.first else {
+            return XCTFail("Expected skipped ability.")
+        }
+        XCTAssertEqual(skipped.appliedEffects, [.none])
+        XCTAssertTrue(skipDrafts.contains(where: \.isTurnCompletion))
+    }
+
+    func testFishBCompoundAbilityCanPlaceEggThenHatchEggAndStayPendingUntilComplete() throws {
+        let engine = GameEngine()
+        var state = try fishBCompoundSelectorState(engine: engine)
+        let selector = try XCTUnwrap(state.pendingChoices.values.first)
+        XCTAssertEqual(selector.kind, .compoundAbility)
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "choose-place-egg",
+                    choiceId: selector.choiceId,
+                    resolution: .chooseAbilityEffect(.placeEgg(count: 1))
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        let targetChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        XCTAssertEqual(targetChoice.kind, .placeEgg)
+
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        let placeDrafts = try engine.makeEventDrafts(
+            for: resolveCommand(commandId: "place-egg-b", choiceId: targetChoice.choiceId, resolution: .chooseTarget(target)),
+            in: state
+        )
+        guard case let .pendingChoiceResolved(placeResolved) = placeDrafts.first,
+              case .updated = placeResolved.diveQueueUpdate
+        else {
+            return XCTFail("Expected compound progress update.")
+        }
+        XCTAssertEqual(placeResolved.appliedEffects, [.placeEgg(target: target, amount: 1)])
+        state = applying(placeDrafts, to: state, using: engine)
+        XCTAssertEqual(state.activePlayerId, "player-1")
+        XCTAssertNotNil(state.activeDiveQueue)
+
+        let nextSelector = try XCTUnwrap(state.pendingChoices.values.first)
+        XCTAssertEqual(nextSelector.kind, .compoundAbility)
+        XCTAssertEqual(nextSelector.compoundAbilityProgress?.completedEffects, [.placeEgg(count: 1)])
+        XCTAssertEqual(resourceAmount(.egg, at: target, in: state), 1)
+    }
+
+    func testFishBCompoundAbilityCanHatchEggThenPlaceEggAndCanEndPartial() throws {
+        let engine = GameEngine()
+        var state = try fishBCompoundSelectorState(engine: engine)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        setResources([ResourceQuantity(kind: .egg, amount: 1)], at: target, in: &state)
+
+        let selector = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "choose-hatch-egg",
+                    choiceId: selector.choiceId,
+                    resolution: .chooseAbilityEffect(.hatchEgg(count: 1))
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        let hatchChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        let hatchDrafts = try engine.makeEventDrafts(
+            for: resolveCommand(commandId: "hatch-egg-b", choiceId: hatchChoice.choiceId, resolution: .chooseTarget(target)),
+            in: state
+        )
+        state = applying(hatchDrafts, to: state, using: engine)
+        XCTAssertEqual(resourceAmount(.egg, at: target, in: state), 0)
+        XCTAssertEqual(resourceAmount(.young, at: target, in: state), 1)
+
+        let partialSelector = try XCTUnwrap(state.pendingChoices.values.first)
+        let finishDrafts = try engine.makeEventDrafts(
+            for: resolveCommand(commandId: "finish-partial-b", choiceId: partialSelector.choiceId, resolution: .finishAbility),
+            in: state
+        )
+        guard case let .pendingChoiceResolved(resolved) = finishDrafts.first,
+              case .completed = resolved.diveQueueUpdate
+        else {
+            return XCTFail("Expected compound ability to end and complete queue.")
+        }
+        XCTAssertTrue(finishDrafts.contains(where: \.isTurnCompletion))
+    }
+
+    func testFishBAllCompoundEffectsCompleteAdvancesQueue() throws {
+        let engine = GameEngine()
+        var state = try fishBCompoundSelectorState(engine: engine, addSecondFish: true)
+        let firstTarget = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        let secondTarget = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 1)
+
+        for target in [firstTarget, secondTarget] {
+            let selector = try XCTUnwrap(state.pendingChoices.values.first)
+            state = applying(
+                try engine.makeEventDrafts(
+                    for: resolveCommand(
+                        commandId: "choose-place-\(target.rowIndex)",
+                        choiceId: selector.choiceId,
+                        resolution: .chooseAbilityEffect(.placeEgg(count: 1))
+                    ),
+                    in: state
+                ),
+                to: state,
+                using: engine
+            )
+            let placeChoice = try XCTUnwrap(state.pendingChoices.values.first)
+            state = applying(
+                try engine.makeEventDrafts(
+                    for: resolveCommand(
+                        commandId: "place-\(target.rowIndex)",
+                        choiceId: placeChoice.choiceId,
+                        resolution: .chooseTarget(target)
+                    ),
+                    in: state
+                ),
+                to: state,
+                using: engine
+            )
+        }
+
+        let selector = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "choose-final-hatch",
+                    choiceId: selector.choiceId,
+                    resolution: .chooseAbilityEffect(.hatchEgg(count: 1))
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        let hatchChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        let finalDrafts = try engine.makeEventDrafts(
+            for: resolveCommand(commandId: "hatch-final-b", choiceId: hatchChoice.choiceId, resolution: .chooseTarget(firstTarget)),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(resolved) = finalDrafts.first,
+              case .completed = resolved.diveQueueUpdate
+        else {
+            return XCTFail("Expected all compound effects to complete queue.")
+        }
+        XCTAssertTrue(finalDrafts.contains(where: \.isTurnCompletion))
+    }
+
+    func testFishCWhenPlayedCreatesAbilityPendingChoiceAndAdvancesAfterResolve() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        state.playerGameStates["player-1"]?.hand = ["fish-32"]
+        state.deckState.fishDrawPile = ["fish-9"]
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+
+        let drafts = try engine.makeEventDrafts(
+            for: PlayerCommand(
+                commandId: "play-fish-c",
+                playerId: "player-1",
+                roomId: roomId,
+                payload: .playFish(PlayFishCommand(cardId: "fish-32", targetSlot: target, payment: .empty))
+            ),
+            in: state
+        )
+
+        XCTAssertEqual(drafts.count, 2)
+        guard case let .pendingChoiceCreated(choice) = drafts.last else {
+            return XCTFail("Expected when played pending choice.")
+        }
+        XCTAssertEqual(choice.kind, .drawFish)
+        XCTAssertFalse(drafts.contains(where: \.isTurnCompletion))
+
+        state = applying(drafts, to: state, using: engine)
+        let resolveDrafts = try engine.makeEventDrafts(
+            for: resolveCommand(commandId: "resolve-fish-c", choiceId: choice.choiceId, resolution: .draw(count: 1)),
+            in: state
+        )
+        XCTAssertTrue(resolveDrafts.contains(where: \.isTurnCompletion))
+    }
+
+    func testAbilityPendingChoiceBlocksNewPlayFishAndDive() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        let choice = PendingChoice(
+            choiceId: "ability-choice",
+            playerId: "player-1",
+            source: .fishAbility("fish-30"),
+            kind: .drawFish,
+            options: [],
+            expectedInput: .none,
+            isOptional: true,
+            createdAtSequence: 9
+        )
+        state.pendingChoices[choice.choiceId] = choice
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: PlayerCommand(
+                    commandId: "play-blocked-by-ability",
+                    playerId: "player-1",
+                    roomId: roomId,
+                    payload: .playFish(
+                        PlayFishCommand(
+                            cardId: "fish-6",
+                            targetSlot: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0),
+                            payment: .empty
+                        )
+                    )
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .unresolvedPendingChoices("player-1"))
+        }
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: diveCommand(commandId: "dive-blocked-by-ability"),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .unresolvedPendingChoices("player-1"))
+        }
+    }
+
     private func startedState(engine: GameEngine) -> GameState {
         [
             GameEvent(
@@ -3072,6 +3417,51 @@ final class GameEngineTests: XCTestCase {
         return state
     }
 
+    private func abilityDiveState(cardId: CardID, addSecondFish: Bool = false) -> GameState {
+        var state = playFishState()
+        state.playerGameStates["player-1"]?.diveSitesReachedBottomThisWeek = [.blue]
+        clearOceanContent(for: "player-1", in: &state)
+        setContent(
+            .fishCard(cardId),
+            at: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0),
+            in: &state
+        )
+        if addSecondFish {
+            setContent(
+                .fishCard("fish-6"),
+                at: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 1),
+                in: &state
+            )
+        }
+        return state
+    }
+
+    private func fishBCompoundSelectorState(
+        engine: GameEngine,
+        addSecondFish: Bool = false
+    ) throws -> GameState {
+        let initialState = abilityDiveState(cardId: "fish-31", addSecondFish: addSecondFish)
+        var state = applying(
+            try engine.makeEventDrafts(for: diveCommand(commandId: "dive-fish-b-\(addSecondFish)"), in: initialState),
+            to: initialState,
+            using: engine
+        )
+        let printedChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "skip-printed-b-\(addSecondFish)",
+                    choiceId: printedChoice.choiceId,
+                    resolution: .skip
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        return state
+    }
+
     private func diveCommand(commandId: CommandID) -> PlayerCommand {
         PlayerCommand(
             commandId: commandId,
@@ -3144,6 +3534,7 @@ final class GameEngineTests: XCTestCase {
         case .moveYoungOrSchool:
             return .sourceAndTargetSlots
         case .drawFish,
+             .compoundAbility,
              .bottomBonus,
              .placeholder,
              .unsupported:
