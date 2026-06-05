@@ -472,9 +472,6 @@ struct GameEngine {
         guard let targetSlot = playerState.ocean.slots.first(where: { $0.address == payload.targetSlot }) else {
             throw CommandValidationError.targetSlotNotFound(payload.targetSlot)
         }
-        guard targetSlot.content == .empty else {
-            throw CommandValidationError.targetSlotOccupied(payload.targetSlot)
-        }
         guard card.allowedZones.contains(targetSlot.address.zone) else {
             throw CommandValidationError.targetZoneNotAllowed(targetSlot.address.zone)
         }
@@ -487,6 +484,16 @@ struct GameEngine {
         }
         guard card.requirements.isEmpty else {
             throw CommandValidationError.unsupportedRequirement(card.requirements[0])
+        }
+
+        if let existingLength = try visibleFishLength(in: targetSlot.content) {
+            guard card.lengthCm > existingLength else {
+                throw CommandValidationError.targetFishTooLongToCover(
+                    target: payload.targetSlot,
+                    newFishLengthCm: card.lengthCm,
+                    existingFishLengthCm: existingLength
+                )
+            }
         }
 
         try validatePayment(payload.payment, for: card, payload: payload, playerState: playerState)
@@ -519,6 +526,31 @@ struct GameEngine {
         }
         guard playerState.availableDivers > 0 else {
             throw CommandValidationError.noAvailableDiver
+        }
+    }
+
+    private func visibleFishLength(in content: OceanSlotContent) throws -> Int? {
+        switch content {
+        case .empty:
+            return nil
+        case let .forageFish(fish):
+            return fish.lengthCm
+        case let .fishCard(cardId):
+            guard let card = card(withId: cardId) else {
+                throw CommandValidationError.unknownCard(cardId)
+            }
+            return card.lengthCm
+        }
+    }
+
+    private func consumedFish(from content: OceanSlotContent) -> ConsumedFish? {
+        switch content {
+        case .empty:
+            return nil
+        case let .forageFish(fish):
+            return ConsumedFish(forageFish: fish)
+        case let .fishCard(cardId):
+            return ConsumedFish(cardId: cardId, lengthCm: card(withId: cardId)?.lengthCm)
         }
     }
 
@@ -990,6 +1022,9 @@ struct GameEngine {
         playerState.hand.removeAll { discardedCardIds.contains($0) }
         playerState.availableDivers = max(playerState.availableDivers - 1, 0)
         playerState.usedDivers += 1
+        if let consumedFish = consumedFish(from: playerState.ocean.slots[slotIndex].content) {
+            playerState.ocean.slots[slotIndex].consumedFish.append(consumedFish)
+        }
         playerState.ocean.slots[slotIndex].content = .fishCard(payload.cardId)
         applyResourcePayment(payload.payment, to: &playerState)
 

@@ -93,6 +93,7 @@ enum AppStrings {
         static let noPendingChoiceTargets = "没有可用目标"
         static let unsupportedSkippableChoice = "暂未接入，可跳过"
         static let resolveCurrentRewardFirst = "请先处理当前奖励选择。"
+        static let resolveCurrentDiveRewardFirst = "请先处理当前潜水奖励"
         static let diversUsedThisWeek = "本周潜水员已用完"
         static let chooseMainAction = "请选择出牌或潜水"
         static let passTurnNotAllowed = "不能空过回合，请选择出牌或潜水。"
@@ -124,6 +125,15 @@ enum AppStrings {
         static let anyResourceSourceHint = "可从任意已有资源的格子选择来源。"
         static let eggPaymentIncomplete = "请选择足够数量的鱼卵来源。"
         static let youngPaymentIncomplete = "请选择足够数量的幼鱼来源。"
+        static let playFishPayment = "出牌支付"
+        static let playFishPaymentCard = "打出"
+        static let playFishPaymentTarget = "目标"
+        static let noTargetSelected = "未选择目标"
+        static let confirmPlayFish = "确认出牌"
+        static let cancelPlayFish = "取消出牌"
+        static let discardPaymentSelectable = "可弃置"
+        static let discardPaymentSelected = "将弃置"
+        static let discardPaymentInsufficient = "手牌不足以支付费用"
         static let resourcePaymentProgress = "资源支付进度"
         static let resourcePaymentAlreadyComplete = "已选足够"
         static let resourceTokenNotRequired = "当前不需要"
@@ -134,6 +144,10 @@ enum AppStrings {
         static let paymentSelectionMarker = "×"
         static let sourceSelectedCount = "已选"
         static let sourceAvailableCount = "可用"
+        static let playable = "可打出"
+        static let notPlayable = "暂不可打出"
+        static let insufficientPaymentSources = "费用来源不足"
+        static let noPlayableSlot = "没有可用格子"
         static let playFish = "出牌"
         static let costUnsupportedInUI = "该费用类型暂未接入界面。"
         static let discardPaymentIncomplete = "请选择正确数量的弃牌。"
@@ -147,6 +161,7 @@ enum AppStrings {
         static let allowedZones = "可放置区域"
         static let requiredDiveSite = "限定潜水点"
         static let costs = "费用"
+        static let abilitySummary = "能力摘要"
         static let unsupportedItems = "暂未接入项目"
         static let noLimit = "不限"
         static let centimeters = "厘米"
@@ -159,6 +174,12 @@ enum AppStrings {
         static let slotZoneMismatch = "区域不符"
         static let slotDiveSiteMismatch = "潜水点不符"
         static let slotSelectFishFirst = "先选择鱼牌"
+        static let cannotCoverLongerOrSameFish = "不能覆盖更长或同长度的鱼"
+        static let canCoverShorterFish = "可以覆盖较短的鱼"
+        static let dragToPlayHere = "拖到这里打出"
+        static let slotCannotPlayHere = "该位置不能打出"
+        static let payCostsFirst = "请先支付费用"
+        static let dragPlayTargetSelected = "拖拽出牌已选择目标"
         static let unsupportedRequirementInUI = "暂不支持该条件"
         static let unsupportedAbilityInUI = "能力暂未接入"
         static let topRow = "顶行"
@@ -240,6 +261,10 @@ enum AppStrings {
             requiredCount: Int
         ) -> String {
             "\(resourceName)：已选择 \(selectedCount) / \(requiredCount)"
+        }
+
+        static func discardPaymentProgressText(selectedCount: Int, requiredCount: Int) -> String {
+            "手牌：已选择 \(selectedCount) / \(requiredCount)"
         }
     }
 

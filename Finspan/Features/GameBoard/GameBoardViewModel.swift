@@ -10,6 +10,71 @@ struct GameBoardCardViewData: Identifiable, Equatable {
     let isDisabledByUI: Bool
 }
 
+enum HandCardHighlightStyle: Equatable {
+    case selected
+    case playable
+    case unavailable
+}
+
+struct HandCardViewState: Identifiable, Equatable {
+    var id: CardID { cardId }
+
+    let cardId: CardID
+    let displayName: String
+    let shortName: String
+    let printedPoints: Int
+    let lengthText: String
+    let costSummaryText: String
+    let placementSummaryText: String
+    let requiredDiveSiteText: String
+    let abilitySummaryText: String
+    let isSelected: Bool
+    let isMainSelectedCard: Bool
+    let isPlayable: Bool
+    let isDiscardPaymentSelectable: Bool
+    let isSelectedForDiscardPayment: Bool
+    let unavailableReasonText: String?
+    let highlightStyle: HandCardHighlightStyle
+    let compactDisplayText: String
+    let overlayMarkerText: String?
+    let stackIndex: Int
+    let isPulledOutFromStack: Bool
+    let stackOffsetX: Double
+    let stackOffsetY: Double
+    let stackZIndex: Double
+    let visibleHeightRatio: Double
+}
+
+struct HandViewState: Equatable {
+    let cards: [HandCardViewState]
+    let selectedCard: HandCardViewState?
+    let isStackedPresentation: Bool
+    let pulledOutCardId: CardID?
+    let canSelectCards: Bool
+    let canSelectMainCard: Bool
+    let canSelectDiscardPayment: Bool
+    let blockingMessage: String?
+}
+
+struct DiscardPaymentProgressViewState: Identifiable, Equatable {
+    var id: String { "discard" }
+
+    let selectedCount: Int
+    let requiredCount: Int
+    let progressText: String
+    let isComplete: Bool
+}
+
+struct PlayFishPaymentViewState: Equatable {
+    let cardTitle: String
+    let targetText: String
+    let isTargetSelected: Bool
+    let discardProgress: DiscardPaymentProgressViewState?
+    let resourceProgress: [ResourcePaymentProgressViewState]
+    let canConfirm: Bool
+    let blockingMessage: String?
+}
+
 struct OceanSlotViewData: Identifiable, Equatable {
     var id: String {
         "\(address.playerId)-\(address.diveSite.rawValue)-\(address.rowIndex)"
@@ -25,6 +90,10 @@ struct OceanSlotViewData: Identifiable, Equatable {
     let highlightReasonText: String?
     let playFishPreview: PlayFishSlotPreview
     let resourceTokens: [SlotResourceTokenViewState]
+    let aspectRatio: Double
+    let isDropTarget: Bool
+    let isValidDropTarget: Bool
+    let dropTargetReasonText: String?
 }
 
 struct SlotResourceTokenViewState: Identifiable, Equatable {
@@ -93,6 +162,7 @@ enum PlayFishSlotAvailability: Equatable {
 enum PlayFishSlotUnavailableReason: Equatable {
     case noSelectedCard
     case occupied
+    case coverLengthTooShort
     case zoneMismatch
     case diveSiteMismatch
     case unsupportedRequirement
@@ -286,6 +356,7 @@ final class GameBoardViewModel: ObservableObject {
     @Published var selectedEggSources: [OceanSlotAddress] = []
     @Published var selectedYoungSources: [OceanSlotAddress] = []
     @Published private var selectedResourcePaymentTokens: Set<ResourcePaymentTokenKey> = []
+    @Published private(set) var draggingHandCardId: CardID?
 
     private let roomService: any RoomService
     private let cardCatalog: any CardCatalog
@@ -479,6 +550,52 @@ final class GameBoardViewModel: ObservableObject {
         }
     }
 
+    var handViewState: HandViewState {
+        guard let activePlayerState else {
+            return HandViewState(
+                cards: [],
+                selectedCard: nil,
+                isStackedPresentation: true,
+                pulledOutCardId: nil,
+                canSelectCards: false,
+                canSelectMainCard: false,
+                canSelectDiscardPayment: false,
+                blockingMessage: AppStrings.GameBoard.noActivePlayer
+            )
+        }
+
+        let canSelectCards = canSelectHandCards
+        let cards = activePlayerState.hand.enumerated().map { index, cardId in
+            handCardViewState(cardId: cardId, stackIndex: index, canSelectCards: canSelectCards)
+        }
+        return HandViewState(
+            cards: cards,
+            selectedCard: cards.first { $0.isSelected },
+            isStackedPresentation: true,
+            pulledOutCardId: selectedCardId,
+            canSelectCards: canSelectCards,
+            canSelectMainCard: canSelectCards,
+            canSelectDiscardPayment: canSelectDiscardPaymentCards,
+            blockingMessage: handBlockingMessage
+        )
+    }
+
+    var paymentProgressViewState: PlayFishPaymentViewState? {
+        guard let selectedCard else {
+            return nil
+        }
+
+        return PlayFishPaymentViewState(
+            cardTitle: cardTitle(selectedCard.id),
+            targetText: selectedTargetSlot.map(slotLocationText) ?? AppStrings.GameBoard.noTargetSelected,
+            isTargetSelected: selectedTargetSlotIsAvailable,
+            discardProgress: discardPaymentProgressViewState(for: selectedCard),
+            resourceProgress: resourcePaymentProgress,
+            canConfirm: canSubmitPlayFish,
+            blockingMessage: handBlockingMessage
+        )
+    }
+
     var oceanSlots: [OceanSlotViewData] {
         guard let activePlayerState else {
             return []
@@ -525,7 +642,7 @@ final class GameBoardViewModel: ObservableObject {
         return SelectedFishCardViewData(
             title: cardTitle(selectedCard.id),
             scoreText: "\(selectedCard.printedPoints)",
-            lengthText: AppStrings.GameBoard.cardLengthUnsupported,
+            lengthText: cardLengthText(selectedCard),
             allowedZonesText: selectedCard.allowedZones.map(AppStrings.oceanZoneName).joined(separator: "，"),
             requiredDiveSiteText: selectedCard.requiredDiveSiteColor.map(AppStrings.diveSiteColorName) ?? AppStrings.GameBoard.noLimit,
             costsText: selectedCard.costs.isEmpty ? AppStrings.GameBoard.noCost : selectedCard.costs.map(costText).joined(separator: "，"),
@@ -609,6 +726,7 @@ final class GameBoardViewModel: ObservableObject {
               selectedCard != nil,
               selectedTargetSlotIsAvailable,
               !hasBlockingPendingChoices,
+              state.activeDiveQueue == nil,
               (activePlayerState?.availableDivers ?? 0) > 0,
               !selectedCardHasUnsupportedUICost
         else {
@@ -625,12 +743,88 @@ final class GameBoardViewModel: ObservableObject {
         selectedCardId.flatMap { cardsById[$0] }
     }
 
+    private var canSelectHandCards: Bool {
+        state.phase == .playing
+            && activePlayerState != nil
+            && !hasBlockingPendingChoices
+            && state.activeDiveQueue == nil
+    }
+
+    private var canSelectDiscardPaymentCards: Bool {
+        guard canSelectHandCards,
+              selectedCardId != nil,
+              discardCostCount(for: selectedCard) != nil
+        else {
+            return false
+        }
+        return true
+    }
+
+    private var handBlockingMessage: String? {
+        if hasBlockingPendingChoices {
+            return AppStrings.GameBoard.resolveCurrentRewardFirst
+        }
+        if state.activeDiveQueue != nil {
+            return AppStrings.GameBoard.resolveCurrentDiveRewardFirst
+        }
+        if state.phase != .playing {
+            return AppStrings.GameBoard.chooseMainAction
+        }
+        if activePlayerState == nil {
+            return AppStrings.GameBoard.noActivePlayer
+        }
+        return nil
+    }
+
+    private func canSelectDiscardPaymentCard(_ cardId: CardID) -> Bool {
+        guard canSelectDiscardPaymentCards,
+              let selectedCardId,
+              cardId != selectedCardId,
+              activePlayerState?.hand.contains(cardId) == true
+        else {
+            return false
+        }
+        return true
+    }
+
+    private func discardPaymentProgressViewState(for card: Card) -> DiscardPaymentProgressViewState? {
+        guard let requiredCount = discardCostCount(for: card), requiredCount > 0 else {
+            return nil
+        }
+        let selectedCount = selectedDiscardCardIds.count
+        return DiscardPaymentProgressViewState(
+            selectedCount: selectedCount,
+            requiredCount: requiredCount,
+            progressText: AppStrings.GameBoard.discardPaymentProgressText(
+                selectedCount: selectedCount,
+                requiredCount: requiredCount
+            ),
+            isComplete: selectedCount == requiredCount
+        )
+    }
+
     private var displayResourceKinds: [ResourceKind] {
         [.egg, .young, .school]
     }
 
     private var resourcePaymentKinds: [ResourceKind] {
         [.egg, .young]
+    }
+
+    private var handStackOverlapOffsetX: Double {
+        74
+    }
+
+    private var handStackRestingOffsetY: Double {
+        72
+    }
+
+    private var handStackPulledOutOffsetY: Double {
+        -18
+    }
+
+    private var slotAspectRatio: Double {
+        0.72
     }
 
     private var selectedTargetSlotIsAvailable: Bool {
@@ -672,9 +866,22 @@ final class GameBoardViewModel: ObservableObject {
         removeInvalidSelections()
     }
 
-    func selectCard(_ cardId: CardID) {
-        guard !hasBlockingPendingChoices else {
-            errorMessage = AppStrings.GameBoard.resolveCurrentRewardFirst
+    func selectHandCard(_ cardId: CardID) {
+        guard canSelectHandCards else {
+            errorMessage = handBlockingMessage
+            return
+        }
+        guard activePlayerState?.hand.contains(cardId) == true else {
+            errorMessage = AppStrings.GameBoard.unknownCard
+            return
+        }
+        if selectedCardId == cardId {
+            clearPlayFishSelection()
+            errorMessage = nil
+            return
+        }
+        if selectedCardId != nil, canSelectDiscardPaymentCard(cardId) {
+            toggleDiscardPaymentCard(cardId)
             return
         }
         selectedCardId = cardId
@@ -682,6 +889,85 @@ final class GameBoardViewModel: ObservableObject {
         selectedDiscardCardIds = []
         clearResourcePaymentSelection()
         errorMessage = nil
+    }
+
+    @discardableResult
+    func beginDraggingHandCard(_ cardId: CardID) -> Bool {
+        guard canSelectHandCards else {
+            errorMessage = handBlockingMessage
+            return false
+        }
+        guard activePlayerState?.hand.contains(cardId) == true else {
+            errorMessage = AppStrings.GameBoard.unknownCard
+            return false
+        }
+        selectedCardId = cardId
+        selectedTargetSlot = nil
+        selectedDiscardCardIds = []
+        clearResourcePaymentSelection()
+        draggingHandCardId = cardId
+        errorMessage = nil
+        return true
+    }
+
+    func updateDragTarget(_ address: OceanSlotAddress?) {
+        guard draggingHandCardId != nil else {
+            return
+        }
+        guard let address,
+              let activePlayerState,
+              let slot = activePlayerState.ocean.slots.first(where: { $0.address == address })
+        else {
+            return
+        }
+        if !playFishSlotPreview(for: slot).isSelectable {
+            errorMessage = playFishSlotPreview(for: slot).message
+        }
+    }
+
+    @discardableResult
+    func dropHandCard(_ cardId: CardID? = nil, targetAddress: OceanSlotAddress) -> Bool {
+        guard let draggingCardId = cardId ?? draggingHandCardId else {
+            return false
+        }
+        if draggingHandCardId == nil {
+            guard beginDraggingHandCard(draggingCardId) else {
+                return false
+            }
+        } else if selectedCardId != draggingCardId {
+            guard beginDraggingHandCard(draggingCardId) else {
+                return false
+            }
+        }
+        guard let activePlayerState,
+              let slot = activePlayerState.ocean.slots.first(where: { $0.address == targetAddress })
+        else {
+            errorMessage = AppStrings.GameBoard.slotCannotPlayHere
+            return false
+        }
+
+        let preview = playFishSlotPreview(for: slot)
+        guard preview.isSelectable else {
+            selectedTargetSlot = nil
+            draggingHandCardId = nil
+            errorMessage = preview.message
+            return false
+        }
+
+        selectedTargetSlot = targetAddress
+        draggingHandCardId = nil
+        errorMessage = hasCompleteResourcePayment && hasCompleteDiscardPayment
+            ? AppStrings.GameBoard.dragPlayTargetSelected
+            : AppStrings.GameBoard.payCostsFirst
+        return true
+    }
+
+    func cancelHandCardDrag() {
+        draggingHandCardId = nil
+    }
+
+    func selectCard(_ cardId: CardID) {
+        selectHandCard(cardId)
     }
 
     func selectTargetSlot(_ address: OceanSlotAddress) {
@@ -701,9 +987,17 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     func toggleDiscardPaymentCard(_ cardId: CardID) {
+        guard canSelectDiscardPaymentCard(cardId),
+              let discardCount = discardCostCount(for: selectedCard)
+        else {
+            return
+        }
         if selectedDiscardCardIds.contains(cardId) {
             selectedDiscardCardIds.remove(cardId)
         } else {
+            guard selectedDiscardCardIds.count < discardCount else {
+                return
+            }
             selectedDiscardCardIds.insert(cardId)
         }
         errorMessage = nil
@@ -719,6 +1013,9 @@ final class GameBoardViewModel: ObservableObject {
 
     func toggleResourcePayment(address: OceanSlotAddress, kind: ResourceKind, tokenIndex: Int) {
         guard !hasBlockingPendingChoices else {
+            return
+        }
+        guard state.activeDiveQueue == nil else {
             return
         }
         guard isSelectingPlayFish else {
@@ -756,6 +1053,10 @@ final class GameBoardViewModel: ObservableObject {
     func submitPlayFish() {
         guard !hasBlockingPendingChoices else {
             errorMessage = AppStrings.GameBoard.resolveCurrentRewardFirst
+            return
+        }
+        guard state.activeDiveQueue == nil else {
+            errorMessage = AppStrings.GameBoard.resolveCurrentDiveRewardFirst
             return
         }
         guard let activePlayerId = state.activePlayerId else {
@@ -995,12 +1296,17 @@ final class GameBoardViewModel: ObservableObject {
         if let selectedCardId,
            !activePlayerState.hand.contains(selectedCardId) {
             self.selectedCardId = nil
+            draggingHandCardId = nil
             selectedDiscardCardIds = []
             clearResourcePaymentSelection()
         }
 
         selectedDiscardCardIds = selectedDiscardCardIds.filter {
             activePlayerState.hand.contains($0) && $0 != selectedCardId
+        }
+        if let discardCount = discardCostCount(for: selectedCard),
+           selectedDiscardCardIds.count > discardCount {
+            selectedDiscardCardIds = Set(selectedDiscardCardIds.sorted().prefix(discardCount))
         }
         selectedResourcePaymentTokens = selectedResourcePaymentTokens.filter { key in
             resourceTokenCount(key.kind, at: key.address, in: activePlayerState) > key.tokenIndex
@@ -1018,6 +1324,7 @@ final class GameBoardViewModel: ObservableObject {
     private func clearPlayFishSelection() {
         selectedCardId = nil
         selectedTargetSlot = nil
+        draggingHandCardId = nil
         selectedDiscardCardIds = []
         clearResourcePaymentSelection()
     }
@@ -1042,8 +1349,160 @@ final class GameBoardViewModel: ObservableObject {
         return card.costs.map(costText).joined(separator: "，")
     }
 
+    private func handCardViewState(
+        cardId: CardID,
+        stackIndex: Int,
+        canSelectCards: Bool
+    ) -> HandCardViewState {
+        let card = cardsById[cardId]
+        let displayName = cardTitle(cardId)
+        let costSummary = cardCostSummaryText(card)
+        let placementSummary = cardPlacementSummaryText(card)
+        let requiredDiveSite = cardRequiredDiveSiteText(card)
+        let unavailableReason = handCardUnavailableReason(card, canSelectCards: canSelectCards)
+        let isMainSelectedCard = selectedCardId == cardId
+        let isSelectedForDiscardPayment = selectedDiscardCardIds.contains(cardId)
+        let isDiscardPaymentSelectable = canSelectDiscardPaymentCard(cardId)
+        let isSelected = isMainSelectedCard
+        let isPlayable = canSelectCards && unavailableReason == nil
+        let isPulledOutFromStack = isMainSelectedCard
+        let highlightStyle: HandCardHighlightStyle
+        if isMainSelectedCard {
+            highlightStyle = .selected
+        } else if isPlayable {
+            highlightStyle = .playable
+        } else {
+            highlightStyle = .unavailable
+        }
+
+        return HandCardViewState(
+            cardId: cardId,
+            displayName: displayName,
+            shortName: displayName,
+            printedPoints: card?.printedPoints ?? 0,
+            lengthText: card.map(cardLengthText) ?? AppStrings.GameBoard.cardLengthUnsupported,
+            costSummaryText: costSummary,
+            placementSummaryText: placementSummary,
+            requiredDiveSiteText: requiredDiveSite,
+            abilitySummaryText: cardAbilitySummaryText(card),
+            isSelected: isSelected,
+            isMainSelectedCard: isMainSelectedCard,
+            isPlayable: isPlayable,
+            isDiscardPaymentSelectable: isDiscardPaymentSelectable,
+            isSelectedForDiscardPayment: isSelectedForDiscardPayment,
+            unavailableReasonText: unavailableReason,
+            highlightStyle: highlightStyle,
+            compactDisplayText: "\(costSummary) · \(displayName) · \(placementSummary)",
+            overlayMarkerText: isSelectedForDiscardPayment ? AppStrings.GameBoard.paymentSelectionMarker : nil,
+            stackIndex: stackIndex,
+            isPulledOutFromStack: isPulledOutFromStack,
+            stackOffsetX: Double(stackIndex) * handStackOverlapOffsetX,
+            stackOffsetY: isPulledOutFromStack ? handStackPulledOutOffsetY : handStackRestingOffsetY,
+            stackZIndex: isPulledOutFromStack ? 1_000 : Double(stackIndex),
+            visibleHeightRatio: isPulledOutFromStack ? 1 : 0.48
+        )
+    }
+
+    private func cardCostSummaryText(_ card: Card?) -> String {
+        guard let card else {
+            return AppStrings.GameBoard.unknownCard
+        }
+        return card.costs.isEmpty ? AppStrings.GameBoard.noCost : card.costs.map(costText).joined(separator: "，")
+    }
+
+    private func cardLengthText(_ card: Card) -> String {
+        "\(card.lengthCm) \(AppStrings.GameBoard.centimeters)"
+    }
+
+    private func cardPlacementSummaryText(_ card: Card?) -> String {
+        guard let card else {
+            return AppStrings.GameBoard.unknownCard
+        }
+        guard !card.allowedZones.isEmpty else {
+            return AppStrings.GameBoard.noLimit
+        }
+        return card.allowedZones.map(AppStrings.oceanZoneName).joined(separator: "，")
+    }
+
+    private func cardRequiredDiveSiteText(_ card: Card?) -> String {
+        guard let card else {
+            return AppStrings.GameBoard.unknownCard
+        }
+        return card.requiredDiveSiteColor.map(AppStrings.diveSiteColorName) ?? AppStrings.GameBoard.noLimit
+    }
+
+    private func cardAbilitySummaryText(_ card: Card?) -> String {
+        guard card != nil else {
+            return AppStrings.GameBoard.unknownCard
+        }
+        return AppStrings.GameBoard.unsupportedAbilityInUI
+    }
+
+    private func handCardUnavailableReason(_ card: Card?, canSelectCards: Bool) -> String? {
+        if let blockingMessage = handBlockingMessage {
+            return blockingMessage
+        }
+        guard canSelectCards else {
+            return AppStrings.GameBoard.notPlayable
+        }
+        guard let card else {
+            return AppStrings.GameBoard.unknownCard
+        }
+        if !card.requirements.isEmpty {
+            return AppStrings.GameBoard.unsupportedRequirementInUI
+        }
+        if cardHasUnsupportedCostInUI(card) {
+            return AppStrings.GameBoard.costUnsupportedInUI
+        }
+        if !hasEnoughDiscardPaymentCandidates(for: card) {
+            return AppStrings.GameBoard.discardPaymentInsufficient
+        }
+        if !hasEnoughResourcePaymentCandidates(for: card) {
+            return AppStrings.GameBoard.insufficientPaymentSources
+        }
+        if !hasAvailableTargetSlot(for: card) {
+            return AppStrings.GameBoard.noPlayableSlot
+        }
+        return nil
+    }
+
+    private func hasAvailableTargetSlot(for card: Card) -> Bool {
+        guard let activePlayerState else {
+            return false
+        }
+        return activePlayerState.ocean.slots.contains { slot in
+            playFishSlotPreview(for: slot, card: card).isSelectable
+        }
+    }
+
+    private func hasEnoughDiscardPaymentCandidates(for card: Card) -> Bool {
+        guard let discardCount = discardCostCount(for: card) else {
+            return true
+        }
+        return max((activePlayerState?.hand.count ?? 0) - 1, 0) >= discardCount
+    }
+
+    private func hasEnoughResourcePaymentCandidates(for card: Card) -> Bool {
+        resourcePaymentKinds.allSatisfy { kind in
+            resourceTokenCapacity(for: kind) >= resourceCostCount(kind, for: card)
+        }
+    }
+
+    private func resourceTokenCapacity(for kind: ResourceKind) -> Int {
+        guard let activePlayerState else {
+            return 0
+        }
+        return activePlayerState.ocean.slots.reduce(0) { partialResult, slot in
+            partialResult + resourceTokenCount(kind, in: slot)
+        }
+    }
+
     private func playFishSlotPreview(for slot: OceanSlot) -> PlayFishSlotPreview {
-        guard let card = selectedCard else {
+        playFishSlotPreview(for: slot, card: selectedCard)
+    }
+
+    private func playFishSlotPreview(for slot: OceanSlot, card: Card?) -> PlayFishSlotPreview {
+        guard let card else {
             return PlayFishSlotPreview(
                 availability: .unavailable,
                 unavailableReason: .noSelectedCard,
@@ -1056,14 +1515,6 @@ final class GameBoardViewModel: ObservableObject {
                 availability: .unavailable,
                 unavailableReason: .unsupportedRequirement,
                 message: AppStrings.GameBoard.unsupportedRequirementInUI
-            )
-        }
-
-        guard slot.content == .empty else {
-            return PlayFishSlotPreview(
-                availability: .unavailable,
-                unavailableReason: .occupied,
-                message: AppStrings.GameBoard.slotOccupied
             )
         }
 
@@ -1084,11 +1535,31 @@ final class GameBoardViewModel: ObservableObject {
             )
         }
 
+        if let existingLength = visibleFishLength(in: slot.content),
+           card.lengthCm <= existingLength {
+            return PlayFishSlotPreview(
+                availability: .unavailable,
+                unavailableReason: .coverLengthTooShort,
+                message: AppStrings.GameBoard.cannotCoverLongerOrSameFish
+            )
+        }
+
         return PlayFishSlotPreview(
             availability: .available,
             unavailableReason: nil,
-            message: AppStrings.GameBoard.slotAvailable
+            message: slot.content == .empty ? AppStrings.GameBoard.slotAvailable : AppStrings.GameBoard.canCoverShorterFish
         )
+    }
+
+    private func visibleFishLength(in content: OceanSlotContent) -> Int? {
+        switch content {
+        case .empty:
+            return nil
+        case let .forageFish(fish):
+            return fish.lengthCm
+        case let .fishCard(cardId):
+            return cardsById[cardId]?.lengthCm
+        }
     }
 
     private func slotContentText(_ content: OceanSlotContent) -> String {
@@ -1379,6 +1850,8 @@ final class GameBoardViewModel: ObservableObject {
 
     private func oceanSlotViewData(_ slot: OceanSlot) -> OceanSlotViewData {
         let isHighlighted = slotIsHighlightedByDiveQueue(slot)
+        let preview = playFishSlotPreview(for: slot)
+        let isDropTarget = draggingHandCardId != nil
         return OceanSlotViewData(
             address: slot.address,
             title: slotTitle(slot.address),
@@ -1388,8 +1861,14 @@ final class GameBoardViewModel: ObservableObject {
             isSelected: selectedTargetSlot == slot.address,
             isHighlightedByDiveQueue: isHighlighted,
             highlightReasonText: isHighlighted ? slotDiveQueueHighlightText(slot) : nil,
-            playFishPreview: playFishSlotPreview(for: slot),
-            resourceTokens: resourceTokens(for: slot)
+            playFishPreview: preview,
+            resourceTokens: resourceTokens(for: slot),
+            aspectRatio: slotAspectRatio,
+            isDropTarget: isDropTarget,
+            isValidDropTarget: isDropTarget && preview.isSelectable,
+            dropTargetReasonText: isDropTarget
+                ? (preview.isSelectable ? AppStrings.GameBoard.dragToPlayHere : "\(AppStrings.GameBoard.slotCannotPlayHere)：\(preview.message)")
+                : nil
         )
     }
 
@@ -1442,6 +1921,7 @@ final class GameBoardViewModel: ObservableObject {
         isSelected: Bool
     ) -> Bool {
         guard !hasBlockingPendingChoices,
+              state.activeDiveQueue == nil,
               isSelectingPlayFish,
               resourcePaymentKinds.contains(kind),
               resourceCostCount(kind, for: selectedCard) > 0
@@ -1963,6 +2443,8 @@ final class GameBoardViewModel: ObservableObject {
                 return "找不到目标格子。"
             case .targetSlotOccupied:
                 return "目标格子已被占用。"
+            case .targetFishTooLongToCover:
+                return AppStrings.GameBoard.cannotCoverLongerOrSameFish
             case .targetZoneNotAllowed:
                 return "所选鱼牌不能放入该海域层。"
             case .requiredDiveSiteColorMismatch:

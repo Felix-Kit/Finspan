@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct GameBoardView: View {
     @StateObject var viewModel: GameBoardViewModel
@@ -13,21 +14,38 @@ struct GameBoardView: View {
                 }
             } else {
                 NavigationStack {
-                    HStack(alignment: .top, spacing: 20) {
-                        turnPanel
-                            .frame(width: 260, alignment: .topLeading)
+                    ZStack(alignment: .bottomLeading) {
+                        HStack(alignment: .top, spacing: 14) {
+                            turnPanel
+                                .frame(width: 220, alignment: .topLeading)
 
-                        Divider()
+                            Divider()
 
-                        playFishPanel
-                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                            playFishPanel
+                                .frame(maxWidth: .infinity, alignment: .topLeading)
 
-                        Divider()
+                            Divider()
 
-                        eventLogPanel
-                            .frame(width: 360, alignment: .topLeading)
+                            eventLogPanel
+                                .frame(width: 300, alignment: .topLeading)
+                        }
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 20)
+
+                        FloatingHandView(
+                            viewState: viewModel.handViewState,
+                            onSelectCard: { cardId in
+                                viewModel.selectHandCard(cardId)
+                            },
+                            onBeginDrag: { cardId in
+                                viewModel.beginDraggingHandCard(cardId)
+                            },
+                            onCancelSelection: {
+                                viewModel.cancelPlayFishSelection()
+                            }
+                        )
+                        .background(Color.clear)
                     }
-                    .padding(24)
                     .navigationTitle(AppStrings.GameBoard.title)
                 }
             }
@@ -84,22 +102,12 @@ struct GameBoardView: View {
             VStack(alignment: .leading, spacing: 20) {
                 playerStrip
                 weeklyAchievementPanel
-                handPanel
-                selectedFishCardPanel
                 oceanPanel
                 paymentPanel
                 divePanel
                 pendingChoicePanel
-
-                Button {
-                    viewModel.submitPlayFish()
-                } label: {
-                    Label(AppStrings.GameBoard.playFish, systemImage: "rectangle.portrait.and.arrow.right")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(!viewModel.canSubmitPlayFish)
             }
+            .padding(.bottom, 230)
         }
     }
 
@@ -153,31 +161,6 @@ struct GameBoardView: View {
         }
     }
 
-    private var handPanel: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(AppStrings.GameBoard.hand)
-                .font(.title2.weight(.semibold))
-
-            if viewModel.handCards.isEmpty {
-                ContentUnavailableView(
-                    AppStrings.GameBoard.noActiveHand,
-                    systemImage: "rectangle.stack"
-                )
-            } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 10)], spacing: 10) {
-                    ForEach(viewModel.handCards) { card in
-                        Button {
-                            viewModel.selectCard(card.cardId)
-                        } label: {
-                            cardButton(card)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-        }
-    }
-
     private var oceanPanel: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(AppStrings.GameBoard.ocean)
@@ -190,7 +173,7 @@ struct GameBoardView: View {
                 )
             } else {
                 VStack(alignment: .leading, spacing: 10) {
-                    HStack(alignment: .top, spacing: 12) {
+                    HStack(alignment: .top, spacing: 14) {
                         ForEach(viewModel.oceanColumns) { column in
                             VStack(alignment: .leading, spacing: 10) {
                                 Text(column.title)
@@ -201,7 +184,7 @@ struct GameBoardView: View {
                                     slotPanel(slot)
                                 }
                             }
-                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                            .frame(maxWidth: .infinity, minHeight: 0, alignment: .topLeading)
                         }
                     }
 
@@ -219,87 +202,64 @@ struct GameBoardView: View {
         }
     }
 
-    @ViewBuilder
-    private var selectedFishCardPanel: some View {
-        if let card = viewModel.selectedFishCardDetails {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(AppStrings.GameBoard.selectedFishCard)
-                        .font(.title2.weight(.semibold))
-
-                    Spacer()
-
-                    Button {
-                        viewModel.cancelPlayFishSelection()
-                    } label: {
-                        Label(AppStrings.GameBoard.cancelPlayFishSelection, systemImage: "xmark.circle")
-                    }
-                    .buttonStyle(.bordered)
-                }
-
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 10)], spacing: 10) {
-                    selectedFishInfoRow(AppStrings.GameBoard.fishCardName, card.title)
-                    selectedFishInfoRow(AppStrings.GameBoard.score, card.scoreText)
-                    selectedFishInfoRow(AppStrings.GameBoard.length, card.lengthText)
-                    selectedFishInfoRow(AppStrings.GameBoard.allowedZones, card.allowedZonesText)
-                    selectedFishInfoRow(AppStrings.GameBoard.requiredDiveSite, card.requiredDiveSiteText)
-                    selectedFishInfoRow(AppStrings.GameBoard.costs, card.costsText)
-                }
-
-                if let unsupportedText = card.unsupportedText {
-                    Text("\(AppStrings.GameBoard.unsupportedItems)：\(unsupportedText)")
-                        .font(.callout.weight(.medium))
-                        .foregroundStyle(.red)
-                }
-            }
-            .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(.secondarySystemBackground))
-            )
-        }
-    }
-
     private var paymentPanel: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(AppStrings.GameBoard.actionPanel)
+            Text(AppStrings.GameBoard.playFishPayment)
                 .font(.title2.weight(.semibold))
 
-            if let prompt = viewModel.selectedCardPaymentPrompt {
-                Text(prompt)
-                    .font(.callout.weight(.medium))
-                    .foregroundStyle(viewModel.selectedCardHasUnsupportedUICost ? .red : .secondary)
-            }
+            if let payment = viewModel.paymentProgressViewState {
+                VStack(alignment: .leading, spacing: 10) {
+                    paymentLine(AppStrings.GameBoard.playFishPaymentCard, payment.cardTitle, isComplete: true)
+                    paymentLine(AppStrings.GameBoard.playFishPaymentTarget, payment.targetText, isComplete: payment.isTargetSelected)
 
-            if !viewModel.resourcePaymentProgress.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(AppStrings.GameBoard.resourcePaymentProgress)
-                        .font(.headline)
+                    if let discardProgress = payment.discardProgress {
+                        Text(discardProgress.progressText)
+                            .font(.callout.weight(.medium))
+                            .foregroundStyle(discardProgress.isComplete ? .green : .secondary)
+                    }
 
-                    ForEach(viewModel.resourcePaymentProgress) { progress in
+                    ForEach(payment.resourceProgress) { progress in
                         Text(progress.progressText)
                             .font(.callout.weight(.medium))
                             .foregroundStyle(progress.isComplete ? .green : .secondary)
                     }
-                }
-            }
 
-            if !viewModel.discardPaymentOptions.isEmpty {
-                Text(AppStrings.GameBoard.chooseDiscardCards)
-                    .font(.headline)
+                    if let blockingMessage = payment.blockingMessage {
+                        Text(blockingMessage)
+                            .font(.callout.weight(.medium))
+                            .foregroundStyle(.red)
+                    }
 
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 10)], spacing: 10) {
-                    ForEach(viewModel.discardPaymentOptions) { card in
+                    HStack(spacing: 10) {
                         Button {
-                            viewModel.toggleDiscardPaymentCard(card.cardId)
+                            viewModel.submitPlayFish()
                         } label: {
-                            cardButton(card)
+                            Label(AppStrings.GameBoard.confirmPlayFish, systemImage: "checkmark.circle")
+                                .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!payment.canConfirm)
+
+                        Button {
+                            viewModel.cancelPlayFishSelection()
+                        } label: {
+                            Label(AppStrings.GameBoard.cancelPlayFish, systemImage: "xmark.circle")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
                     }
                 }
+            } else {
+                Text(AppStrings.GameBoard.chooseMainAction)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
         }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(.secondarySystemBackground))
+        )
     }
 
     private var divePanel: some View {
@@ -446,6 +406,18 @@ struct GameBoardView: View {
         )
     }
 
+    private func paymentLine(_ label: String, _ value: String, isComplete: Bool) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text("\(label)：")
+                .font(.callout.weight(.semibold))
+            Text(value)
+                .font(.callout.weight(.medium))
+                .foregroundStyle(isComplete ? .green : .secondary)
+                .lineLimit(2)
+            Spacer(minLength: 0)
+        }
+    }
+
     private func cardButton(_ card: GameBoardCardViewData) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
@@ -477,85 +449,102 @@ struct GameBoardView: View {
     }
 
     private func slotPanel(_ slot: OceanSlotViewData) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button {
-                viewModel.selectTargetSlot(slot.address)
-            } label: {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(slot.title)
-                            .font(.headline)
+        GeometryReader { proxy in
+            VStack(alignment: .leading, spacing: 7) {
+                Button {
+                    viewModel.selectTargetSlot(slot.address)
+                } label: {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(slot.title)
+                                .font(.subheadline.weight(.semibold))
+                                .lineLimit(2)
+                            Spacer()
+                            if slot.isSelected {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                            }
+                        }
+
+                        Text(slot.subtitle)
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(slot.isOccupied ? .secondary : .primary)
                             .lineLimit(2)
-                        Spacer()
-                        if slot.isSelected {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(.green)
+
+                        Text(slot.playFishPreview.message)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(slot.playFishPreview.isSelectable ? .green : .secondary)
+                            .lineLimit(1)
+
+                        if let highlightReasonText = slot.highlightReasonText {
+                            Text(highlightReasonText)
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.orange)
+                                .lineLimit(2)
+                        }
+
+                        if let dropTargetReasonText = slot.dropTargetReasonText {
+                            Text(dropTargetReasonText)
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(slot.isValidDropTarget ? .green : .red)
+                                .lineLimit(2)
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+                .buttonStyle(.plain)
+                .disabled(!slot.playFishPreview.isSelectable)
 
-                    Text(slot.subtitle)
-                        .font(.callout.weight(.medium))
-                        .foregroundStyle(slot.isOccupied ? .secondary : .primary)
-                        .lineLimit(2)
+                Spacer(minLength: 0)
 
-                    Text(slot.playFishPreview.message)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(slot.playFishPreview.isSelectable ? .green : .secondary)
+                if slot.resourceTokens.isEmpty {
+                    Text(AppStrings.GameBoard.noResources)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
-
-                    if let highlightReasonText = slot.highlightReasonText {
-                        Text(highlightReasonText)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.orange)
-                            .lineLimit(2)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-            }
-            .buttonStyle(.plain)
-            .disabled(!slot.playFishPreview.isSelectable)
-
-            if slot.resourceTokens.isEmpty {
-                Text(AppStrings.GameBoard.noResources)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 48), spacing: 6)], alignment: .leading, spacing: 6) {
-                    ForEach(slot.resourceTokens) { token in
-                        Button {
-                            viewModel.toggleResourcePayment(
-                                address: token.address,
-                                kind: token.kind,
-                                tokenIndex: token.tokenIndex
-                            )
-                        } label: {
-                            resourceToken(token)
+                } else {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 38), spacing: 4)], alignment: .leading, spacing: 4) {
+                        ForEach(slot.resourceTokens) { token in
+                            Button {
+                                viewModel.toggleResourcePayment(
+                                    address: token.address,
+                                    kind: token.kind,
+                                    tokenIndex: token.tokenIndex
+                                )
+                            } label: {
+                                resourceToken(token)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(!token.isSelectable)
                         }
-                        .buttonStyle(.plain)
-                        .disabled(!token.isSelectable)
                     }
                 }
             }
+            .padding(10)
+            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, minHeight: 132, alignment: .topLeading)
+        .aspectRatio(slot.aspectRatio, contentMode: .fit)
+        .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(slotBackgroundColor(slot))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(slotBorderColor(slot), lineWidth: slot.isHighlightedByDiveQueue ? 2 : 1.5)
+                .stroke(slotBorderColor(slot), lineWidth: slot.isHighlightedByDiveQueue || slot.isDropTarget ? 2 : 1.5)
         )
+        .onDrop(of: [UTType.plainText], isTargeted: nil) { _ in
+            viewModel.dropHandCard(targetAddress: slot.address)
+        }
     }
 
     private func resourceToken(_ token: SlotResourceTokenViewState) -> some View {
-        VStack(spacing: 3) {
+        VStack(spacing: 2) {
             ZStack(alignment: .topTrailing) {
                 Text(token.iconText)
-                    .font(.caption.weight(.bold))
+                    .font(.caption2.weight(.bold))
                     .foregroundStyle(resourceTokenForegroundColor(token))
-                    .frame(width: 26, height: 26)
+                    .frame(width: 22, height: 22)
                     .background(
                         Circle()
                             .fill(resourceTokenBackgroundColor(token))
@@ -571,7 +560,7 @@ struct GameBoardView: View {
                     Text(marker)
                         .font(.caption2.weight(.black))
                         .foregroundStyle(.white)
-                        .frame(width: 14, height: 14)
+                        .frame(width: 12, height: 12)
                         .background(Circle().fill(Color.red))
                         .offset(x: 3, y: -3)
                 }
@@ -581,25 +570,30 @@ struct GameBoardView: View {
                 .font(.caption2.weight(.medium))
                 .foregroundStyle(token.isSelectable || token.isSelectedForPayment ? .primary : .secondary)
                 .lineLimit(1)
+                .minimumScaleFactor(0.75)
 
             if token.isSelectedForPayment {
                 Text(AppStrings.GameBoard.sourceSelectedCount)
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.red)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
             } else if let warning = token.warningText {
                 Text(warning)
                     .font(.caption2)
                     .foregroundStyle(.red)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.75)
             } else if let reason = token.unavailableReasonText {
                 Text(reason)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.75)
             }
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 5)
+        .padding(.horizontal, 4)
+        .padding(.vertical, 4)
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(token.isSelectedForPayment ? Color.red.opacity(0.12) : Color(.tertiarySystemBackground))
@@ -666,6 +660,9 @@ struct GameBoardView: View {
         if slot.isHighlightedByDiveQueue {
             return Color.orange.opacity(0.14)
         }
+        if slot.isDropTarget {
+            return slot.isValidDropTarget ? Color.green.opacity(0.12) : Color.red.opacity(0.08)
+        }
         if slot.isSelected {
             return Color.accentColor.opacity(0.16)
         }
@@ -675,6 +672,9 @@ struct GameBoardView: View {
     private func slotBorderColor(_ slot: OceanSlotViewData) -> Color {
         if slot.isHighlightedByDiveQueue {
             return .orange
+        }
+        if slot.isDropTarget {
+            return slot.isValidDropTarget ? .green : .red.opacity(0.55)
         }
         if slot.isSelected {
             return .accentColor
@@ -719,19 +719,6 @@ struct GameBoardView: View {
             return .green
         }
         return .primary
-    }
-
-    private func selectedFishInfoRow(_ label: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.callout.weight(.medium))
-                .lineLimit(3)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     private func resourceSourceSection(

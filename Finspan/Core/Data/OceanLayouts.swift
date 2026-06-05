@@ -44,22 +44,22 @@ enum SampleOceanLayout {
         [
             ForageFish(
                 forageFishId: "sample-forage-blue-row-4",
-                name: "印刷小鱼一",
-                lengthCm: 5,
+                name: "Catalina Goby",
+                lengthCm: 1,
                 diveSite: .blue,
                 rowIndex: 4
             ),
             ForageFish(
                 forageFishId: "sample-forage-purple-row-3",
-                name: "印刷小鱼二",
-                lengthCm: 8,
+                name: "Showy Bristlemouth",
+                lengthCm: 3,
                 diveSite: .purple,
                 rowIndex: 3
             ),
             ForageFish(
                 forageFishId: "sample-forage-green-row-1",
-                name: "印刷小鱼三",
-                lengthCm: 12,
+                name: "Glasshead Grenadier",
+                lengthCm: 9,
                 diveSite: .green,
                 rowIndex: 1
             )

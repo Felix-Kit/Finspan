@@ -80,6 +80,492 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertNotEqual(Self.slotAddress, Self.resourceSourceAddress)
     }
 
+    func testHandViewStateIsGeneratedFromActivePlayerHand() {
+        let service = makeService(hand: ["starter-fish-1", "fish-1"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.handViewState.cards.map(\.cardId), ["starter-fish-1", "fish-1"])
+        XCTAssertEqual(viewModel.handViewState.cards.first?.costSummaryText, AppStrings.GameBoard.noCost)
+        XCTAssertEqual(viewModel.handViewState.cards.first?.abilitySummaryText, AppStrings.GameBoard.unsupportedAbilityInUI)
+    }
+
+    func testHandViewStateUsesStackedPresentationByDefault() {
+        let service = makeService(hand: ["starter-fish-1", "fish-2", "fish-3"])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let hand = viewModel.handViewState
+
+        XCTAssertTrue(hand.isStackedPresentation)
+        XCTAssertNil(hand.pulledOutCardId)
+        XCTAssertEqual(hand.cards.map(\.stackIndex), [0, 1, 2])
+        XCTAssertEqual(hand.cards.map(\.stackOffsetX), [0, 74, 148])
+        XCTAssertEqual(hand.cards.map(\.stackOffsetY), [72, 72, 72])
+        XCTAssertEqual(hand.cards.map(\.stackZIndex), [0, 1, 2])
+        XCTAssertTrue(hand.cards.allSatisfy { !$0.isPulledOutFromStack })
+        XCTAssertTrue(hand.cards.allSatisfy { $0.visibleHeightRatio == 0.48 })
+    }
+
+    func testSelectedHandCardIsPulledOutFromSameStackCard() {
+        let service = makeService(hand: ["starter-fish-1", "fish-2", "fish-3"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectHandCard("fish-2")
+
+        let hand = viewModel.handViewState
+        let selectedCardsInStack = hand.cards.filter { $0.cardId == "fish-2" }
+        XCTAssertEqual(hand.cards.count, 3)
+        XCTAssertEqual(selectedCardsInStack.count, 1)
+        XCTAssertEqual(hand.selectedCard?.cardId, "fish-2")
+        XCTAssertEqual(hand.pulledOutCardId, "fish-2")
+        XCTAssertTrue(selectedCardsInStack[0].isPulledOutFromStack)
+        XCTAssertEqual(selectedCardsInStack[0].stackOffsetY, -18)
+        XCTAssertEqual(selectedCardsInStack[0].stackZIndex, 1_000)
+        XCTAssertEqual(selectedCardsInStack[0].visibleHeightRatio, 1)
+    }
+
+    func testSwitchingSelectedHandCardReturnsOldCardAndPullsOutNewCard() {
+        let service = makeService(hand: ["starter-fish-1", "fish-2", "fish-3"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectHandCard("fish-2")
+        viewModel.selectHandCard("fish-3")
+
+        let cards = Dictionary(uniqueKeysWithValues: viewModel.handViewState.cards.map { ($0.cardId, $0) })
+        XCTAssertEqual(viewModel.handViewState.pulledOutCardId, "fish-3")
+        XCTAssertFalse(cards["fish-2"]?.isPulledOutFromStack ?? true)
+        XCTAssertEqual(cards["fish-2"]?.stackOffsetY, 72)
+        XCTAssertTrue(cards["fish-3"]?.isPulledOutFromStack ?? false)
+        XCTAssertEqual(cards["fish-3"]?.stackOffsetY, -18)
+    }
+
+    func testCancelingSelectionReturnsHandToDefaultStack() {
+        let service = makeService(hand: ["starter-fish-1", "fish-2"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectHandCard("fish-2")
+        viewModel.cancelPlayFishSelection()
+
+        XCTAssertNil(viewModel.handViewState.pulledOutCardId)
+        XCTAssertNil(viewModel.handViewState.selectedCard)
+        XCTAssertTrue(viewModel.handViewState.cards.allSatisfy { !$0.isPulledOutFromStack })
+        XCTAssertEqual(viewModel.handViewState.cards.map(\.stackOffsetY), [72, 72])
+    }
+
+    func testBeginDraggingHandCardSelectsCardAndClearsTargetAndPaymentSelection() {
+        let service = makeService(hand: ["fish-2", "fish-6"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectCard("fish-2")
+        viewModel.selectTargetSlot(Self.slotAddress)
+        viewModel.toggleResourcePayment(address: Self.resourceSourceAddress, kind: .egg, tokenIndex: 0)
+
+        XCTAssertTrue(viewModel.beginDraggingHandCard("fish-6"))
+
+        XCTAssertEqual(viewModel.selectedCardId, "fish-6")
+        XCTAssertNil(viewModel.selectedTargetSlot)
+        XCTAssertTrue(viewModel.selectedEggSources.isEmpty)
+        XCTAssertTrue(viewModel.selectedYoungSources.isEmpty)
+        XCTAssertEqual(viewModel.draggingHandCardId, "fish-6")
+    }
+
+    func testDroppingHandCardOnLegalSlotSelectsTargetSlot() {
+        let service = makeService(hand: ["fish-6"], emptySlots: [])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertTrue(viewModel.beginDraggingHandCard("fish-6"))
+
+        let dropTarget = oceanSlot(in: viewModel, address: Self.forageTargetAddress)
+        XCTAssertTrue(dropTarget.isDropTarget)
+        XCTAssertTrue(dropTarget.isValidDropTarget)
+        XCTAssertEqual(dropTarget.dropTargetReasonText, AppStrings.GameBoard.dragToPlayHere)
+
+        XCTAssertTrue(viewModel.dropHandCard(targetAddress: Self.forageTargetAddress))
+
+        XCTAssertEqual(viewModel.selectedCardId, "fish-6")
+        XCTAssertEqual(viewModel.selectedTargetSlot, Self.forageTargetAddress)
+        XCTAssertNil(viewModel.draggingHandCardId)
+    }
+
+    func testDroppingHandCardOnIllegalSlotKeepsCardSelectedWithoutTarget() {
+        let service = makeService(hand: ["starter-fish-1"], emptySlots: [])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertTrue(viewModel.beginDraggingHandCard("starter-fish-1"))
+
+        let dropTarget = oceanSlot(in: viewModel, address: Self.forageTargetAddress)
+        XCTAssertTrue(dropTarget.isDropTarget)
+        XCTAssertFalse(dropTarget.isValidDropTarget)
+        XCTAssertEqual(
+            dropTarget.dropTargetReasonText,
+            "\(AppStrings.GameBoard.slotCannotPlayHere)：\(AppStrings.GameBoard.cannotCoverLongerOrSameFish)"
+        )
+
+        XCTAssertFalse(viewModel.dropHandCard(targetAddress: Self.forageTargetAddress))
+
+        XCTAssertEqual(viewModel.selectedCardId, "starter-fish-1")
+        XCTAssertNil(viewModel.selectedTargetSlot)
+        XCTAssertNil(viewModel.draggingHandCardId)
+        XCTAssertEqual(viewModel.errorMessage, AppStrings.GameBoard.cannotCoverLongerOrSameFish)
+    }
+
+    func testPendingChoicePreventsDragPlayStart() {
+        let choice = pendingChoice(kind: .placeEgg)
+        let service = makeService(hand: ["starter-fish-1"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertFalse(viewModel.beginDraggingHandCard("starter-fish-1"))
+
+        XCTAssertNil(viewModel.selectedCardId)
+        XCTAssertNil(viewModel.draggingHandCardId)
+        XCTAssertEqual(viewModel.errorMessage, AppStrings.GameBoard.resolveCurrentRewardFirst)
+    }
+
+    func testActiveDiveQueuePreventsDragPlayStart() {
+        let service = makeService(
+            hand: ["starter-fish-1"],
+            activeDiveQueue: activeDiveQueue(diveSite: .blue, source: .printedDiveBonus(.sunlit))
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertFalse(viewModel.beginDraggingHandCard("starter-fish-1"))
+
+        XCTAssertNil(viewModel.selectedCardId)
+        XCTAssertNil(viewModel.draggingHandCardId)
+        XCTAssertEqual(viewModel.errorMessage, AppStrings.GameBoard.resolveCurrentDiveRewardFirst)
+    }
+
+    func testHandCardsCanBeSelectedWithoutPendingChoice() {
+        let service = makeService(hand: ["starter-fish-1"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertTrue(viewModel.handViewState.canSelectCards)
+        XCTAssertNil(viewModel.handViewState.blockingMessage)
+    }
+
+    func testHandCardsCannotBeSelectedWithPendingChoice() {
+        let choice = pendingChoice(kind: .placeEgg)
+        let service = makeService(hand: ["starter-fish-1"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertFalse(viewModel.handViewState.canSelectCards)
+        XCTAssertEqual(viewModel.handViewState.blockingMessage, AppStrings.GameBoard.resolveCurrentRewardFirst)
+
+        viewModel.selectCard("starter-fish-1")
+
+        XCTAssertNil(viewModel.selectedCardId)
+    }
+
+    func testPendingChoicePreventsDiscardPaymentSelection() {
+        let choice = pendingChoice(kind: .placeEgg)
+        let service = makeService(hand: ["fish-1", "fish-6"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+        viewModel.selectedCardId = "fish-1"
+
+        viewModel.toggleDiscardPaymentCard("fish-6")
+
+        XCTAssertTrue(viewModel.selectedDiscardCardIds.isEmpty)
+    }
+
+    func testHandCardsCannotBeSelectedWithActiveDiveQueue() {
+        let service = makeService(
+            hand: ["starter-fish-1"],
+            activeDiveQueue: activeDiveQueue(diveSite: .blue, source: .printedDiveBonus(.sunlit))
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertFalse(viewModel.handViewState.canSelectCards)
+        XCTAssertEqual(viewModel.handViewState.blockingMessage, AppStrings.GameBoard.resolveCurrentDiveRewardFirst)
+
+        viewModel.selectCard("starter-fish-1")
+
+        XCTAssertNil(viewModel.selectedCardId)
+    }
+
+    func testActiveDiveQueuePreventsDiscardPaymentSelection() {
+        let service = makeService(
+            hand: ["fish-1", "fish-6"],
+            activeDiveQueue: activeDiveQueue(diveSite: .blue, source: .printedDiveBonus(.sunlit))
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        viewModel.selectedCardId = "fish-1"
+
+        viewModel.toggleDiscardPaymentCard("fish-6")
+
+        XCTAssertTrue(viewModel.selectedDiscardCardIds.isEmpty)
+    }
+
+    func testPlayableHandCardIsMarkedPlayable() {
+        let service = makeService(hand: ["starter-fish-1"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let card = viewModel.handViewState.cards.first
+
+        XCTAssertEqual(card?.isPlayable, true)
+        XCTAssertEqual(card?.highlightStyle, .playable)
+        XCTAssertNil(card?.unavailableReasonText)
+    }
+
+    func testUnavailableHandCardHasReason() {
+        let service = makeService(hand: ["fish-5"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let card = viewModel.handViewState.cards.first
+
+        XCTAssertEqual(card?.isPlayable, false)
+        XCTAssertEqual(card?.highlightStyle, .unavailable)
+        XCTAssertEqual(card?.unavailableReasonText, AppStrings.GameBoard.unsupportedRequirementInUI)
+    }
+
+    func testSelectingHandCardUpdatesSelectedCard() {
+        let service = makeService(hand: ["starter-fish-1"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectCard("starter-fish-1")
+
+        XCTAssertEqual(viewModel.selectedCardId, "starter-fish-1")
+        XCTAssertEqual(viewModel.handViewState.selectedCard?.cardId, "starter-fish-1")
+        XCTAssertEqual(viewModel.handViewState.cards.first?.highlightStyle, .selected)
+    }
+
+    func testSelectingMainCardInitializesTargetAndPaymentSelection() {
+        let service = makeService(hand: ["fish-2"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectCard("fish-2")
+
+        XCTAssertEqual(viewModel.selectedCardId, "fish-2")
+        XCTAssertNil(viewModel.selectedTargetSlot)
+        XCTAssertTrue(viewModel.selectedDiscardCardIds.isEmpty)
+        XCTAssertTrue(viewModel.selectedEggSources.isEmpty)
+        XCTAssertTrue(viewModel.selectedYoungSources.isEmpty)
+    }
+
+    func testDiscardCostCardMarksOtherHandCardsAsDiscardPaymentSelectable() {
+        let service = makeService(hand: ["fish-1", "fish-6"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectCard("fish-1")
+
+        let cards = Dictionary(uniqueKeysWithValues: viewModel.handViewState.cards.map { ($0.cardId, $0) })
+        XCTAssertFalse(cards["fish-1"]?.isDiscardPaymentSelectable ?? true)
+        XCTAssertTrue(cards["fish-6"]?.isDiscardPaymentSelectable ?? false)
+        XCTAssertEqual(cards["fish-6"]?.overlayMarkerText, nil)
+    }
+
+    func testClickingOtherHandCardSelectsAndCancelsDiscardPayment() {
+        let service = makeService(hand: ["fish-1", "fish-6"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectHandCard("fish-1")
+        viewModel.selectHandCard("fish-6")
+
+        XCTAssertEqual(viewModel.selectedDiscardCardIds, ["fish-6"])
+        XCTAssertTrue(viewModel.handViewState.cards.first { $0.cardId == "fish-6" }?.isSelectedForDiscardPayment ?? false)
+        XCTAssertEqual(viewModel.handViewState.cards.first { $0.cardId == "fish-6" }?.overlayMarkerText, AppStrings.GameBoard.paymentSelectionMarker)
+
+        viewModel.selectHandCard("fish-6")
+
+        XCTAssertTrue(viewModel.selectedDiscardCardIds.isEmpty)
+    }
+
+    func testDiscardPaymentSelectionCannotExceedCost() {
+        let service = makeService(hand: ["fish-1", "fish-6", "starter-fish-1"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectHandCard("fish-1")
+        viewModel.selectHandCard("fish-6")
+        viewModel.selectHandCard("starter-fish-1")
+
+        XCTAssertEqual(viewModel.selectedDiscardCardIds.count, 1)
+    }
+
+    func testDiscardPaymentShortagePreventsPlayableCard() {
+        let service = makeService(hand: ["fish-1"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let card = viewModel.handViewState.cards.first
+
+        XCTAssertEqual(card?.isPlayable, false)
+        XCTAssertEqual(card?.unavailableReasonText, AppStrings.GameBoard.discardPaymentInsufficient)
+    }
+
+    func testDiscardPaymentProgressShowsSelectedCount() {
+        let service = makeService(hand: ["fish-1", "fish-6"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectHandCard("fish-1")
+        viewModel.selectHandCard("fish-6")
+
+        XCTAssertEqual(
+            viewModel.paymentProgressViewState?.discardProgress?.progressText,
+            AppStrings.GameBoard.discardPaymentProgressText(selectedCount: 1, requiredCount: 1)
+        )
+        XCTAssertEqual(viewModel.paymentProgressViewState?.discardProgress?.isComplete, true)
+    }
+
+    func testUnifiedPaymentPanelShowsResourceProgress() {
+        let service = makeService(hand: ["fish-2"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectHandCard("fish-2")
+        viewModel.toggleResourcePayment(address: Self.resourceSourceAddress, kind: .egg, tokenIndex: 0)
+
+        XCTAssertEqual(
+            viewModel.paymentProgressViewState?.resourceProgress.map(\.progressText),
+            [AppStrings.GameBoard.resourcePaymentProgressText(resourceName: "鱼卵", selectedCount: 1, requiredCount: 1)]
+        )
+    }
+
+    func testUnifiedPaymentPanelTargetProgressUpdatesAfterSlotSelection() {
+        let service = makeService(hand: ["starter-fish-1"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectHandCard("starter-fish-1")
+        XCTAssertEqual(viewModel.paymentProgressViewState?.targetText, AppStrings.GameBoard.noTargetSelected)
+        XCTAssertEqual(viewModel.paymentProgressViewState?.isTargetSelected, false)
+
+        viewModel.selectTargetSlot(Self.slotAddress)
+
+        XCTAssertEqual(viewModel.paymentProgressViewState?.targetText, "蓝色潜水点 · 阳光层 1 / 顶行")
+        XCTAssertEqual(viewModel.paymentProgressViewState?.isTargetSelected, true)
+    }
+
+    func testSelectingDifferentHandCardClearsTargetSlotAndPaymentSelection() {
+        let service = makeService(hand: ["fish-2", "fish-3"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectCard("fish-2")
+        viewModel.selectTargetSlot(Self.slotAddress)
+        viewModel.toggleResourcePayment(address: Self.resourceSourceAddress, kind: .egg, tokenIndex: 0)
+
+        viewModel.selectCard("fish-3")
+
+        XCTAssertEqual(viewModel.selectedCardId, "fish-3")
+        XCTAssertNil(viewModel.selectedTargetSlot)
+        XCTAssertTrue(viewModel.selectedEggSources.isEmpty)
+        XCTAssertTrue(viewModel.selectedYoungSources.isEmpty)
+    }
+
+    func testSelectingDifferentMainCardClearsDiscardAndResourcePaymentSelection() {
+        let service = makeService(hand: ["fish-2", "fish-3", "fish-6"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectHandCard("fish-2")
+        viewModel.selectTargetSlot(Self.slotAddress)
+        viewModel.selectedDiscardCardIds = ["fish-6"]
+        viewModel.toggleResourcePayment(address: Self.resourceSourceAddress, kind: .egg, tokenIndex: 0)
+
+        viewModel.selectHandCard("fish-3")
+
+        XCTAssertEqual(viewModel.selectedCardId, "fish-3")
+        XCTAssertNil(viewModel.selectedTargetSlot)
+        XCTAssertTrue(viewModel.selectedDiscardCardIds.isEmpty)
+        XCTAssertTrue(viewModel.selectedEggSources.isEmpty)
+        XCTAssertTrue(viewModel.selectedYoungSources.isEmpty)
+    }
+
+    func testTargetDiscardAndResourcePaymentsCompleteEnablesPlayFish() {
+        let cardCatalog = TestCardCatalog(
+            fishCards: [
+                Card(
+                    id: "fish-mixed-payment",
+                    name: "Fish Mixed Payment",
+                    costs: [
+                        .discardCards(count: 1),
+                        .resource(kind: .egg, count: 1),
+                        .resource(kind: .young, count: 1)
+                    ],
+                    allowedZones: [.sunlit]
+                )
+            ]
+        )
+        let service = makeService(hand: ["fish-mixed-payment", "fish-6"])
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: cardCatalog)
+
+        viewModel.selectHandCard("fish-mixed-payment")
+        viewModel.selectTargetSlot(Self.slotAddress)
+        viewModel.selectHandCard("fish-6")
+        viewModel.toggleResourcePayment(address: Self.resourceSourceAddress, kind: .egg, tokenIndex: 0)
+        viewModel.toggleResourcePayment(address: Self.resourceSourceAddress, kind: .young, tokenIndex: 0)
+
+        XCTAssertTrue(viewModel.canSubmitPlayFish)
+        XCTAssertEqual(viewModel.paymentProgressViewState?.canConfirm, true)
+    }
+
+    func testSubmitPlayFishBuildsDiscardEggAndYoungPaymentFromUnifiedSelection() {
+        let cardCatalog = TestCardCatalog(
+            fishCards: [
+                Card(
+                    id: "fish-mixed-payment",
+                    name: "Fish Mixed Payment",
+                    costs: [
+                        .discardCards(count: 1),
+                        .resource(kind: .egg, count: 1),
+                        .resource(kind: .young, count: 1)
+                    ],
+                    allowedZones: [.sunlit]
+                )
+            ]
+        )
+        let service = makeService(hand: ["fish-mixed-payment", "fish-6"])
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: cardCatalog)
+
+        viewModel.selectHandCard("fish-mixed-payment")
+        viewModel.selectTargetSlot(Self.slotAddress)
+        viewModel.selectHandCard("fish-6")
+        viewModel.toggleResourcePayment(address: Self.resourceSourceAddress, kind: .egg, tokenIndex: 0)
+        viewModel.toggleResourcePayment(address: Self.resourceSourceAddress, kind: .young, tokenIndex: 0)
+        viewModel.submitPlayFish()
+
+        guard case let .playFish(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected playFish command.")
+        }
+        XCTAssertEqual(payload.cardId, "fish-mixed-payment")
+        XCTAssertEqual(payload.targetSlot, Self.slotAddress)
+        XCTAssertEqual(payload.payment.discardedCardIds, ["fish-6"])
+        XCTAssertEqual(payload.payment.eggSources, [Self.resourceSourceAddress])
+        XCTAssertEqual(payload.payment.youngSources, [Self.resourceSourceAddress])
+    }
+
+    func testCancelingHandSelectionClearsCardTargetAndPaymentSelection() {
+        let service = makeService(hand: ["fish-2"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectCard("fish-2")
+        viewModel.selectTargetSlot(Self.slotAddress)
+        viewModel.toggleResourcePayment(address: Self.resourceSourceAddress, kind: .egg, tokenIndex: 0)
+        viewModel.cancelPlayFishSelection()
+
+        XCTAssertNil(viewModel.selectedCardId)
+        XCTAssertNil(viewModel.selectedTargetSlot)
+        XCTAssertTrue(viewModel.selectedEggSources.isEmpty)
+        XCTAssertTrue(viewModel.selectedYoungSources.isEmpty)
+        XCTAssertNil(viewModel.handViewState.selectedCard)
+    }
+
+    func testSelectedHandCardStillDrivesSlotPreview() {
+        let service = makeService(hand: ["fish-1", "fish-6"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectCard("fish-1")
+
+        let slot = oceanSlot(in: viewModel, address: Self.slotAddress)
+        XCTAssertTrue(slot.playFishPreview.isSelectable)
+        XCTAssertEqual(slot.playFishPreview.message, AppStrings.GameBoard.slotAvailable)
+    }
+
+    func testSubmitPlayFishClearsHandSelection() {
+        let service = makeService(hand: ["starter-fish-1"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectCard("starter-fish-1")
+        viewModel.selectTargetSlot(Self.slotAddress)
+        viewModel.submitPlayFish()
+
+        XCTAssertNil(viewModel.selectedCardId)
+        XCTAssertNil(viewModel.selectedTargetSlot)
+        XCTAssertNil(viewModel.handViewState.selectedCard)
+    }
+
     func testDiscardCostCardKeepsLegalEmptySlotAvailable() {
         let service = makeService(hand: ["fish-1", "fish-6"])
         let viewModel = GameBoardViewModel(roomService: service)
@@ -105,16 +591,53 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.selectedTargetSlot, Self.slotAddress)
     }
 
-    func testOccupiedSlotPreviewIsUnavailable() {
-        let service = makeService(hand: ["fish-1"], emptySlots: [])
+    func testForageFishSlotPreviewIsAvailableWhenSelectedFishIsLonger() {
+        let service = makeService(hand: ["fish-6"], emptySlots: [])
         let viewModel = GameBoardViewModel(roomService: service)
 
-        viewModel.selectCard("fish-1")
+        viewModel.selectCard("fish-6")
+
+        let slot = oceanSlot(in: viewModel, address: Self.forageTargetAddress)
+        XCTAssertEqual(slot.playFishPreview.availability, .available)
+        XCTAssertNil(slot.playFishPreview.unavailableReason)
+        XCTAssertEqual(slot.playFishPreview.message, AppStrings.GameBoard.canCoverShorterFish)
+    }
+
+    func testForageFishSlotPreviewIsUnavailableWhenSelectedFishIsNotLonger() {
+        let service = makeService(hand: ["starter-fish-1"], emptySlots: [])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectCard("starter-fish-1")
 
         let slot = oceanSlot(in: viewModel, address: Self.forageTargetAddress)
         XCTAssertEqual(slot.playFishPreview.availability, .unavailable)
-        XCTAssertEqual(slot.playFishPreview.unavailableReason, .occupied)
-        XCTAssertEqual(slot.playFishPreview.message, AppStrings.GameBoard.slotOccupied)
+        XCTAssertEqual(slot.playFishPreview.unavailableReason, .coverLengthTooShort)
+        XCTAssertEqual(slot.playFishPreview.message, AppStrings.GameBoard.cannotCoverLongerOrSameFish)
+    }
+
+    func testFishCardSlotPreviewIsAvailableWhenSelectedFishIsLonger() {
+        let service = makeService(hand: ["fish-6"], emptySlots: [Self.slotAddress])
+        setContent(.fishCard("starter-fish-1"), at: Self.slotAddress, in: service)
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectCard("fish-6")
+
+        let slot = oceanSlot(in: viewModel, address: Self.slotAddress)
+        XCTAssertEqual(slot.playFishPreview.availability, .available)
+        XCTAssertEqual(slot.playFishPreview.message, AppStrings.GameBoard.canCoverShorterFish)
+    }
+
+    func testFishCardSlotPreviewIsUnavailableWhenSelectedFishIsNotLonger() {
+        let service = makeService(hand: ["starter-fish-1"], emptySlots: [Self.slotAddress])
+        setContent(.fishCard("fish-6"), at: Self.slotAddress, in: service)
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectCard("starter-fish-1")
+
+        let slot = oceanSlot(in: viewModel, address: Self.slotAddress)
+        XCTAssertEqual(slot.playFishPreview.availability, .unavailable)
+        XCTAssertEqual(slot.playFishPreview.unavailableReason, .coverLengthTooShort)
+        XCTAssertEqual(slot.playFishPreview.message, AppStrings.GameBoard.cannotCoverLongerOrSameFish)
     }
 
     func testZoneMismatchPreviewIsUnavailable() {
@@ -158,6 +681,7 @@ final class GameBoardViewModelTests: XCTestCase {
         let viewModel = GameBoardViewModel(roomService: service)
 
         XCTAssertEqual(viewModel.oceanSlots.count, 18)
+        XCTAssertTrue(viewModel.oceanSlots.allSatisfy { $0.aspectRatio == 0.72 })
         XCTAssertEqual(viewModel.oceanColumns.count, 3)
         XCTAssertEqual(viewModel.oceanColumns.map(\.slots.count), [6, 6, 6])
         XCTAssertEqual(viewModel.oceanColumns[0].diveSite, .blue)
@@ -1416,7 +1940,11 @@ final class GameBoardViewModelTests: XCTestCase {
                     unavailableReason: .noSelectedCard,
                     message: ""
                 ),
-                resourceTokens: []
+                resourceTokens: [],
+                aspectRatio: 0.72,
+                isDropTarget: false,
+                isValidDropTarget: false,
+                dropTargetReasonText: nil
             )
         }
         return slot
@@ -1447,6 +1975,27 @@ final class GameBoardViewModelTests: XCTestCase {
             )
         }
         return token
+    }
+
+    private func setContent(
+        _ content: OceanSlotContent,
+        at address: OceanSlotAddress,
+        in service: CapturingRoomService
+    ) {
+        guard var playerState = service.gameState.playerGameStates[address.playerId],
+              let slotIndex = playerState.ocean.slots.firstIndex(where: { $0.address == address })
+        else {
+            return
+        }
+
+        playerState.ocean.slots[slotIndex].content = content
+        service.gameState.playerGameStates[address.playerId] = playerState
+        service.snapshot = RoomSnapshot(
+            id: service.snapshot.id,
+            players: service.snapshot.players,
+            state: service.gameState,
+            events: service.snapshot.events
+        )
     }
 }
 

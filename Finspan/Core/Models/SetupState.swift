@@ -99,7 +99,24 @@ struct ForageFish: Codable, Equatable, Sendable {
 }
 
 struct ConsumedFish: Codable, Equatable, Sendable {
-    var cardId: CardID
+    var cardId: CardID?
+    var forageFishId: ForageFishID?
+    var name: String?
+    var lengthCm: Int?
+
+    init(cardId: CardID, lengthCm: Int? = nil) {
+        self.cardId = cardId
+        self.forageFishId = nil
+        self.name = nil
+        self.lengthCm = lengthCm
+    }
+
+    init(forageFish: ForageFish) {
+        cardId = nil
+        forageFishId = forageFish.forageFishId
+        name = forageFish.name
+        lengthCm = forageFish.lengthCm
+    }
 }
 
 enum OceanSlotContent: Codable, Equatable, Sendable {
