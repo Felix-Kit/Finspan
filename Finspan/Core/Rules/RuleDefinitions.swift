@@ -17,6 +17,7 @@ extension ResourceKind {
 enum Cost: Codable, Equatable, Sendable {
     case discardCards(count: Int)
     case resource(kind: ResourceKind, count: Int)
+    case coverShorterFish(count: Int)
 }
 
 struct Requirement: Codable, Equatable, Sendable {

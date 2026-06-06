@@ -1,0 +1,299 @@
+[
+  {
+    "id": "base.starter.126",
+    "sourceId": 126,
+    "set": "base",
+    "group": "starter",
+    "name": "Barreleye",
+    "scientificName": "Macropinna microstoma",
+    "printedPoints": 3,
+    "lengthCm": 15,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[FishHatch]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_126"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.starter.127",
+    "sourceId": 127,
+    "set": "base",
+    "group": "starter",
+    "name": "Blue Lanternfish",
+    "scientificName": "Diaphus coeruleus",
+    "printedPoints": 1,
+    "lengthCm": 13,
+    "allowedZones": [
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[DrawCard][DrawCard][DrawCard][DrawCard]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_127"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.starter.128",
+    "sourceId": 128,
+    "set": "base",
+    "group": "starter",
+    "name": "Bonefish",
+    "scientificName": "Albula vulpes",
+    "printedPoints": 4,
+    "lengthCm": 100,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "(all players) [FishEgg][AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_128"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.starter.129",
+    "sourceId": 129,
+    "set": "base",
+    "group": "starter",
+    "name": "Smoothcheek Lanternfish",
+    "scientificName": "Bolinichthys indicus",
+    "printedPoints": 1,
+    "lengthCm": 5,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishEgg][FishEgg][DrawCard][DrawCard]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_129"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.starter.130",
+    "sourceId": 130,
+    "set": "base",
+    "group": "starter",
+    "name": "Longfin Batfish",
+    "scientificName": "Platax teira",
+    "printedPoints": 4,
+    "lengthCm": 70,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "(all players) [DrawCard][AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_130"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.starter.131",
+    "sourceId": 131,
+    "set": "base",
+    "group": "starter",
+    "name": "Mandarinfish",
+    "scientificName": "Synchiropus splendidus",
+    "printedPoints": 1,
+    "lengthCm": 7,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[DrawCard][DrawCard][DrawCard][FishEgg]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_131"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.starter.132",
+    "sourceId": 132,
+    "set": "base",
+    "group": "starter",
+    "name": "Orange Roughy",
+    "scientificName": "Hoplostethus atlanticus",
+    "printedPoints": 1,
+    "lengthCm": 75,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[DrawCard][DrawCard][DrawCard][Discard]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_132"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.starter.133",
+    "sourceId": 133,
+    "set": "base",
+    "group": "starter",
+    "name": "Porkfish",
+    "scientificName": "Anisotremus virginicus",
+    "printedPoints": 2,
+    "lengthCm": 40,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "purple",
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[FishEgg]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_133"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.starter.134",
+    "sourceId": 134,
+    "set": "base",
+    "group": "starter",
+    "name": "Saddleback Butterflyfish",
+    "scientificName": "Chaetodon ephippium",
+    "printedPoints": 5,
+    "lengthCm": 30,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "(all players) [FishHatch][AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_134"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.starter.135",
+    "sourceId": 135,
+    "set": "base",
+    "group": "starter",
+    "name": "White-Banded Triggerfish",
+    "scientificName": "Rhinecanthus aculeatus",
+    "printedPoints": 1,
+    "lengthCm": 40,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[Discard]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_135"
+    ],
+    "visualAssetName": null
+  }
+]

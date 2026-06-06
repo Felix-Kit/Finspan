@@ -182,6 +182,7 @@ enum PlayFishSlotAvailability: Equatable {
 enum PlayFishSlotUnavailableReason: Equatable {
     case noSelectedCard
     case occupied
+    case mustCoverShorterFish
     case coverLengthTooShort
     case zoneMismatch
     case diveSiteMismatch
@@ -1798,12 +1799,19 @@ final class GameBoardViewModel: ObservableObject {
             )
         }
 
-        if let existingLength = visibleFishLength(in: slot.content),
-           card.lengthCm <= existingLength {
+        if let existingLength = visibleFishLength(in: slot.content) {
+            if card.lengthCm <= existingLength {
+                return PlayFishSlotPreview(
+                    availability: .unavailable,
+                    unavailableReason: .coverLengthTooShort,
+                    message: AppStrings.GameBoard.cannotCoverLongerOrSameFish
+                )
+            }
+        } else if card.requiresCoveringShorterFish {
             return PlayFishSlotPreview(
                 availability: .unavailable,
-                unavailableReason: .coverLengthTooShort,
-                message: AppStrings.GameBoard.cannotCoverLongerOrSameFish
+                unavailableReason: .mustCoverShorterFish,
+                message: AppStrings.GameBoard.mustCoverShorterFish
             )
         }
 
@@ -1842,6 +1850,8 @@ final class GameBoardViewModel: ObservableObject {
             return "弃 \(count) 张牌"
         case let .resource(kind, count):
             return "\(resourceName(kind)) \(count)"
+        case let .coverShorterFish(count):
+            return "覆盖短鱼 \(count)"
         }
     }
 
@@ -2943,10 +2953,14 @@ final class GameBoardViewModel: ObservableObject {
             return false
         }
         return card.costs.contains { cost in
-            if case let .resource(kind, _) = cost {
+            switch cost {
+            case .discardCards:
+                return false
+            case let .resource(kind, _):
                 return kind != .egg && kind != .young
+            case .coverShorterFish:
+                return false
             }
-            return false
         }
     }
 
@@ -3150,6 +3164,8 @@ final class GameBoardViewModel: ObservableObject {
                 return "找不到目标格子。"
             case .targetSlotOccupied:
                 return "目标格子已被占用。"
+            case .targetMustCoverShorterFish:
+                return AppStrings.GameBoard.mustCoverShorterFish
             case .targetFishTooLongToCover:
                 return AppStrings.GameBoard.cannotCoverLongerOrSameFish
             case .targetZoneNotAllowed:

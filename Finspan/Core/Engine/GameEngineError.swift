@@ -20,6 +20,7 @@ enum CommandValidationError: Error, Equatable {
     case targetSlotNotOwnedByPlayer
     case targetSlotNotFound(OceanSlotAddress)
     case targetSlotOccupied(OceanSlotAddress)
+    case targetMustCoverShorterFish(OceanSlotAddress)
     case targetFishTooLongToCover(target: OceanSlotAddress, newFishLengthCm: Int, existingFishLengthCm: Int)
     case targetZoneNotAllowed(OceanZone)
     case requiredDiveSiteColorMismatch(expected: DiveSiteColor, actual: DiveSiteColor)

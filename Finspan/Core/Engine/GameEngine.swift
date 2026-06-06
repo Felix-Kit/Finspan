@@ -507,6 +507,8 @@ struct GameEngine {
                     existingFishLengthCm: existingLength
                 )
             }
+        } else if card.requiresCoveringShorterFish {
+            throw CommandValidationError.targetMustCoverShorterFish(payload.targetSlot)
         }
 
         try validatePayment(payload.payment, for: card, payload: payload, playerState: playerState)
@@ -1418,6 +1420,8 @@ struct GameEngine {
                     )
                 }
                 try validateResourceSources(sources, kind: kind, playerState: playerState)
+            case .coverShorterFish:
+                break
             }
         }
     }
@@ -1708,6 +1712,8 @@ struct GameEngine {
             return true
         case let .resource(kind, _):
             return kind == .egg || kind == .young
+        case .coverShorterFish:
+            return true
         }
     }
 

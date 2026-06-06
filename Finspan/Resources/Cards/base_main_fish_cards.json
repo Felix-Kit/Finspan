@@ -1,0 +1,4386 @@
+[
+  {
+    "id": "base.main.001",
+    "sourceId": 1,
+    "set": "base",
+    "group": "main",
+    "name": "Abyssal Anglerfish",
+    "scientificName": "Melanocetus murrayi",
+    "printedPoints": 2,
+    "lengthCm": 12,
+    "allowedZones": [
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "3 [Wave] if no tokens on this fish",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_001"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.002",
+    "sourceId": 2,
+    "set": "base",
+    "group": "main",
+    "name": "Abyssal Halosaur",
+    "scientificName": "Halosauropsis macrochir",
+    "printedPoints": 3,
+    "lengthCm": 90,
+    "allowedZones": [
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishFromHand][ArrowDown][PlayFishBottomRow]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_002"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.003",
+    "sourceId": 3,
+    "set": "base",
+    "group": "main",
+    "name": "Abyssal Spiderfish",
+    "scientificName": "Bathypterois longipes",
+    "printedPoints": 2,
+    "lengthCm": 25,
+    "allowedZones": [
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishHatch][FishHatch][FishHatch]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_003"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.004",
+    "sourceId": 4,
+    "set": "base",
+    "group": "main",
+    "name": "Angelshark",
+    "scientificName": "Squatina squatina",
+    "printedPoints": 2,
+    "lengthCm": 240,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "10 [Wave] if [ConsumeFish3] (there are 3+ fish under this one)",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_004"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.005",
+    "sourceId": 5,
+    "set": "base",
+    "group": "main",
+    "name": "Angler",
+    "scientificName": "Lophius piscatorius",
+    "printedPoints": 4,
+    "lengthCm": 200,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[SchoolFeederMove]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_005"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.006",
+    "sourceId": 6,
+    "set": "base",
+    "group": "main",
+    "name": "Arabian Carpetshark",
+    "scientificName": "Chiloscyllium arabicum",
+    "printedPoints": 4,
+    "lengthCm": 80,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishEgg][ArrowDown][Predator] on each",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_006"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.007",
+    "sourceId": 7,
+    "set": "base",
+    "group": "main",
+    "name": "Atlantic Bluefin Tuna",
+    "scientificName": "Thunnus thynnus",
+    "printedPoints": 7,
+    "lengthCm": 450,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[DrawCard][DrawCard][Discard][Discard]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_007"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.008",
+    "sourceId": 8,
+    "set": "base",
+    "group": "main",
+    "name": "Atlantic Bonito",
+    "scientificName": "Sarda sarda",
+    "printedPoints": 3,
+    "lengthCm": 90,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "6 [Wave] if [ConsumeFish2] (there are 2+ fish under this one)",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_008"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.009",
+    "sourceId": 9,
+    "set": "base",
+    "group": "main",
+    "name": "Atlantic Mackerel",
+    "scientificName": "Scomber scombrus",
+    "printedPoints": 4,
+    "lengthCm": 60,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": "purple",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[FishEgg][FishEgg]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_009"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.010",
+    "sourceId": 10,
+    "set": "base",
+    "group": "main",
+    "name": "Atlantic Sailfish",
+    "scientificName": "Istiophorus albicans",
+    "printedPoints": 8,
+    "lengthCm": 315,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[DrawCard][DrawCard][DrawCard]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_010"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.011",
+    "sourceId": 11,
+    "set": "base",
+    "group": "main",
+    "name": "Atlantic Salmon",
+    "scientificName": "Salmo salar",
+    "printedPoints": 5,
+    "lengthCm": 150,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "[FishFromHand][ArrowDown][Estuary]",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_011"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.012",
+    "sourceId": 12,
+    "set": "base",
+    "group": "main",
+    "name": "Atlantic Sturgeon",
+    "scientificName": "Acipenser oxyrinchus",
+    "printedPoints": 8,
+    "lengthCm": 400,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[Discard]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_012"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.013",
+    "sourceId": 13,
+    "set": "base",
+    "group": "main",
+    "name": "Atlantic Wolffish",
+    "scientificName": "Anarhichas lupus",
+    "printedPoints": 5,
+    "lengthCm": 150,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[FishHatch]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_013"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.014",
+    "sourceId": 14,
+    "set": "base",
+    "group": "main",
+    "name": "Banggai Cardinalfish",
+    "scientificName": "Pterapogon kauderni",
+    "printedPoints": 2,
+    "lengthCm": 9,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[FishHatch]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_014"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.015",
+    "sourceId": 15,
+    "set": "base",
+    "group": "main",
+    "name": "Barramundi",
+    "scientificName": "Lates calcarifer",
+    "printedPoints": 6,
+    "lengthCm": 200,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "purple",
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[FishEgg]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_015"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.016",
+    "sourceId": 16,
+    "set": "base",
+    "group": "main",
+    "name": "Bearded Seadevil",
+    "scientificName": "Linophryne algibarbata",
+    "printedPoints": 5,
+    "lengthCm": 23,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 2
+      },
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "(all players) [FishEgg][ArrowDown][FishLengthSmall] on each [AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_016"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.017",
+    "sourceId": 17,
+    "set": "base",
+    "group": "main",
+    "name": "Bigeye Tuna",
+    "scientificName": "Thunnus obesus",
+    "printedPoints": 8,
+    "lengthCm": 235,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": "purple",
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[FishEgg]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_017"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.018",
+    "sourceId": 18,
+    "set": "base",
+    "group": "main",
+    "name": "Bigeye Smooth-Head",
+    "scientificName": "Bajacalifornia megalops",
+    "printedPoints": 4,
+    "lengthCm": 40,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishEgg][ArrowDown][FlipperPurple] on each",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_018"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.019",
+    "sourceId": 19,
+    "set": "base",
+    "group": "main",
+    "name": "Binocular Fish",
+    "scientificName": "Winteria telescopa",
+    "printedPoints": 1,
+    "lengthCm": 15,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 3
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "[FishEgg][ArrowDown][FishLengthSmall] on each",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_019"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.020",
+    "sourceId": 20,
+    "set": "base",
+    "group": "main",
+    "name": "Black Cardinalfish",
+    "scientificName": "Epigonus telescopus",
+    "printedPoints": 5,
+    "lengthCm": 75,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishHatch][FishHatch][SchoolFeederMove]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_020"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.021",
+    "sourceId": 21,
+    "set": "base",
+    "group": "main",
+    "name": "Black Hagfish",
+    "scientificName": "Eptatretus deani",
+    "printedPoints": 3,
+    "lengthCm": 64,
+    "allowedZones": [
+      "sunlight",
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 3
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[YoungFish][Discard]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_021"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.022",
+    "sourceId": 22,
+    "set": "base",
+    "group": "main",
+    "name": "Black Swallower",
+    "scientificName": "Chiasmodon niger",
+    "printedPoints": 3,
+    "lengthCm": 25,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishFromHand][ArrowDown][FlipperGreen]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_022"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.023",
+    "sourceId": 23,
+    "set": "base",
+    "group": "main",
+    "name": "Blob Sculpin",
+    "scientificName": "Psychrolutes phrictus",
+    "printedPoints": 2,
+    "lengthCm": 70,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "[FishFromHand][ArrowDown][FlipperGreen]",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_023"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.024",
+    "sourceId": 24,
+    "set": "base",
+    "group": "main",
+    "name": "Blue Tang",
+    "scientificName": "Paracanthurus hepatus",
+    "printedPoints": 4,
+    "lengthCm": 30,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "venomous",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[SchoolFeederMove][YoungFish]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_024"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.025",
+    "sourceId": 25,
+    "set": "base",
+    "group": "main",
+    "name": "Bluespine Unicornfish",
+    "scientificName": "Naso unicornis",
+    "printedPoints": 4,
+    "lengthCm": 70,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "(all players) [FishHatch][AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_025"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.026",
+    "sourceId": 26,
+    "set": "base",
+    "group": "main",
+    "name": "Bluestreak Cleaner Wrasse",
+    "scientificName": "Labroides dimidiatus",
+    "printedPoints": 3,
+    "lengthCm": 14,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 3
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[Discard][Discard]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_026"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.027",
+    "sourceId": 27,
+    "set": "base",
+    "group": "main",
+    "name": "Bluntnose Sixgill Shark",
+    "scientificName": "Hexanchus griseus",
+    "printedPoints": 8,
+    "lengthCm": 550,
+    "allowedZones": [
+      "sunlight",
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      },
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 2
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "(all players) [FishEgg][ArrowDown][FlipperPurple] on each [AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_027"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.028",
+    "sourceId": 28,
+    "set": "base",
+    "group": "main",
+    "name": "Chinese Trumpetfish",
+    "scientificName": "Aulostomus chinensis",
+    "printedPoints": 3,
+    "lengthCm": 80,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "[FishEgg][ArrowDown][FishLengthMedium] on each",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_028"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.029",
+    "sourceId": 29,
+    "set": "base",
+    "group": "main",
+    "name": "Chola Guitarfish",
+    "scientificName": "Pseudobatos percellens",
+    "printedPoints": 4,
+    "lengthCm": 100,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishFromHand][ArrowDown][FlipperPurple]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_029"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.030",
+    "sourceId": 30,
+    "set": "base",
+    "group": "main",
+    "name": "Clown Anemonefish",
+    "scientificName": "Amphiprion ocellaris",
+    "printedPoints": 2,
+    "lengthCm": 11,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "6 [Wave] if [YoungFish][YoungFish] (exactly 2 on this fish)",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_030"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.031",
+    "sourceId": 31,
+    "set": "base",
+    "group": "main",
+    "name": "Common Fangtooth",
+    "scientificName": "Anoplogaster cornuta",
+    "printedPoints": 3,
+    "lengthCm": 16,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "3 [Wave] if [ConsumeFish1] (1+ fish under this one)",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_031"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.032",
+    "sourceId": 32,
+    "set": "base",
+    "group": "main",
+    "name": "Cookiecutter Shark",
+    "scientificName": "Isistius brasiliensis",
+    "printedPoints": 3,
+    "lengthCm": 56,
+    "allowedZones": [
+      "sunlight",
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "5 [Wave] if [PlayFishBottomRow] (this fish is in the bottom row)",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_032"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.033",
+    "sourceId": 33,
+    "set": "base",
+    "group": "main",
+    "name": "Cownose Ray",
+    "scientificName": "Rhinoptera bonasus",
+    "printedPoints": 3,
+    "lengthCm": 120,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "venomous",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishFromHand][ArrowDown][FlipperPurple]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_033"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.034",
+    "sourceId": 34,
+    "set": "base",
+    "group": "main",
+    "name": "Creolefish",
+    "scientificName": "Paranthias furcifer",
+    "printedPoints": 4,
+    "lengthCm": 30,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[ConsumeFish1]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_034"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.035",
+    "sourceId": 35,
+    "set": "base",
+    "group": "main",
+    "name": "Crocodilefish",
+    "scientificName": "Cymbacephalus beauforti",
+    "printedPoints": 5,
+    "lengthCm": 50,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "[FishFromHand][ArrowDown][FlipperBlue]",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_035"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.036",
+    "sourceId": 36,
+    "set": "base",
+    "group": "main",
+    "name": "Deepsea Lizardfish",
+    "scientificName": "Bathysaurus ferox",
+    "printedPoints": 8,
+    "lengthCm": 65,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      },
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 2
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "(all players) [FishHatch][SchoolFeederMove][AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_036"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.037",
+    "sourceId": 37,
+    "set": "base",
+    "group": "main",
+    "name": "Diamond Stingray",
+    "scientificName": "Hypanus dipterurus",
+    "printedPoints": 2,
+    "lengthCm": 180,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "camouflage",
+        "count": 1
+      },
+      {
+        "kind": "venomous",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[Discard][Discard][Discard][SchoolFeederMove]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_037"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.038",
+    "sourceId": 38,
+    "set": "base",
+    "group": "main",
+    "name": "Elsman's Whipnose",
+    "scientificName": "Gigantactis elsmani",
+    "printedPoints": 7,
+    "lengthCm": 44,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      },
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[DrawCard][Discard][SchoolFeederMove]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_038"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.039",
+    "sourceId": 39,
+    "set": "base",
+    "group": "main",
+    "name": "Emperor Red Snapper",
+    "scientificName": "Lutjanus sebae",
+    "printedPoints": 3,
+    "lengthCm": 115,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "purple",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[FishEgg]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_039"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.040",
+    "sourceId": 40,
+    "set": "base",
+    "group": "main",
+    "name": "Escolar",
+    "scientificName": "Lepidocybium flavobrunneum",
+    "printedPoints": 5,
+    "lengthCm": 200,
+    "allowedZones": [
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishEgg][ArrowDown][FishLengthLarge] on each",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_040"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.041",
+    "sourceId": 41,
+    "set": "base",
+    "group": "main",
+    "name": "European Anchovy",
+    "scientificName": "Engraulis encrasicolus",
+    "printedPoints": 3,
+    "lengthCm": 20,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 3
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "[FishEgg][ArrowDown][Estuary]",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_041"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.042",
+    "sourceId": 42,
+    "set": "base",
+    "group": "main",
+    "name": "European Flounder",
+    "scientificName": "Platichtys flesus",
+    "printedPoints": 3,
+    "lengthCm": 60,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishEgg][ArrowDown][Estuary]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_042"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.043",
+    "sourceId": 43,
+    "set": "base",
+    "group": "main",
+    "name": "European Sturgeon",
+    "scientificName": "Acipenser sturio",
+    "printedPoints": 9,
+    "lengthCm": 600,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[Discard]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_043"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.044",
+    "sourceId": 44,
+    "set": "base",
+    "group": "main",
+    "name": "Faceless Cusk",
+    "scientificName": "Typhlonus nasus",
+    "printedPoints": 2,
+    "lengthCm": 46,
+    "allowedZones": [
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 3
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "[FishFromHand][ArrowDown][PlayFishBottomRow]",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_044"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.045",
+    "sourceId": 45,
+    "set": "base",
+    "group": "main",
+    "name": "False Catshark",
+    "scientificName": "Pseudotriakis microdon",
+    "printedPoints": 8,
+    "lengthCm": 300,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      },
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 2
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "(all players) [SchoolFeederMove][SchoolFeederMove][AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_045"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.046",
+    "sourceId": 46,
+    "set": "base",
+    "group": "main",
+    "name": "False Cleanerfish",
+    "scientificName": "Aspidontus taeniatus",
+    "printedPoints": 2,
+    "lengthCm": 11,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[Discard]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_046"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.047",
+    "sourceId": 47,
+    "set": "base",
+    "group": "main",
+    "name": "Flabby Whalefish",
+    "scientificName": "Gyrinomimus grahami",
+    "printedPoints": 3,
+    "lengthCm": 31,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 3
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishEgg][FishEgg][FishHatch]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_047"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.048",
+    "sourceId": 48,
+    "set": "base",
+    "group": "main",
+    "name": "Footballfish",
+    "scientificName": "Himantolophus paucifilosus",
+    "printedPoints": 6,
+    "lengthCm": 17,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[SchoolFeederMove]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_048"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.049",
+    "sourceId": 49,
+    "set": "base",
+    "group": "main",
+    "name": "Giant Devil Ray",
+    "scientificName": "Mobula mobular",
+    "printedPoints": 7,
+    "lengthCm": 520,
+    "allowedZones": [
+      "sunlight",
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[YoungFish][YoungFish]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_049"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.050",
+    "sourceId": 50,
+    "set": "base",
+    "group": "main",
+    "name": "Giant Hatchetfish",
+    "scientificName": "Argyropelecus gigas",
+    "printedPoints": 4,
+    "lengthCm": 12,
+    "allowedZones": [
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      },
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "(all players) [DrawCard][AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_050"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.051",
+    "sourceId": 51,
+    "set": "base",
+    "group": "main",
+    "name": "Giant Hawkfish",
+    "scientificName": "Cirrhitus rivulatus",
+    "printedPoints": 4,
+    "lengthCm": 60,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishHatch][SchoolFeederMove]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_051"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.052",
+    "sourceId": 52,
+    "set": "base",
+    "group": "main",
+    "name": "Giant Manta Ray",
+    "scientificName": "Mobula birostris",
+    "printedPoints": 5,
+    "lengthCm": 900,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[YoungFish][YoungFish][YoungFish]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_052"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.053",
+    "sourceId": 53,
+    "set": "base",
+    "group": "main",
+    "name": "Giant Oarfish",
+    "scientificName": "Regalecus glesne",
+    "printedPoints": 9,
+    "lengthCm": 1100,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 2
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "(all players) [FishEgg][ArrowDown][FlipperBlue] on each [AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_053"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.054",
+    "sourceId": 54,
+    "set": "base",
+    "group": "main",
+    "name": "Giant Trevally",
+    "scientificName": "Caranx ignobilis",
+    "printedPoints": 5,
+    "lengthCm": 170,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "[FishFromHand][ArrowDown][FlipperPurple]",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_054"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.055",
+    "sourceId": 55,
+    "set": "base",
+    "group": "main",
+    "name": "Gray Triggerfish",
+    "scientificName": "Balistes capriscus",
+    "printedPoints": 5,
+    "lengthCm": 60,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[Discard]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_055"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.056",
+    "sourceId": 56,
+    "set": "base",
+    "group": "main",
+    "name": "Great Northern Tilefish",
+    "scientificName": "Lopholatilus chamaeleonticeps",
+    "printedPoints": 4,
+    "lengthCm": 125,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[FishHatch][FishHatch]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_056"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.057",
+    "sourceId": 57,
+    "set": "base",
+    "group": "main",
+    "name": "Great White Shark",
+    "scientificName": "Carcharodon carcharias",
+    "printedPoints": 10,
+    "lengthCm": 600,
+    "allowedZones": [
+      "sunlight",
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 2
+      },
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 2
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "(all players) [FishEgg][ArrowDown][Predator] on each [AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_057"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.058",
+    "sourceId": 58,
+    "set": "base",
+    "group": "main",
+    "name": "Greenland Shark",
+    "scientificName": "Somniosus microcephalus",
+    "printedPoints": 8,
+    "lengthCm": 550,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      },
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 2
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "(all players) [FishEgg][ArrowDown][FishLengthLarge] on each [AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_058"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.059",
+    "sourceId": 59,
+    "set": "base",
+    "group": "main",
+    "name": "Grideye Fish",
+    "scientificName": "Ipnops agassizii",
+    "printedPoints": 3,
+    "lengthCm": 16,
+    "allowedZones": [
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishEgg][ArrowDown][PlayFishBottomRow] on each",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_059"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.060",
+    "sourceId": 60,
+    "set": "base",
+    "group": "main",
+    "name": "Haddock",
+    "scientificName": "Melanogrammus aeglefinus",
+    "printedPoints": 7,
+    "lengthCm": 110,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "(all players) [DrawCard][AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_060"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.061",
+    "sourceId": 61,
+    "set": "base",
+    "group": "main",
+    "name": "Hogfish",
+    "scientificName": "Lachnolaimus maximus",
+    "printedPoints": 6,
+    "lengthCm": 90,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[Discard][Discard][SchoolFeederMove]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_061"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.062",
+    "sourceId": 62,
+    "set": "base",
+    "group": "main",
+    "name": "Honeycomb Scaly Dragonfish",
+    "scientificName": "Stomias affinis",
+    "printedPoints": 4,
+    "lengthCm": 22,
+    "allowedZones": [
+      "sunlight",
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "[YoungFish][SchoolFeederMove]",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_062"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.063",
+    "sourceId": 63,
+    "set": "base",
+    "group": "main",
+    "name": "Humpback Anglerfish",
+    "scientificName": "Melanocetus johnsonii",
+    "printedPoints": 8,
+    "lengthCm": 18,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 2
+      },
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "(all players) [FishEgg][ArrowDown][PlayFishBottomRow] on each [AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_063"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.064",
+    "sourceId": 64,
+    "set": "base",
+    "group": "main",
+    "name": "Humphead Wrasse",
+    "scientificName": "Cheilinus undulatus",
+    "printedPoints": 4,
+    "lengthCm": 225,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishEgg][ArrowDown][FlipperGreen] on each",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_064"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.065",
+    "sourceId": 65,
+    "set": "base",
+    "group": "main",
+    "name": "Indo-Pacific Sailfish",
+    "scientificName": "Istiophorus platypterus",
+    "printedPoints": 7,
+    "lengthCm": 350,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[DrawCard][DrawCard][FishHatch]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_065"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.066",
+    "sourceId": 66,
+    "set": "base",
+    "group": "main",
+    "name": "Japanese Anchovy",
+    "scientificName": "Engraulis japonicus",
+    "printedPoints": 3,
+    "lengthCm": 18,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": "purple",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[FishEgg]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_066"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.067",
+    "sourceId": 67,
+    "set": "base",
+    "group": "main",
+    "name": "Kaluga",
+    "scientificName": "Huso dauricus",
+    "printedPoints": 6,
+    "lengthCm": 560,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishFromHand][ArrowDown][Estuary]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_067"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.068",
+    "sourceId": 68,
+    "set": "base",
+    "group": "main",
+    "name": "Kawakawa",
+    "scientificName": "Euthynnus affinis",
+    "printedPoints": 6,
+    "lengthCm": 100,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishEgg][ArrowDown][FlipperBlue]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_068"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.069",
+    "sourceId": 69,
+    "set": "base",
+    "group": "main",
+    "name": "Largetooth Flounder",
+    "scientificName": "Pseudorhombus arsius",
+    "printedPoints": 5,
+    "lengthCm": 45,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 3
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "[FishEgg][ArrowDown][FlipperGreen]",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_069"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.070",
+    "sourceId": 70,
+    "set": "base",
+    "group": "main",
+    "name": "Leafy Seadragon",
+    "scientificName": "Phycodurus eques",
+    "printedPoints": 2,
+    "lengthCm": 35,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "3 [Wave] if [SchoolFish] on this fish",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_070"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.071",
+    "sourceId": 71,
+    "set": "base",
+    "group": "main",
+    "name": "Little Skate",
+    "scientificName": "Leucoraja erinaceus",
+    "printedPoints": 6,
+    "lengthCm": 50,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 3
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "electric",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "(all players) [SchoolFeederMove][AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_071"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.072",
+    "sourceId": 72,
+    "set": "base",
+    "group": "main",
+    "name": "Live Sharksucker",
+    "scientificName": "Echeneis naucrates",
+    "printedPoints": 4,
+    "lengthCm": 110,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[ConsumeFish1][ConsumeFish1]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_072"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.073",
+    "sourceId": 73,
+    "set": "base",
+    "group": "main",
+    "name": "Long-Snouted Lancetfish",
+    "scientificName": "Alepisaurus ferox",
+    "printedPoints": 3,
+    "lengthCm": 200,
+    "allowedZones": [
+      "sunlight",
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[DrawCard][DrawCard][DrawCard][SchoolFeederMove]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_073"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.074",
+    "sourceId": 74,
+    "set": "base",
+    "group": "main",
+    "name": "Longspine Porcupinefish",
+    "scientificName": "Diodon holocanthus",
+    "printedPoints": 5,
+    "lengthCm": 50,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "venomous",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishEgg][ArrowDown][FishLengthMedium] on each",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_074"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.075",
+    "sourceId": 75,
+    "set": "base",
+    "group": "main",
+    "name": "Mahi-Mahi",
+    "scientificName": "Coryphaena hippurus",
+    "printedPoints": 7,
+    "lengthCm": 210,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[FishEgg]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_075"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.076",
+    "sourceId": 76,
+    "set": "base",
+    "group": "main",
+    "name": "Maltese Ray",
+    "scientificName": "Leucoraja melitensis",
+    "printedPoints": 3,
+    "lengthCm": 40,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishEgg][ArrowDown][FishLengthSmall] on each",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_076"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.077",
+    "sourceId": 77,
+    "set": "base",
+    "group": "main",
+    "name": "Mariana Snailfish",
+    "scientificName": "Pseudoliparis swirei",
+    "printedPoints": 1,
+    "lengthCm": 28,
+    "allowedZones": [
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "[FishEgg][ArrowDown][PlayFishBottomRow] on each",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_077"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.078",
+    "sourceId": 78,
+    "set": "base",
+    "group": "main",
+    "name": "Mediterranean Damselfish",
+    "scientificName": "Chromis chromis",
+    "printedPoints": 4,
+    "lengthCm": 25,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "purple",
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[FishEgg]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_078"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.079",
+    "sourceId": 79,
+    "set": "base",
+    "group": "main",
+    "name": "Mediterranean Parrotfish",
+    "scientificName": "Sparisoma cretense",
+    "printedPoints": 5,
+    "lengthCm": 50,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[FishHatch]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_079"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.080",
+    "sourceId": 80,
+    "set": "base",
+    "group": "main",
+    "name": "Midwater Scorpionfish",
+    "scientificName": "Ectreposebastes imus",
+    "printedPoints": 3,
+    "lengthCm": 18,
+    "allowedZones": [
+      "sunlight",
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 3
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "venomous",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[SchoolFeederMove]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_080"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.081",
+    "sourceId": 81,
+    "set": "base",
+    "group": "main",
+    "name": "Ocean Sunfish",
+    "scientificName": "Mola mola",
+    "printedPoints": 4,
+    "lengthCm": 330,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "[FishEgg][ArrowDown][FishLengthLarge] on each",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_081"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.082",
+    "sourceId": 82,
+    "set": "base",
+    "group": "main",
+    "name": "Oceanic Puffer",
+    "scientificName": "Lagocephalus lagocephalus",
+    "printedPoints": 5,
+    "lengthCm": 60,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "venomous",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "(all players) [SchoolFeederMove][AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_082"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.083",
+    "sourceId": 83,
+    "set": "base",
+    "group": "main",
+    "name": "Pacific Sardine",
+    "scientificName": "Sardinops sagax",
+    "printedPoints": 4,
+    "lengthCm": 40,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 3
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishEgg][FishEgg][FishHatch][FishHatch]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_083"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.084",
+    "sourceId": 84,
+    "set": "base",
+    "group": "main",
+    "name": "Pacific White Skate",
+    "scientificName": "Bathyraja spinosissima",
+    "printedPoints": 3,
+    "lengthCm": 150,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishHatch][YoungFish]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_084"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.085",
+    "sourceId": 85,
+    "set": "base",
+    "group": "main",
+    "name": "Pale Chimaera",
+    "scientificName": "Hydrolagus pallidus",
+    "printedPoints": 2,
+    "lengthCm": 137,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "10 [Wave] if [FishEgg] + [YoungFish] + [SchoolFish] on this fish",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_085"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.086",
+    "sourceId": 86,
+    "set": "base",
+    "group": "main",
+    "name": "Paintspotted Moray",
+    "scientificName": "Gymnothorax pictus",
+    "printedPoints": 4,
+    "lengthCm": 140,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[Discard][Discard][Discard]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_086"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.087",
+    "sourceId": 87,
+    "set": "base",
+    "group": "main",
+    "name": "Paraliparis",
+    "scientificName": "Paraliparis antarcticus",
+    "printedPoints": 7,
+    "lengthCm": 17,
+    "allowedZones": [
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "(all players) [DrawCard][AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_087"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.088",
+    "sourceId": 88,
+    "set": "base",
+    "group": "main",
+    "name": "Patagonian Toothfish",
+    "scientificName": "Dissostichus eleginoides",
+    "printedPoints": 5,
+    "lengthCm": 215,
+    "allowedZones": [
+      "sunlight",
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 3
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[DrawCard][FishEgg][FishHatch][SchoolFeederMove]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_088"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.089",
+    "sourceId": 89,
+    "set": "base",
+    "group": "main",
+    "name": "Pelican Eel",
+    "scientificName": "Eurypharynx pelecanoides",
+    "printedPoints": 3,
+    "lengthCm": 100,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 2
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "(all players) [FishEgg][ArrowDown][FishLengthMedium] on each [AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_089"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.090",
+    "sourceId": 90,
+    "set": "base",
+    "group": "main",
+    "name": "Pennant Coralfish",
+    "scientificName": "Heniochus acuminatus",
+    "printedPoints": 2,
+    "lengthCm": 25,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[ConsumeFish1]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_090"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.091",
+    "sourceId": 91,
+    "set": "base",
+    "group": "main",
+    "name": "Pilotfish",
+    "scientificName": "Naucrates ductor",
+    "printedPoints": 1,
+    "lengthCm": 70,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[Discard][Discard][Discard][Discard]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_091"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.092",
+    "sourceId": 92,
+    "set": "base",
+    "group": "main",
+    "name": "Plate Fish",
+    "scientificName": "Bothus lunatus",
+    "printedPoints": 4,
+    "lengthCm": 50,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[FishHatch]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_092"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.093",
+    "sourceId": 93,
+    "set": "base",
+    "group": "main",
+    "name": "Pudgy Cusk-Eel",
+    "scientificName": "Spectrunculus grandis",
+    "printedPoints": 4,
+    "lengthCm": 125,
+    "allowedZones": [
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "[FishEgg][ArrowDown][FlipperBlue] on each",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_093"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.094",
+    "sourceId": 94,
+    "set": "base",
+    "group": "main",
+    "name": "Pygmy Seahorse",
+    "scientificName": "Hippocampus bargibanti",
+    "printedPoints": 1,
+    "lengthCm": 2,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[FishHatch]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_094"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.095",
+    "sourceId": 95,
+    "set": "base",
+    "group": "main",
+    "name": "Red Lionfish",
+    "scientificName": "Pterois volitans",
+    "printedPoints": 1,
+    "lengthCm": 45,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "venomous",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishFromHand][ArrowDown][Sun]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_095"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.096",
+    "sourceId": 96,
+    "set": "base",
+    "group": "main",
+    "name": "Red Scorpionfish",
+    "scientificName": "Scorpaena scrofa",
+    "printedPoints": 7,
+    "lengthCm": 50,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "camouflage",
+        "count": 1
+      },
+      {
+        "kind": "venomous",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[SchoolFeederMove]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_096"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.097",
+    "sourceId": 97,
+    "set": "base",
+    "group": "main",
+    "name": "Rockmover Wrasse",
+    "scientificName": "Novaculichtys taeniourus",
+    "printedPoints": 3,
+    "lengthCm": 30,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[ConsumeFish1]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_097"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.098",
+    "sourceId": 98,
+    "set": "base",
+    "group": "main",
+    "name": "Sailfin Flying Fish",
+    "scientificName": "Parexocoetus brachypterus",
+    "printedPoints": 3,
+    "lengthCm": 20,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[Discard]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_098"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.099",
+    "sourceId": 99,
+    "set": "base",
+    "group": "main",
+    "name": "Sargassum Fish",
+    "scientificName": "Histrio histrio",
+    "printedPoints": 6,
+    "lengthCm": 20,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[ConsumeFish1][ConsumeFish1]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_099"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.100",
+    "sourceId": 100,
+    "set": "base",
+    "group": "main",
+    "name": "Scaleless Black Dragonfish",
+    "scientificName": "Melanostomias melanops",
+    "printedPoints": 4,
+    "lengthCm": 30,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[ConsumeFish1]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_100"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.101",
+    "sourceId": 101,
+    "set": "base",
+    "group": "main",
+    "name": "Shortspine African Angler",
+    "scientificName": "Lophius vaillanti",
+    "printedPoints": 7,
+    "lengthCm": 80,
+    "allowedZones": [
+      "sunlight",
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      },
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[SchoolFeederMove][DrawCard][DrawCard]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_101"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.102",
+    "sourceId": 102,
+    "set": "base",
+    "group": "main",
+    "name": "Shortspine Spurdog",
+    "scientificName": "Squalus mitsukurii",
+    "printedPoints": 4,
+    "lengthCm": 90,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "venomous",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[YoungFish]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_102"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.103",
+    "sourceId": 103,
+    "set": "base",
+    "group": "main",
+    "name": "Silver Lightfish",
+    "scientificName": "Phosichtys argenteus",
+    "printedPoints": 4,
+    "lengthCm": 30,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "(all players) [FishHatch][AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_103"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.104",
+    "sourceId": 104,
+    "set": "base",
+    "group": "main",
+    "name": "Skipjack Tuna",
+    "scientificName": "Katsuwonus pelamis",
+    "printedPoints": 5,
+    "lengthCm": 110,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "(all players) [FishHatch][AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_104"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.105",
+    "sourceId": 105,
+    "set": "base",
+    "group": "main",
+    "name": "Sloan's Viperfish",
+    "scientificName": "Chauliodus sloani",
+    "printedPoints": 2,
+    "lengthCm": 35,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "[FishEgg][ArrowDown][Predator] on each",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_105"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.106",
+    "sourceId": 106,
+    "set": "base",
+    "group": "main",
+    "name": "Smooth Oreo Dory",
+    "scientificName": "Pseudocyttus maculatus",
+    "printedPoints": 4,
+    "lengthCm": 70,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": "purple",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[FishEgg]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_106"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.107",
+    "sourceId": 107,
+    "set": "base",
+    "group": "main",
+    "name": "Snaggletooth",
+    "scientificName": "Astronesthes niger",
+    "printedPoints": 6,
+    "lengthCm": 16,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[SchoolFeederMove][SchoolFeederMove]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_107"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.108",
+    "sourceId": 108,
+    "set": "base",
+    "group": "main",
+    "name": "Snipe Eel",
+    "scientificName": "Avocettina infans",
+    "printedPoints": 4,
+    "lengthCm": 80,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "(all players) [FishEgg][AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_108"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.109",
+    "sourceId": 109,
+    "set": "base",
+    "group": "main",
+    "name": "Speckled Butterflyfish",
+    "scientificName": "Chaetodon citrinellus",
+    "printedPoints": 1,
+    "lengthCm": 13,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "[FishHatch][FishHatch][FishHatch][SchoolFeederMove]",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_109"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.110",
+    "sourceId": 110,
+    "set": "base",
+    "group": "main",
+    "name": "Spiny Seadevil",
+    "scientificName": "Neoceratias spinifer",
+    "printedPoints": 3,
+    "lengthCm": 10,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[Discard][Discard][Discard]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_110"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.111",
+    "sourceId": 111,
+    "set": "base",
+    "group": "main",
+    "name": "Spookfish",
+    "scientificName": "Dolichopteryx rostrata",
+    "printedPoints": 5,
+    "lengthCm": 7,
+    "allowedZones": [
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "(all players) [FishEgg][AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_111"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.112",
+    "sourceId": 112,
+    "set": "base",
+    "group": "main",
+    "name": "Spotted Parrotfish",
+    "scientificName": "Cetoscarus ocellatus",
+    "printedPoints": 3,
+    "lengthCm": 80,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[FishHatch]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_112"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.113",
+    "sourceId": 113,
+    "set": "base",
+    "group": "main",
+    "name": "Stonefish",
+    "scientificName": "Synanceia horrida",
+    "printedPoints": 3,
+    "lengthCm": 60,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "camouflage",
+        "count": 1
+      },
+      {
+        "kind": "venomous",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[SchoolFeederMove]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_113"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.114",
+    "sourceId": 114,
+    "set": "base",
+    "group": "main",
+    "name": "Stoplight Loosejaw",
+    "scientificName": "Malacosteus niger",
+    "printedPoints": 4,
+    "lengthCm": 25,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      },
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[SchoolFeederMove][SchoolFeederMove][SchoolFeederMove]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_114"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.115",
+    "sourceId": 115,
+    "set": "base",
+    "group": "main",
+    "name": "Striped Marlin",
+    "scientificName": "Kajikia audax",
+    "printedPoints": 2,
+    "lengthCm": 420,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "[FishFromHand][ArrowDown][Sun]",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_115"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.116",
+    "sourceId": 116,
+    "set": "base",
+    "group": "main",
+    "name": "Swordfish",
+    "scientificName": "Xiphias gladius",
+    "printedPoints": 6,
+    "lengthCm": 450,
+    "allowedZones": [
+      "sunlight",
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "[FishHatch][DrawCard][DrawCard][DrawCard]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_116"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.117",
+    "sourceId": 117,
+    "set": "base",
+    "group": "main",
+    "name": "Tripodfish",
+    "scientificName": "Bathypterois grallator",
+    "printedPoints": 4,
+    "lengthCm": 43,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "[ConsumeFish1][ConsumeFish1]",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_117"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.118",
+    "sourceId": 118,
+    "set": "base",
+    "group": "main",
+    "name": "Tropical Two-Wing Flying Fish",
+    "scientificName": "Exocoetus volitans",
+    "printedPoints": 4,
+    "lengthCm": 30,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[Discard]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_118"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.119",
+    "sourceId": 119,
+    "set": "base",
+    "group": "main",
+    "name": "Whale Shark",
+    "scientificName": "Rhincodon typus",
+    "printedPoints": 12,
+    "lengthCm": 2000,
+    "allowedZones": [
+      "sunlight",
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "school",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 2
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": "(all players) [FishEgg][ArrowDown][FlipperGreen] on each [AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_119"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.120",
+    "sourceId": 120,
+    "set": "base",
+    "group": "main",
+    "name": "White Suckerfish",
+    "scientificName": "Remora albescens",
+    "printedPoints": 3,
+    "lengthCm": 30,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[ConsumeFish1]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_120"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.121",
+    "sourceId": 121,
+    "set": "base",
+    "group": "main",
+    "name": "White-Spotted Puffer",
+    "scientificName": "Arothron hispidus",
+    "printedPoints": 5,
+    "lengthCm": 50,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "venomous",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "(all players) [SchoolFeederMove][AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_121"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.122",
+    "sourceId": 122,
+    "set": "base",
+    "group": "main",
+    "name": "Whitemargin Stargazer",
+    "scientificName": "Uranoscopus sulphureus",
+    "printedPoints": 4,
+    "lengthCm": 45,
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "electric",
+        "count": 2
+      },
+      {
+        "kind": "venomous",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[SchoolFeederMove]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_122"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.123",
+    "sourceId": 123,
+    "set": "base",
+    "group": "main",
+    "name": "Wolftrap Angler",
+    "scientificName": "Lasiognathus beebei",
+    "printedPoints": 3,
+    "lengthCm": 12,
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "[SchoolFeederMove]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_123"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.124",
+    "sourceId": 124,
+    "set": "base",
+    "group": "main",
+    "name": "Yellow Boxfish",
+    "scientificName": "Ostracion cubicum",
+    "printedPoints": 6,
+    "lengthCm": 45,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "venomous",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": "(all players) [SchoolFeederMove][AllPlayers]",
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_124"
+    ],
+    "visualAssetName": null
+  },
+  {
+    "id": "base.main.125",
+    "sourceId": 125,
+    "set": "base",
+    "group": "main",
+    "name": "Yellowtail Snapper",
+    "scientificName": "Ocyurus chrysurus",
+    "printedPoints": 1,
+    "lengthCm": 85,
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "gameEnd",
+    "abilityText": "[FishEgg][ArrowDown][FlipperPurple] on each",
+    "abilityIds": [
+      "unsupported.base.gameEnd.card_125"
+    ],
+    "visualAssetName": null
+  }
+]

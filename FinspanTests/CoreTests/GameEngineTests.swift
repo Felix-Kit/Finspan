@@ -896,6 +896,168 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(state.deckState.discardPile, [])
     }
 
+    func testNormalFishCanPlayToEmptySlotWithoutCoverCost() throws {
+        let engine = GameEngine()
+        let state = playFishState()
+        let targetSlot = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+
+        let drafts = try engine.makeEventDrafts(
+            for: playFishCommand(commandId: "normal-empty", cardId: "fish-6", targetSlot: targetSlot),
+            in: state
+        )
+
+        XCTAssertTrue(drafts.contains(.fishPlayed(FishPlayedEvent(
+            playerId: "player-1",
+            cardId: "fish-6",
+            targetSlot: targetSlot,
+            payment: .empty,
+            nextActivePlayerId: nil
+        ))))
+    }
+
+    func testNormalFishCanVoluntarilyCoverShorterFishWithoutCoverCost() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        let targetSlot = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        setContent(.fishCard("starter-fish-1"), at: targetSlot, in: &state)
+
+        let drafts = try engine.makeEventDrafts(
+            for: playFishCommand(commandId: "normal-cover", cardId: "fish-6", targetSlot: targetSlot),
+            in: state
+        )
+
+        XCTAssertTrue(drafts.contains(.fishPlayed(FishPlayedEvent(
+            playerId: "player-1",
+            cardId: "fish-6",
+            targetSlot: targetSlot,
+            payment: .empty,
+            nextActivePlayerId: nil
+        ))))
+    }
+
+    func testCoverShorterFishCostRejectsEmptySlot() {
+        let targetSlot = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        let engine = GameEngine(cardCatalog: coverShorterFishCatalog())
+        let state = coverShorterFishState()
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: playFishCommand(commandId: "cover-empty", cardId: "cover-fish", targetSlot: targetSlot),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .targetMustCoverShorterFish(targetSlot))
+        }
+    }
+
+    func testCoverShorterFishCostCanCoverShorterForageFish() throws {
+        let targetSlot = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 4)
+        let engine = GameEngine(cardCatalog: coverShorterFishCatalog())
+        let state = coverShorterFishState(keepForageFish: true)
+
+        let drafts = try engine.makeEventDrafts(
+            for: playFishCommand(commandId: "cover-forage", cardId: "cover-fish", targetSlot: targetSlot),
+            in: state
+        )
+
+        XCTAssertTrue(drafts.contains(.fishPlayed(FishPlayedEvent(
+            playerId: "player-1",
+            cardId: "cover-fish",
+            targetSlot: targetSlot,
+            payment: .empty,
+            nextActivePlayerId: nil
+        ))))
+    }
+
+    func testCoverShorterFishCostCanCoverShorterFishCard() throws {
+        let targetSlot = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        let engine = GameEngine(cardCatalog: coverShorterFishCatalog())
+        var state = coverShorterFishState()
+        setContent(.fishCard("starter-fish-1"), at: targetSlot, in: &state)
+
+        let drafts = try engine.makeEventDrafts(
+            for: playFishCommand(commandId: "cover-card", cardId: "cover-fish", targetSlot: targetSlot),
+            in: state
+        )
+
+        XCTAssertTrue(drafts.contains(.fishPlayed(FishPlayedEvent(
+            playerId: "player-1",
+            cardId: "cover-fish",
+            targetSlot: targetSlot,
+            payment: .empty,
+            nextActivePlayerId: nil
+        ))))
+    }
+
+    func testCoverShorterFishCostCannotCoverSameLengthOrLongerFish() {
+        let targetSlot = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        let engine = GameEngine(cardCatalog: coverShorterFishCatalog())
+        var state = coverShorterFishState()
+        setContent(.fishCard("same-length-fish"), at: targetSlot, in: &state)
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: playFishCommand(commandId: "cover-same-length", cardId: "cover-fish", targetSlot: targetSlot),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? CommandValidationError,
+                .targetFishTooLongToCover(
+                    target: targetSlot,
+                    newFishLengthCm: 30,
+                    existingFishLengthCm: 30
+                )
+            )
+        }
+    }
+
+    func testCoverShorterFishCostAddsConsumedFishAndPreservesResources() throws {
+        let targetSlot = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 4)
+        let engine = GameEngine(cardCatalog: coverShorterFishCatalog())
+        var state = coverShorterFishState(keepForageFish: true)
+        let drafts = try engine.makeEventDrafts(
+            for: playFishCommand(commandId: "cover-preserve-resources", cardId: "cover-fish", targetSlot: targetSlot),
+            in: state
+        )
+        guard case let .fishPlayed(event) = drafts.first else {
+            return XCTFail("Expected fish played draft.")
+        }
+
+        state = engine.reduce(
+            state: state,
+            event: GameEvent(sequenceNumber: 10, roomId: roomId, timestamp: timestamp, payload: .fishPlayed(event))
+        )
+
+        let slot = state.playerGameStates["player-1"]?.ocean.slots.first { $0.address == targetSlot }
+        XCTAssertEqual(slot?.content, .fishCard("cover-fish"))
+        XCTAssertEqual(slot?.consumedFish.count, 1)
+        XCTAssertEqual(slot?.consumedFish.first?.forageFishId, "sample-forage-blue-row-4")
+        XCTAssertEqual(slot?.resources, [ResourceQuantity(kind: .egg, amount: 1)])
+    }
+
+    func testCoverShorterFishConsumedFishStillScoresOnePoint() throws {
+        let targetSlot = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 4)
+        let engine = GameEngine(cardCatalog: coverShorterFishCatalog())
+        var state = coverShorterFishState(keepForageFish: true)
+        let drafts = try engine.makeEventDrafts(
+            for: playFishCommand(commandId: "cover-score", cardId: "cover-fish", targetSlot: targetSlot),
+            in: state
+        )
+        guard case let .fishPlayed(event) = drafts.first else {
+            return XCTFail("Expected fish played draft.")
+        }
+        state = engine.reduce(
+            state: state,
+            event: GameEvent(sequenceNumber: 10, roomId: roomId, timestamp: timestamp, payload: .fishPlayed(event))
+        )
+
+        let result = FinalScoreCalculator().calculate(in: state, cardCatalog: coverShorterFishCatalog())
+        let playerResult = result.results.first { $0.playerId == "player-1" }
+
+        XCTAssertEqual(playerResult?.consumedFishPoints, 1)
+    }
+
     func testPlayFishRejectsInactivePlayer() {
         let engine = GameEngine()
         let state = playFishState()
@@ -3678,6 +3840,26 @@ final class GameEngineTests: XCTestCase {
         )
     }
 
+    private func playFishCommand(
+        commandId: CommandID,
+        cardId: CardID,
+        targetSlot: OceanSlotAddress,
+        payment: PlayFishPayment = .empty
+    ) -> PlayerCommand {
+        PlayerCommand(
+            commandId: commandId,
+            playerId: "player-1",
+            roomId: roomId,
+            payload: .playFish(
+                PlayFishCommand(
+                    cardId: cardId,
+                    targetSlot: targetSlot,
+                    payment: payment
+                )
+            )
+        )
+    }
+
     private func resolveCommand(
         commandId: CommandID,
         choiceId: PendingChoiceID,
@@ -3761,6 +3943,34 @@ final class GameEngineTests: XCTestCase {
             .resources
             .first(where: { $0.kind == kind })?
             .amount ?? 0
+    }
+
+    private func coverShorterFishState(keepForageFish: Bool = false) -> GameState {
+        var state = playFishState(keepForageFish: keepForageFish)
+        state.playerGameStates["player-1"]?.hand.append("cover-fish")
+        return state
+    }
+
+    private func coverShorterFishCatalog() -> TestCardCatalog {
+        let sample = SampleCardCatalog()
+        return TestCardCatalog(
+            starterFishCards: sample.starterFishCards,
+            fishCards: sample.fishCards + [
+                Card(
+                    id: "cover-fish",
+                    name: "Cover Fish",
+                    costs: [.coverShorterFish(count: 1)],
+                    printedPoints: 5,
+                    lengthCm: 30
+                ),
+                Card(
+                    id: "same-length-fish",
+                    name: "Same Length Fish",
+                    printedPoints: 2,
+                    lengthCm: 30
+                )
+            ]
+        )
     }
 
     private func setResources(

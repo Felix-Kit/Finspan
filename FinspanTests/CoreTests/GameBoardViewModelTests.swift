@@ -745,6 +745,92 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(slot.playFishPreview.message, AppStrings.GameBoard.cannotCoverLongerOrSameFish)
     }
 
+    func testCoverShorterFishCostSlotPreviewRejectsEmptySlot() {
+        let service = makeService(hand: ["cover-fish"])
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalog: coverShorterFishCatalog()
+        )
+
+        viewModel.selectCard("cover-fish")
+
+        let slot = oceanSlot(in: viewModel, address: Self.slotAddress)
+        XCTAssertEqual(slot.playFishPreview.availability, .unavailable)
+        XCTAssertEqual(slot.playFishPreview.unavailableReason, .mustCoverShorterFish)
+        XCTAssertEqual(slot.playFishPreview.message, AppStrings.GameBoard.mustCoverShorterFish)
+
+        viewModel.selectTargetSlot(Self.slotAddress)
+        XCTAssertNil(viewModel.selectedTargetSlot)
+        XCTAssertEqual(viewModel.errorMessage, AppStrings.GameBoard.mustCoverShorterFish)
+    }
+
+    func testCoverShorterFishCostSlotPreviewAllowsShorterForageFish() {
+        let service = makeService(hand: ["cover-fish"], emptySlots: [])
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalog: coverShorterFishCatalog()
+        )
+
+        viewModel.selectCard("cover-fish")
+
+        let slot = oceanSlot(in: viewModel, address: Self.forageTargetAddress)
+        XCTAssertEqual(slot.playFishPreview.availability, .available)
+        XCTAssertEqual(slot.playFishPreview.message, AppStrings.GameBoard.canCoverShorterFish)
+    }
+
+    func testCoverShorterFishCostSlotPreviewAllowsShorterFishCard() {
+        let service = makeService(hand: ["cover-fish"], emptySlots: [Self.slotAddress])
+        setContent(.fishCard("starter-fish-1"), at: Self.slotAddress, in: service)
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalog: coverShorterFishCatalog()
+        )
+
+        viewModel.selectCard("cover-fish")
+
+        let slot = oceanSlot(in: viewModel, address: Self.slotAddress)
+        XCTAssertEqual(slot.playFishPreview.availability, .available)
+        XCTAssertEqual(slot.playFishPreview.message, AppStrings.GameBoard.canCoverShorterFish)
+    }
+
+    func testCoverShorterFishCostSlotPreviewRejectsSameLengthFishCard() {
+        let service = makeService(hand: ["cover-fish"], emptySlots: [Self.slotAddress])
+        setContent(.fishCard("same-length-fish"), at: Self.slotAddress, in: service)
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalog: coverShorterFishCatalog()
+        )
+
+        viewModel.selectCard("cover-fish")
+
+        let slot = oceanSlot(in: viewModel, address: Self.slotAddress)
+        XCTAssertEqual(slot.playFishPreview.availability, .unavailable)
+        XCTAssertEqual(slot.playFishPreview.unavailableReason, .coverLengthTooShort)
+        XCTAssertEqual(slot.playFishPreview.message, AppStrings.GameBoard.cannotCoverLongerOrSameFish)
+    }
+
+    func testCoverShorterFishCostDragPreviewUsesSameEmptySlotReason() {
+        let service = makeService(hand: ["cover-fish"])
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalog: coverShorterFishCatalog()
+        )
+
+        XCTAssertTrue(viewModel.beginDraggingHandCard("cover-fish"))
+        viewModel.updateDragTarget(Self.slotAddress)
+
+        let slot = oceanSlot(in: viewModel, address: Self.slotAddress)
+        XCTAssertTrue(slot.isDropTarget)
+        XCTAssertFalse(slot.isValidDropTarget)
+        XCTAssertEqual(
+            slot.dropTargetReasonText,
+            "\(AppStrings.GameBoard.slotCannotPlayHere)：\(AppStrings.GameBoard.mustCoverShorterFish)"
+        )
+        XCTAssertEqual(viewModel.errorMessage, AppStrings.GameBoard.mustCoverShorterFish)
+        XCTAssertFalse(viewModel.dropHandCard(targetAddress: Self.slotAddress))
+        XCTAssertNil(viewModel.selectedTargetSlot)
+    }
+
     func testZoneMismatchPreviewIsUnavailable() {
         let service = makeService(hand: ["fish-1"], emptySlots: [Self.slotAddress, Self.resourceSourceAddress])
         let viewModel = GameBoardViewModel(roomService: service)
@@ -2498,6 +2584,28 @@ final class GameBoardViewModelTests: XCTestCase {
             players: service.snapshot.players,
             state: service.gameState,
             events: service.snapshot.events
+        )
+    }
+
+    private func coverShorterFishCatalog() -> TestCardCatalog {
+        let sample = SampleCardCatalog()
+        return TestCardCatalog(
+            starterFishCards: sample.starterFishCards,
+            fishCards: sample.fishCards + [
+                Card(
+                    id: "cover-fish",
+                    name: "Cover Fish",
+                    costs: [.coverShorterFish(count: 1)],
+                    printedPoints: 5,
+                    lengthCm: 30
+                ),
+                Card(
+                    id: "same-length-fish",
+                    name: "Same Length Fish",
+                    printedPoints: 2,
+                    lengthCm: 30
+                )
+            ]
         )
     }
 }

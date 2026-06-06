@@ -193,6 +193,7 @@ enum AppStrings {
         static let slotZoneMismatch = "区域不符"
         static let slotDiveSiteMismatch = "潜水点不符"
         static let slotSelectFishFirst = "先选择鱼牌"
+        static let mustCoverShorterFish = "这张鱼必须覆盖一条更短的鱼"
         static let cannotCoverLongerOrSameFish = "不能覆盖更长或同长度的鱼"
         static let canCoverShorterFish = "可以覆盖较短的鱼"
         static let dragToPlayHere = "拖到这里打出"
