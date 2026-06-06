@@ -1,0 +1,699 @@
+[
+  {
+    "id": "base.starter.126",
+    "sourceId": 126,
+    "set": "base",
+    "expansion": "base",
+    "group": "starter",
+    "name": {
+      "en": "Barreleye",
+      "zh": ""
+    },
+    "scientificName": "Macropinna microstoma",
+    "printedPoints": 3,
+    "lengthCm": 15,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[FishHatch]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_126"
+    ],
+    "visual": {
+      "fishImageAsset": "126.webp",
+      "fishImageLookup": "static/media/126.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 126,
+      "group": "starter",
+      "name": "Barreleye",
+      "latin": "Macropinna microstoma",
+      "cardCost": null,
+      "eggCost": 2,
+      "youngCost": null,
+      "consuming": null,
+      "schoolFishCost": null,
+      "sunlight": null,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 3,
+      "length": 15,
+      "abilityType": "IfActivated",
+      "ability": "[FishHatch]",
+      "Bioluminescent": null,
+      "Camouflage": null,
+      "Electric": null,
+      "Predator": null,
+      "Venomous": null,
+      "band": "green",
+      "description": "Its head is transparent with tubular eyes peering up from inside. The twin eyeholes in front are actually nostrils.",
+      "expansion": "base",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "base.starter.127",
+    "sourceId": 127,
+    "set": "base",
+    "expansion": "base",
+    "group": "starter",
+    "name": {
+      "en": "Blue Lanternfish",
+      "zh": ""
+    },
+    "scientificName": "Diaphus coeruleus",
+    "printedPoints": 1,
+    "lengthCm": 13,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[DrawCard][DrawCard][DrawCard][DrawCard]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_127"
+    ],
+    "visual": {
+      "fishImageAsset": "127.webp",
+      "fishImageLookup": "static/media/127.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 127,
+      "group": "starter",
+      "name": "Blue Lanternfish",
+      "latin": "Diaphus coeruleus",
+      "cardCost": 2,
+      "eggCost": null,
+      "youngCost": null,
+      "consuming": null,
+      "schoolFishCost": null,
+      "sunlight": null,
+      "twilight": 1,
+      "midnight": null,
+      "points": 1,
+      "length": 13,
+      "abilityType": "WhenPlayed",
+      "ability": "[DrawCard][DrawCard][DrawCard][DrawCard]",
+      "Bioluminescent": 1,
+      "Camouflage": null,
+      "Electric": null,
+      "Predator": null,
+      "Venomous": null,
+      "band": null,
+      "description": "Using glowing blue-green lights embedded all over its body, it can see and signal in the dark ocean depths.",
+      "expansion": "base",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "base.starter.128",
+    "sourceId": 128,
+    "set": "base",
+    "expansion": "base",
+    "group": "starter",
+    "name": {
+      "en": "Bonefish",
+      "zh": ""
+    },
+    "scientificName": "Albula vulpes",
+    "printedPoints": 4,
+    "lengthCm": 100,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "(all players) [FishEgg][AllPlayers]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_128"
+    ],
+    "visual": {
+      "fishImageAsset": "128.webp",
+      "fishImageLookup": "static/media/128.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 128,
+      "group": "starter",
+      "name": "Bonefish",
+      "latin": "Albula vulpes",
+      "cardCost": null,
+      "eggCost": 1,
+      "youngCost": null,
+      "consuming": null,
+      "schoolFishCost": null,
+      "sunlight": 1,
+      "twilight": null,
+      "midnight": null,
+      "points": 4,
+      "length": 100,
+      "abilityType": "IfActivated",
+      "ability": "(all players) [FishEgg][AllPlayers]",
+      "Bioluminescent": null,
+      "Camouflage": null,
+      "Electric": null,
+      "Predator": null,
+      "Venomous": null,
+      "band": null,
+      "description": "While feeding, it can be found in waters as shallow as 10 cm. Then it retreats to waters as deep as 100 meters.",
+      "expansion": "base",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "base.starter.129",
+    "sourceId": 129,
+    "set": "base",
+    "expansion": "base",
+    "group": "starter",
+    "name": {
+      "en": "Smoothcheek Lanternfish",
+      "zh": ""
+    },
+    "scientificName": "Bolinichthys indicus",
+    "printedPoints": 1,
+    "lengthCm": 5,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[FishEgg][FishEgg][DrawCard][DrawCard]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_129"
+    ],
+    "visual": {
+      "fishImageAsset": "129.webp",
+      "fishImageLookup": "static/media/129.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 129,
+      "group": "starter",
+      "name": "Smoothcheek Lanternfish",
+      "latin": "Bolinichthys indicus",
+      "cardCost": 2,
+      "eggCost": null,
+      "youngCost": null,
+      "consuming": null,
+      "schoolFishCost": null,
+      "sunlight": 1,
+      "twilight": 1,
+      "midnight": null,
+      "points": 1,
+      "length": 5,
+      "abilityType": "WhenPlayed",
+      "ability": "[FishEgg][FishEgg][DrawCard][DrawCard]",
+      "Bioluminescent": 1,
+      "Camouflage": null,
+      "Electric": null,
+      "Predator": null,
+      "Venomous": null,
+      "band": null,
+      "description": "These bioluminescent fish are found in the depths during the day and rise to the surface at night to feed.",
+      "expansion": "base",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "base.starter.130",
+    "sourceId": 130,
+    "set": "base",
+    "expansion": "base",
+    "group": "starter",
+    "name": {
+      "en": "Longfin Batfish",
+      "zh": ""
+    },
+    "scientificName": "Platax teira",
+    "printedPoints": 4,
+    "lengthCm": 70,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "(all players) [DrawCard][AllPlayers]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_130"
+    ],
+    "visual": {
+      "fishImageAsset": "130.webp",
+      "fishImageLookup": "static/media/130.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 130,
+      "group": "starter",
+      "name": "Longfin Batfish",
+      "latin": "Platax teira",
+      "cardCost": null,
+      "eggCost": 1,
+      "youngCost": null,
+      "consuming": null,
+      "schoolFishCost": null,
+      "sunlight": 1,
+      "twilight": null,
+      "midnight": null,
+      "points": 4,
+      "length": 70,
+      "abilityType": "IfActivated",
+      "ability": "(all players) [DrawCard][AllPlayers]",
+      "Bioluminescent": null,
+      "Camouflage": null,
+      "Electric": null,
+      "Predator": null,
+      "Venomous": null,
+      "band": null,
+      "description": "A peaceful, social fish, the longfin batfish forms schools with fish from other species.",
+      "expansion": "base",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "base.starter.131",
+    "sourceId": 131,
+    "set": "base",
+    "expansion": "base",
+    "group": "starter",
+    "name": {
+      "en": "Mandarinfish",
+      "zh": ""
+    },
+    "scientificName": "Synchiropus splendidus",
+    "printedPoints": 1,
+    "lengthCm": 7,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[DrawCard][DrawCard][DrawCard][FishEgg]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_131"
+    ],
+    "visual": {
+      "fishImageAsset": "131.webp",
+      "fishImageLookup": "static/media/131.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 131,
+      "group": "starter",
+      "name": "Mandarinfish",
+      "latin": "Synchiropus splendidus",
+      "cardCost": 1,
+      "eggCost": null,
+      "youngCost": null,
+      "consuming": null,
+      "schoolFishCost": null,
+      "sunlight": 1,
+      "twilight": null,
+      "midnight": null,
+      "points": 1,
+      "length": 7,
+      "abilityType": "WhenPlayed",
+      "ability": "[DrawCard][DrawCard][DrawCard][FishEgg]",
+      "Bioluminescent": null,
+      "Camouflage": null,
+      "Electric": null,
+      "Predator": null,
+      "Venomous": null,
+      "band": null,
+      "description": "Its common name comes from its vivid coloration, evoking the robes of the imperial Chinese civil service.",
+      "expansion": "base",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "base.starter.132",
+    "sourceId": 132,
+    "set": "base",
+    "expansion": "base",
+    "group": "starter",
+    "name": {
+      "en": "Orange Roughy",
+      "zh": ""
+    },
+    "scientificName": "Hoplostethus atlanticus",
+    "printedPoints": 1,
+    "lengthCm": 75,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[DrawCard][DrawCard][DrawCard][Discard]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.base.whenPlayed.card_132"
+    ],
+    "visual": {
+      "fishImageAsset": "132.webp",
+      "fishImageLookup": "static/media/132.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 132,
+      "group": "starter",
+      "name": "Orange Roughy",
+      "latin": "Hoplostethus atlanticus",
+      "cardCost": 2,
+      "eggCost": null,
+      "youngCost": null,
+      "consuming": null,
+      "schoolFishCost": null,
+      "sunlight": null,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 1,
+      "length": 75,
+      "abilityType": "WhenPlayed",
+      "ability": "[DrawCard][DrawCard][DrawCard][Discard]",
+      "Bioluminescent": null,
+      "Camouflage": null,
+      "Electric": null,
+      "Predator": null,
+      "Venomous": null,
+      "band": null,
+      "description": "Orange roughy are estimated to live for over 150 years and don’t reproduce until they are 20 to 40 years old.",
+      "expansion": "base",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "base.starter.133",
+    "sourceId": 133,
+    "set": "base",
+    "expansion": "base",
+    "group": "starter",
+    "name": {
+      "en": "Porkfish",
+      "zh": ""
+    },
+    "scientificName": "Anisotremus virginicus",
+    "printedPoints": 2,
+    "lengthCm": 40,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "purple",
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[FishEgg]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_133"
+    ],
+    "visual": {
+      "fishImageAsset": "133.webp",
+      "fishImageLookup": "static/media/133.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 133,
+      "group": "starter",
+      "name": "Porkfish",
+      "latin": "Anisotremus virginicus",
+      "cardCost": null,
+      "eggCost": 1,
+      "youngCost": null,
+      "consuming": null,
+      "schoolFishCost": null,
+      "sunlight": 1,
+      "twilight": null,
+      "midnight": null,
+      "points": 2,
+      "length": 40,
+      "abilityType": "IfActivated",
+      "ability": "[FishEgg]",
+      "Bioluminescent": null,
+      "Camouflage": null,
+      "Electric": null,
+      "Predator": null,
+      "Venomous": null,
+      "band": "purple",
+      "description": "It gets its common name from the sound it makes when it grinds its teeth and how it makes pig-like grunts.",
+      "expansion": "base",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "base.starter.134",
+    "sourceId": 134,
+    "set": "base",
+    "expansion": "base",
+    "group": "starter",
+    "name": {
+      "en": "Saddleback Butterflyfish",
+      "zh": ""
+    },
+    "scientificName": "Chaetodon ephippium",
+    "printedPoints": 5,
+    "lengthCm": 30,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "(all players) [FishHatch][AllPlayers]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_134"
+    ],
+    "visual": {
+      "fishImageAsset": "134.webp",
+      "fishImageLookup": "static/media/134.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 134,
+      "group": "starter",
+      "name": "Saddleback Butterflyfish",
+      "latin": "Chaetodon ephippium",
+      "cardCost": 2,
+      "eggCost": null,
+      "youngCost": null,
+      "consuming": null,
+      "schoolFishCost": null,
+      "sunlight": 1,
+      "twilight": null,
+      "midnight": null,
+      "points": 5,
+      "length": 30,
+      "abilityType": "IfActivated",
+      "ability": "(all players) [FishHatch][AllPlayers]",
+      "Bioluminescent": null,
+      "Camouflage": null,
+      "Electric": null,
+      "Predator": null,
+      "Venomous": null,
+      "band": null,
+      "description": "“Saddleback” refers to its white-bordered black spot. This fish inhabits coral reefs, rocky shores, and lagoons.",
+      "expansion": "base",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "base.starter.135",
+    "sourceId": 135,
+    "set": "base",
+    "expansion": "base",
+    "group": "starter",
+    "name": {
+      "en": "White-Banded Triggerfish",
+      "zh": ""
+    },
+    "scientificName": "Rhinecanthus aculeatus",
+    "printedPoints": 1,
+    "lengthCm": 40,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[Discard]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.base.ifActivated.card_135"
+    ],
+    "visual": {
+      "fishImageAsset": "135.webp",
+      "fishImageLookup": "static/media/135.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 135,
+      "group": "starter",
+      "name": "White-Banded Triggerfish",
+      "latin": "Rhinecanthus aculeatus",
+      "cardCost": 1,
+      "eggCost": null,
+      "youngCost": null,
+      "consuming": null,
+      "schoolFishCost": null,
+      "sunlight": 1,
+      "twilight": null,
+      "midnight": null,
+      "points": 1,
+      "length": 40,
+      "abilityType": "IfActivated",
+      "ability": "[Discard]",
+      "Bioluminescent": null,
+      "Camouflage": null,
+      "Electric": null,
+      "Predator": null,
+      "Venomous": null,
+      "band": "blue",
+      "description": "Its body is divided into roughly geometric areas, each with a different design and color pattern.",
+      "expansion": "base",
+      "coralCost": null
+    }
+  }
+]

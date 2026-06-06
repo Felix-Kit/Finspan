@@ -1,0 +1,138 @@
+{
+  "sourceFiles": {
+    "normalizedDraft": "tools/raw/finsearch/finspan_cards_normalized_draft.json",
+    "rawCards": "tools/raw/finsearch/finsearch_cards_raw.json"
+  },
+  "notes": [
+    "Generated files are offline intermediate data for future catalog import.",
+    "Do not use finsearch remote URLs in App runtime; runtime assets should be local.",
+    "S&R source set is preserved as sr and normalized expansion is sharks_reefs."
+  ],
+  "packages": {
+    "base_main_fish": {
+      "file": "tools/generated/cards/base_main_fish_cards.json",
+      "count": 125,
+      "expectedCount": 125,
+      "countMatchesExpected": true,
+      "sourceIdRange": [
+        1,
+        125
+      ],
+      "expectedSourceIdRange": [
+        1,
+        125
+      ],
+      "missingSourceIds": [],
+      "duplicateSourceIds": [],
+      "abilityTriggerStats": {
+        "gameEnd": 26,
+        "whenPlayed": 51,
+        "ifActivated": 48
+      },
+      "unsupportedAbilityIdsCount": 125,
+      "cardsWithCostsCount": 125,
+      "cardsWithRequiredDiveSiteColorCount": 26,
+      "cardsWithTagsCount": 69,
+      "remoteUrlFound": false,
+      "remoteUrlSamples": [],
+      "missingVisualAssetReferencesCount": 0,
+      "missingVisualAssetReferenceSourceIds": []
+    },
+    "base_starter_fish": {
+      "file": "tools/generated/cards/base_starter_fish_cards.json",
+      "count": 10,
+      "expectedCount": 10,
+      "countMatchesExpected": true,
+      "sourceIdRange": [
+        126,
+        135
+      ],
+      "expectedSourceIdRange": [
+        126,
+        135
+      ],
+      "missingSourceIds": [],
+      "duplicateSourceIds": [],
+      "abilityTriggerStats": {
+        "ifActivated": 6,
+        "whenPlayed": 4
+      },
+      "unsupportedAbilityIdsCount": 10,
+      "cardsWithCostsCount": 10,
+      "cardsWithRequiredDiveSiteColorCount": 3,
+      "cardsWithTagsCount": 2,
+      "remoteUrlFound": false,
+      "remoteUrlSamples": [],
+      "missingVisualAssetReferencesCount": 0,
+      "missingVisualAssetReferenceSourceIds": []
+    },
+    "sharks_reefs_main_fish": {
+      "file": "tools/generated/cards/sharks_reefs_main_fish_cards.json",
+      "count": 75,
+      "expectedCount": 75,
+      "countMatchesExpected": true,
+      "sourceIdRange": [
+        136,
+        210
+      ],
+      "expectedSourceIdRange": [
+        136,
+        210
+      ],
+      "missingSourceIds": [],
+      "duplicateSourceIds": [],
+      "abilityTriggerStats": {
+        "whenPlayed": 34,
+        "ifActivated": 28,
+        "gameEnd": 13
+      },
+      "unsupportedAbilityIdsCount": 75,
+      "cardsWithCostsCount": 75,
+      "cardsWithRequiredDiveSiteColorCount": 28,
+      "cardsWithTagsCount": 53,
+      "remoteUrlFound": false,
+      "remoteUrlSamples": [],
+      "missingVisualAssetReferencesCount": 0,
+      "missingVisualAssetReferenceSourceIds": []
+    },
+    "sharks_reefs_starter_fish": {
+      "file": "tools/generated/cards/sharks_reefs_starter_fish_cards.json",
+      "count": 5,
+      "expectedCount": 5,
+      "countMatchesExpected": true,
+      "sourceIdRange": [
+        211,
+        215
+      ],
+      "expectedSourceIdRange": [
+        211,
+        215
+      ],
+      "missingSourceIds": [],
+      "duplicateSourceIds": [],
+      "abilityTriggerStats": {
+        "whenPlayed": 1,
+        "ifActivated": 4
+      },
+      "unsupportedAbilityIdsCount": 5,
+      "cardsWithCostsCount": 4,
+      "cardsWithRequiredDiveSiteColorCount": 3,
+      "cardsWithTagsCount": 4,
+      "remoteUrlFound": false,
+      "remoteUrlSamples": [],
+      "missingVisualAssetReferencesCount": 0,
+      "missingVisualAssetReferenceSourceIds": []
+    }
+  },
+  "totals": {
+    "count": 215,
+    "expectedCount": 215,
+    "countMatchesExpected": true,
+    "globalDuplicateSourceIds": [],
+    "unexpectedCards": [],
+    "remoteUrlFound": false,
+    "remoteUrlSamples": [],
+    "missingVisualAssetReferencesCount": 0,
+    "missingVisualAssetReferences": []
+  }
+}
