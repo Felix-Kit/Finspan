@@ -26,22 +26,27 @@ struct GameBoardView: View {
             } else {
                 NavigationStack {
                     ZStack(alignment: .bottomLeading) {
-                        HStack(alignment: .top, spacing: 14) {
-                            turnPanel
-                                .frame(width: 220, alignment: .topLeading)
+                        VStack(alignment: .leading, spacing: 12) {
+                            topBar
 
-                            Divider()
+                            HStack(alignment: .top, spacing: 14) {
+                                turnPanel
+                                    .frame(width: 220, alignment: .topLeading)
 
-                            playFishPanel
-                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                                Divider()
 
-                            Divider()
+                                playFishPanel
+                                    .frame(maxWidth: .infinity, alignment: .topLeading)
 
-                            rightSidePanel
-                                .frame(width: 300, alignment: .topLeading)
+                                Divider()
+
+                                rightSidePanel
+                                    .frame(width: 300, alignment: .topLeading)
+                            }
                         }
                         .padding(.horizontal, 18)
-                        .padding(.vertical, 20)
+                        .padding(.top, 12)
+                        .padding(.bottom, 20)
 
                         FloatingHandView(
                             viewState: viewModel.handViewState,
@@ -67,7 +72,7 @@ struct GameBoardView: View {
                         )
                         .background(Color.clear)
                     }
-                    .navigationTitle(AppStrings.GameBoard.title)
+                    .toolbar(.hidden, for: .navigationBar)
                 }
             }
         }
@@ -77,6 +82,50 @@ struct GameBoardView: View {
         .onAppear {
             viewModel.refresh()
         }
+    }
+
+    private var topBar: some View {
+        let state = viewModel.topBarViewState
+        return HStack(spacing: 12) {
+            topBarItem(state.weekText, systemImage: "calendar")
+            topBarDivider
+            topBarItem(state.activePlayerText, systemImage: "person.crop.circle")
+            topBarDivider
+            topBarItem(state.diverText, systemImage: "figure.pool.swim")
+            topBarDivider
+            topBarItem(state.resourceSummaryText, systemImage: "circle.hexagongrid.fill")
+            Spacer(minLength: 8)
+            topBarItem(state.playerCountText, systemImage: "person.2")
+            Button {
+            } label: {
+                Label(state.logButtonText, systemImage: "list.bullet.rectangle")
+                    .labelStyle(.titleAndIcon)
+            }
+            .buttonStyle(.bordered)
+            .disabled(!state.canShowLog)
+        }
+        .font(.callout.weight(.medium))
+        .lineLimit(1)
+        .minimumScaleFactor(0.78)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(.secondarySystemBackground))
+        )
+    }
+
+    private var topBarDivider: some View {
+        Rectangle()
+            .fill(Color.secondary.opacity(0.25))
+            .frame(width: 1, height: 16)
+    }
+
+    private func topBarItem(_ text: String, systemImage: String) -> some View {
+        Label(text, systemImage: systemImage)
+            .labelStyle(.titleAndIcon)
+            .foregroundStyle(.primary)
     }
 
     private func slotAddress(at globalLocation: CGPoint) -> OceanSlotAddress? {

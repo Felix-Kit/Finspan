@@ -63,6 +63,16 @@ struct HandViewState: Equatable {
     let blockingMessage: String?
 }
 
+struct GameTopBarViewState: Equatable {
+    let weekText: String
+    let activePlayerText: String
+    let diverText: String
+    let resourceSummaryText: String
+    let playerCountText: String
+    let canShowLog: Bool
+    let logButtonText: String
+}
+
 struct DiscardPaymentProgressViewState: Identifiable, Equatable {
     var id: String { "discard" }
 
@@ -468,6 +478,58 @@ final class GameBoardViewModel: ObservableObject {
             return "-"
         }
         return players.first(where: { $0.playerId == activePlayerId })?.displayName ?? activePlayerId
+    }
+
+    var topBarViewState: GameTopBarViewState {
+        let totals = activePlayerResourceTotals
+        return GameTopBarViewState(
+            weekText: AppStrings.GameBoard.topBarWeekText(state.currentWeek),
+            activePlayerText: AppStrings.GameBoard.topBarActivePlayerText(
+                name: activePlayerName,
+                colorName: activePlayerColorName
+            ),
+            diverText: AppStrings.GameBoard.topBarDiverText(
+                available: activePlayerState?.availableDivers ?? 0,
+                total: 6
+            ),
+            resourceSummaryText: AppStrings.GameBoard.topBarResourceSummaryText(
+                eggs: totals.eggs,
+                young: totals.young,
+                schools: totals.schools
+            ),
+            playerCountText: AppStrings.GameBoard.topBarPlayerCountText(players.count),
+            canShowLog: true,
+            logButtonText: AppStrings.GameBoard.logButton
+        )
+    }
+
+    private var activePlayerColorName: String? {
+        guard let activePlayerId = state.activePlayerId,
+              let color = players.first(where: { $0.playerId == activePlayerId })?.color
+        else {
+            return nil
+        }
+        return AppStrings.colorName(color)
+    }
+
+    private var activePlayerResourceTotals: (eggs: Int, young: Int, schools: Int) {
+        guard let activePlayerState else {
+            return (0, 0, 0)
+        }
+        return activePlayerState.ocean.slots.reduce(into: (eggs: 0, young: 0, schools: 0)) { totals, slot in
+            for resource in slot.resources {
+                switch resource.kind {
+                case .egg:
+                    totals.eggs += resource.amount
+                case .young:
+                    totals.young += resource.amount
+                case .school:
+                    totals.schools += resource.amount
+                default:
+                    break
+                }
+            }
+        }
     }
 
     var canDive: Bool {

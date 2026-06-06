@@ -39,6 +39,45 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.selectedFishCardDetails?.lengthText, "600 厘米")
     }
 
+    func testTopBarViewStateShowsCurrentWeek() {
+        let service = makeService(hand: [], currentWeek: 1)
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.topBarViewState.weekText, "第 1 周")
+    }
+
+    func testTopBarViewStateShowsActivePlayerAndDivers() {
+        let service = makeService(hand: [], availableDivers: 4)
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.topBarViewState.activePlayerText, "当前：玩家 1")
+        XCTAssertEqual(viewModel.topBarViewState.diverText, "潜水员 4 / 6")
+    }
+
+    func testTopBarViewStateSummarizesActivePlayerResources() {
+        let service = makeService(
+            hand: [],
+            resourceSourceResources: [
+                ResourceQuantity(kind: .egg, amount: 2),
+                ResourceQuantity(kind: .young, amount: 1),
+                ResourceQuantity(kind: .school, amount: 3)
+            ],
+            clearAllSlotResources: true
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.topBarViewState.resourceSummaryText, "鱼卵 2 · 幼鱼 1 · 鱼群 3")
+    }
+
+    func testTopBarViewStateShowsPlayerCountAndLogEntry() {
+        let service = makeService(hand: [])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.topBarViewState.playerCountText, "1 人")
+        XCTAssertTrue(viewModel.topBarViewState.canShowLog)
+        XCTAssertEqual(viewModel.topBarViewState.logButtonText, "日志")
+    }
+
     func testSubmitPlayFishIncludesSelectedEggSources() {
         let slotAddress = Self.slotAddress
         let sourceAddress = Self.resourceSourceAddress

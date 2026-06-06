@@ -42,6 +42,7 @@ enum AppStrings {
     enum GameBoard {
         static let title = "游戏面板"
         static let turn = "回合"
+        static let logButton = "日志"
         static let currentWeek = "当前周数"
         static let currentTurn = "当前回合"
         static let activePlayer = "当前行动玩家"
@@ -305,6 +306,29 @@ enum AppStrings {
 
         static func compoundAbilityProgressText(title: String, completedCount: Int, totalCount: Int) -> String {
             "\(title) \(completedCount) / \(totalCount)"
+        }
+
+        static func topBarWeekText(_ week: Int) -> String {
+            week > 0 ? "第 \(week) 周" : "第 - 周"
+        }
+
+        static func topBarActivePlayerText(name: String, colorName: String?) -> String {
+            guard let colorName else {
+                return "当前：\(name)"
+            }
+            return "当前：\(name)（\(colorName)）"
+        }
+
+        static func topBarDiverText(available: Int, total: Int) -> String {
+            "潜水员 \(available) / \(total)"
+        }
+
+        static func topBarResourceSummaryText(eggs: Int, young: Int, schools: Int) -> String {
+            "鱼卵 \(eggs) · 幼鱼 \(young) · 鱼群 \(schools)"
+        }
+
+        static func topBarPlayerCountText(_ count: Int) -> String {
+            "\(count) 人"
         }
     }
 
