@@ -23,6 +23,22 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(payload.payment, PlayFishPayment.empty)
     }
 
+    func testUsesCatalogProviderForBaseGameCards() throws {
+        let catalog = try BaseGameCardCatalog()
+        let service = makeService(hand: ["base.main.057"])
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalogProvider: { catalog }
+        )
+
+        XCTAssertEqual(viewModel.handCards.first?.title, "Great White Shark")
+
+        viewModel.selectHandCard("base.main.057")
+
+        XCTAssertEqual(viewModel.selectedFishCardDetails?.title, "Great White Shark")
+        XCTAssertEqual(viewModel.selectedFishCardDetails?.lengthText, "600 厘米")
+    }
+
     func testSubmitPlayFishIncludesSelectedEggSources() {
         let slotAddress = Self.slotAddress
         let sourceAddress = Self.resourceSourceAddress
@@ -1389,6 +1405,7 @@ final class GameBoardViewModelTests: XCTestCase {
         viewModel.selectCard("starter-fish-1")
         viewModel.selectTargetSlot(Self.slotAddress)
         viewModel.submitPlayFish()
+        viewModel.cancelPlayFishSelection()
         viewModel.submitDive(to: .blue)
 
         XCTAssertTrue(viewModel.hasBlockingPendingChoices)
@@ -1399,19 +1416,27 @@ final class GameBoardViewModelTests: XCTestCase {
     }
 
     func testNoAvailableDiversPreventsPlayFishAndDiveSubmission() {
-        let service = makeService(hand: ["starter-fish-1"], availableDivers: 0)
-        let viewModel = GameBoardViewModel(roomService: service)
+        let playFishService = makeService(hand: ["starter-fish-1"], availableDivers: 0)
+        let playFishViewModel = GameBoardViewModel(roomService: playFishService)
 
-        viewModel.selectCard("starter-fish-1")
-        viewModel.selectTargetSlot(Self.slotAddress)
-        viewModel.submitPlayFish()
-        viewModel.submitDive(to: .blue)
+        playFishViewModel.selectCard("starter-fish-1")
+        playFishViewModel.selectTargetSlot(Self.slotAddress)
+        playFishViewModel.submitPlayFish()
 
-        XCTAssertFalse(viewModel.canSubmitPlayFish)
-        XCTAssertFalse(viewModel.canDive)
-        XCTAssertEqual(viewModel.diverAvailabilityWarning, AppStrings.GameBoard.diversUsedThisWeek)
-        XCTAssertTrue(service.submittedCommands.isEmpty)
-        XCTAssertEqual(viewModel.errorMessage, AppStrings.GameBoard.diversUsedThisWeek)
+        XCTAssertFalse(playFishViewModel.canSubmitPlayFish)
+        XCTAssertEqual(playFishViewModel.diverAvailabilityWarning, AppStrings.GameBoard.diversUsedThisWeek)
+        XCTAssertTrue(playFishService.submittedCommands.isEmpty)
+        XCTAssertEqual(playFishViewModel.errorMessage, AppStrings.GameBoard.diversUsedThisWeek)
+
+        let diveService = makeService(hand: ["starter-fish-1"], availableDivers: 0)
+        let diveViewModel = GameBoardViewModel(roomService: diveService)
+
+        diveViewModel.submitDive(to: .blue)
+
+        XCTAssertFalse(diveViewModel.canDive)
+        XCTAssertEqual(diveViewModel.diverAvailabilityWarning, AppStrings.GameBoard.diversUsedThisWeek)
+        XCTAssertTrue(diveService.submittedCommands.isEmpty)
+        XCTAssertEqual(diveViewModel.errorMessage, AppStrings.GameBoard.diversUsedThisWeek)
     }
 
     func testPendingChoicesTakePriorityOverNoAvailableDiversWarning() {
@@ -1869,7 +1894,8 @@ final class GameBoardViewModelTests: XCTestCase {
         let service = makeService(
             hand: ["fish-2"],
             pendingChoices: [choice.choiceId: choice],
-            resourceSourceResources: []
+            resourceSourceResources: [],
+            clearAllSlotResources: true
         )
         let viewModel = GameBoardViewModel(roomService: service)
 
@@ -2301,11 +2327,17 @@ final class GameBoardViewModelTests: XCTestCase {
             ResourceQuantity(kind: .young, amount: 1),
             ResourceQuantity(kind: .school, amount: 1)
         ],
+        clearAllSlotResources: Bool = false,
         diveSitesReachedBottomThisWeek: Set<DiveActionSite> = [],
         weeklyAchievementResults: [WeeklyAchievementResult] = [],
         finalScoreResult: FinalScoreResult? = nil
     ) -> CapturingRoomService {
         var ocean = OceanState.baseGameInitial(for: "player-1")
+        if clearAllSlotResources {
+            for slotIndex in ocean.slots.indices {
+                ocean.slots[slotIndex].resources = []
+            }
+        }
         for emptySlot in emptySlots {
             if let targetIndex = ocean.slots.firstIndex(where: { $0.address == emptySlot }) {
                 ocean.slots[targetIndex].content = .empty

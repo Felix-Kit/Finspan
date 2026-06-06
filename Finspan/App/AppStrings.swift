@@ -11,6 +11,9 @@ enum AppStrings {
         static let noLocalRoom = "暂无本地房间"
         static let noLocalRoomDescription = "创建本地房间后即可测试流程。"
         static let actions = "操作"
+        static let gameDataMode = "卡牌数据"
+        static let sampleGameData = "示例数据"
+        static let baseGameData = "基础版真实卡牌"
         static let createLocalRoom = "创建本地房间"
         static let joinSimulatedPlayer = "加入模拟玩家"
         static let activePlayer = "当前选择玩家"
@@ -25,6 +28,15 @@ enum AppStrings {
         static let simulatedPlayerPrefix = "玩家"
         static let ready = "已准备"
         static let notReady = "未准备"
+    }
+
+    static func gameDataModeName(_ mode: GameDataMode) -> String {
+        switch mode {
+        case .sample:
+            return Lobby.sampleGameData
+        case .baseGame:
+            return Lobby.baseGameData
+        }
     }
 
     enum GameBoard {

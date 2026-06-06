@@ -79,6 +79,14 @@ struct LobbyView: View {
             Text(AppStrings.Lobby.actions)
                 .font(.title2.weight(.semibold))
 
+            Picker(AppStrings.Lobby.gameDataMode, selection: $viewModel.selectedGameDataMode) {
+                ForEach(GameDataMode.allCases) { mode in
+                    Text(AppStrings.gameDataModeName(mode)).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .disabled(!viewModel.canCreateRoom)
+
             Button {
                 viewModel.createLocalRoom()
             } label: {

@@ -16,10 +16,16 @@ struct ContentView: View {
     init(environment: AppEnvironment) {
         self.environment = environment
         _lobbyViewModel = StateObject(
-            wrappedValue: LobbyViewModel(roomService: environment.roomService)
+            wrappedValue: LobbyViewModel(
+                roomService: environment.roomService,
+                gameDataController: environment.gameDataController
+            )
         )
         _gameBoardViewModel = StateObject(
-            wrappedValue: GameBoardViewModel(roomService: environment.roomService)
+            wrappedValue: GameBoardViewModel(
+                roomService: environment.roomService,
+                cardCatalogProvider: environment.gameDataController.currentCatalog
+            )
         )
         _phase = State(initialValue: environment.roomService.gameState.phase)
     }

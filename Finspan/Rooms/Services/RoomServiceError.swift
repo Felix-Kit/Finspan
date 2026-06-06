@@ -13,4 +13,5 @@ enum RoomServiceError: Error, Equatable {
     case gameAlreadyStarted
     case gameNotStarted
     case cannotJoinStartedGame
+    case cannotChangeGameDataModeAfterRoomCreated
 }

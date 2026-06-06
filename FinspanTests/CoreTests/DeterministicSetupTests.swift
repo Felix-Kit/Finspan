@@ -147,8 +147,53 @@ final class DeterministicSetupTests: XCTestCase {
         XCTAssertEqual(rebuiltState, service.gameState)
     }
 
-    private func makeStartedService(seed: Int) throws -> LocalAuthoritativeRoomService {
+    func testSampleModeKeepsSampleCatalogSetupCounts() throws {
+        let service = try makeStartedService(seed: 123, gameDataMode: .sample)
+
+        XCTAssertEqual(service.gameRoom?.gameConfig.gameDataMode, .sample)
+        XCTAssertEqual(service.gameState.deckState.starterFishDrawPile.count, 10)
+        XCTAssertEqual(service.gameState.deckState.fishDrawPile.count, 23)
+        XCTAssertTrue(service.gameState.deckState.starterFishDrawPile.allSatisfy { $0.hasPrefix("starter-fish-") })
+        XCTAssertTrue(service.gameState.deckState.fishDrawPile.allSatisfy { $0.hasPrefix("fish-") })
+    }
+
+    func testBaseGameModeUsesBaseGameCatalogForSetupCounts() throws {
+        let service = try makeStartedService(seed: 123, gameDataMode: .baseGame)
+
+        XCTAssertEqual(service.gameRoom?.gameConfig.gameDataMode, .baseGame)
+        XCTAssertEqual(service.gameState.deckState.starterFishDrawPile.count, 4)
+        XCTAssertEqual(service.gameState.deckState.fishDrawPile.count, 116)
+        XCTAssertTrue(service.gameState.deckState.starterFishDrawPile.allSatisfy { $0.hasPrefix("base.starter.") })
+        XCTAssertTrue(service.gameState.deckState.fishDrawPile.allSatisfy { $0.hasPrefix("base.main.") })
+    }
+
+    func testBaseGameModeSetupIsDeterministicForSameSeed() throws {
+        let first = try makeStartedService(seed: 456, gameDataMode: .baseGame)
+        let second = try makeStartedService(seed: 456, gameDataMode: .baseGame)
+
+        XCTAssertEqual(first.gameState.playerGameStates, second.gameState.playerGameStates)
+        XCTAssertEqual(first.gameState.deckState, second.gameState.deckState)
+        XCTAssertEqual(first.gameState.activePlayerId, second.gameState.activePlayerId)
+    }
+
+    func testBaseGameModeSetupDoesNotIncludeSharksAndReefsCards() throws {
+        let service = try makeStartedService(seed: 123, gameDataMode: .baseGame)
+        let handCards = service.gameState.playerGameStates.values.flatMap(\.hand)
+        let allSetupCards = handCards
+            + service.gameState.deckState.starterFishDrawPile
+            + service.gameState.deckState.fishDrawPile
+
+        XCTAssertEqual(allSetupCards.count, 135)
+        XCTAssertFalse(allSetupCards.contains { $0.hasPrefix("sr.") })
+        XCTAssertFalse(allSetupCards.contains { $0.contains("sharks_reefs") })
+    }
+
+    private func makeStartedService(
+        seed: Int,
+        gameDataMode: GameDataMode = .sample
+    ) throws -> LocalAuthoritativeRoomService {
         let service = LocalAuthoritativeRoomService(
+            gameDataMode: gameDataMode,
             roomId: "room-1",
             timestampProvider: { Date(timeIntervalSince1970: 1_000) },
             randomSeedProvider: { seed }
@@ -161,7 +206,11 @@ final class DeterministicSetupTests: XCTestCase {
                 roomId: "room-1",
                 roomCode: "ABCD",
                 displayName: "Player 1",
-                gameConfig: GameConfig(playerCount: 3, randomSeed: 0)
+                gameConfig: GameConfig(
+                    playerCount: 3,
+                    randomSeed: 0,
+                    gameDataMode: gameDataMode
+                )
             )
         )
         try service.submit(

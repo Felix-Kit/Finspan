@@ -1,12 +1,15 @@
 import Foundation
 
-final class LocalAuthoritativeRoomService: RoomService {
-    private let engine: GameEngine
+final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring {
+    private var engine: GameEngine
     private let reducer: EventReducer
-    private let setupBuilder: DeterministicSetupBuilder
+    private var setupBuilder: DeterministicSetupBuilder
+    private let cardCatalogFactory: CardCatalogFactory
+    private var cardCatalog: any CardCatalog
     private var eventFactory: AuthoritativeEventFactory
     private let randomSeedProvider: () -> Int
     private var eventContinuations: [AsyncStream<GameEvent>.Continuation] = []
+    private(set) var gameDataMode: GameDataMode
 
     private(set) var gameRoom: GameRoom?
     private(set) var gameState: GameState
@@ -20,18 +23,24 @@ final class LocalAuthoritativeRoomService: RoomService {
     }
 
     init(
-        engine: GameEngine = GameEngine(),
+        engine: GameEngine? = nil,
         reducer: EventReducer = EventReducer(),
-        setupBuilder: DeterministicSetupBuilder = DeterministicSetupBuilder(),
+        setupBuilder: DeterministicSetupBuilder? = nil,
+        gameDataMode: GameDataMode = .sample,
+        cardCatalogFactory: CardCatalogFactory = CardCatalogFactory(),
         snapshot: RoomSnapshot = .empty,
         roomId: RoomID = RoomSnapshot.empty.id,
         randomSeed: Int = 0,
         timestampProvider: @escaping () -> Date = Date.init,
         randomSeedProvider: @escaping () -> Int = { Int.random(in: 1...Int.max) }
     ) {
-        self.engine = engine
+        let catalog = Self.makeCatalogOrSample(mode: gameDataMode, factory: cardCatalogFactory)
+        self.engine = engine ?? GameEngine(cardCatalog: catalog)
         self.reducer = reducer
-        self.setupBuilder = setupBuilder
+        self.setupBuilder = setupBuilder ?? DeterministicSetupBuilder(catalog: catalog)
+        self.cardCatalogFactory = cardCatalogFactory
+        self.cardCatalog = catalog
+        self.gameDataMode = gameDataMode
         self.gameRoom = nil
         self.gameState = snapshot.state
         self.snapshot = snapshot
@@ -45,9 +54,19 @@ final class LocalAuthoritativeRoomService: RoomService {
         )
     }
 
+    func setGameDataMode(_ mode: GameDataMode) throws {
+        guard gameRoom == nil else {
+            throw RoomServiceError.cannotChangeGameDataModeAfterRoomCreated
+        }
+        try configureGameDataMode(mode)
+    }
+
     @discardableResult
     func submit(_ command: PlayerCommand) throws -> [GameEvent] {
         try validateRoomCommand(command)
+        if case let .createRoom(payload) = command.payload {
+            try configureGameDataMode(payload.gameConfig.gameDataMode)
+        }
         let engineDrafts = try engine.makeEventDrafts(for: command, in: gameState)
         let randomSeed = prepareAuthoritativeFields(for: command)
         let drafts = try makeAuthoritativeDrafts(
@@ -76,6 +95,21 @@ final class LocalAuthoritativeRoomService: RoomService {
         }
 
         return events
+    }
+
+    private func configureGameDataMode(_ mode: GameDataMode) throws {
+        let catalog = try cardCatalogFactory.makeCatalog(for: mode)
+        gameDataMode = mode
+        cardCatalog = catalog
+        engine = GameEngine(cardCatalog: catalog)
+        setupBuilder = DeterministicSetupBuilder(catalog: catalog)
+    }
+
+    private static func makeCatalogOrSample(
+        mode: GameDataMode,
+        factory: CardCatalogFactory
+    ) -> any CardCatalog {
+        (try? factory.makeCatalog(for: mode)) ?? SampleCardCatalog()
     }
 
     private func validateRoomCommand(_ command: PlayerCommand) throws {

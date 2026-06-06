@@ -443,9 +443,12 @@ final class GameBoardViewModel: ObservableObject {
     @Published private var rewardSelectionMode: RewardSelectionMode?
 
     private let roomService: any RoomService
-    private let cardCatalog: any CardCatalog
+    private let cardCatalogProvider: () -> any CardCatalog
     private let abilityResolver: AbilityResolver
     private var commandCounter = 0
+    private var cardCatalog: any CardCatalog {
+        cardCatalogProvider()
+    }
     private var cardsById: [CardID: Card] {
         Dictionary(
             uniqueKeysWithValues: (cardCatalog.starterFishCards + cardCatalog.fishCards).map { ($0.id, $0) }
@@ -996,16 +999,37 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     convenience init(roomService: any RoomService) {
-        self.init(roomService: roomService, cardCatalog: SampleCardCatalog())
+        let factory = CardCatalogFactory()
+        self.init(
+            roomService: roomService,
+            cardCatalogProvider: {
+                guard let mode = (roomService as? GameDataModeConfiguring)?.gameDataMode else {
+                    return SampleCardCatalog()
+                }
+                return (try? factory.makeCatalog(for: mode)) ?? SampleCardCatalog()
+            }
+        )
     }
 
-    init(
+    convenience init(
         roomService: any RoomService,
         cardCatalog: any CardCatalog,
         abilityResolver: AbilityResolver = AbilityResolver()
     ) {
+        self.init(
+            roomService: roomService,
+            cardCatalogProvider: { cardCatalog },
+            abilityResolver: abilityResolver
+        )
+    }
+
+    init(
+        roomService: any RoomService,
+        cardCatalogProvider: @escaping () -> any CardCatalog,
+        abilityResolver: AbilityResolver = AbilityResolver()
+    ) {
         self.roomService = roomService
-        self.cardCatalog = cardCatalog
+        self.cardCatalogProvider = cardCatalogProvider
         self.abilityResolver = abilityResolver
         refresh()
     }
@@ -1135,6 +1159,10 @@ final class GameBoardViewModel: ObservableObject {
               let slot = activePlayerState.ocean.slots.first(where: { $0.address == address }),
               playFishSlotPreview(for: slot).isSelectable
         else {
+            if let activePlayerState,
+               let slot = activePlayerState.ocean.slots.first(where: { $0.address == address }) {
+                errorMessage = playFishSlotPreview(for: slot).message
+            }
             return
         }
         selectedTargetSlot = address
@@ -1378,6 +1406,10 @@ final class GameBoardViewModel: ObservableObject {
         }
         guard let activePlayerId = state.activePlayerId else {
             errorMessage = AppStrings.GameBoard.noActivePlayer
+            return
+        }
+        guard (activePlayerState?.availableDivers ?? 0) > 0 else {
+            errorMessage = AppStrings.GameBoard.diversUsedThisWeek
             return
         }
         guard let roomId = state.roomId ?? roomService.gameRoom?.roomId else {

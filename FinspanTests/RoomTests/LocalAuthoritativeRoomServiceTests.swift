@@ -220,6 +220,28 @@ final class LocalAuthoritativeRoomServiceTests: XCTestCase {
         }
     }
 
+    func testSampleModeCreatesRoomAndSetupWithSampleCatalog() throws {
+        let service = try makeStartedService(gameDataMode: .sample)
+
+        XCTAssertEqual(service.gameDataMode, .sample)
+        XCTAssertEqual(service.gameRoom?.gameConfig.gameDataMode, .sample)
+        XCTAssertEqual(service.gameState.deckState.starterFishDrawPile.count, 14)
+        XCTAssertEqual(service.gameState.deckState.fishDrawPile.count, 29)
+        XCTAssertTrue(service.gameState.deckState.starterFishDrawPile.allSatisfy { $0.hasPrefix("starter-fish-") })
+        XCTAssertTrue(service.gameState.deckState.fishDrawPile.allSatisfy { $0.hasPrefix("fish-") })
+    }
+
+    func testBaseGameModeCreatesRoomAndSetupWithBaseGameCatalog() throws {
+        let service = try makeStartedService(gameDataMode: .baseGame)
+
+        XCTAssertEqual(service.gameDataMode, .baseGame)
+        XCTAssertEqual(service.gameRoom?.gameConfig.gameDataMode, .baseGame)
+        XCTAssertEqual(service.gameState.deckState.starterFishDrawPile.count, 8)
+        XCTAssertEqual(service.gameState.deckState.fishDrawPile.count, 122)
+        XCTAssertTrue(service.gameState.deckState.starterFishDrawPile.allSatisfy { $0.hasPrefix("base.starter.") })
+        XCTAssertTrue(service.gameState.deckState.fishDrawPile.allSatisfy { $0.hasPrefix("base.main.") })
+    }
+
     func testEventStreamPublishesSubmittedEvents() async throws {
         let service = LocalAuthoritativeRoomService(
             roomId: "room-1",
@@ -241,5 +263,47 @@ final class LocalAuthoritativeRoomServiceTests: XCTestCase {
         let event = await iterator.next()
         XCTAssertEqual(event?.sequenceNumber, 1)
         XCTAssertEqual(event?.payload, service.eventLog.first?.payload)
+    }
+
+    private func makeStartedService(gameDataMode: GameDataMode) throws -> LocalAuthoritativeRoomService {
+        let service = LocalAuthoritativeRoomService(
+            gameDataMode: gameDataMode,
+            roomId: "room-1",
+            timestampProvider: { Date(timeIntervalSince1970: 1_000) },
+            randomSeedProvider: { 99 }
+        )
+
+        try service.submit(
+            .createRoom(
+                commandId: "command-1",
+                playerId: "player-1",
+                roomId: "room-1",
+                roomCode: "ABCD",
+                displayName: "Player 1",
+                gameConfig: GameConfig(
+                    playerCount: 1,
+                    randomSeed: 0,
+                    gameDataMode: gameDataMode
+                )
+            )
+        )
+        try service.submit(
+            PlayerCommand(
+                commandId: "command-2",
+                playerId: "player-1",
+                roomId: "room-1",
+                payload: .setReady(SetReadyCommand(isReady: true))
+            )
+        )
+        try service.submit(
+            PlayerCommand(
+                commandId: "command-3",
+                playerId: "player-1",
+                roomId: "room-1",
+                payload: .startGame(StartGameCommand())
+            )
+        )
+
+        return service
     }
 }

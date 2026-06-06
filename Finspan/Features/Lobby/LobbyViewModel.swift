@@ -9,9 +9,15 @@ final class LobbyViewModel: ObservableObject {
     @Published private(set) var players: [RoomPlayer] = []
     @Published var selectedPlayerId: PlayerID?
     @Published var selectedColor: PlayerColor = .blue
+    @Published var selectedGameDataMode: GameDataMode {
+        didSet {
+            configureGameDataMode(selectedGameDataMode)
+        }
+    }
     @Published private(set) var errorMessage: String?
 
     private let roomService: any RoomService
+    private let gameDataController: GameDataController?
     private let hostPlayerId: PlayerID = "host-player"
     private let hostDisplayName = AppStrings.Lobby.hostName
     private let roomId: RoomID = "local-room"
@@ -37,12 +43,22 @@ final class LobbyViewModel: ObservableObject {
         return room.hostPlayerId == hostPlayerId && room.status != .inProgress
     }
 
-    init(roomService: any RoomService) {
+    init(
+        roomService: any RoomService,
+        gameDataController: GameDataController? = nil
+    ) {
         self.roomService = roomService
+        self.gameDataController = gameDataController
+        selectedGameDataMode = gameDataController?.mode
+            ?? (roomService as? GameDataModeConfiguring)?.gameDataMode
+            ?? .sample
         refresh()
     }
 
     func createLocalRoom() {
+        guard configureGameDataMode(selectedGameDataMode) else {
+            return
+        }
         submit(
             PlayerCommand.createRoom(
                 commandId: nextCommandId(),
@@ -50,7 +66,11 @@ final class LobbyViewModel: ObservableObject {
                 roomId: roomId,
                 roomCode: roomCodeValue,
                 displayName: hostDisplayName,
-                gameConfig: GameConfig(playerCount: 4, randomSeed: 0)
+                gameConfig: GameConfig(
+                    playerCount: 4,
+                    randomSeed: 0,
+                    gameDataMode: selectedGameDataMode
+                )
             )
         )
     }
@@ -151,6 +171,19 @@ final class LobbyViewModel: ObservableObject {
         } catch {
             errorMessage = String(describing: error)
             refresh()
+        }
+    }
+
+    @discardableResult
+    private func configureGameDataMode(_ mode: GameDataMode) -> Bool {
+        do {
+            try gameDataController?.setMode(mode)
+            try (roomService as? GameDataModeConfiguring)?.setGameDataMode(mode)
+            errorMessage = nil
+            return true
+        } catch {
+            errorMessage = String(describing: error)
+            return false
         }
     }
 
