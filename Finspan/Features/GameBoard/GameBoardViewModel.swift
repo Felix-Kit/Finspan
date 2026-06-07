@@ -73,6 +73,117 @@ struct GameTopBarViewState: Equatable {
     let logButtonText: String
 }
 
+struct GameHudViewState: Equatable {
+    let playerHud: TopPlayerHudViewState
+    let weeklyGoalHud: WeeklyGoalHudViewState
+    let canShowLog: Bool
+    let logButtonText: String
+    let settingsButtonText: String
+}
+
+struct TopPlayerHudViewState: Equatable {
+    let players: [PlayerAvatarViewState]
+    let activePlayerId: PlayerID?
+    let lastActionSummaryText: String?
+    let playerCountText: String
+    let selectedViewedPlayerId: PlayerID?
+    let opponentBoardPreviewMessage: String?
+}
+
+struct PlayerAvatarViewState: Identifiable, Equatable {
+    var id: PlayerID { playerId }
+
+    let playerId: PlayerID
+    let displayName: String
+    let colorName: String?
+    let avatarText: String
+    let isActive: Bool
+    let isSelectedForPreview: Bool
+}
+
+struct SidePlayerInfoViewState: Equatable {
+    let playerName: String
+    let avatarText: String
+    let diverSummaryText: String
+    let eggCount: Int
+    let youngCount: Int
+    let schoolCount: Int
+    let handCount: Int
+    let consumedFishCount: Int
+}
+
+enum RightActionPanelActionKind: String, Equatable {
+    case none
+    case playFishPayment
+    case pendingChoice
+    case rewardSelection
+    case moveResource
+    case unsupported
+}
+
+struct RightActionPanelViewState: Equatable {
+    let title: String
+    let summaryLines: [String]
+    let primaryButtonTitle: String?
+    let isPrimaryButtonEnabled: Bool
+    let secondaryButtonTitle: String?
+    let isSecondaryButtonVisible: Bool
+    let warningText: String?
+    let actionKind: RightActionPanelActionKind
+    let pendingChoiceId: PendingChoiceID?
+    let primaryPendingChoiceAction: PendingChoiceAction?
+}
+
+struct WeeklyGoalHudViewState: Equatable {
+    let boxes: [WeeklyGoalBoxViewState]
+    let selectedDetailWeek: Int?
+    let isDetailPresented: Bool
+}
+
+struct WeeklyGoalBoxViewState: Identifiable, Equatable {
+    var id: Int { index }
+
+    let index: Int
+    let title: String
+    let iconText: String
+    let shortDescription: String
+    let isCurrent: Bool
+    let isGameEndBox: Bool
+}
+
+struct WeeklyGoalDetailViewState: Equatable {
+    let title: String
+    let weeklyScoreItems: [WeeklyGoalDetailItemViewState]
+    let gameEndInfo: GameEndInfoViewState
+    let noteText: String
+}
+
+struct WeeklyGoalDetailItemViewState: Identifiable, Equatable {
+    var id: Int { index }
+
+    let index: Int
+    let title: String
+    let iconText: String
+    let description: String
+    let scoringText: String
+    let playerScores: [WeeklyGoalPlayerScoreViewState]
+    let isCurrent: Bool
+}
+
+struct WeeklyGoalPlayerScoreViewState: Identifiable, Equatable {
+    var id: PlayerID { playerId }
+
+    let playerId: PlayerID
+    let playerName: String
+    let scoreText: String
+}
+
+struct GameEndInfoViewState: Equatable {
+    let title: String
+    let description: String
+    let noteText: String
+}
+
 struct DiscardPaymentProgressViewState: Identifiable, Equatable {
     var id: String { "discard" }
 
@@ -465,6 +576,9 @@ final class GameBoardViewModel: ObservableObject {
     @Published private(set) var dragHoverSlotAddress: OceanSlotAddress?
     @Published private(set) var selectedRewardTokenId: String?
     @Published private var rewardSelectionMode: RewardSelectionMode?
+    @Published private(set) var selectedViewedPlayerId: PlayerID?
+    @Published private(set) var selectedWeeklyGoalDetailWeek: Int?
+    @Published private(set) var isEventLogPresented = false
 
     private let roomService: any RoomService
     private let cardCatalogProvider: () -> any CardCatalog
@@ -517,6 +631,134 @@ final class GameBoardViewModel: ObservableObject {
         )
     }
 
+    var gameHudViewState: GameHudViewState {
+        GameHudViewState(
+            playerHud: topPlayerHudViewState,
+            weeklyGoalHud: weeklyGoalHudViewState,
+            canShowLog: true,
+            logButtonText: AppStrings.GameBoard.logButton,
+            settingsButtonText: AppStrings.GameBoard.settings
+        )
+    }
+
+    var topPlayerHudViewState: TopPlayerHudViewState {
+        TopPlayerHudViewState(
+            players: players.map(playerAvatarViewState),
+            activePlayerId: state.activePlayerId,
+            lastActionSummaryText: lastActionSummaryText,
+            playerCountText: AppStrings.GameBoard.topBarPlayerCountText(players.count),
+            selectedViewedPlayerId: selectedViewedPlayerId,
+            opponentBoardPreviewMessage: opponentBoardPreviewMessage
+        )
+    }
+
+    var weeklyGoalHudViewState: WeeklyGoalHudViewState {
+        WeeklyGoalHudViewState(
+            boxes: (1...4).map(weeklyGoalBoxViewState),
+            selectedDetailWeek: selectedWeeklyGoalDetailWeek,
+            isDetailPresented: selectedWeeklyGoalDetailWeek != nil
+        )
+    }
+
+    var weeklyGoalDetailViewState: WeeklyGoalDetailViewState? {
+        guard selectedWeeklyGoalDetailWeek != nil else {
+            return nil
+        }
+        return WeeklyGoalDetailViewState(
+            title: AppStrings.GameBoard.weeklyGoalDetailTitle,
+            weeklyScoreItems: (1...3).map(weeklyGoalDetailItem),
+            gameEndInfo: GameEndInfoViewState(
+                title: AppStrings.GameBoard.gameEndGoalTitle,
+                description: AppStrings.GameBoard.gameEndGoalDescription,
+                noteText: AppStrings.GameBoard.gameEndGoalNote
+            ),
+            noteText: AppStrings.GameBoard.finalScoreHiddenHint
+        )
+    }
+
+    var sidePlayerInfoViewState: SidePlayerInfoViewState {
+        let totals = activePlayerResourceTotals
+        let consumedFishCount = activePlayerState?.ocean.slots.reduce(0) { total, slot in
+            total + slot.consumedFish.count
+        } ?? 0
+        return SidePlayerInfoViewState(
+            playerName: activePlayerName,
+            avatarText: avatarText(for: state.activePlayerId),
+            diverSummaryText: AppStrings.GameBoard.topBarDiverText(
+                available: activePlayerState?.availableDivers ?? 0,
+                total: 6
+            ),
+            eggCount: totals.eggs,
+            youngCount: totals.young,
+            schoolCount: totals.schools,
+            handCount: activePlayerState?.hand.count ?? 0,
+            consumedFishCount: consumedFishCount
+        )
+    }
+
+    var rightActionPanelViewState: RightActionPanelViewState {
+        if let payment = paymentProgressViewState {
+            return RightActionPanelViewState(
+                title: AppStrings.GameBoard.playFishPayment,
+                summaryLines: playFishActionSummaryLines(payment),
+                primaryButtonTitle: AppStrings.GameBoard.confirmPlayFish,
+                isPrimaryButtonEnabled: payment.canConfirm,
+                secondaryButtonTitle: AppStrings.GameBoard.cancelPlayFish,
+                isSecondaryButtonVisible: true,
+                warningText: payment.blockingMessage,
+                actionKind: .playFishPayment,
+                pendingChoiceId: nil,
+                primaryPendingChoiceAction: nil
+            )
+        }
+
+        if let choice = pendingChoices.first {
+            let action = choice.actions.first { $0.action == .skip && $0.isEnabled }
+                ?? choice.actions.first { $0.isEnabled }
+            return RightActionPanelViewState(
+                title: AppStrings.GameBoard.pendingChoicePanel,
+                summaryLines: pendingChoiceActionSummaryLines(choice),
+                primaryButtonTitle: action?.title,
+                isPrimaryButtonEnabled: action?.isEnabled ?? false,
+                secondaryButtonTitle: nil,
+                isSecondaryButtonVisible: false,
+                warningText: choice.canResolve ? nil : AppStrings.GameBoard.resolveCurrentRewardFirst,
+                actionKind: rightActionKind(for: choice),
+                pendingChoiceId: choice.choiceId,
+                primaryPendingChoiceAction: action?.action
+            )
+        }
+
+        return RightActionPanelViewState(
+            title: AppStrings.GameBoard.currentAction,
+            summaryLines: [AppStrings.GameBoard.chooseMainAction],
+            primaryButtonTitle: nil,
+            isPrimaryButtonEnabled: false,
+            secondaryButtonTitle: nil,
+            isSecondaryButtonVisible: false,
+            warningText: nil,
+            actionKind: .none,
+            pendingChoiceId: nil,
+            primaryPendingChoiceAction: nil
+        )
+    }
+
+    var lastActionSummaryText: String? {
+        guard let event = eventLog.reversed().first(where: isImportantActionEvent) else {
+            return AppStrings.GameBoard.gameStartedSummary
+        }
+        return actionSummary(for: event)
+    }
+
+    var opponentBoardPreviewMessage: String? {
+        guard let selectedViewedPlayerId,
+              selectedViewedPlayerId != state.activePlayerId
+        else {
+            return nil
+        }
+        return AppStrings.GameBoard.opponentBoardPreviewUnavailable
+    }
+
     private var activePlayerColorName: String? {
         guard let activePlayerId = state.activePlayerId,
               let color = players.first(where: { $0.playerId == activePlayerId })?.color
@@ -543,6 +785,232 @@ final class GameBoardViewModel: ObservableObject {
                     break
                 }
             }
+        }
+    }
+
+    private func playerAvatarViewState(_ player: RoomPlayer) -> PlayerAvatarViewState {
+        PlayerAvatarViewState(
+            playerId: player.playerId,
+            displayName: player.displayName,
+            colorName: player.color.map(AppStrings.colorName),
+            avatarText: avatarText(for: player.playerId),
+            isActive: player.playerId == state.activePlayerId,
+            isSelectedForPreview: player.playerId == selectedViewedPlayerId
+        )
+    }
+
+    private func avatarText(for playerId: PlayerID?) -> String {
+        guard let playerId,
+              let index = players.firstIndex(where: { $0.playerId == playerId })
+        else {
+            return "?"
+        }
+        return "\(index + 1)"
+    }
+
+    private func weeklyGoalBoxViewState(_ index: Int) -> WeeklyGoalBoxViewState {
+        WeeklyGoalBoxViewState(
+            index: index,
+            title: AppStrings.GameBoard.weeklyGoalBoxTitle(index),
+            iconText: weeklyGoalIconText(index),
+            shortDescription: weeklyGoalDescription(index),
+            isCurrent: min(max(state.currentWeek, 1), 4) == index,
+            isGameEndBox: index == 4
+        )
+    }
+
+    private func weeklyGoalDetailItem(_ week: Int) -> WeeklyGoalDetailItemViewState {
+        WeeklyGoalDetailItemViewState(
+            index: week,
+            title: AppStrings.GameBoard.weeklyGoalBoxTitle(week),
+            iconText: weeklyGoalIconText(week),
+            description: weeklyGoalDescription(week),
+            scoringText: weeklyGoalScoringText(week),
+            playerScores: players.map { player in
+                WeeklyGoalPlayerScoreViewState(
+                    playerId: player.playerId,
+                    playerName: player.displayName,
+                    scoreText: weeklyGoalScoreText(week: week, playerId: player.playerId)
+                )
+            },
+            isCurrent: state.currentWeek == week
+        )
+    }
+
+    private func weeklyGoalIconText(_ index: Int) -> String {
+        switch index {
+        case 1:
+            return "🥚"
+        case 2:
+            return "▦"
+        case 3:
+            return "●"
+        default:
+            return "★"
+        }
+    }
+
+    private func weeklyGoalDescription(_ index: Int) -> String {
+        switch index {
+        case 1:
+            return AppStrings.GameBoard.weekOneGoalDescription
+        case 2:
+            return AppStrings.GameBoard.weekTwoGoalDescription
+        case 3:
+            return AppStrings.GameBoard.weekThreeGoalDescription
+        default:
+            return AppStrings.GameBoard.gameEndGoalShortDescription
+        }
+    }
+
+    private func weeklyGoalScoringText(_ week: Int) -> String {
+        if state.currentWeek <= week,
+           let activePlayerState = state.playerGameStates[state.activePlayerId ?? ""] {
+            return AppStrings.GameBoard.currentProjectedScoreText(
+                quantity: weeklyGoalQuantity(week: week, playerState: activePlayerState)
+            )
+        }
+        return AppStrings.GameBoard.settledScoreText
+    }
+
+    private func weeklyGoalScoreText(week: Int, playerId: PlayerID) -> String {
+        if let result = state.weeklyAchievementResults.first(where: { $0.week == week && $0.playerId == playerId }) {
+            return AppStrings.GameBoard.weeklyGoalScoreText(points: result.points)
+        }
+        guard week == state.currentWeek,
+              let playerState = state.playerGameStates[playerId]
+        else {
+            return AppStrings.GameBoard.weeklyGoalNotScoredText
+        }
+        return AppStrings.GameBoard.weeklyGoalProjectedScoreText(
+            quantity: weeklyGoalQuantity(week: week, playerState: playerState)
+        )
+    }
+
+    private func weeklyGoalQuantity(week: Int, playerState: PlayerGameState) -> Int {
+        switch week {
+        case 1:
+            return playerState.ocean.slots.reduce(0) { total, slot in
+                total
+                    + (slot.resources.first(where: { $0.kind == .egg })?.amount ?? 0)
+                    + (slot.resources.first(where: { $0.kind == .young })?.amount ?? 0)
+            }
+        case 2:
+            return SampleOceanLayout.rowIndices.filter { rowIndex in
+                DiveSite.allCases.allSatisfy { diveSite in
+                    playerState.ocean.slots.contains {
+                        $0.address.diveSite == diveSite
+                            && $0.address.rowIndex == rowIndex
+                            && $0.content.hasFish
+                    }
+                }
+            }.count
+        case 3:
+            return playerState.ocean.slots.reduce(0) { total, slot in
+                total + (slot.resources.first(where: { $0.kind == .school })?.amount ?? 0)
+            }
+        default:
+            return 0
+        }
+    }
+
+    private func playFishActionSummaryLines(_ payment: PlayFishPaymentViewState) -> [String] {
+        var lines = [
+            "\(AppStrings.GameBoard.playFishPaymentCard)：\(payment.cardTitle)",
+            "\(AppStrings.GameBoard.playFishPaymentTarget)：\(payment.targetText)"
+        ]
+        if let discardProgress = payment.discardProgress {
+            lines.append(discardProgress.progressText)
+        }
+        lines.append(contentsOf: payment.resourceProgress.map(\.progressText))
+        return lines
+    }
+
+    private func pendingChoiceActionSummaryLines(_ choice: PendingChoiceViewData) -> [String] {
+        var lines = [choice.title, choice.subtitle]
+        lines.append(contentsOf: choice.progressLines)
+        if let prompt = choice.targetPrompt {
+            lines.append(prompt)
+        }
+        return lines
+    }
+
+    private func rightActionKind(for choice: PendingChoiceViewData) -> RightActionPanelActionKind {
+        if selectedRewardTokenId != nil {
+            switch rewardSelectionMode {
+            case .moveSource, .moveTarget:
+                return .moveResource
+            case .target:
+                return .rewardSelection
+            case nil:
+                break
+            }
+        }
+        if choice.actions.contains(where: { $0.action == .skip }) {
+            return .pendingChoice
+        }
+        return choice.canResolve ? .pendingChoice : .unsupported
+    }
+
+    private func isImportantActionEvent(_ event: GameEvent) -> Bool {
+        switch event.payload {
+        case .fishPlayed,
+             .diverMoved,
+             .pendingChoiceResolved,
+             .weekEnded,
+             .gameEnded:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func actionSummary(for event: GameEvent) -> String {
+        switch event.payload {
+        case let .fishPlayed(payload):
+            return AppStrings.GameBoard.fishPlayedActionSummary(
+                playerName: displayName(for: payload.playerId),
+                cardName: cardTitle(payload.cardId)
+            )
+        case let .diverMoved(payload):
+            return AppStrings.GameBoard.diverMovedActionSummary(
+                playerName: displayName(for: payload.playerId),
+                diveSiteName: AppStrings.diveActionSiteName(payload.diveSite)
+            )
+        case let .pendingChoiceResolved(payload):
+            return pendingChoiceResolvedActionSummary(payload)
+        case let .weekEnded(payload):
+            return AppStrings.GameBoard.weekEndedActionSummary(week: payload.endedWeek)
+        case .gameEnded:
+            return AppStrings.GameBoard.gameEndedActionSummary
+        default:
+            return AppStrings.GameBoard.gameStartedSummary
+        }
+    }
+
+    private func pendingChoiceResolvedActionSummary(_ payload: PendingChoiceResolvedEvent) -> String {
+        let playerName = displayName(for: payload.playerId)
+        switch payload.resolution {
+        case .draw, .drawFromDeck, .recoverCard:
+            return AppStrings.GameBoard.rewardDrawFishActionSummary(playerName: playerName)
+        case .chooseTarget:
+            if payload.appliedEffects.contains(where: {
+                if case .placeEgg = $0 { return true }
+                return false
+            }) {
+                return AppStrings.GameBoard.rewardPlaceEggActionSummary(playerName: playerName)
+            }
+            if payload.appliedEffects.contains(where: {
+                if case .hatchEgg = $0 { return true }
+                return false
+            }) {
+                return AppStrings.GameBoard.rewardHatchEggActionSummary(playerName: playerName)
+            }
+            return AppStrings.GameBoard.rewardResolvedActionSummary(playerName: playerName)
+        case .moveResource:
+            return AppStrings.GameBoard.rewardMoveResourceActionSummary(playerName: playerName)
+        default:
+            return AppStrings.GameBoard.rewardResolvedActionSummary(playerName: playerName)
         }
     }
 
@@ -1369,6 +1837,60 @@ final class GameBoardViewModel: ObservableObject {
     func cancelPlayFishSelection() {
         clearPlayFishSelection()
         errorMessage = nil
+    }
+
+    func selectPlayerAvatar(_ playerId: PlayerID) {
+        selectedViewedPlayerId = playerId
+        if playerId != state.activePlayerId {
+            errorMessage = AppStrings.GameBoard.opponentBoardPreviewUnavailable
+        } else {
+            errorMessage = nil
+        }
+    }
+
+    func selectWeeklyGoalBox(_ index: Int) {
+        selectedWeeklyGoalDetailWeek = index
+    }
+
+    func dismissWeeklyGoalDetail() {
+        selectedWeeklyGoalDetailWeek = nil
+    }
+
+    func showEventLog() {
+        isEventLogPresented = true
+    }
+
+    func hideEventLog() {
+        isEventLogPresented = false
+    }
+
+    func performRightActionPrimary() {
+        let viewState = rightActionPanelViewState
+        switch viewState.actionKind {
+        case .playFishPayment:
+            submitPlayFish()
+        case .pendingChoice,
+             .rewardSelection,
+             .moveResource,
+             .unsupported:
+            guard let choiceId = viewState.pendingChoiceId,
+                  let action = viewState.primaryPendingChoiceAction
+            else {
+                errorMessage = viewState.warningText ?? AppStrings.GameBoard.chooseRewardToken
+                return
+            }
+            performPendingChoiceAction(action, for: choiceId)
+        case .none:
+            errorMessage = AppStrings.GameBoard.chooseMainAction
+        }
+    }
+
+    func performRightActionSecondary() {
+        let viewState = rightActionPanelViewState
+        guard viewState.actionKind == .playFishPayment else {
+            return
+        }
+        cancelPlayFishSelection()
     }
 
     func toggleDiscardPaymentCard(_ cardId: CardID) {

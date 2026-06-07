@@ -14,6 +14,8 @@ private struct SlotFramePreferenceKey: PreferenceKey {
 struct GameBoardView: View {
     @StateObject var viewModel: GameBoardViewModel
     @State private var slotFrames: [OceanSlotAddress: CGRect] = [:]
+    @State private var isShowingSettings = false
+    var onReturnHome: (() -> Void)?
 
     var body: some View {
         Group {
@@ -27,7 +29,7 @@ struct GameBoardView: View {
                 NavigationStack {
                     ZStack(alignment: .bottomLeading) {
                         VStack(alignment: .leading, spacing: 12) {
-                            topBar
+                            gameHud
                             boardStatusStrip
 
                             HStack(alignment: .top, spacing: 12) {
@@ -69,6 +71,68 @@ struct GameBoardView: View {
                         .background(Color.clear)
                     }
                     .toolbar(.hidden, for: .navigationBar)
+                    .ignoresSafeArea(.container, edges: .top)
+                }
+            }
+        }
+        .statusBarHidden(true)
+        .confirmationDialog(
+            AppStrings.GameBoard.settings,
+            isPresented: $isShowingSettings,
+            titleVisibility: .visible
+        ) {
+            Button(AppStrings.GameBoard.returnHome) {
+                onReturnHome?()
+            }
+            Button(AppStrings.GameBoard.cancel, role: .cancel) {}
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { viewModel.isEventLogPresented },
+                set: { isPresented in
+                    if isPresented {
+                        viewModel.showEventLog()
+                    } else {
+                        viewModel.hideEventLog()
+                    }
+                }
+            )
+        ) {
+            NavigationStack {
+                eventLogPanel
+                    .padding(20)
+                    .navigationTitle(AppStrings.GameBoard.eventLog)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button(AppStrings.GameBoard.cancel) {
+                                viewModel.hideEventLog()
+                            }
+                        }
+                    }
+            }
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { viewModel.weeklyGoalDetailViewState != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        viewModel.dismissWeeklyGoalDetail()
+                    }
+                }
+            )
+        ) {
+            if let detail = viewModel.weeklyGoalDetailViewState {
+                NavigationStack {
+                    weeklyGoalDetailPanel(detail)
+                        .padding(20)
+                        .navigationTitle(detail.title)
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button(AppStrings.GameBoard.cancel) {
+                                    viewModel.dismissWeeklyGoalDetail()
+                                }
+                            }
+                        }
                 }
             }
         }
@@ -77,6 +141,113 @@ struct GameBoardView: View {
         }
         .onAppear {
             viewModel.refresh()
+        }
+    }
+
+    private var gameHud: some View {
+        let hud = viewModel.gameHudViewState
+        return HStack(alignment: .top, spacing: 12) {
+            Button {
+                isShowingSettings = true
+            } label: {
+                Image(systemName: "gearshape.fill")
+                    .font(.title3.weight(.semibold))
+                    .frame(width: 40, height: 40)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityLabel(hud.settingsButtonText)
+
+            VStack(spacing: 8) {
+                playerHud(hud.playerHud)
+                if let summary = hud.playerHud.lastActionSummaryText {
+                    Text(summary)
+                        .font(.headline.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 8)
+                        .background(
+                            Capsule()
+                                .fill(Color(.secondarySystemBackground))
+                                .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
+                        )
+                }
+            }
+            .frame(maxWidth: .infinity)
+
+            VStack(alignment: .trailing, spacing: 8) {
+                weeklyGoalBoxes(hud.weeklyGoalHud)
+                Button {
+                    viewModel.showEventLog()
+                } label: {
+                    Label(hud.logButtonText, systemImage: "list.bullet.rectangle")
+                }
+                .buttonStyle(.bordered)
+                .disabled(!hud.canShowLog)
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 8)
+    }
+
+    private func playerHud(_ viewState: TopPlayerHudViewState) -> some View {
+        HStack(spacing: 10) {
+            ForEach(viewState.players) { player in
+                Button {
+                    viewModel.selectPlayerAvatar(player.playerId)
+                } label: {
+                    VStack(spacing: 4) {
+                        Text(player.avatarText)
+                            .font(player.isActive ? .headline.weight(.black) : .callout.weight(.bold))
+                            .foregroundStyle(.white)
+                            .frame(width: player.isActive ? 48 : 38, height: player.isActive ? 48 : 38)
+                            .background(Circle().fill(avatarColor(player.colorName)))
+                            .overlay(
+                                Circle()
+                                    .stroke(player.isActive ? Color.yellow : (player.isSelectedForPreview ? Color.accentColor : Color.white.opacity(0.7)), lineWidth: player.isActive ? 4 : 2)
+                            )
+                            .shadow(color: player.isActive ? Color.yellow.opacity(0.35) : .clear, radius: 8)
+
+                        Text(player.displayName)
+                            .font(.caption2.weight(player.isActive ? .black : .semibold))
+                            .foregroundStyle(player.isActive ? .primary : .secondary)
+                            .lineLimit(1)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(Capsule().fill(Color(.tertiarySystemBackground).opacity(0.92)))
+    }
+
+    private func weeklyGoalBoxes(_ viewState: WeeklyGoalHudViewState) -> some View {
+        HStack(spacing: 8) {
+            ForEach(viewState.boxes) { box in
+                Button {
+                    viewModel.selectWeeklyGoalBox(box.index)
+                } label: {
+                    VStack(spacing: 3) {
+                        Text(box.iconText)
+                            .font(.headline)
+                        Text(box.title)
+                            .font(.caption2.weight(.black))
+                            .lineLimit(1)
+                    }
+                    .frame(width: box.isCurrent ? 74 : 62, height: box.isCurrent ? 64 : 54)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(box.isGameEndBox ? Color.indigo.opacity(0.18) : Color(.secondarySystemBackground))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(box.isCurrent ? Color.yellow : Color.secondary.opacity(0.28), lineWidth: box.isCurrent ? 3 : 1)
+                    )
+                    .offset(y: box.isCurrent ? 6 : 0)
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 
@@ -175,10 +346,7 @@ struct GameBoardView: View {
     private var playFishPanel: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                playerStrip
-                weeklyAchievementPanel
                 oceanPanel
-                paymentPanel
             }
             .padding(.bottom, 230)
         }
@@ -187,10 +355,11 @@ struct GameBoardView: View {
     private var rightSidePanel: some View {
         VStack(alignment: .leading, spacing: 14) {
             rewardPoolPanel
-                .frame(maxHeight: 360, alignment: .topLeading)
+                .frame(maxHeight: 300, alignment: .topLeading)
             Divider()
-            eventLogPanel
-                .frame(maxHeight: 320, alignment: .topLeading)
+            rightActionPanel
+            Divider()
+            sidePlayerInfoPanel
         }
     }
 
@@ -457,6 +626,178 @@ struct GameBoardView: View {
                 .stroke(rewardTokenBorder(token), lineWidth: token.isSelected ? 2 : 1)
         )
         .opacity(token.isSelectable ? 1 : 0.72)
+    }
+
+    private var rightActionPanel: some View {
+        let action = viewModel.rightActionPanelViewState
+        return VStack(alignment: .leading, spacing: 12) {
+            Text(action.title)
+                .font(.title3.weight(.semibold))
+
+            ForEach(action.summaryLines, id: \.self) { line in
+                Text(line)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if let warningText = action.warningText {
+                Text(warningText)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if let primaryTitle = action.primaryButtonTitle {
+                Button {
+                    viewModel.performRightActionPrimary()
+                } label: {
+                    Text(primaryTitle)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!action.isPrimaryButtonEnabled)
+            }
+
+            if action.isSecondaryButtonVisible,
+               let secondaryTitle = action.secondaryButtonTitle {
+                Button {
+                    viewModel.performRightActionSecondary()
+                } label: {
+                    Text(secondaryTitle)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(.secondarySystemBackground))
+        )
+    }
+
+    private var sidePlayerInfoPanel: some View {
+        let info = viewModel.sidePlayerInfoViewState
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Text(info.avatarText)
+                    .font(.headline.weight(.black))
+                    .foregroundStyle(.white)
+                    .frame(width: 42, height: 42)
+                    .background(Circle().fill(Color.accentColor))
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(AppStrings.GameBoard.activePlayerInfo)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(info.playerName)
+                        .font(.headline)
+                        .lineLimit(1)
+                }
+            }
+
+            infoMetric(title: AppStrings.GameBoard.divePanel, value: info.diverSummaryText)
+            HStack(spacing: 8) {
+                resourceMetric(title: AppStrings.GameBoard.placeEggAbilityAction, value: info.eggCount)
+                resourceMetric(title: AppStrings.GameBoard.moveYoung, value: info.youngCount)
+                resourceMetric(title: AppStrings.GameBoard.moveSchool, value: info.schoolCount)
+            }
+            HStack(spacing: 8) {
+                resourceMetric(title: AppStrings.GameBoard.handCount, value: info.handCount)
+                resourceMetric(title: AppStrings.GameBoard.consumedFishCount, value: info.consumedFishCount)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(.secondarySystemBackground))
+        )
+    }
+
+    private func infoMetric(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.callout.weight(.semibold))
+        }
+    }
+
+    private func resourceMetric(title: String, value: Int) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            Text("\(value)")
+                .font(.title3.weight(.bold))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func weeklyGoalDetailPanel(_ detail: WeeklyGoalDetailViewState) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                ForEach(detail.weeklyScoreItems) { item in
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text(item.iconText)
+                                .font(.title2)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(item.title)
+                                    .font(.headline)
+                                Text(item.description)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Text(item.scoringText)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(item.isCurrent ? .green : .secondary)
+                        }
+
+                        ForEach(item.playerScores) { score in
+                            HStack {
+                                Text(score.playerName)
+                                Spacer()
+                                Text(score.scoreText)
+                                    .fontWeight(.semibold)
+                            }
+                            .font(.callout)
+                        }
+                    }
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(item.isCurrent ? Color.green.opacity(0.12) : Color(.secondarySystemBackground))
+                    )
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(detail.gameEndInfo.title)
+                        .font(.headline)
+                    Text(detail.gameEndInfo.description)
+                        .font(.callout)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(detail.gameEndInfo.noteText)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.indigo.opacity(0.12))
+                )
+
+                Text(detail.noteText)
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 
     private func zoneSectionPanel(_ section: OceanZoneSectionViewData) -> some View {
@@ -1338,5 +1679,24 @@ struct GameBoardView: View {
         case nil:
             return .gray
         }
+    }
+
+    private func avatarColor(_ colorName: String?) -> Color {
+        if colorName == AppStrings.colorName(.blue) {
+            return .blue
+        }
+        if colorName == AppStrings.colorName(.green) {
+            return .green
+        }
+        if colorName == AppStrings.colorName(.yellow) {
+            return .yellow
+        }
+        if colorName == AppStrings.colorName(.red) {
+            return .red
+        }
+        if colorName == AppStrings.colorName(.purple) {
+            return .purple
+        }
+        return .accentColor
     }
 }

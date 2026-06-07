@@ -12,6 +12,7 @@ struct ContentView: View {
     @StateObject private var lobbyViewModel: LobbyViewModel
     @StateObject private var gameBoardViewModel: GameBoardViewModel
     @State private var phase: GamePhase
+    @State private var isShowingLobbyOverride = false
 
     init(environment: AppEnvironment) {
         self.environment = environment
@@ -32,8 +33,14 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if phase == .playing || phase == .awaitingChoice || phase == .weekScoring || phase == .endGamePending || phase == .gameEnded {
-                GameBoardView(viewModel: gameBoardViewModel)
+            if !isShowingLobbyOverride,
+               phase == .playing || phase == .awaitingChoice || phase == .weekScoring || phase == .endGamePending || phase == .gameEnded {
+                GameBoardView(
+                    viewModel: gameBoardViewModel,
+                    onReturnHome: {
+                        isShowingLobbyOverride = true
+                    }
+                )
             } else {
                 LobbyView(viewModel: lobbyViewModel)
             }
@@ -48,6 +55,9 @@ struct ContentView: View {
 
     private func syncViewModels() {
         phase = environment.roomService.gameState.phase
+        if phase == .lobby || phase == .setup {
+            isShowingLobbyOverride = false
+        }
         lobbyViewModel.refresh()
         gameBoardViewModel.refresh()
     }

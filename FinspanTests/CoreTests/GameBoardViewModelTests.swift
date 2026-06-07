@@ -78,6 +78,275 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.topBarViewState.logButtonText, "日志")
     }
 
+    func testGameHudViewStateShowsPlayerAvatarsAndActivePlayer() {
+        let service = makeService(
+            hand: [],
+            additionalPlayers: [
+                RoomPlayer(playerId: "player-2", displayName: "玩家 2", color: .green)
+            ]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        let playerHud = viewModel.gameHudViewState.playerHud
+
+        XCTAssertEqual(playerHud.players.map(\.playerId), ["player-1", "player-2"])
+        XCTAssertEqual(playerHud.players.map(\.avatarText), ["1", "2"])
+        XCTAssertEqual(playerHud.players.first { $0.playerId == "player-1" }?.isActive, true)
+        XCTAssertEqual(playerHud.players.first { $0.playerId == "player-2" }?.isActive, false)
+        XCTAssertEqual(playerHud.playerCountText, "2 人")
+    }
+
+    func testGameHudTopPlayerHudDoesNotExposeDiversOrResources() {
+        let service = makeService(hand: [], availableDivers: 4)
+        let viewModel = GameBoardViewModel(roomService: service)
+        let hudText = viewModel.gameHudViewState.playerHud.players
+            .flatMap { [$0.displayName, $0.avatarText, $0.colorName ?? ""] }
+            .joined(separator: " ")
+
+        XCTAssertFalse(hudText.contains("潜水员"))
+        XCTAssertFalse(hudText.contains("鱼卵"))
+        XCTAssertFalse(hudText.contains("幼鱼"))
+        XCTAssertFalse(hudText.contains("鱼群"))
+    }
+
+    func testLastActionSummaryShowsFishPlayedCardName() {
+        let event = gameEvent(
+            .fishPlayed(
+                FishPlayedEvent(
+                    playerId: "player-1",
+                    cardId: "starter-fish-1",
+                    targetSlot: Self.slotAddress,
+                    payment: .empty,
+                    nextActivePlayerId: "player-1"
+                )
+            )
+        )
+        let service = makeService(hand: [], eventLog: [event])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.lastActionSummaryText, "玩家 1 打出：Starter Fish 1")
+    }
+
+    func testLastActionSummaryShowsDiveSiteName() {
+        let event = gameEvent(
+            .diverMoved(
+                DiverMovedEvent(
+                    playerId: "player-1",
+                    diveSite: .green,
+                    bottomBonusAvailable: false,
+                    bottomBonusClaimed: false,
+                    nextActivePlayerId: "player-1"
+                )
+            )
+        )
+        let service = makeService(hand: [], eventLog: [event])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.lastActionSummaryText, "玩家 1 潜水：绿色潜水点")
+    }
+
+    func testLastActionSummaryShowsResolvedRewardType() {
+        let event = gameEvent(
+            .pendingChoiceResolved(
+                PendingChoiceResolvedEvent(
+                    choiceId: "choice-1",
+                    playerId: "player-1",
+                    resolution: .chooseTarget(Self.slotAddress),
+                    appliedEffects: [.placeEgg(target: Self.slotAddress, amount: 1)]
+                )
+            )
+        )
+        let service = makeService(hand: [], eventLog: [event])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.lastActionSummaryText, "玩家 1 放置鱼卵")
+    }
+
+    func testLastActionSummaryShowsWeekEnded() {
+        let event = gameEvent(
+            .weekEnded(
+                WeekEndedEvent(
+                    endedWeek: 2,
+                    nextWeek: 3,
+                    previousFirstPlayerId: "player-1",
+                    nextFirstPlayerId: "player-1",
+                    nextActivePlayerId: "player-1",
+                    isGameEndTriggered: false
+                )
+            )
+        )
+        let service = makeService(hand: [], eventLog: [event])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.lastActionSummaryText, "第 2 周结束")
+    }
+
+    func testLastActionSummaryShowsGameEnded() {
+        let event = gameEvent(
+            .gameEnded(GameEndedEvent(finalScoreResult: emptyFinalScoreResult()))
+        )
+        let service = makeService(hand: [], eventLog: [event])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.lastActionSummaryText, "游戏结束，进入结算")
+    }
+
+    func testSelectingOpponentAvatarOnlyRecordsPreviewState() {
+        let service = makeService(
+            hand: [],
+            additionalPlayers: [
+                RoomPlayer(playerId: "player-2", displayName: "玩家 2", color: .green)
+            ]
+        )
+        let originalState = service.gameState
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectPlayerAvatar("player-2")
+
+        XCTAssertEqual(service.gameState, originalState)
+        XCTAssertEqual(viewModel.selectedViewedPlayerId, "player-2")
+        XCTAssertEqual(viewModel.opponentBoardPreviewMessage, AppStrings.GameBoard.opponentBoardPreviewUnavailable)
+        XCTAssertEqual(viewModel.state.activePlayerId, "player-1")
+    }
+
+    func testSidePlayerInfoViewStateShowsActivePlayerResourcesAndDivers() {
+        let service = makeService(
+            hand: ["starter-fish-1", "fish-2"],
+            availableDivers: 4,
+            resourceSourceResources: [
+                ResourceQuantity(kind: .egg, amount: 2),
+                ResourceQuantity(kind: .young, amount: 1),
+                ResourceQuantity(kind: .school, amount: 3)
+            ],
+            clearAllSlotResources: true
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        let info = viewModel.sidePlayerInfoViewState
+
+        XCTAssertEqual(info.playerName, "玩家 1")
+        XCTAssertEqual(info.diverSummaryText, "潜水员 4 / 6")
+        XCTAssertEqual(info.eggCount, 2)
+        XCTAssertEqual(info.youngCount, 1)
+        XCTAssertEqual(info.schoolCount, 3)
+        XCTAssertEqual(info.handCount, 2)
+    }
+
+    func testRightActionPanelShowsPlayFishConfirmationWhenTargetSelected() {
+        let service = makeService(hand: ["starter-fish-1"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectHandCard("starter-fish-1")
+        viewModel.selectTargetSlot(Self.slotAddress)
+
+        let action = viewModel.rightActionPanelViewState
+        XCTAssertEqual(action.actionKind, .playFishPayment)
+        XCTAssertEqual(action.primaryButtonTitle, AppStrings.GameBoard.confirmPlayFish)
+        XCTAssertTrue(action.isPrimaryButtonEnabled)
+        XCTAssertEqual(action.secondaryButtonTitle, AppStrings.GameBoard.cancelPlayFish)
+        XCTAssertTrue(action.isSecondaryButtonVisible)
+    }
+
+    func testRightActionPanelDisablesPlayFishConfirmationUntilPaymentComplete() {
+        let service = makeService(hand: ["fish-2"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectHandCard("fish-2")
+        viewModel.selectTargetSlot(Self.slotAddress)
+
+        let incompleteAction = viewModel.rightActionPanelViewState
+        XCTAssertEqual(incompleteAction.actionKind, .playFishPayment)
+        XCTAssertFalse(incompleteAction.isPrimaryButtonEnabled)
+
+        viewModel.toggleEggSource(Self.resourceSourceAddress)
+
+        XCTAssertTrue(viewModel.rightActionPanelViewState.isPrimaryButtonEnabled)
+    }
+
+    func testRightActionPanelShowsPendingChoiceAndSkipAction() {
+        let choice = pendingChoice(kind: .drawFish)
+        let service = makeService(hand: [], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let action = viewModel.rightActionPanelViewState
+
+        XCTAssertEqual(action.actionKind, .pendingChoice)
+        XCTAssertEqual(action.pendingChoiceId, choice.choiceId)
+        XCTAssertEqual(action.primaryButtonTitle, AppStrings.GameBoard.skipChoice)
+        XCTAssertTrue(action.isPrimaryButtonEnabled)
+    }
+
+    func testRewardTokenSelectionUpdatesRightActionPanelSummary() {
+        let choice = pendingChoice(kind: .placeEgg)
+        let service = makeService(
+            hand: ["fish-2"],
+            pendingChoices: [choice.choiceId: choice]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        guard let token = viewModel.rewardPoolViewState.rewards.first else {
+            return XCTFail("Expected reward token.")
+        }
+
+        viewModel.selectRewardToken(token.id)
+
+        let action = viewModel.rightActionPanelViewState
+        XCTAssertEqual(action.actionKind, .rewardSelection)
+        XCTAssertTrue(action.summaryLines.contains(AppStrings.GameBoard.choosePlaceEggTarget))
+    }
+
+    func testWeeklyGoalHudShowsFourBoxesAndCurrentWeek() {
+        let service = makeService(hand: [], currentWeek: 3)
+        let viewModel = GameBoardViewModel(roomService: service)
+        let boxes = viewModel.weeklyGoalHudViewState.boxes
+
+        XCTAssertEqual(boxes.count, 4)
+        XCTAssertEqual(boxes.map(\.index), [1, 2, 3, 4])
+        XCTAssertEqual(boxes.first { $0.index == 3 }?.isCurrent, true)
+        XCTAssertEqual(boxes.first { $0.index == 4 }?.isGameEndBox, true)
+    }
+
+    func testWeeklyGoalHudHighlightsFourthBoxDuringEndGameWeek() {
+        let service = makeService(hand: [], phase: .endGamePending, currentWeek: 4)
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.weeklyGoalHudViewState.boxes.first { $0.index == 4 }?.isCurrent, true)
+    }
+
+    func testSelectingWeeklyGoalBoxOpensDetailWithOnlyFirstThreeWeeklyScores() {
+        let result = WeeklyAchievementResult(
+            week: 1,
+            kind: .eggsAndYoung,
+            playerId: "player-1",
+            quantity: 4,
+            points: 4
+        )
+        let service = makeService(
+            hand: [],
+            weeklyAchievementResults: [result]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectWeeklyGoalBox(4)
+
+        guard let detail = viewModel.weeklyGoalDetailViewState else {
+            return XCTFail("Expected weekly goal detail.")
+        }
+        XCTAssertEqual(detail.weeklyScoreItems.map(\.index), [1, 2, 3])
+        XCTAssertEqual(detail.gameEndInfo.title, AppStrings.GameBoard.gameEndGoalTitle)
+        XCTAssertEqual(detail.noteText, AppStrings.GameBoard.finalScoreHiddenHint)
+        XCTAssertEqual(detail.weeklyScoreItems.first?.playerScores.first?.scoreText, "4 分")
+    }
+
+    func testEventLogButtonTogglesPresentedState() {
+        let service = makeService(hand: [])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertFalse(viewModel.isEventLogPresented)
+
+        viewModel.showEventLog()
+        XCTAssertTrue(viewModel.isEventLogPresented)
+
+        viewModel.hideEventLog()
+        XCTAssertFalse(viewModel.isEventLogPresented)
+    }
+
     func testDiveActionBarViewStateShowsThreeDiveButtons() {
         let service = makeService(hand: [])
         let viewModel = GameBoardViewModel(roomService: service)
@@ -2398,6 +2667,22 @@ final class GameBoardViewModelTests: XCTestCase {
         rowIndex: 1
     )
 
+    private func gameEvent(
+        _ payload: GameEventPayload,
+        sequenceNumber: EventID = 10
+    ) -> GameEvent {
+        GameEvent(
+            sequenceNumber: sequenceNumber,
+            roomId: "room-1",
+            timestamp: Date(timeIntervalSince1970: 1_000),
+            payload: payload
+        )
+    }
+
+    private func emptyFinalScoreResult() -> FinalScoreResult {
+        FinalScoreResult(results: [], winnerPlayerIds: [], isTie: false)
+    }
+
     private func makeService(
         hand: [CardID],
         pendingChoices: [PendingChoiceID: PendingChoice] = [:],
@@ -2418,7 +2703,9 @@ final class GameBoardViewModelTests: XCTestCase {
         clearAllSlotResources: Bool = false,
         diveSitesReachedBottomThisWeek: Set<DiveActionSite> = [],
         weeklyAchievementResults: [WeeklyAchievementResult] = [],
-        finalScoreResult: FinalScoreResult? = nil
+        finalScoreResult: FinalScoreResult? = nil,
+        additionalPlayers: [RoomPlayer] = [],
+        eventLog: [GameEvent] = []
     ) -> CapturingRoomService {
         var ocean = OceanState.baseGameInitial(for: "player-1")
         if clearAllSlotResources {
@@ -2436,25 +2723,29 @@ final class GameBoardViewModelTests: XCTestCase {
         }
         ocean.slots.append(contentsOf: additionalSlots)
 
+        let roomPlayers = [
+            RoomPlayer(
+                playerId: "player-1",
+                displayName: "玩家 1",
+                role: .host
+            )
+        ] + additionalPlayers
+        let statePlayers = [Player(id: "player-1", name: "玩家 1")]
+            + additionalPlayers.map { Player(id: $0.playerId, name: $0.displayName) }
+
         return CapturingRoomService(
             gameRoom: GameRoom(
                 roomId: "room-1",
                 roomCode: "LOCAL",
                 hostPlayerId: "player-1",
-                players: [
-                    RoomPlayer(
-                        playerId: "player-1",
-                        displayName: "玩家 1",
-                        role: .host
-                    )
-                ],
+                players: roomPlayers,
                 gameConfig: GameConfig(playerCount: 1, randomSeed: 1),
                 createdAt: Date(timeIntervalSince1970: 1_000),
                 updatedAt: Date(timeIntervalSince1970: 1_000)
             ),
             gameState: GameState(
                 roomId: "room-1",
-                players: [Player(id: "player-1", name: "玩家 1")],
+                players: statePlayers,
                 currentWeek: currentWeek,
                 currentTurnIndex: 0,
                 activePlayerId: activePlayerId,
@@ -2483,7 +2774,8 @@ final class GameBoardViewModelTests: XCTestCase {
                 activeDiveQueue: activeDiveQueue,
                 weeklyAchievementResults: weeklyAchievementResults,
                 finalScoreResult: finalScoreResult
-            )
+            ),
+            eventLog: eventLog
         )
     }
 
@@ -2744,9 +3036,10 @@ private final class CapturingRoomService: RoomService {
         }
     }
 
-    init(gameRoom: GameRoom, gameState: GameState) {
+    init(gameRoom: GameRoom, gameState: GameState, eventLog: [GameEvent] = []) {
         self.gameRoom = gameRoom
         self.gameState = gameState
+        self.eventLog = eventLog
         self.snapshot = RoomSnapshot(
             id: gameRoom.roomId,
             players: gameRoom.players,

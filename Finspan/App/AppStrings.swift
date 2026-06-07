@@ -42,6 +42,26 @@ enum AppStrings {
     enum GameBoard {
         static let title = "游戏面板"
         static let turn = "回合"
+        static let settings = "设置"
+        static let returnHome = "返回主页"
+        static let cancel = "取消"
+        static let currentAction = "当前行动"
+        static let activePlayerInfo = "行动玩家"
+        static let handCount = "手牌"
+        static let consumedFishCount = "被吞食鱼"
+        static let opponentBoardPreviewUnavailable = "查看对手海洋暂未接入"
+        static let gameStartedSummary = "游戏开始"
+        static let weeklyGoalDetailTitle = "周目标"
+        static let weekOneGoalDescription = "鱼卵和幼鱼"
+        static let weekTwoGoalDescription = "整排的鱼"
+        static let weekThreeGoalDescription = "鱼群"
+        static let gameEndGoalTitle = "终局能力"
+        static let gameEndGoalShortDescription = "发动游戏结束能力，随后计分"
+        static let gameEndGoalDescription = "第 4 周结束后，以任意顺序发动自己海洋中任意多个“游戏结束”能力，随后进行最终计分。"
+        static let gameEndGoalNote = "第 4 格不是周奖励分。"
+        static let finalScoreHiddenHint = "最终计分会在游戏结束后显示。"
+        static let settledScoreText = "已结算分"
+        static let weeklyGoalNotScoredText = "未结算"
         static let logButton = "日志"
         static let currentWeek = "当前周数"
         static let currentTurn = "当前回合"
@@ -330,6 +350,56 @@ enum AppStrings {
         static func topBarPlayerCountText(_ count: Int) -> String {
             "\(count) 人"
         }
+
+        static func weeklyGoalBoxTitle(_ index: Int) -> String {
+            index == 4 ? "第 4 周" : "第 \(index) 周"
+        }
+
+        static func currentProjectedScoreText(quantity: Int) -> String {
+            "当前预计：\(quantity)"
+        }
+
+        static func weeklyGoalScoreText(points: Int) -> String {
+            "\(points) 分"
+        }
+
+        static func weeklyGoalProjectedScoreText(quantity: Int) -> String {
+            "预计 \(quantity)"
+        }
+
+        static func fishPlayedActionSummary(playerName: String, cardName: String) -> String {
+            "\(playerName) 打出：\(cardName)"
+        }
+
+        static func diverMovedActionSummary(playerName: String, diveSiteName: String) -> String {
+            "\(playerName) 潜水：\(diveSiteName)"
+        }
+
+        static func rewardResolvedActionSummary(playerName: String) -> String {
+            "\(playerName) 处理奖励"
+        }
+
+        static func rewardDrawFishActionSummary(playerName: String) -> String {
+            "\(playerName) 抽取鱼牌"
+        }
+
+        static func rewardPlaceEggActionSummary(playerName: String) -> String {
+            "\(playerName) 放置鱼卵"
+        }
+
+        static func rewardHatchEggActionSummary(playerName: String) -> String {
+            "\(playerName) 孵化鱼卵"
+        }
+
+        static func rewardMoveResourceActionSummary(playerName: String) -> String {
+            "\(playerName) 移动幼鱼 / 鱼群"
+        }
+
+        static func weekEndedActionSummary(week: Int) -> String {
+            "第 \(week) 周结束"
+        }
+
+        static let gameEndedActionSummary = "游戏结束，进入结算"
     }
 
     static func achievementKindName(_ kind: AchievementKind) -> String {
