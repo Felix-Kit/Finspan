@@ -69,6 +69,11 @@ struct GameBoardView: View {
                             }
                         )
                         .background(Color.clear)
+
+                        discardPileEntry(viewModel.discardPileViewState)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                            .padding(.trailing, 22)
+                            .padding(.bottom, 132)
                     }
                     .toolbar(.hidden, for: .navigationBar)
                     .ignoresSafeArea(.container, edges: .top)
@@ -134,6 +139,34 @@ struct GameBoardView: View {
                             }
                         }
                 }
+            }
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { viewModel.discardPileViewState.isDetailPresented },
+                set: { isPresented in
+                    if isPresented {
+                        viewModel.showDiscardPile()
+                    } else {
+                        viewModel.hideDiscardPile()
+                    }
+                }
+            )
+        ) {
+            if let detail = viewModel.discardPileDetailViewState {
+                NavigationStack {
+                    discardPileDetailPanel(detail)
+                        .padding(20)
+                        .navigationTitle(detail.title)
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button(AppStrings.GameBoard.close) {
+                                    viewModel.hideDiscardPile()
+                                }
+                            }
+                        }
+                }
+                .presentationDetents([.medium, .large])
             }
         }
         .onPreferenceChange(SlotFramePreferenceKey.self) { frames in
@@ -360,6 +393,111 @@ struct GameBoardView: View {
             rightActionPanel
             Divider()
             sidePlayerInfoPanel
+        }
+    }
+
+    private func discardPileEntry(_ viewState: DiscardPileViewState) -> some View {
+        Button {
+            viewModel.showDiscardPile()
+        } label: {
+            VStack(alignment: .trailing, spacing: 6) {
+                discardPileStack(viewState)
+
+                Text(viewState.countText)
+                    .font(.caption.weight(.black))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(Capsule().fill(viewState.isEmpty ? Color.secondary : Color.accentColor))
+            }
+            .padding(8)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(.systemBackground).opacity(0.86))
+                    .shadow(color: .black.opacity(0.22), radius: 10, y: 4)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(viewState.title)，\(viewState.countText)")
+    }
+
+    private func discardPileStack(_ viewState: DiscardPileViewState) -> some View {
+        let width: CGFloat = 118
+        let height = width / CardRenderMetrics.cardAspectRatio
+        return ZStack(alignment: .center) {
+            if viewState.topCards.isEmpty {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color(.secondarySystemBackground))
+                    .overlay(
+                        VStack(spacing: 4) {
+                            Image(systemName: "tray")
+                                .font(.title3.weight(.semibold))
+                            Text(viewState.emptyText)
+                                .font(.caption2.weight(.semibold))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                        .foregroundStyle(.secondary)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.secondary.opacity(0.28), style: StrokeStyle(lineWidth: 1.2, dash: [5, 4]))
+                    )
+                    .frame(width: width, height: height)
+            } else {
+                ForEach(Array(viewState.topCards.enumerated()), id: \.offset) { index, card in
+                    FishCardFaceView(viewState: card)
+                        .frame(width: width, height: height)
+                        .rotationEffect(.degrees(Double(index - 1) * 2.5))
+                        .offset(x: CGFloat(index) * 8, y: CGFloat(index) * -5)
+                        .shadow(color: .black.opacity(0.16), radius: 5, y: 3)
+                        .zIndex(Double(index))
+                }
+            }
+        }
+        .frame(width: width + 22, height: height + 16, alignment: .center)
+    }
+
+    private func discardPileDetailPanel(_ detail: DiscardPileDetailViewState) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text(detail.countText)
+                    .font(.headline.weight(.semibold))
+                Spacer()
+                Button(AppStrings.GameBoard.close) {
+                    viewModel.hideDiscardPile()
+                }
+                .buttonStyle(.bordered)
+            }
+
+            if detail.cards.isEmpty {
+                ContentUnavailableView(
+                    detail.emptyText,
+                    systemImage: "tray"
+                )
+                .frame(maxWidth: .infinity, minHeight: 260)
+            } else {
+                ScrollView {
+                    LazyVGrid(
+                        columns: Array(
+                            repeating: GridItem(.flexible(), spacing: 12),
+                            count: detail.maxCardsPerRow
+                        ),
+                        spacing: 12
+                    ) {
+                        ForEach(Array(detail.cards.enumerated()), id: \.offset) { _, card in
+                            FishCardFaceView(viewState: card)
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
         }
     }
 

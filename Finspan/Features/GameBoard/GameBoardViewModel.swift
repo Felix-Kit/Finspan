@@ -236,6 +236,25 @@ struct PlayFishPaymentViewState: Equatable {
     let blockingMessage: String?
 }
 
+struct DiscardPileViewState: Equatable {
+    let playerId: PlayerID?
+    let title: String
+    let countText: String
+    let count: Int
+    let topCards: [FishCardFaceViewState]
+    let isEmpty: Bool
+    let isDetailPresented: Bool
+    let emptyText: String
+}
+
+struct DiscardPileDetailViewState: Equatable {
+    let title: String
+    let countText: String
+    let cards: [FishCardFaceViewState]
+    let emptyText: String
+    let maxCardsPerRow: Int
+}
+
 struct OceanSlotViewData: Identifiable, Equatable {
     var id: String {
         "\(address.playerId)-\(address.diveSite.rawValue)-\(address.rowIndex)"
@@ -613,6 +632,7 @@ final class GameBoardViewModel: ObservableObject {
     @Published private(set) var selectedViewedPlayerId: PlayerID?
     @Published private(set) var selectedWeeklyGoalDetailWeek: Int?
     @Published private(set) var isEventLogPresented = false
+    @Published private(set) var isDiscardPileDetailPresented = false
 
     private let roomService: any RoomService
     private let cardCatalogProvider: () -> any CardCatalog
@@ -1274,6 +1294,40 @@ final class GameBoardViewModel: ObservableObject {
         }
     }
 
+    var discardPileViewState: DiscardPileViewState {
+        let cardFaces = discardPileCardFaces
+        return DiscardPileViewState(
+            playerId: state.activePlayerId,
+            title: AppStrings.GameBoard.discardPile,
+            countText: AppStrings.GameBoard.discardPileCountText(cardFaces.count),
+            count: cardFaces.count,
+            topCards: Array(cardFaces.prefix(3)),
+            isEmpty: cardFaces.isEmpty,
+            isDetailPresented: isDiscardPileDetailPresented,
+            emptyText: AppStrings.GameBoard.discardPileEmpty
+        )
+    }
+
+    var discardPileDetailViewState: DiscardPileDetailViewState? {
+        guard isDiscardPileDetailPresented else {
+            return nil
+        }
+        let cardFaces = discardPileCardFaces
+        return DiscardPileDetailViewState(
+            title: AppStrings.GameBoard.discardPile,
+            countText: AppStrings.GameBoard.discardPileDetailCountText(cardFaces.count),
+            cards: cardFaces,
+            emptyText: AppStrings.GameBoard.discardPileEmpty,
+            maxCardsPerRow: 4
+        )
+    }
+
+    private var discardPileCardFaces: [FishCardFaceViewState] {
+        activePlayerState?.discardPile
+            .reversed()
+            .map(fishCardFaceViewState(cardId:)) ?? []
+    }
+
     var handViewState: HandViewState {
         guard let activePlayerState else {
             return HandViewState(
@@ -1904,6 +1958,14 @@ final class GameBoardViewModel: ObservableObject {
 
     func hideEventLog() {
         isEventLogPresented = false
+    }
+
+    func showDiscardPile() {
+        isDiscardPileDetailPresented = true
+    }
+
+    func hideDiscardPile() {
+        isDiscardPileDetailPresented = false
     }
 
     func performRightActionPrimary() {

@@ -124,6 +124,9 @@ enum AppStrings {
         static let choosePlaceEggTarget = "选择放置鱼卵的格子"
         static let chooseHatchEggTarget = "选择要孵化的鱼卵"
         static let recoverFromDiscardOrDraw = "从弃牌堆拿回 1 张牌"
+        static let discardPile = "弃牌堆"
+        static let discardPileEmpty = "弃牌堆为空"
+        static let close = "关闭"
         static let discardPileEmptyDrawAlternative = "弃牌堆为空，改为抽 1 张鱼牌"
         static let chooseDiscardCardToRecover = "选择要拿回的弃牌"
         static let discardPileEmptyDrawHint = "弃牌堆为空，可从牌堆抽 1 张"
@@ -333,6 +336,14 @@ enum AppStrings {
 
         static func discardPaymentProgressText(selectedCount: Int, requiredCount: Int) -> String {
             "手牌：已选择 \(selectedCount) / \(requiredCount)"
+        }
+
+        static func discardPileCountText(_ count: Int) -> String {
+            "弃牌 \(count)"
+        }
+
+        static func discardPileDetailCountText(_ count: Int) -> String {
+            "共 \(count) 张"
         }
 
         static func triggeringFishAbility(cardName: String) -> String {

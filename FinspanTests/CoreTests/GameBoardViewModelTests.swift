@@ -540,6 +540,110 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(slot.cardFace.aspectRatio, CardRenderMetrics.cardAspectRatio)
     }
 
+    func testDiscardPileViewStateIsEmptyWhenCurrentPlayerHasNoDiscard() {
+        let service = makeService(hand: ["starter-fish-1"], discardPile: [])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertTrue(viewModel.discardPileViewState.isEmpty)
+        XCTAssertEqual(viewModel.discardPileViewState.count, 0)
+        XCTAssertEqual(viewModel.discardPileViewState.emptyText, AppStrings.GameBoard.discardPileEmpty)
+        XCTAssertEqual(viewModel.discardPileViewState.countText, "弃牌 0")
+        XCTAssertTrue(viewModel.discardPileViewState.topCards.isEmpty)
+    }
+
+    func testDiscardPileViewStateCountsDiscardCards() {
+        let service = makeService(
+            hand: ["starter-fish-1"],
+            discardPile: ["fish-1", "fish-2", "fish-3"]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertFalse(viewModel.discardPileViewState.isEmpty)
+        XCTAssertEqual(viewModel.discardPileViewState.count, 3)
+        XCTAssertEqual(viewModel.discardPileViewState.countText, "弃牌 3")
+    }
+
+    func testDiscardPileTopCardsShowsAtMostThreeMostRecentDiscards() {
+        let service = makeService(
+            hand: ["starter-fish-1"],
+            discardPile: ["fish-1", "fish-2", "fish-3", "fish-4"]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.discardPileViewState.topCards.count, 3)
+        XCTAssertEqual(
+            viewModel.discardPileViewState.topCards.map(\.cardId),
+            ["fish-4", "fish-3", "fish-2"]
+        )
+    }
+
+    func testShowingDiscardPilePresentsDetailWithAllCardsAndFourColumns() {
+        let service = makeService(
+            hand: ["starter-fish-1"],
+            discardPile: ["fish-1", "fish-2", "fish-3", "fish-4", "fish-5"]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertFalse(viewModel.discardPileViewState.isDetailPresented)
+        XCTAssertNil(viewModel.discardPileDetailViewState)
+
+        viewModel.showDiscardPile()
+
+        XCTAssertTrue(viewModel.discardPileViewState.isDetailPresented)
+        XCTAssertEqual(viewModel.discardPileDetailViewState?.cards.count, 5)
+        XCTAssertEqual(viewModel.discardPileDetailViewState?.cards.map(\.cardId), ["fish-5", "fish-4", "fish-3", "fish-2", "fish-1"])
+        XCTAssertEqual(viewModel.discardPileDetailViewState?.maxCardsPerRow, 4)
+        XCTAssertEqual(viewModel.discardPileDetailViewState?.countText, "共 5 张")
+    }
+
+    func testHidingDiscardPileDismissesDetail() {
+        let service = makeService(hand: ["starter-fish-1"], discardPile: ["fish-1"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.showDiscardPile()
+        viewModel.hideDiscardPile()
+
+        XCTAssertFalse(viewModel.discardPileViewState.isDetailPresented)
+        XCTAssertNil(viewModel.discardPileDetailViewState)
+    }
+
+    func testDiscardPileDetailShowsEmptyTextWhenPresentedWithoutCards() {
+        let service = makeService(hand: ["starter-fish-1"], discardPile: [])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.showDiscardPile()
+
+        XCTAssertEqual(viewModel.discardPileDetailViewState?.emptyText, AppStrings.GameBoard.discardPileEmpty)
+        XCTAssertTrue(viewModel.discardPileDetailViewState?.cards.isEmpty ?? false)
+    }
+
+    func testDiscardPileCardFaceResolvesRealBaseGameCard() throws {
+        let catalog = try BaseGameCardCatalog()
+        let service = makeService(hand: ["starter-fish-1"], discardPile: ["base.main.057"])
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalogProvider: { catalog }
+        )
+
+        let cardFace = viewModel.discardPileViewState.topCards.first
+
+        XCTAssertEqual(cardFace?.kind, .fishCard)
+        XCTAssertEqual(cardFace?.displayName, "Great White Shark")
+        XCTAssertEqual(cardFace?.scientificName, "Carcharodon carcharias")
+        XCTAssertEqual(cardFace?.localFishImagePrefix, "57")
+    }
+
+    func testDiscardPileCardFaceUsesPlaceholderForMissingCard() {
+        let service = makeService(hand: ["starter-fish-1"], discardPile: ["missing-card"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let cardFace = viewModel.discardPileViewState.topCards.first
+
+        XCTAssertEqual(cardFace?.kind, .placeholder)
+        XCTAssertEqual(cardFace?.cardId, "missing-card")
+        XCTAssertEqual(cardFace?.displayName, AppStrings.GameBoard.cardFaceUnknownCard)
+    }
+
     func testHandViewStateShowsRegistryAbilityCopy() {
         let service = makeService(hand: ["fish-30"])
         let viewModel = GameBoardViewModel(roomService: service)
