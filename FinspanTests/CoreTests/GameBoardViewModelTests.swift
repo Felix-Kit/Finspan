@@ -78,6 +78,55 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.topBarViewState.logButtonText, "日志")
     }
 
+    func testDiveActionBarViewStateShowsThreeDiveButtons() {
+        let service = makeService(hand: [])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let buttons = viewModel.diveActionBarViewState.buttons
+
+        XCTAssertEqual(viewModel.diveActionBarViewState.title, AppStrings.GameBoard.divePanel)
+        XCTAssertEqual(buttons.map(\.diveSite), [.blue, .purple, .green])
+        XCTAssertEqual(buttons.map(\.title), [
+            AppStrings.diveActionSiteName(.blue),
+            AppStrings.diveActionSiteName(.purple),
+            AppStrings.diveActionSiteName(.green)
+        ])
+        XCTAssertTrue(buttons.allSatisfy(\.isEnabled))
+        XCTAssertTrue(buttons.allSatisfy { $0.disabledReasonText == nil })
+    }
+
+    func testDiveActionBarDisablesButtonsWhenNoDiversRemain() {
+        let service = makeService(hand: [], availableDivers: 0)
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertTrue(viewModel.diveActionBarViewState.buttons.allSatisfy { !$0.isEnabled })
+        XCTAssertTrue(viewModel.diveActionBarViewState.buttons.allSatisfy {
+            $0.disabledReasonText == AppStrings.GameBoard.diversUsedThisWeek
+        })
+    }
+
+    func testDiveActionBarDisablesButtonsDuringPendingChoice() {
+        let choice = pendingChoice(kind: .drawFish)
+        let service = makeService(hand: [], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertTrue(viewModel.diveActionBarViewState.buttons.allSatisfy { !$0.isEnabled })
+        XCTAssertTrue(viewModel.diveActionBarViewState.buttons.allSatisfy {
+            $0.disabledReasonText == AppStrings.GameBoard.resolveCurrentRewardFirst
+        })
+    }
+
+    func testDiveActionBarDisablesButtonsDuringActiveDiveQueue() {
+        let queue = activeDiveQueue(diveSite: .blue, source: .printedDiveBonus(.sunlit))
+        let service = makeService(hand: [], activeDiveQueue: queue)
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertFalse(viewModel.canDive)
+        XCTAssertTrue(viewModel.diveActionBarViewState.buttons.allSatisfy { !$0.isEnabled })
+        XCTAssertTrue(viewModel.diveActionBarViewState.buttons.allSatisfy {
+            $0.disabledReasonText == AppStrings.GameBoard.resolveCurrentDiveRewardFirst
+        })
+    }
+
     func testSubmitPlayFishIncludesSelectedEggSources() {
         let slotAddress = Self.slotAddress
         let sourceAddress = Self.resourceSourceAddress

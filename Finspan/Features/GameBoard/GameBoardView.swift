@@ -28,13 +28,9 @@ struct GameBoardView: View {
                     ZStack(alignment: .bottomLeading) {
                         VStack(alignment: .leading, spacing: 12) {
                             topBar
+                            boardStatusStrip
 
-                            HStack(alignment: .top, spacing: 14) {
-                                turnPanel
-                                    .frame(width: 220, alignment: .topLeading)
-
-                                Divider()
-
+                            HStack(alignment: .top, spacing: 12) {
                                 playFishPanel
                                     .frame(maxWidth: .infinity, alignment: .topLeading)
 
@@ -183,7 +179,6 @@ struct GameBoardView: View {
                 weeklyAchievementPanel
                 oceanPanel
                 paymentPanel
-                divePanel
             }
             .padding(.bottom, 230)
         }
@@ -236,6 +231,30 @@ struct GameBoardView: View {
         )
     }
 
+    private var boardStatusStrip: some View {
+        HStack(spacing: 10) {
+            if let prompt = viewModel.mainActionPrompt {
+                Label(prompt, systemImage: viewModel.hasBlockingPendingChoices ? "exclamationmark.circle" : "cursorarrow.click")
+                    .foregroundStyle(viewModel.hasBlockingPendingChoices ? .red : .secondary)
+            }
+
+            if let errorMessage = viewModel.errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.red)
+            }
+        }
+        .font(.callout.weight(.medium))
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(.tertiarySystemBackground))
+        )
+    }
+
     private var playerStrip: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(AppStrings.GameBoard.players)
@@ -261,6 +280,8 @@ struct GameBoardView: View {
                 )
             } else {
                 VStack(alignment: .leading, spacing: 10) {
+                    diveActionBar
+
                     HStack(alignment: .top, spacing: 14) {
                         ForEach(viewModel.oceanColumns) { column in
                             VStack(alignment: .leading, spacing: 10) {
@@ -288,6 +309,42 @@ struct GameBoardView: View {
                 }
             }
         }
+    }
+
+    private var diveActionBar: some View {
+        let viewState = viewModel.diveActionBarViewState
+        return VStack(alignment: .leading, spacing: 8) {
+            Text(viewState.title)
+                .font(.headline)
+
+            HStack(alignment: .top, spacing: 14) {
+                if viewState.buttons.count >= 3 {
+                    diveActionButton(viewState.buttons[0])
+                    diveActionButton(viewState.buttons[1])
+                    diveActionButton(viewState.buttons[2])
+                }
+            }
+        }
+    }
+
+    private func diveActionButton(_ buttonState: DiveActionButtonViewState) -> some View {
+        VStack(spacing: 4) {
+            Button {
+                viewModel.submitDive(to: buttonState.diveSite)
+            } label: {
+                Label(buttonState.title, systemImage: "figure.pool.swim")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(!buttonState.isEnabled)
+
+            Text(buttonState.disabledReasonText ?? AppStrings.GameBoard.chooseDiveSite)
+                .font(.caption2)
+                .foregroundStyle(buttonState.isEnabled ? Color.secondary : Color.red)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private var rewardPoolPanel: some View {

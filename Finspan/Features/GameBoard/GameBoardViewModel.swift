@@ -235,6 +235,20 @@ struct DiveActionSiteViewData: Identifiable, Equatable {
     let title: String
 }
 
+struct DiveActionButtonViewState: Identifiable, Equatable {
+    var id: String { diveSite.rawValue }
+
+    let diveSite: DiveActionSite
+    let title: String
+    let isEnabled: Bool
+    let disabledReasonText: String?
+}
+
+struct DiveActionBarViewState: Equatable {
+    let title: String
+    let buttons: [DiveActionButtonViewState]
+}
+
 struct PendingChoiceViewData: Identifiable, Equatable {
     var id: PendingChoiceID { choiceId }
 
@@ -536,6 +550,7 @@ final class GameBoardViewModel: ObservableObject {
         state.phase == .playing
             && !isSelectingPlayFish
             && !hasBlockingPendingChoices
+            && state.activeDiveQueue == nil
             && (activePlayerState?.availableDivers ?? 0) > 0
     }
 
@@ -581,6 +596,43 @@ final class GameBoardViewModel: ObservableObject {
                 title: AppStrings.diveActionSiteName(site)
             )
         }
+    }
+
+    var diveActionBarViewState: DiveActionBarViewState {
+        let disabledReason = diveDisabledReason
+        return DiveActionBarViewState(
+            title: AppStrings.GameBoard.divePanel,
+            buttons: [.blue, .purple, .green].map { site in
+                DiveActionButtonViewState(
+                    diveSite: site,
+                    title: AppStrings.diveActionSiteName(site),
+                    isEnabled: disabledReason == nil,
+                    disabledReasonText: disabledReason
+                )
+            }
+        )
+    }
+
+    private var diveDisabledReason: String? {
+        guard state.phase == .playing else {
+            return AppStrings.GameBoard.chooseMainAction
+        }
+        if hasBlockingPendingChoices {
+            return AppStrings.GameBoard.resolveCurrentRewardFirst
+        }
+        if state.activeDiveQueue != nil {
+            return AppStrings.GameBoard.resolveCurrentDiveRewardFirst
+        }
+        if isSelectingPlayFish {
+            return AppStrings.GameBoard.finishOrCancelPlayFish
+        }
+        guard activePlayerState != nil else {
+            return AppStrings.GameBoard.noActivePlayer
+        }
+        if (activePlayerState?.availableDivers ?? 0) <= 0 {
+            return AppStrings.GameBoard.diversUsedThisWeek
+        }
+        return nil
     }
 
     var pendingChoices: [PendingChoiceViewData] {
