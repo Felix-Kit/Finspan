@@ -35,4 +35,9 @@ final class OnlineRoomService: RoomService {
             "OnlineRoomService will submit commands to the cloud room service."
         )
     }
+
+    func resetLocalRoomSession() {
+        // Future online rooms will distinguish local navigation cleanup from
+        // reconnectable server room state. The placeholder has no session to clear.
+    }
 }

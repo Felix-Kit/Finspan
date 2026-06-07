@@ -347,6 +347,19 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.isEventLogPresented)
     }
 
+    func testSettingsMenuViewStateShowsEndCurrentGameAction() {
+        let service = makeService(hand: [])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let settings = viewModel.settingsMenuViewState
+
+        XCTAssertEqual(settings.title, AppStrings.GameBoard.settings)
+        XCTAssertEqual(
+            settings.endCurrentGameAndReturnHomeText,
+            AppStrings.GameBoard.endCurrentGameAndReturnHome
+        )
+        XCTAssertEqual(settings.cancelText, AppStrings.GameBoard.cancel)
+    }
+
     func testDiveActionBarViewStateShowsThreeDiveButtons() {
         let service = makeService(hand: [])
         let viewModel = GameBoardViewModel(roomService: service)
@@ -3029,6 +3042,7 @@ private final class CapturingRoomService: RoomService {
     var snapshot: RoomSnapshot
     var eventLog: [GameEvent] = []
     var submittedCommands: [PlayerCommand] = []
+    var didResetLocalRoomSession = false
 
     var eventStream: AsyncStream<GameEvent> {
         AsyncStream { continuation in
@@ -3051,6 +3065,14 @@ private final class CapturingRoomService: RoomService {
     func submit(_ command: PlayerCommand) throws -> [GameEvent] {
         submittedCommands.append(command)
         return []
+    }
+
+    func resetLocalRoomSession() {
+        didResetLocalRoomSession = true
+        gameRoom = nil
+        gameState = .empty
+        snapshot = .empty
+        eventLog = []
     }
 }
 

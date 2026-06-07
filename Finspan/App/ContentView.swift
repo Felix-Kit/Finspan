@@ -37,8 +37,8 @@ struct ContentView: View {
                phase == .playing || phase == .awaitingChoice || phase == .weekScoring || phase == .endGamePending || phase == .gameEnded {
                 GameBoardView(
                     viewModel: gameBoardViewModel,
-                    onReturnHome: {
-                        isShowingLobbyOverride = true
+                    onEndCurrentGameAndReturnHome: {
+                        endCurrentGameAndReturnToLobby()
                     }
                 )
             } else {
@@ -60,5 +60,11 @@ struct ContentView: View {
         }
         lobbyViewModel.refresh()
         gameBoardViewModel.refresh()
+    }
+
+    private func endCurrentGameAndReturnToLobby() {
+        environment.roomService.resetLocalRoomSession()
+        isShowingLobbyOverride = false
+        syncViewModels()
     }
 }

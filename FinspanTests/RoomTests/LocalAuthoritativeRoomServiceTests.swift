@@ -27,6 +27,50 @@ final class LocalAuthoritativeRoomServiceTests: XCTestCase {
         XCTAssertEqual(service.snapshot.events.first?.sequence, 1)
     }
 
+    func testResetLocalRoomSessionClearsCurrentRoomAndReturnsToLobby() throws {
+        let service = LocalAuthoritativeRoomService(
+            roomId: "room-1",
+            randomSeed: 42,
+            timestampProvider: { Date(timeIntervalSince1970: 1_000) }
+        )
+
+        try service.submit(
+            .createRoom(
+                commandId: "command-1",
+                playerId: "player-1",
+                roomId: "room-1",
+                roomCode: "ABCD",
+                displayName: "Player 1",
+                gameConfig: GameConfig(playerCount: 1, randomSeed: 42, gameDataMode: .baseGame)
+            )
+        )
+
+        XCTAssertNotNil(service.gameRoom)
+        XCTAssertFalse(service.eventLog.isEmpty)
+
+        service.resetLocalRoomSession()
+
+        XCTAssertNil(service.gameRoom)
+        XCTAssertEqual(service.gameState, .empty)
+        XCTAssertEqual(service.snapshot, .empty)
+        XCTAssertTrue(service.eventLog.isEmpty)
+        XCTAssertEqual(service.gameDataMode, .baseGame)
+
+        try service.submit(
+            .createRoom(
+                commandId: "command-2",
+                playerId: "player-1",
+                roomId: "room-2",
+                roomCode: "WXYZ",
+                displayName: "Player 1",
+                gameConfig: GameConfig(playerCount: 1, randomSeed: 7)
+            )
+        )
+
+        XCTAssertEqual(service.gameRoom?.roomId, "room-2")
+        XCTAssertEqual(service.eventLog.map(\.sequenceNumber), [1])
+    }
+
     func testSubmitAllocatesIncreasingSequenceNumbers() throws {
         let service = LocalAuthoritativeRoomService(
             roomId: "room-1",

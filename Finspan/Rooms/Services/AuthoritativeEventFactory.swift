@@ -26,6 +26,16 @@ struct AuthoritativeEventFactory {
         self.roomId = roomId
     }
 
+    mutating func reset(
+        roomId: RoomID,
+        randomSeed: Int,
+        nextSequenceNumber: EventID = 1
+    ) {
+        self.roomId = roomId
+        self.randomSeed = randomSeed
+        self.nextSequenceNumber = nextSequenceNumber
+    }
+
     mutating func makeEvents(
         from drafts: [DomainEventDraft],
         actorPlayerId: PlayerID

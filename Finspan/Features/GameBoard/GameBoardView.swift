@@ -15,7 +15,7 @@ struct GameBoardView: View {
     @StateObject var viewModel: GameBoardViewModel
     @State private var slotFrames: [OceanSlotAddress: CGRect] = [:]
     @State private var isShowingSettings = false
-    var onReturnHome: (() -> Void)?
+    var onEndCurrentGameAndReturnHome: (() -> Void)?
 
     var body: some View {
         Group {
@@ -77,14 +77,14 @@ struct GameBoardView: View {
         }
         .statusBarHidden(true)
         .confirmationDialog(
-            AppStrings.GameBoard.settings,
+            viewModel.settingsMenuViewState.title,
             isPresented: $isShowingSettings,
             titleVisibility: .visible
         ) {
-            Button(AppStrings.GameBoard.returnHome) {
-                onReturnHome?()
+            Button(viewModel.settingsMenuViewState.endCurrentGameAndReturnHomeText, role: .destructive) {
+                onEndCurrentGameAndReturnHome?()
             }
-            Button(AppStrings.GameBoard.cancel, role: .cancel) {}
+            Button(viewModel.settingsMenuViewState.cancelText, role: .cancel) {}
         }
         .sheet(
             isPresented: Binding(

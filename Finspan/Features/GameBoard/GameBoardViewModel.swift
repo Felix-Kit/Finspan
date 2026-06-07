@@ -81,6 +81,12 @@ struct GameHudViewState: Equatable {
     let settingsButtonText: String
 }
 
+struct GameBoardSettingsMenuViewState: Equatable {
+    let title: String
+    let endCurrentGameAndReturnHomeText: String
+    let cancelText: String
+}
+
 struct TopPlayerHudViewState: Equatable {
     let players: [PlayerAvatarViewState]
     let activePlayerId: PlayerID?
@@ -638,6 +644,14 @@ final class GameBoardViewModel: ObservableObject {
             canShowLog: true,
             logButtonText: AppStrings.GameBoard.logButton,
             settingsButtonText: AppStrings.GameBoard.settings
+        )
+    }
+
+    var settingsMenuViewState: GameBoardSettingsMenuViewState {
+        GameBoardSettingsMenuViewState(
+            title: AppStrings.GameBoard.settings,
+            endCurrentGameAndReturnHomeText: AppStrings.GameBoard.endCurrentGameAndReturnHome,
+            cancelText: AppStrings.GameBoard.cancel
         )
     }
 

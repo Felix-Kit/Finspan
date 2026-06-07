@@ -43,7 +43,7 @@ enum AppStrings {
         static let title = "游戏面板"
         static let turn = "回合"
         static let settings = "设置"
-        static let returnHome = "返回主页"
+        static let endCurrentGameAndReturnHome = "结束当前对局并返回主页"
         static let cancel = "取消"
         static let currentAction = "当前行动"
         static let activePlayerInfo = "行动玩家"

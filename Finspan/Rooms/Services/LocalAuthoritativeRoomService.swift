@@ -97,6 +97,26 @@ final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring 
         return events
     }
 
+    func resetLocalRoomSession() {
+        gameRoom = nil
+        gameState = .empty
+        snapshot = .empty
+        eventLog = []
+        eventFactory.reset(
+            roomId: RoomSnapshot.empty.id,
+            randomSeed: 0,
+            nextSequenceNumber: 1
+        )
+
+        let catalog = Self.makeCatalogOrSample(
+            mode: gameDataMode,
+            factory: cardCatalogFactory
+        )
+        cardCatalog = catalog
+        engine = GameEngine(cardCatalog: catalog)
+        setupBuilder = DeterministicSetupBuilder(catalog: catalog)
+    }
+
     private func configureGameDataMode(_ mode: GameDataMode) throws {
         let catalog = try cardCatalogFactory.makeCatalog(for: mode)
         gameDataMode = mode
