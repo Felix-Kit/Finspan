@@ -1076,76 +1076,81 @@ struct GameBoardView: View {
     }
 
     private func slotPanel(_ slot: OceanSlotViewData) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline) {
+        ZStack(alignment: .topLeading) {
+            FishCardFaceView(viewState: slot.cardFace)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 5) {
                     Text(slot.title)
-                        .font(.subheadline.weight(.semibold))
-                        .lineLimit(2)
-                    Spacer()
+                        .font(.caption2.weight(.black))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                     if slot.isSelected {
                         Image(systemName: "checkmark.circle.fill")
+                            .font(.caption2.weight(.bold))
                             .foregroundStyle(.green)
                     }
                 }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(Color(.systemBackground).opacity(0.82)))
 
-                Text(slot.subtitle)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(slot.isOccupied ? .secondary : .primary)
-                    .lineLimit(2)
+                Spacer(minLength: 0)
 
-                Text(slot.playFishPreview.message)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(slot.playFishPreview.isSelectable ? .green : .secondary)
-                    .lineLimit(1)
-
-                if let highlightReasonText = slot.highlightReasonText {
-                    Text(highlightReasonText)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(slot.playFishPreview.message)
                         .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.orange)
-                        .lineLimit(2)
-                }
+                        .foregroundStyle(slot.playFishPreview.isSelectable ? .green : .secondary)
+                        .lineLimit(1)
 
-                if let dropTargetReasonText = slot.dropTargetReasonText {
-                    Text(dropTargetReasonText)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(slot.isValidDropTarget ? .green : .red)
-                        .lineLimit(2)
-                }
+                    if let highlightReasonText = slot.highlightReasonText {
+                        Text(highlightReasonText)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.orange)
+                            .lineLimit(1)
+                    }
 
-                if let rewardSelectionReasonText = slot.rewardSelectionReasonText {
-                    Text(rewardSelectionReasonText)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.blue)
-                        .lineLimit(2)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .topLeading)
+                    if let dropTargetReasonText = slot.dropTargetReasonText {
+                        Text(dropTargetReasonText)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(slot.isValidDropTarget ? .green : .red)
+                            .lineLimit(1)
+                    }
 
-            Spacer(minLength: 0)
-
-            if slot.resourceTokens.isEmpty {
-                Text(AppStrings.GameBoard.noResources)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 38), spacing: 4)], alignment: .leading, spacing: 4) {
-                    ForEach(slot.resourceTokens) { token in
-                        Button {
-                            viewModel.toggleResourcePayment(
-                                address: token.address,
-                                kind: token.kind,
-                                tokenIndex: token.tokenIndex
-                            )
-                        } label: {
-                            resourceToken(token)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(!token.isSelectable)
+                    if let rewardSelectionReasonText = slot.rewardSelectionReasonText {
+                        Text(rewardSelectionReasonText)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.blue)
+                            .lineLimit(1)
                     }
                 }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 7)
+                        .fill(Color(.systemBackground).opacity(0.84))
+                )
+
+                if !slot.resourceTokens.isEmpty {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 38), spacing: 4)], alignment: .leading, spacing: 4) {
+                        ForEach(slot.resourceTokens) { token in
+                            Button {
+                                viewModel.toggleResourcePayment(
+                                    address: token.address,
+                                    kind: token.kind,
+                                    tokenIndex: token.tokenIndex
+                                )
+                            } label: {
+                                resourceToken(token)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(!token.isSelectable)
+                        }
+                    }
+                    .padding(.horizontal, 4)
+                }
             }
+            .padding(6)
         }
         .padding(10)
         .aspectRatio(slot.aspectRatio, contentMode: .fit)

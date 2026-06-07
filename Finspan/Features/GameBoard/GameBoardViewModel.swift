@@ -16,11 +16,37 @@ enum HandCardHighlightStyle: Equatable {
     case unavailable
 }
 
+enum FishCardFaceKind: Equatable {
+    case empty
+    case forageFish
+    case fishCard
+    case placeholder
+}
+
+struct FishCardFaceViewState: Equatable {
+    let kind: FishCardFaceKind
+    let cardId: CardID?
+    let displayName: String
+    let scientificName: String?
+    let printedPointsText: String
+    let lengthText: String
+    let costText: String
+    let allowedZonesText: String
+    let requiredDiveSiteColor: DiveSiteColor?
+    let requiredDiveSiteText: String
+    let tagsText: String
+    let abilityTriggerText: String?
+    let abilityText: String
+    let localFishImagePrefix: String?
+    let aspectRatio: Double
+    let isPlaceholder: Bool
+}
+
 struct HandCardViewState: Identifiable, Equatable {
     var id: CardID { cardId }
 
-    static let fixedCardWidth: Double = 164
-    static let fixedCardHeight: Double = 224
+    static let fixedCardWidth: Double = CardRenderMetrics.handCardWidth
+    static let fixedCardHeight: Double = CardRenderMetrics.handCardHeight
     static let fixedScale: Double = 1
 
     let cardId: CardID
@@ -32,6 +58,7 @@ struct HandCardViewState: Identifiable, Equatable {
     let placementSummaryText: String
     let requiredDiveSiteText: String
     let abilitySummaryText: String
+    let cardFace: FishCardFaceViewState
     let isSelected: Bool
     let isMainSelectedCard: Bool
     let isPlayable: Bool
@@ -218,6 +245,7 @@ struct OceanSlotViewData: Identifiable, Equatable {
     let title: String
     let subtitle: String
     let resourcesText: String
+    let cardFace: FishCardFaceViewState
     let isOccupied: Bool
     let isSelected: Bool
     let isHighlightedByDiveQueue: Bool
@@ -1569,7 +1597,7 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     private var slotAspectRatio: Double {
-        0.72
+        CardRenderMetrics.cardAspectRatio
     }
 
     private var selectedTargetSlotIsAvailable: Bool {
@@ -2322,6 +2350,7 @@ final class GameBoardViewModel: ObservableObject {
             placementSummaryText: placementSummary,
             requiredDiveSiteText: requiredDiveSite,
             abilitySummaryText: cardAbilitySummaryText(card),
+            cardFace: fishCardFaceViewState(cardId: cardId),
             isSelected: isSelected,
             isMainSelectedCard: isMainSelectedCard,
             isPlayable: isPlayable,
@@ -2382,6 +2411,171 @@ final class GameBoardViewModel: ObservableObject {
             return abilityTexts.joined(separator: "；")
         }
         return AppStrings.GameBoard.unsupportedAbilityInUI
+    }
+
+    private func fishCardFaceViewState(cardId: CardID) -> FishCardFaceViewState {
+        guard let card = cardsById[cardId] else {
+            return FishCardFaceViewState(
+                kind: .placeholder,
+                cardId: cardId,
+                displayName: AppStrings.GameBoard.cardFaceUnknownCard,
+                scientificName: nil,
+                printedPointsText: AppStrings.GameBoard.cardScoreUnsupported,
+                lengthText: AppStrings.GameBoard.cardLengthUnsupported,
+                costText: AppStrings.GameBoard.unknownCard,
+                allowedZonesText: AppStrings.GameBoard.unknownCard,
+                requiredDiveSiteColor: nil,
+                requiredDiveSiteText: AppStrings.GameBoard.unknownCard,
+                tagsText: AppStrings.GameBoard.cardFaceNoTags,
+                abilityTriggerText: nil,
+                abilityText: AppStrings.GameBoard.abilityUnsupported,
+                localFishImagePrefix: nil,
+                aspectRatio: CardRenderMetrics.cardAspectRatio,
+                isPlaceholder: true
+            )
+        }
+
+        let abilityText = card.abilityText?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return FishCardFaceViewState(
+            kind: .fishCard,
+            cardId: cardId,
+            displayName: card.name,
+            scientificName: card.scientificName,
+            printedPointsText: "\(card.printedPoints)\(AppStrings.GameBoard.cardFacePointsSuffix)",
+            lengthText: cardLengthText(card),
+            costText: cardCostSummaryText(card),
+            allowedZonesText: cardPlacementSummaryText(card),
+            requiredDiveSiteColor: card.requiredDiveSiteColor,
+            requiredDiveSiteText: cardRequiredDiveSiteText(card),
+            tagsText: cardTagsText(card.tags),
+            abilityTriggerText: cardAbilityTriggerText(card),
+            abilityText: abilityText?.isEmpty == false
+                ? abilityText!
+                : cardAbilitySummaryText(card),
+            localFishImagePrefix: card.visualAssetName ?? inferredFishImagePrefix(cardId: card.id),
+            aspectRatio: CardRenderMetrics.cardAspectRatio,
+            isPlaceholder: false
+        )
+    }
+
+    private func fishCardFaceViewState(content: OceanSlotContent) -> FishCardFaceViewState {
+        switch content {
+        case .empty:
+            return FishCardFaceViewState(
+                kind: .empty,
+                cardId: nil,
+                displayName: AppStrings.GameBoard.cardFaceEmptySlot,
+                scientificName: nil,
+                printedPointsText: "",
+                lengthText: "",
+                costText: AppStrings.GameBoard.noCost,
+                allowedZonesText: AppStrings.GameBoard.noLimit,
+                requiredDiveSiteColor: nil,
+                requiredDiveSiteText: AppStrings.GameBoard.noLimit,
+                tagsText: AppStrings.GameBoard.cardFaceNoTags,
+                abilityTriggerText: nil,
+                abilityText: AppStrings.GameBoard.cardFaceNoAbility,
+                localFishImagePrefix: nil,
+                aspectRatio: CardRenderMetrics.cardAspectRatio,
+                isPlaceholder: true
+            )
+        case let .forageFish(fish):
+            return FishCardFaceViewState(
+                kind: .forageFish,
+                cardId: nil,
+                displayName: fish.name,
+                scientificName: nil,
+                printedPointsText: "0\(AppStrings.GameBoard.cardFacePointsSuffix)",
+                lengthText: "\(fish.lengthCm) \(AppStrings.GameBoard.centimeters)",
+                costText: AppStrings.GameBoard.noCost,
+                allowedZonesText: AppStrings.GameBoard.noLimit,
+                requiredDiveSiteColor: nil,
+                requiredDiveSiteText: AppStrings.GameBoard.noLimit,
+                tagsText: AppStrings.GameBoard.forageFish,
+                abilityTriggerText: nil,
+                abilityText: AppStrings.GameBoard.cardFaceNoAbility,
+                localFishImagePrefix: nil,
+                aspectRatio: CardRenderMetrics.cardAspectRatio,
+                isPlaceholder: false
+            )
+        case let .fishCard(cardId):
+            return fishCardFaceViewState(cardId: cardId)
+        }
+    }
+
+    private func cardTagsText(_ tags: [CardTag]) -> String {
+        guard !tags.isEmpty else {
+            return AppStrings.GameBoard.cardFaceNoTags
+        }
+        return tags
+            .map { "\($0.count) \(cardTagName($0.kind))" }
+            .joined(separator: "，")
+    }
+
+    private func cardTagName(_ kind: String) -> String {
+        switch kind {
+        case "predator":
+            return "捕食者"
+        case "schooling":
+            return "成群"
+        case "reef":
+            return "珊瑚礁"
+        case "shark":
+            return "鲨鱼"
+        case "plankton":
+            return "浮游生物"
+        default:
+            return kind
+        }
+    }
+
+    private func cardAbilityTriggerText(_ card: Card) -> String? {
+        let definitions = abilityResolver.abilityDefinitions(for: card)
+        if let supportedTrigger = definitions.first(where: { !abilityIsUnsupported($0) })?.trigger {
+            return abilityTriggerText(supportedTrigger)
+        }
+        return card.abilityIds.compactMap(inferredAbilityTriggerText).first
+    }
+
+    private func inferredAbilityTriggerText(_ abilityId: AbilityID) -> String? {
+        let lowercased = abilityId.lowercased()
+        if lowercased.contains("whenplayed") || lowercased.contains("when_played") {
+            return AppStrings.GameBoard.abilityTriggerWhenPlayed
+        }
+        if lowercased.contains("gameend") || lowercased.contains("game_end") {
+            return AppStrings.GameBoard.abilityTriggerGameEnd
+        }
+        if lowercased.contains("ifactivated") || lowercased.contains("if_activated") {
+            return AppStrings.GameBoard.abilityTriggerIfActivated
+        }
+        return nil
+    }
+
+    private func abilityTriggerText(_ trigger: AbilityTrigger) -> String {
+        switch trigger {
+        case .whenPlayed:
+            return AppStrings.GameBoard.abilityTriggerWhenPlayed
+        case .ifActivated:
+            return AppStrings.GameBoard.abilityTriggerIfActivated
+        case .gameEnd:
+            return AppStrings.GameBoard.abilityTriggerGameEnd
+        }
+    }
+
+    private func inferredFishImagePrefix(cardId: CardID) -> String? {
+        let numberText: String?
+        if let trailing = cardId.split(separator: ".").last {
+            numberText = String(trailing)
+        } else {
+            numberText = nil
+        }
+
+        guard let numberText,
+              let sourceId = Int(numberText)
+        else {
+            return nil
+        }
+        return "\(sourceId)"
     }
 
     private func handCardUnavailableReason(_ card: Card?, canSelectCards: Bool) -> String? {
@@ -3195,6 +3389,7 @@ final class GameBoardViewModel: ObservableObject {
             title: slotTitle(slot.address),
             subtitle: slotContentText(slot.content),
             resourcesText: resourcesText(slot.resources),
+            cardFace: fishCardFaceViewState(content: slot.content),
             isOccupied: slot.content != .empty,
             isSelected: selectedTargetSlot == slot.address,
             isHighlightedByDiveQueue: isHighlighted,

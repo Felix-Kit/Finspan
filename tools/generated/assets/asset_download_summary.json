@@ -1,0 +1,85 @@
+{
+  "dryRun": false,
+  "totalAssets": 285,
+  "downloadedCount": 0,
+  "skippedExistingCount": 285,
+  "presentAfterRunCount": 285,
+  "failedCount": 0,
+  "byKind": {
+    "background": 13,
+    "fishImage": 215,
+    "icon": 57
+  },
+  "runtimeAssetFileCounts": {
+    "fishImage": 215,
+    "icon": 57,
+    "background": 13,
+    "preview": 0
+  },
+  "outputDirectories": {
+    "fishImage": "Finspan/Resources/CardAssets/fish",
+    "icon": "Finspan/Resources/CardAssets/icons",
+    "background": "Finspan/Resources/CardAssets/backgrounds",
+    "preview": "Finspan/Resources/CardAssets/previews"
+  },
+  "failedAssets": [],
+  "remoteUrlFoundInRuntimeResources": {
+    "found": false,
+    "matches": []
+  },
+  "backgroundAssetDimensions": {
+    "purple.c493ffc8ca41cab3da6f.webp": {
+      "width": 4394,
+      "height": 2976
+    },
+    "base.35519da28cd2f346a2ed.png": {
+      "width": 4394,
+      "height": 2976
+    },
+    "blue.b9baf436df4033049f53.webp": {
+      "width": 4394,
+      "height": 2976
+    },
+    "IfActivated.0c5d4ca8421590f6e8ef.webp": {
+      "width": 472,
+      "height": 295
+    },
+    "IfActivated.f4ec95e03e7c3189135e.png": {
+      "width": 472,
+      "height": 295
+    },
+    "blue.160a8f1c605b70b33352.png": {
+      "width": 4394,
+      "height": 2976
+    },
+    "webpage.e8dc55dd9f8fa0caffc8.webp": {
+      "width": 1440,
+      "height": 2960
+    },
+    "green.374d1a75825b118218bc.webp": {
+      "width": 4394,
+      "height": 2976
+    },
+    "base.f121413876c92b0271f4.webp": {
+      "width": 4394,
+      "height": 2976
+    },
+    "GameEnd.027482f9c0439f2d1f17.webp": {
+      "width": 472,
+      "height": 295
+    },
+    "GameEnd.1c86787c5a74319ee78f.png": {
+      "width": 472,
+      "height": 295
+    },
+    "purple.cd7cf06ece46fee1d80c.png": {
+      "width": 4394,
+      "height": 2976
+    },
+    "green.4eaff11c554f88333ead.png": {
+      "width": 4394,
+      "height": 2976
+    }
+  },
+  "inferredCardAspectRatio": 1.476478494623656
+}

@@ -475,6 +475,71 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.handViewState.cards.first?.abilitySummaryText, AppStrings.GameBoard.unsupportedAbilityInUI)
     }
 
+    func testHandCardFaceUsesSharedCardAspectRatio() {
+        let service = makeService(hand: ["starter-fish-1"])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let card = viewModel.handViewState.cards.first
+
+        XCTAssertEqual(card?.cardFace.kind, .fishCard)
+        XCTAssertEqual(card?.cardFace.displayName, "Starter Fish 1")
+        XCTAssertEqual(card?.cardFace.aspectRatio, CardRenderMetrics.cardAspectRatio)
+        XCTAssertEqual(card?.cardWidth, CardRenderMetrics.handCardWidth)
+        XCTAssertEqual(card?.cardHeight, CardRenderMetrics.handCardHeight)
+        XCTAssertEqual(card?.scale, 1)
+    }
+
+    func testBaseGameHandCardFaceInfersLocalFishImagePrefix() throws {
+        let catalog = try BaseGameCardCatalog()
+        let service = makeService(hand: ["base.main.057"])
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalogProvider: { catalog }
+        )
+        let cardFace = viewModel.handViewState.cards.first?.cardFace
+
+        XCTAssertEqual(cardFace?.displayName, "Great White Shark")
+        XCTAssertEqual(cardFace?.scientificName, "Carcharodon carcharias")
+        XCTAssertEqual(cardFace?.lengthText, "600 厘米")
+        XCTAssertEqual(cardFace?.printedPointsText, "10分")
+        XCTAssertEqual(cardFace?.localFishImagePrefix, "57")
+    }
+
+    func testOceanSlotCardFaceShowsFishCardAndUsesSharedAspectRatio() {
+        let service = makeService(hand: ["starter-fish-1"])
+        setContent(.fishCard("starter-fish-1"), at: Self.slotAddress, in: service)
+        let viewModel = GameBoardViewModel(roomService: service)
+        let slot = oceanSlot(in: viewModel, address: Self.slotAddress)
+
+        XCTAssertEqual(slot.cardFace.kind, .fishCard)
+        XCTAssertEqual(slot.cardFace.displayName, "Starter Fish 1")
+        XCTAssertEqual(slot.cardFace.aspectRatio, CardRenderMetrics.cardAspectRatio)
+        XCTAssertEqual(slot.aspectRatio, CardRenderMetrics.cardAspectRatio)
+    }
+
+    func testOceanSlotCardFaceShowsEmptyForageAndUnknownPlaceholders() {
+        let service = makeService(hand: ["starter-fish-1"])
+        setContent(.fishCard("missing-card"), at: Self.resourceSourceAddress, in: service)
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let emptySlot = oceanSlot(in: viewModel, address: Self.slotAddress)
+        let forageSlot = oceanSlot(in: viewModel, address: Self.forageTargetAddress)
+        let unknownSlot = oceanSlot(in: viewModel, address: Self.resourceSourceAddress)
+
+        XCTAssertEqual(emptySlot.cardFace.kind, .empty)
+        XCTAssertEqual(forageSlot.cardFace.kind, .forageFish)
+        XCTAssertEqual(unknownSlot.cardFace.kind, .placeholder)
+        XCTAssertEqual(unknownSlot.cardFace.cardId, "missing-card")
+    }
+
+    func testOceanSlotCardFaceDoesNotRemoveResourceTokens() {
+        let service = makeService(hand: ["starter-fish-1"])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let slot = oceanSlot(in: viewModel, address: Self.resourceSourceAddress)
+
+        XCTAssertFalse(slot.resourceTokens.isEmpty)
+        XCTAssertEqual(slot.cardFace.aspectRatio, CardRenderMetrics.cardAspectRatio)
+    }
+
     func testHandViewStateShowsRegistryAbilityCopy() {
         let service = makeService(hand: ["fish-30"])
         let viewModel = GameBoardViewModel(roomService: service)
@@ -2943,6 +3008,24 @@ final class GameBoardViewModelTests: XCTestCase {
                 title: "",
                 subtitle: "",
                 resourcesText: "",
+                cardFace: FishCardFaceViewState(
+                    kind: .empty,
+                    cardId: nil,
+                    displayName: AppStrings.GameBoard.cardFaceEmptySlot,
+                    scientificName: nil,
+                    printedPointsText: "",
+                    lengthText: "",
+                    costText: AppStrings.GameBoard.noCost,
+                    allowedZonesText: AppStrings.GameBoard.noLimit,
+                    requiredDiveSiteColor: nil,
+                    requiredDiveSiteText: AppStrings.GameBoard.noLimit,
+                    tagsText: AppStrings.GameBoard.cardFaceNoTags,
+                    abilityTriggerText: nil,
+                    abilityText: AppStrings.GameBoard.cardFaceNoAbility,
+                    localFishImagePrefix: nil,
+                    aspectRatio: CardRenderMetrics.cardAspectRatio,
+                    isPlaceholder: true
+                ),
                 isOccupied: false,
                 isSelected: false,
                 isHighlightedByDiveQueue: false,
