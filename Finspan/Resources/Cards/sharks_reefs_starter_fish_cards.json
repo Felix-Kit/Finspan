@@ -1,0 +1,383 @@
+[
+  {
+    "id": "sr.starter.211",
+    "sourceId": 211,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "starter",
+    "name": {
+      "en": "African Coelacanth",
+      "zh": ""
+    },
+    "scientificName": "Latimeria chalumnae",
+    "printedPoints": 4,
+    "lengthCm": 200,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[Discard][Discard][Discard][Discard][Discard]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_211"
+    ],
+    "visual": {
+      "fishImageAsset": "211.webp",
+      "fishImageLookup": "static/media/211.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 211,
+      "group": "starter",
+      "name": "African Coelacanth",
+      "latin": "Latimeria chalumnae",
+      "cardCost": 0,
+      "eggCost": 1,
+      "youngCost": 1,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 1,
+      "midnight": 0,
+      "points": 4,
+      "length": 200,
+      "abilityType": "WhenPlayed",
+      "ability": "[Discard][Discard][Discard][Discard][Discard]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "Its oldest known fossils date back 410 million years. Once thought extinct, “the living fossil” was discovered in 1938.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.starter.212",
+    "sourceId": 212,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "starter",
+    "name": {
+      "en": "Atlantic Barracudina",
+      "zh": ""
+    },
+    "scientificName": "Lestidium atlanticum",
+    "printedPoints": 1,
+    "lengthCm": 25,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "twilight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      },
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[FishHatch] also, if [GreenCoral][GreenCoral][GreenCoral] in this dive site: [SchoolFeederMove]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_212"
+    ],
+    "visual": {
+      "fishImageAsset": "212.webp",
+      "fishImageLookup": "static/media/212.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 212,
+      "group": "starter",
+      "name": "Atlantic Barracudina",
+      "latin": "Lestidium atlanticum",
+      "cardCost": 1,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 0,
+      "twilight": 1,
+      "midnight": 0,
+      "points": 1,
+      "length": 25,
+      "abilityType": "IfActivated",
+      "ability": "[FishHatch] also, if [GreenCoral][GreenCoral][GreenCoral] in this dive site: [SchoolFeederMove]",
+      "Bioluminescent": 1,
+      "Camouflage": 1,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": "green",
+      "description": "It has a luminescent duct on its ventral surface to help it camouflage through countershading.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.starter.213",
+    "sourceId": 213,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "starter",
+    "name": {
+      "en": "Blue Antimora",
+      "zh": ""
+    },
+    "scientificName": "Antimora rostrata",
+    "printedPoints": 2,
+    "lengthCm": 75,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[Discard] also, if [BlueCoral][BlueCoral][BlueCoral] in this dive site: [FishFromHandConsume]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_213"
+    ],
+    "visual": {
+      "fishImageAsset": "213.webp",
+      "fishImageLookup": "static/media/213.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 213,
+      "group": "starter",
+      "name": "Blue Antimora",
+      "latin": "Antimora rostrata",
+      "cardCost": 2,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 0,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 2,
+      "length": 75,
+      "abilityType": "IfActivated",
+      "ability": "[Discard] also, if [BlueCoral][BlueCoral][BlueCoral] in this dive site: [FishFromHandConsume]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": "blue",
+      "description": "It has small teeth located on the roof of the mouth to grip invertebrates before swallowing them.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.starter.214",
+    "sourceId": 214,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "starter",
+    "name": {
+      "en": "Fanfin Anglerfish",
+      "zh": ""
+    },
+    "scientificName": "Caulophryne jordani",
+    "printedPoints": 2,
+    "lengthCm": 20,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": "purple",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [GreenCoral]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_214"
+    ],
+    "visual": {
+      "fishImageAsset": "214.webp",
+      "fishImageLookup": "static/media/214.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 214,
+      "group": "starter",
+      "name": "Fanfin Anglerfish",
+      "latin": "Caulophryne jordani",
+      "cardCost": 1,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 0,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 2,
+      "length": 20,
+      "abilityType": "IfActivated",
+      "ability": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [GreenCoral]",
+      "Bioluminescent": 1,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": "purple",
+      "description": "Recent footage has shown that its fin rays and filaments appear to emit light, in addition to its bioluminescent lure.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.starter.215",
+    "sourceId": 215,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "starter",
+    "name": {
+      "en": "Illuminated Netdevil",
+      "zh": ""
+    },
+    "scientificName": "Linophryne arborifera",
+    "printedPoints": 2,
+    "lengthCm": 7,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "(all players) [AnyCoral][AllPlayers]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_215"
+    ],
+    "visual": {
+      "fishImageAsset": "215.webp",
+      "fishImageLookup": "static/media/215.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 215,
+      "group": "starter",
+      "name": "Illuminated Netdevil",
+      "latin": "Linophryne arborifera",
+      "cardCost": 0,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 0,
+      "twilight": 1,
+      "midnight": 0,
+      "points": 2,
+      "length": 7,
+      "abilityType": "IfActivated",
+      "ability": "(all players) [AnyCoral][AllPlayers]",
+      "Bioluminescent": 1,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "It has a multi-branched bioluminescent barbel hanging from its lower jaw and a bioluminescent lure on its head.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  }
+]

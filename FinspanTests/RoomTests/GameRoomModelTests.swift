@@ -3,6 +3,12 @@ import XCTest
 
 final class GameRoomModelTests: XCTestCase {
 
+    func testGameConfigDefaultsToNoEnabledExpansions() {
+        let config = GameConfig(playerCount: 2, randomSeed: 42)
+
+        XCTAssertTrue(config.enabledExpansions.isEmpty)
+    }
+
     func testGameRoomStoresAuthoritativeRoomFacts() {
         let createdAt = Date(timeIntervalSince1970: 100)
         let updatedAt = Date(timeIntervalSince1970: 200)
@@ -93,5 +99,21 @@ final class GameRoomModelTests: XCTestCase {
         let config = try JSONDecoder().decode(GameConfig.self, from: data)
 
         XCTAssertEqual(config.gameDataMode, .sample)
+    }
+
+    func testGameConfigDecodesMissingEnabledExpansionsAsEmpty() throws {
+        let data = """
+        {
+          "playerCount": 2,
+          "rulesetVersion": "baseGameV1",
+          "randomSeed": 42,
+          "gameDataMode": "baseGame"
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(GameConfig.self, from: data)
+
+        XCTAssertTrue(config.enabledExpansions.isEmpty)
+        XCTAssertEqual(config.gameDataMode, .baseGame)
     }
 }

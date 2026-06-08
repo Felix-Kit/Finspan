@@ -1904,7 +1904,8 @@ final class GameBoardViewModel: ObservableObject {
                 guard let mode = (roomService as? GameDataModeConfiguring)?.gameDataMode else {
                     return SampleCardCatalog()
                 }
-                return (try? factory.makeCatalog(for: mode)) ?? SampleCardCatalog()
+                let enabledExpansions = roomService.gameRoom?.gameConfig.enabledExpansions ?? []
+                return (try? factory.makeCatalog(for: mode, enabledExpansions: enabledExpansions)) ?? SampleCardCatalog()
             }
         )
     }

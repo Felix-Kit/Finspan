@@ -10,6 +10,7 @@ final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring 
     private let randomSeedProvider: () -> Int
     private var eventContinuations: [AsyncStream<GameEvent>.Continuation] = []
     private(set) var gameDataMode: GameDataMode
+    private(set) var enabledExpansions: [Expansion]
 
     private(set) var gameRoom: GameRoom?
     private(set) var gameState: GameState
@@ -34,13 +35,18 @@ final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring 
         timestampProvider: @escaping () -> Date = Date.init,
         randomSeedProvider: @escaping () -> Int = { Int.random(in: 1...Int.max) }
     ) {
-        let catalog = Self.makeCatalogOrSample(mode: gameDataMode, factory: cardCatalogFactory)
+        let catalog = Self.makeCatalogOrSample(
+            mode: gameDataMode,
+            enabledExpansions: [],
+            factory: cardCatalogFactory
+        )
         self.engine = engine ?? GameEngine(cardCatalog: catalog)
         self.reducer = reducer
         self.setupBuilder = setupBuilder ?? DeterministicSetupBuilder(catalog: catalog)
         self.cardCatalogFactory = cardCatalogFactory
         self.cardCatalog = catalog
         self.gameDataMode = gameDataMode
+        self.enabledExpansions = []
         self.gameRoom = nil
         self.gameState = snapshot.state
         self.snapshot = snapshot
@@ -65,7 +71,7 @@ final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring 
     func submit(_ command: PlayerCommand) throws -> [GameEvent] {
         try validateRoomCommand(command)
         if case let .createRoom(payload) = command.payload {
-            try configureGameDataMode(payload.gameConfig.gameDataMode)
+            try configureGameConfig(payload.gameConfig)
         }
         let engineDrafts = try engine.makeEventDrafts(for: command, in: gameState)
         let randomSeed = prepareAuthoritativeFields(for: command)
@@ -110,6 +116,7 @@ final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring 
 
         let catalog = Self.makeCatalogOrSample(
             mode: gameDataMode,
+            enabledExpansions: enabledExpansions,
             factory: cardCatalogFactory
         )
         cardCatalog = catalog
@@ -118,8 +125,23 @@ final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring 
     }
 
     private func configureGameDataMode(_ mode: GameDataMode) throws {
-        let catalog = try cardCatalogFactory.makeCatalog(for: mode)
+        let catalog = try cardCatalogFactory.makeCatalog(
+            for: mode,
+            enabledExpansions: enabledExpansions
+        )
         gameDataMode = mode
+        cardCatalog = catalog
+        engine = GameEngine(cardCatalog: catalog)
+        setupBuilder = DeterministicSetupBuilder(catalog: catalog)
+    }
+
+    private func configureGameConfig(_ config: GameConfig) throws {
+        let catalog = try cardCatalogFactory.makeCatalog(
+            for: config.gameDataMode,
+            enabledExpansions: config.enabledExpansions
+        )
+        gameDataMode = config.gameDataMode
+        enabledExpansions = config.enabledExpansions
         cardCatalog = catalog
         engine = GameEngine(cardCatalog: catalog)
         setupBuilder = DeterministicSetupBuilder(catalog: catalog)
@@ -127,9 +149,10 @@ final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring 
 
     private static func makeCatalogOrSample(
         mode: GameDataMode,
+        enabledExpansions: [Expansion],
         factory: CardCatalogFactory
     ) -> any CardCatalog {
-        (try? factory.makeCatalog(for: mode)) ?? SampleCardCatalog()
+        (try? factory.makeCatalog(for: mode, enabledExpansions: enabledExpansions)) ?? SampleCardCatalog()
     }
 
     private func validateRoomCommand(_ command: PlayerCommand) throws {

@@ -14,6 +14,8 @@ final class LobbyViewModel: ObservableObject {
             configureGameDataMode(selectedGameDataMode)
         }
     }
+    @Published var isSharksAndReefsExpansionEnabled = false
+    @Published private(set) var isNautomaExpansionEnabled = false
     @Published private(set) var errorMessage: String?
 
     private let roomService: any RoomService
@@ -43,6 +45,14 @@ final class LobbyViewModel: ObservableObject {
         return room.hostPlayerId == hostPlayerId && room.status != .inProgress
     }
 
+    var canSelectExpansions: Bool {
+        canCreateRoom
+    }
+
+    var canSelectNautomaExpansion: Bool {
+        false
+    }
+
     init(
         roomService: any RoomService,
         gameDataController: GameDataController? = nil
@@ -68,6 +78,7 @@ final class LobbyViewModel: ObservableObject {
                 displayName: hostDisplayName,
                 gameConfig: GameConfig(
                     playerCount: 4,
+                    enabledExpansions: selectedEnabledExpansions,
                     randomSeed: 0,
                     gameDataMode: selectedGameDataMode
                 )
@@ -163,6 +174,10 @@ final class LobbyViewModel: ObservableObject {
         }
     }
 
+    func setNautomaExpansionEnabled(_ isEnabled: Bool) {
+        isNautomaExpansionEnabled = false
+    }
+
     private func submit(_ command: PlayerCommand) {
         do {
             _ = try roomService.submit(command)
@@ -190,5 +205,16 @@ final class LobbyViewModel: ObservableObject {
     private func nextCommandId() -> CommandID {
         commandCounter += 1
         return "lobby-command-\(commandCounter)"
+    }
+
+    private var selectedEnabledExpansions: [Expansion] {
+        var expansions: [Expansion] = []
+        if isSharksAndReefsExpansionEnabled {
+            expansions.append(.sharksAndReefs)
+        }
+        if isNautomaExpansionEnabled {
+            expansions.append(.nautoma)
+        }
+        return expansions
     }
 }

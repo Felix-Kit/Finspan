@@ -40,6 +40,61 @@ final class CardCatalogTests: XCTestCase {
         XCTAssertEqual(catalog.fishCards.count + catalog.starterFishCards.count, 135)
     }
 
+    func testSharksAndReefsCardCatalogLoadsBundledMainAndStarterCards() throws {
+        let catalog = try SharksAndReefsCardCatalog()
+
+        XCTAssertEqual(catalog.fishCards.count, 75)
+        XCTAssertEqual(catalog.starterFishCards.count, 5)
+        XCTAssertEqual(catalog.fishCards.count + catalog.starterFishCards.count, 80)
+        XCTAssertTrue(catalog.fishCards.allSatisfy { $0.id.hasPrefix("sr.main.") })
+        XCTAssertTrue(catalog.starterFishCards.allSatisfy { $0.id.hasPrefix("sr.starter.") })
+    }
+
+    func testCardCatalogFactoryKeepsBaseGameCountsWithoutSharksAndReefs() throws {
+        let catalog = try CardCatalogFactory().makeCatalog(for: .baseGame, enabledExpansions: [])
+
+        XCTAssertEqual(catalog.fishCards.count, 125)
+        XCTAssertEqual(catalog.starterFishCards.count, 10)
+    }
+
+    func testCardCatalogFactoryMergesSharksAndReefsWithBaseGame() throws {
+        let catalog = try CardCatalogFactory().makeCatalog(
+            for: .baseGame,
+            enabledExpansions: [.sharksAndReefs]
+        )
+
+        XCTAssertEqual(catalog.fishCards.count, 200)
+        XCTAssertEqual(catalog.starterFishCards.count, 15)
+        XCTAssertTrue(catalog.fishCards.contains { $0.id == "sr.main.136" })
+        XCTAssertTrue(catalog.starterFishCards.contains { $0.id == "sr.starter.211" })
+    }
+
+    func testSampleCatalogIgnoresSelectedSharksAndReefsExpansion() throws {
+        let catalog = try CardCatalogFactory().makeCatalog(
+            for: .sample,
+            enabledExpansions: [.sharksAndReefs]
+        )
+
+        XCTAssertEqual(catalog.fishCards.count, 32)
+        XCTAssertEqual(catalog.starterFishCards.count, 16)
+        XCTAssertTrue(catalog.fishCards.allSatisfy { $0.id.hasPrefix("fish-") })
+    }
+
+    func testMergedBaseGameAndSharksAndReefsSourceIdsAreUnique() throws {
+        let resourceNames = [
+            "base_main_fish_cards",
+            "base_starter_fish_cards",
+            "sharks_reefs_main_fish_cards",
+            "sharks_reefs_starter_fish_cards"
+        ]
+        let allSourceIds = try resourceNames.flatMap { resourceName in
+            try sourceIds(in: resourceName)
+        }
+
+        XCTAssertEqual(allSourceIds.count, 215)
+        XCTAssertEqual(Set(allSourceIds).count, allSourceIds.count)
+    }
+
     func testBaseGameCardCatalogDoesNotLoadSharksAndReefsCards() throws {
         let catalog = try BaseGameCardCatalog()
         let allCards = catalog.fishCards + catalog.starterFishCards
@@ -122,5 +177,14 @@ final class CardCatalogTests: XCTestCase {
             bundle.url(forResource: resourceName, withExtension: "json")
         ]
         return try XCTUnwrap(candidates.compactMap { $0 }.first)
+    }
+
+    private func sourceIds(in resourceName: String) throws -> [Int] {
+        struct SourceIdDTO: Decodable {
+            var sourceId: Int
+        }
+
+        let data = try Data(contentsOf: try bundledCardResourceURL(named: resourceName))
+        return try JSONDecoder().decode([SourceIdDTO].self, from: data).map(\.sourceId)
     }
 }

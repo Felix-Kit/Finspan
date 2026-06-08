@@ -48,4 +48,36 @@ final class LobbyViewModelTests: XCTestCase {
         XCTAssertEqual(controller.mode, .baseGame)
         XCTAssertEqual(service.gameDataMode, .baseGame)
     }
+
+    func testCreateLocalRoomStoresSelectedSharksAndReefsExpansionInGameConfig() {
+        let service = LocalAuthoritativeRoomService()
+        let controller = GameDataController()
+        let viewModel = LobbyViewModel(
+            roomService: service,
+            gameDataController: controller
+        )
+
+        viewModel.selectedGameDataMode = .baseGame
+        viewModel.isSharksAndReefsExpansionEnabled = true
+        viewModel.createLocalRoom()
+
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertEqual(service.gameRoom?.gameConfig.enabledExpansions, [.sharksAndReefs])
+    }
+
+    func testNautomaExpansionCannotBeEnabledFromLobby() {
+        let service = LocalAuthoritativeRoomService()
+        let controller = GameDataController()
+        let viewModel = LobbyViewModel(
+            roomService: service,
+            gameDataController: controller
+        )
+
+        viewModel.setNautomaExpansionEnabled(true)
+        viewModel.createLocalRoom()
+
+        XCTAssertFalse(viewModel.isNautomaExpansionEnabled)
+        XCTAssertFalse(viewModel.canSelectNautomaExpansion)
+        XCTAssertEqual(service.gameRoom?.gameConfig.enabledExpansions, [])
+    }
 }

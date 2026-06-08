@@ -87,6 +87,25 @@ struct LobbyView: View {
             .pickerStyle(.segmented)
             .disabled(!viewModel.canCreateRoom)
 
+            VStack(alignment: .leading, spacing: 8) {
+                Text(AppStrings.Lobby.expansions)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Toggle(AppStrings.Lobby.sharksAndReefsExpansion, isOn: $viewModel.isSharksAndReefsExpansionEnabled)
+                    .disabled(!viewModel.canSelectExpansions)
+
+                Toggle(
+                    AppStrings.Lobby.nautomaExpansion,
+                    isOn: Binding(
+                        get: { viewModel.isNautomaExpansionEnabled },
+                        set: { viewModel.setNautomaExpansionEnabled($0) }
+                    )
+                )
+                .disabled(!viewModel.canSelectNautomaExpansion)
+            }
+            .toggleStyle(.switch)
+
             Button {
                 viewModel.createLocalRoom()
             } label: {

@@ -1,0 +1,5808 @@
+[
+  {
+    "id": "sr.main.136",
+    "sourceId": 136,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "American Pocket Shark",
+      "zh": ""
+    },
+    "scientificName": "Mollisquama mississippiensis",
+    "printedPoints": 1,
+    "lengthCm": 14,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[FishFromHandConsume][FishFromHandConsume]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_136"
+    ],
+    "visual": {
+      "fishImageAsset": "136.webp",
+      "fishImageLookup": "static/media/136.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 136,
+      "group": "main",
+      "name": "American Pocket Shark",
+      "latin": "Mollisquama mississippiensis",
+      "cardCost": 1,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 0,
+      "twilight": 1,
+      "midnight": 0,
+      "points": 1,
+      "length": 14,
+      "abilityType": "WhenPlayed",
+      "ability": "[FishFromHandConsume][FishFromHandConsume]",
+      "Bioluminescent": 1,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "Besides clusters of photophores on its body, it has two pockets near its gills that secrete a luminous fluid.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.137",
+    "sourceId": 137,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Angular Roughshark",
+      "zh": ""
+    },
+    "scientificName": "Oxynotus centrina",
+    "printedPoints": 4,
+    "lengthCm": 145,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight",
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[SchoolFeederMove][SchoolFeederMove][UnSchoolFish]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_137"
+    ],
+    "visual": {
+      "fishImageAsset": "137.webp",
+      "fishImageLookup": "static/media/137.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 137,
+      "group": "main",
+      "name": "Angular Roughshark",
+      "latin": "Oxynotus centrina",
+      "cardCost": 1,
+      "eggCost": 2,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 4,
+      "length": 145,
+      "abilityType": "WhenPlayed",
+      "ability": "[SchoolFeederMove][SchoolFeederMove][UnSchoolFish]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": null,
+      "description": "It has a wide pink snout, massive nostrils, and pronounced dermal denticles, giving it a furry, pig-like appearance.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.138",
+    "sourceId": 138,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Armored Searobin",
+      "zh": ""
+    },
+    "scientificName": "Peristedion miniatum",
+    "printedPoints": 1,
+    "lengthCm": 30,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[Discard] also, if [BlueCoral][BlueCoral][BlueCoral] in this dive site: [DrawCard]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_138"
+    ],
+    "visual": {
+      "fishImageAsset": "138.webp",
+      "fishImageLookup": "static/media/138.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 138,
+      "group": "main",
+      "name": "Armored Searobin",
+      "latin": "Peristedion miniatum",
+      "cardCost": 0,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 1,
+      "midnight": 0,
+      "points": 1,
+      "length": 30,
+      "abilityType": "IfActivated",
+      "ability": "[Discard] also, if [BlueCoral][BlueCoral][BlueCoral] in this dive site: [DrawCard]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": "blue",
+      "description": "The armored searobin's body is completely covered in a heavy plating composed of four rows of bony spiny scales.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.139",
+    "sourceId": 139,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Atlantic Thornyhead",
+      "zh": ""
+    },
+    "scientificName": "Trachyscorpia cristulata",
+    "printedPoints": 2,
+    "lengthCm": 55,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "venomous",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[FishHatch] also, if [GreenCoral][GreenCoral][GreenCoral] in this dive site: [FishEgg]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_139"
+    ],
+    "visual": {
+      "fishImageAsset": "139.webp",
+      "fishImageLookup": "static/media/139.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 139,
+      "group": "main",
+      "name": "Atlantic Thornyhead",
+      "latin": "Trachyscorpia cristulata",
+      "cardCost": 1,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 0,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 2,
+      "length": 55,
+      "abilityType": "IfActivated",
+      "ability": "[FishHatch] also, if [GreenCoral][GreenCoral][GreenCoral] in this dive site: [FishEgg]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 1,
+      "band": "green",
+      "description": "The Atlantic thornyhead has a spined ridge between its eyes as well as spines along its back.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.140",
+    "sourceId": 140,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Basking Shark",
+      "zh": ""
+    },
+    "scientificName": "Cetorhinus maximus",
+    "printedPoints": 10,
+    "lengthCm": 1500,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight",
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "school",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[ConsumeFish1]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_140"
+    ],
+    "visual": {
+      "fishImageAsset": "140.webp",
+      "fishImageLookup": "static/media/140.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 140,
+      "group": "main",
+      "name": "Basking Shark",
+      "latin": "Cetorhinus maximus",
+      "cardCost": 0,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 1,
+      "sunlight": 1,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 10,
+      "length": 1500,
+      "abilityType": "IfActivated",
+      "ability": "[ConsumeFish1]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": "blue",
+      "description": "A filter feeder and the second-largest known living fish, the basking shark can be found in all temperate oceans.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.141",
+    "sourceId": 141,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Blackmouth Angler",
+      "zh": ""
+    },
+    "scientificName": "Lophiomus setigerus",
+    "printedPoints": 3,
+    "lengthCm": 42,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "gameEnd",
+    "abilityText": {
+      "raw": "[FreePlayFishFromHand] if no [AnyCoral] in this fish's dive site",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.gameEnd.card_141"
+    ],
+    "visual": {
+      "fishImageAsset": "141.webp",
+      "fishImageLookup": "static/media/141.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 141,
+      "group": "main",
+      "name": "Blackmouth Angler",
+      "latin": "Lophiomus setigerus",
+      "cardCost": 0,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 1,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 1,
+      "midnight": 0,
+      "points": 3,
+      "length": 42,
+      "abilityType": "GameEnd",
+      "ability": "[FreePlayFishFromHand] if no [AnyCoral] in this fish's dive site",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "The blackmouth angler hides in the mud or sand and uses its fleshy lure to ambush prey.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.142",
+    "sourceId": 142,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Blacktip Shark",
+      "zh": ""
+    },
+    "scientificName": "Carcharhinus limbatus",
+    "printedPoints": 6,
+    "lengthCm": 285,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "any:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[GreenCoral][UnSchoolFish]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_142"
+    ],
+    "visual": {
+      "fishImageAsset": "142.webp",
+      "fishImageLookup": "static/media/142.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 142,
+      "group": "main",
+      "name": "Blacktip Shark",
+      "latin": "Carcharhinus limbatus",
+      "cardCost": 1,
+      "eggCost": 0,
+      "youngCost": 1,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 6,
+      "length": 285,
+      "abilityType": "WhenPlayed",
+      "ability": "[GreenCoral][UnSchoolFish]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "A fast, active swimmer, it sometimes makes spinning leaps out of the water when hunting schooling fishes.",
+      "expansion": "sr",
+      "coralCost": "any:2"
+    }
+  },
+  {
+    "id": "sr.main.143",
+    "sourceId": 143,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Blue Shark",
+      "zh": ""
+    },
+    "scientificName": "Prionace glauca",
+    "printedPoints": 5,
+    "lengthCm": 380,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[FishHatch][FishHatch][SchoolFeederMove]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_143"
+    ],
+    "visual": {
+      "fishImageAsset": "143.webp",
+      "fishImageLookup": "static/media/143.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 143,
+      "group": "main",
+      "name": "Blue Shark",
+      "latin": "Prionace glauca",
+      "cardCost": 2,
+      "eggCost": 0,
+      "youngCost": 1,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 1,
+      "midnight": 0,
+      "points": 5,
+      "length": 380,
+      "abilityType": "WhenPlayed",
+      "ability": "[FishHatch][FishHatch][SchoolFeederMove]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "Female blue sharks birth from 4 to over 100 pups per litter, each 35 to 50 cm in length, in nursery areas found offshore.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.144",
+    "sourceId": 144,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Bluering Angelfish",
+      "zh": ""
+    },
+    "scientificName": "Pomacanthus annularis",
+    "printedPoints": 2,
+    "lengthCm": 45,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "purple",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "purple:1",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [ConsumeFish1]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_144"
+    ],
+    "visual": {
+      "fishImageAsset": "144.webp",
+      "fishImageLookup": "static/media/144.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 144,
+      "group": "main",
+      "name": "Bluering Angelfish",
+      "latin": "Pomacanthus annularis",
+      "cardCost": 1,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 2,
+      "length": 45,
+      "abilityType": "IfActivated",
+      "ability": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [ConsumeFish1]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": "purple",
+      "description": "The bluering angelfish's Latin name means “ringed,” which refers to the small ring on its body above the gill cover.",
+      "expansion": "sr",
+      "coralCost": "purple:1"
+    }
+  },
+  {
+    "id": "sr.main.145",
+    "sourceId": 145,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Bonnethead Shark",
+      "zh": ""
+    },
+    "scientificName": "Sphyrna tiburo",
+    "printedPoints": 3,
+    "lengthCm": 145,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "any:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "electric",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[PurpleCoral][UnSchoolFish]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_145"
+    ],
+    "visual": {
+      "fishImageAsset": "145.webp",
+      "fishImageLookup": "static/media/145.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 145,
+      "group": "main",
+      "name": "Bonnethead Shark",
+      "latin": "Sphyrna tiburo",
+      "cardCost": 1,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 3,
+      "length": 145,
+      "abilityType": "WhenPlayed",
+      "ability": "[PurpleCoral][UnSchoolFish]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 1,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": null,
+      "description": "The only shark species known to be omnivorous, its diet includes crustaceans, mollusks, small fish, and seagrass.",
+      "expansion": "sr",
+      "coralCost": "any:2"
+    }
+  },
+  {
+    "id": "sr.main.146",
+    "sourceId": 146,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Broadnose Sevengill Shark",
+      "zh": ""
+    },
+    "scientificName": "Notorynchus cepedianus",
+    "printedPoints": 5,
+    "lengthCm": 300,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      },
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "gameEnd",
+    "abilityText": {
+      "raw": "[UnSchoolFish][UnSchoolFish]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.gameEnd.card_146"
+    ],
+    "visual": {
+      "fishImageAsset": "146.webp",
+      "fishImageLookup": "static/media/146.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 146,
+      "group": "main",
+      "name": "Broadnose Sevengill Shark",
+      "latin": "Notorynchus cepedianus",
+      "cardCost": 0,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 1,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 1,
+      "midnight": 0,
+      "points": 5,
+      "length": 300,
+      "abilityType": "GameEnd",
+      "ability": "[UnSchoolFish][UnSchoolFish]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "Alongside the sharpnose sevengill (Heptranchias perlo), it's listed in the Guinness World Records as the fish with the most gill slits.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.147",
+    "sourceId": 147,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Common Bluestripe Snapper",
+      "zh": ""
+    },
+    "scientificName": "Lutjanus kasmira",
+    "printedPoints": 4,
+    "lengthCm": 40,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "gameEnd",
+    "abilityText": {
+      "raw": "[BlueCoral][BlueCoral][BlueCoral]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.gameEnd.card_147"
+    ],
+    "visual": {
+      "fishImageAsset": "147.webp",
+      "fishImageLookup": "static/media/147.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 147,
+      "group": "main",
+      "name": "Common Bluestripe Snapper",
+      "latin": "Lutjanus kasmira",
+      "cardCost": 1,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 4,
+      "length": 40,
+      "abilityType": "GameEnd",
+      "ability": "[BlueCoral][BlueCoral][BlueCoral]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": "blue",
+      "description": "It has a varied diet, feeding on fishes, shrimps, crabs, and crustaceans, as well as plant and algae material.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.148",
+    "sourceId": 148,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Daggertooth",
+      "zh": ""
+    },
+    "scientificName": "Anotopterus pharao",
+    "printedPoints": 3,
+    "lengthCm": 96,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[FishHatch] also, if [GreenCoral][GreenCoral][GreenCoral] in this dive site: [Discard]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_148"
+    ],
+    "visual": {
+      "fishImageAsset": "148.webp",
+      "fishImageLookup": "static/media/148.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 148,
+      "group": "main",
+      "name": "Daggertooth",
+      "latin": "Anotopterus pharao",
+      "cardCost": 0,
+      "eggCost": 0,
+      "youngCost": 1,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 0,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 3,
+      "length": 96,
+      "abilityType": "IfActivated",
+      "ability": "[FishHatch] also, if [GreenCoral][GreenCoral][GreenCoral] in this dive site: [Discard]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": "green",
+      "description": "Older daggertooth appear to turn black, lose their teeth, and migrate to deeper waters, possibly to reproduce.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.149",
+    "sourceId": 149,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Dusky Shark",
+      "zh": ""
+    },
+    "scientificName": "Carcharhinus obscurus",
+    "printedPoints": 3,
+    "lengthCm": 420,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "gameEnd",
+    "abilityText": {
+      "raw": "[FreePlayFishFromHand][FishLengthMedium]only",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.gameEnd.card_149"
+    ],
+    "visual": {
+      "fishImageAsset": "149.webp",
+      "fishImageLookup": "static/media/149.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 149,
+      "group": "main",
+      "name": "Dusky Shark",
+      "latin": "Carcharhinus obscurus",
+      "cardCost": 0,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 1,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 1,
+      "midnight": 0,
+      "points": 3,
+      "length": 420,
+      "abilityType": "GameEnd",
+      "ability": "[FreePlayFishFromHand][FishLengthMedium]only",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "It migrates hundreds to thousands of km to temperate waters in the summer and toward the equator in the winter.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.150",
+    "sourceId": 150,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Dwarf Lanternshark",
+      "zh": ""
+    },
+    "scientificName": "Etmopterus perryi",
+    "printedPoints": 1,
+    "lengthCm": 20,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[FreePlayFishFromHand][Bioluminescent] only",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_150"
+    ],
+    "visual": {
+      "fishImageAsset": "150.webp",
+      "fishImageLookup": "static/media/150.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 150,
+      "group": "main",
+      "name": "Dwarf Lanternshark",
+      "latin": "Etmopterus perryi",
+      "cardCost": 2,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 0,
+      "twilight": 1,
+      "midnight": 0,
+      "points": 1,
+      "length": 20,
+      "abilityType": "WhenPlayed",
+      "ability": "[FreePlayFishFromHand][Bioluminescent] only",
+      "Bioluminescent": 1,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "One of the smallest known sharks, the dwarf lanternshark's bioluminescent belly helps it blend in with sunlight from above.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.151",
+    "sourceId": 151,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Epaulette Shark",
+      "zh": ""
+    },
+    "scientificName": "Hemiscyllium ocellatum",
+    "printedPoints": 3,
+    "lengthCm": 105,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "any:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[BlueCoral][UnSchoolFish]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_151"
+    ],
+    "visual": {
+      "fishImageAsset": "151.webp",
+      "fishImageLookup": "static/media/151.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 151,
+      "group": "main",
+      "name": "Epaulette Shark",
+      "latin": "Hemiscyllium ocellatum",
+      "cardCost": 0,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 3,
+      "length": 105,
+      "abilityType": "WhenPlayed",
+      "ability": "[BlueCoral][UnSchoolFish]",
+      "Bioluminescent": 0,
+      "Camouflage": 1,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": null,
+      "description": "It can swim, but it mostly “walks” along coral reefs on its fins. It can even travel short distances over land.",
+      "expansion": "sr",
+      "coralCost": "any:2"
+    }
+  },
+  {
+    "id": "sr.main.152",
+    "sourceId": 152,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Filetail Catshark",
+      "zh": ""
+    },
+    "scientificName": "Parmaturus xaniurus",
+    "printedPoints": 2,
+    "lengthCm": 61,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 3
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[FishFromHandConsume]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_152"
+    ],
+    "visual": {
+      "fishImageAsset": "152.webp",
+      "fishImageLookup": "static/media/152.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 152,
+      "group": "main",
+      "name": "Filetail Catshark",
+      "latin": "Parmaturus xaniurus",
+      "cardCost": 3,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 0,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 2,
+      "length": 61,
+      "abilityType": "IfActivated",
+      "ability": "[FishFromHandConsume]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "This catshark's common name comes from the toothlike projections on its skin.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.153",
+    "sourceId": 153,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Fire Dartfish",
+      "zh": ""
+    },
+    "scientificName": "Nemateleotris magnifica",
+    "printedPoints": 1,
+    "lengthCm": 9,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "any:1",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "gameEnd",
+    "abilityText": {
+      "raw": "[PurpleCoral][PurpleCoral][PurpleCoral]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.gameEnd.card_153"
+    ],
+    "visual": {
+      "fishImageAsset": "153.webp",
+      "fishImageLookup": "static/media/153.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 153,
+      "group": "main",
+      "name": "Fire Dartfish",
+      "latin": "Nemateleotris magnifica",
+      "cardCost": 0,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 1,
+      "length": 9,
+      "abilityType": "GameEnd",
+      "ability": "[PurpleCoral][PurpleCoral][PurpleCoral]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": null,
+      "description": "It usually hovers above its burrow, quick to dart inside. It flicks its long dorsal fin back and forth, perhaps as a signal.",
+      "expansion": "sr",
+      "coralCost": "any:1"
+    }
+  },
+  {
+    "id": "sr.main.154",
+    "sourceId": 154,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Flame Angelfish",
+      "zh": ""
+    },
+    "scientificName": "Centropyge loriculus",
+    "printedPoints": 2,
+    "lengthCm": 15,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "green:1",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[PurpleCoral]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_154"
+    ],
+    "visual": {
+      "fishImageAsset": "154.webp",
+      "fishImageLookup": "static/media/154.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 154,
+      "group": "main",
+      "name": "Flame Angelfish",
+      "latin": "Centropyge loriculus",
+      "cardCost": 0,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 2,
+      "length": 15,
+      "abilityType": "IfActivated",
+      "ability": "[PurpleCoral]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": "green",
+      "description": "The male fish are slightly larger than the females, and the blue streaks along the fins are more apparent.",
+      "expansion": "sr",
+      "coralCost": "green:1"
+    }
+  },
+  {
+    "id": "sr.main.155",
+    "sourceId": 155,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Foxface Rabbitfish",
+      "zh": ""
+    },
+    "scientificName": "Siganus vulpinus",
+    "printedPoints": 3,
+    "lengthCm": 25,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "green:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "camouflage",
+        "count": 1
+      },
+      {
+        "kind": "venomous",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[PurpleCoral]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_155"
+    ],
+    "visual": {
+      "fishImageAsset": "155.webp",
+      "fishImageLookup": "static/media/155.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 155,
+      "group": "main",
+      "name": "Foxface Rabbitfish",
+      "latin": "Siganus vulpinus",
+      "cardCost": 0,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 3,
+      "length": 25,
+      "abilityType": "IfActivated",
+      "ability": "[PurpleCoral]",
+      "Bioluminescent": 0,
+      "Camouflage": 1,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 1,
+      "band": "green",
+      "description": "During nighttime or when stressed, the foxface rabbitfish changes to a duller, mottled pattern that's harder to see.",
+      "expansion": "sr",
+      "coralCost": "green:2"
+    }
+  },
+  {
+    "id": "sr.main.156",
+    "sourceId": 156,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Frilled Shark",
+      "zh": ""
+    },
+    "scientificName": "Chlamydoselachus anguineus",
+    "printedPoints": 3,
+    "lengthCm": 200,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight",
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 3
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "gameEnd",
+    "abilityText": {
+      "raw": "[FreePlayFishFromHand][FishLengthMedium] only",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.gameEnd.card_156"
+    ],
+    "visual": {
+      "fishImageAsset": "156.webp",
+      "fishImageLookup": "static/media/156.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 156,
+      "group": "main",
+      "name": "Frilled Shark",
+      "latin": "Chlamydoselachus anguineus",
+      "cardCost": 3,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 3,
+      "length": 200,
+      "abilityType": "GameEnd",
+      "ability": "[FreePlayFishFromHand][FishLengthMedium] only",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "It moves like an eel, capturing prey whole with flexible jaws that are lined with bunches of recurved trident-like teeth.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.157",
+    "sourceId": 157,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Furry Coffinfish",
+      "zh": ""
+    },
+    "scientificName": "Chaunax endeavouri",
+    "printedPoints": 1,
+    "lengthCm": 22,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "twilight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[Discard] also, if [BlueCoral][BlueCoral][BlueCoral] in this dive site: [SchoolFeederMove]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_157"
+    ],
+    "visual": {
+      "fishImageAsset": "157.webp",
+      "fishImageLookup": "static/media/157.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 157,
+      "group": "main",
+      "name": "Furry Coffinfish",
+      "latin": "Chaunax endeavouri",
+      "cardCost": 1,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 0,
+      "twilight": 1,
+      "midnight": 0,
+      "points": 1,
+      "length": 22,
+      "abilityType": "IfActivated",
+      "ability": "[Discard] also, if [BlueCoral][BlueCoral][BlueCoral] in this dive site: [SchoolFeederMove]",
+      "Bioluminescent": 1,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": "blue",
+      "description": "It can increase its size up to 30% by inflating its body with water and holding its breath up to four minutes.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.158",
+    "sourceId": 158,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Ghostly Seadevil",
+      "zh": ""
+    },
+    "scientificName": "Haplophryne mollis",
+    "printedPoints": 1,
+    "lengthCm": 15,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": "purple",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [SchoolFeederMove]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_158"
+    ],
+    "visual": {
+      "fishImageAsset": "158.webp",
+      "fishImageLookup": "static/media/158.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 158,
+      "group": "main",
+      "name": "Ghostly Seadevil",
+      "latin": "Haplophryne mollis",
+      "cardCost": 1,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 0,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 1,
+      "length": 15,
+      "abilityType": "IfActivated",
+      "ability": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [SchoolFeederMove]",
+      "Bioluminescent": 1,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": "purple",
+      "description": "Instead of a lure, this translucent anglerfish uses a small bioluminescent skin flap to attract prey.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.159",
+    "sourceId": 159,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Giant Moray",
+      "zh": ""
+    },
+    "scientificName": "Gymnothorax javanicus",
+    "printedPoints": 9,
+    "lengthCm": 300,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      },
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "any:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 2
+      },
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "(all players) [PurpleCoral][PurpleCoral] [AllPlayers]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_159"
+    ],
+    "visual": {
+      "fishImageAsset": "159.webp",
+      "fishImageLookup": "static/media/159.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 159,
+      "group": "main",
+      "name": "Giant Moray",
+      "latin": "Gymnothorax javanicus",
+      "cardCost": 0,
+      "eggCost": 0,
+      "youngCost": 1,
+      "consuming": 1,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 9,
+      "length": 300,
+      "abilityType": "WhenPlayed",
+      "ability": "(all players) [PurpleCoral][PurpleCoral] [AllPlayers]",
+      "Bioluminescent": 0,
+      "Camouflage": 1,
+      "Electric": 0,
+      "Predator": 2,
+      "Venomous": 0,
+      "band": null,
+      "description": "Sheltering by day in crevices up to 50 meters deep, this nocturnal ambush predator hunts primarily by smell.",
+      "expansion": "sr",
+      "coralCost": "any:2"
+    }
+  },
+  {
+    "id": "sr.main.160",
+    "sourceId": 160,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Goblin Shark",
+      "zh": ""
+    },
+    "scientificName": "Mitsukurina owstoni",
+    "printedPoints": 8,
+    "lengthCm": 615,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight",
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 2
+      },
+      {
+        "kind": "electric",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "(all players) [SchoolFeederMove][FishFromHandConsume][AllPlayers]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_160"
+    ],
+    "visual": {
+      "fishImageAsset": "160.webp",
+      "fishImageLookup": "static/media/160.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 160,
+      "group": "main",
+      "name": "Goblin Shark",
+      "latin": "Mitsukurina owstoni",
+      "cardCost": 0,
+      "eggCost": 0,
+      "youngCost": 2,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 8,
+      "length": 615,
+      "abilityType": "WhenPlayed",
+      "ability": "(all players) [SchoolFeederMove][FishFromHandConsume][AllPlayers]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 1,
+      "Predator": 2,
+      "Venomous": 0,
+      "band": null,
+      "description": "A sluggish swimmer, it can dramatically extend its specialized protrusible jaws to quickly capture nearby prey.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.161",
+    "sourceId": 161,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Great Barracuda",
+      "zh": ""
+    },
+    "scientificName": "Sphyraena barracuda",
+    "printedPoints": 8,
+    "lengthCm": 200,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      },
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "any:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 2
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "(all players) [BlueCoral][BlueCoral][AllPlayers]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_161"
+    ],
+    "visual": {
+      "fishImageAsset": "161.webp",
+      "fishImageLookup": "static/media/161.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 161,
+      "group": "main",
+      "name": "Great Barracuda",
+      "latin": "Sphyraena barracuda",
+      "cardCost": 2,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 1,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 8,
+      "length": 200,
+      "abilityType": "WhenPlayed",
+      "ability": "(all players) [BlueCoral][BlueCoral][AllPlayers]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 2,
+      "Venomous": 0,
+      "band": null,
+      "description": "Its long, prominent teeth fit into pockets on the opposing jaw, allowing it to close its mouth, locking onto its prey.",
+      "expansion": "sr",
+      "coralCost": "any:2"
+    }
+  },
+  {
+    "id": "sr.main.162",
+    "sourceId": 162,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Great Hammerhead",
+      "zh": ""
+    },
+    "scientificName": "Sphyrna mokarran",
+    "printedPoints": 8,
+    "lengthCm": 610,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      },
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 2
+      },
+      {
+        "kind": "electric",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "(all players) [UnSchoolFish][FishFromHandConsume][AllPlayers]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_162"
+    ],
+    "visual": {
+      "fishImageAsset": "162.webp",
+      "fishImageLookup": "static/media/162.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 162,
+      "group": "main",
+      "name": "Great Hammerhead",
+      "latin": "Sphyrna mokarran",
+      "cardCost": 0,
+      "eggCost": 0,
+      "youngCost": 1,
+      "consuming": 1,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 1,
+      "midnight": 0,
+      "points": 8,
+      "length": 610,
+      "abilityType": "WhenPlayed",
+      "ability": "(all players) [UnSchoolFish][FishFromHandConsume][AllPlayers]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 1,
+      "Predator": 2,
+      "Venomous": 0,
+      "band": null,
+      "description": "Its unmistakably shaped head provides stereoscopic vision and improves electromagnetic signal detection.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.163",
+    "sourceId": 163,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Gray Reef Shark",
+      "zh": ""
+    },
+    "scientificName": "Carcharhinus amblyrhynchos",
+    "printedPoints": 5,
+    "lengthCm": 265,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 3
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "any:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[PurpleCoral][FishFromHandConsume]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_163"
+    ],
+    "visual": {
+      "fishImageAsset": "163.webp",
+      "fishImageLookup": "static/media/163.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 163,
+      "group": "main",
+      "name": "Gray Reef Shark",
+      "latin": "Carcharhinus amblyrhynchos",
+      "cardCost": 3,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 5,
+      "length": 265,
+      "abilityType": "WhenPlayed",
+      "ability": "[PurpleCoral][FishFromHandConsume]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "Fast, agile, and social, they form schools near coral reef drop-offs, but these groups disperse at night.",
+      "expansion": "sr",
+      "coralCost": "any:2"
+    }
+  },
+  {
+    "id": "sr.main.164",
+    "sourceId": 164,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Gulper Shark",
+      "zh": ""
+    },
+    "scientificName": "Centrophorus granulosus",
+    "printedPoints": 4,
+    "lengthCm": 170,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight",
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[UnSchoolFish][FishFromHandConsume]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_164"
+    ],
+    "visual": {
+      "fishImageAsset": "164.webp",
+      "fishImageLookup": "static/media/164.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 164,
+      "group": "main",
+      "name": "Gulper Shark",
+      "latin": "Centrophorus granulosus",
+      "cardCost": 1,
+      "eggCost": 2,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 4,
+      "length": 170,
+      "abilityType": "WhenPlayed",
+      "ability": "[UnSchoolFish][FishFromHandConsume]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "A slender dogfish with two spined dorsal fins and large, green eyes, it typically hunts along the ocean's bottom.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.165",
+    "sourceId": 165,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Indian Sail-fin Surgeonfish",
+      "zh": ""
+    },
+    "scientificName": "Zebrasoma desjardinii",
+    "printedPoints": 3,
+    "lengthCm": 40,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 3
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "green:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[BlueCoral][PurpleCoral]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_165"
+    ],
+    "visual": {
+      "fishImageAsset": "165.webp",
+      "fishImageLookup": "static/media/165.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 165,
+      "group": "main",
+      "name": "Indian Sail-fin Surgeonfish",
+      "latin": "Zebrasoma desjardinii",
+      "cardCost": 3,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 3,
+      "length": 40,
+      "abilityType": "IfActivated",
+      "ability": "[BlueCoral][PurpleCoral]",
+      "Bioluminescent": 0,
+      "Camouflage": 1,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": "green",
+      "description": "At night its skin becomes paler and more uniform in response to the darkness, helping it to pass unnoticed.",
+      "expansion": "sr",
+      "coralCost": "green:2"
+    }
+  },
+  {
+    "id": "sr.main.166",
+    "sourceId": 166,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Jensen's Skate",
+      "zh": ""
+    },
+    "scientificName": "Amblyraja jenseni",
+    "printedPoints": 3,
+    "lengthCm": 85,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[Discard] also, if [BlueCoral][BlueCoral][BlueCoral] in this dive site: [FishHatch]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_166"
+    ],
+    "visual": {
+      "fishImageAsset": "166.webp",
+      "fishImageLookup": "static/media/166.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 166,
+      "group": "main",
+      "name": "Jensen's Skate",
+      "latin": "Amblyraja jenseni",
+      "cardCost": 2,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 0,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 3,
+      "length": 85,
+      "abilityType": "IfActivated",
+      "ability": "[Discard] also, if [BlueCoral][BlueCoral][BlueCoral] in this dive site: [FishHatch]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": "blue",
+      "description": "Named in honor of Danish zoologist, Adolf Severin Jensen, this skate has been found at depths over 2,500 meters.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.167",
+    "sourceId": 167,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Kitefin Shark",
+      "zh": ""
+    },
+    "scientificName": "Dalatias licha",
+    "printedPoints": 3,
+    "lengthCm": 180,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight",
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[SchoolFeederMove][FishFromHandConsume]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_167"
+    ],
+    "visual": {
+      "fishImageAsset": "167.webp",
+      "fishImageLookup": "static/media/167.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 167,
+      "group": "main",
+      "name": "Kitefin Shark",
+      "latin": "Dalatias licha",
+      "cardCost": 0,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 1,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 3,
+      "length": 180,
+      "abilityType": "WhenPlayed",
+      "ability": "[SchoolFeederMove][FishFromHandConsume]",
+      "Bioluminescent": 1,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "The largest known shark that exhibits bioluminescence, it hunts mostly deep-sea fishes, including other sharks and rays.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.168",
+    "sourceId": 168,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Lemon Shark",
+      "zh": ""
+    },
+    "scientificName": "Negaprion brevirostris",
+    "printedPoints": 6,
+    "lengthCm": 340,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "any:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[BlueCoral][FishHatch][UnSchoolFish]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_168"
+    ],
+    "visual": {
+      "fishImageAsset": "168.webp",
+      "fishImageLookup": "static/media/168.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 168,
+      "group": "main",
+      "name": "Lemon Shark",
+      "latin": "Negaprion brevirostris",
+      "cardCost": 2,
+      "eggCost": 0,
+      "youngCost": 1,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 6,
+      "length": 340,
+      "abilityType": "WhenPlayed",
+      "ability": "[BlueCoral][FishHatch][UnSchoolFish]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "This sociable shark's brain has the relative mass of a bird's. Its pups may remain for years in the same nursery grounds.",
+      "expansion": "sr",
+      "coralCost": "any:2"
+    }
+  },
+  {
+    "id": "sr.main.169",
+    "sourceId": 169,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Leopard Shark",
+      "zh": ""
+    },
+    "scientificName": "Triakis semifasciata",
+    "printedPoints": 4,
+    "lengthCm": 210,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 3
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "any:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[PurpleCoral][UnSchoolFish][Discard]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_169"
+    ],
+    "visual": {
+      "fishImageAsset": "169.webp",
+      "fishImageLookup": "static/media/169.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 169,
+      "group": "main",
+      "name": "Leopard Shark",
+      "latin": "Triakis semifasciata",
+      "cardCost": 3,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 4,
+      "length": 210,
+      "abilityType": "WhenPlayed",
+      "ability": "[PurpleCoral][UnSchoolFish][Discard]",
+      "Bioluminescent": 0,
+      "Camouflage": 1,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "Common in shallow, intertidal waters and kelp forests, the leopard shark often forages in large nomadic schools.",
+      "expansion": "sr",
+      "coralCost": "any:2"
+    }
+  },
+  {
+    "id": "sr.main.170",
+    "sourceId": 170,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Lollipop Catshark",
+      "zh": ""
+    },
+    "scientificName": "Cephalurus cephalus",
+    "printedPoints": 1,
+    "lengthCm": 29,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[FreePlayFishFromHand][FishLengthSmall] only",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_170"
+    ],
+    "visual": {
+      "fishImageAsset": "170.webp",
+      "fishImageLookup": "static/media/170.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 170,
+      "group": "main",
+      "name": "Lollipop Catshark",
+      "latin": "Cephalurus cephalus",
+      "cardCost": 0,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 1,
+      "midnight": 0,
+      "points": 1,
+      "length": 29,
+      "abilityType": "WhenPlayed",
+      "ability": "[FreePlayFishFromHand][FishLengthSmall] only",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "Its body is soft, almost gelatinous. Its head contains unusually large gills, allowing it to survive in low-oxygen habitats.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.171",
+    "sourceId": 171,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Longnose Hawkfish",
+      "zh": ""
+    },
+    "scientificName": "Oxycirrhites typus",
+    "printedPoints": 2,
+    "lengthCm": 13,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "green:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[BlueCoral]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_171"
+    ],
+    "visual": {
+      "fishImageAsset": "171.webp",
+      "fishImageLookup": "static/media/171.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 171,
+      "group": "main",
+      "name": "Longnose Hawkfish",
+      "latin": "Oxycirrhites typus",
+      "cardCost": 1,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 2,
+      "length": 13,
+      "abilityType": "IfActivated",
+      "ability": "[BlueCoral]",
+      "Bioluminescent": 0,
+      "Camouflage": 1,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": "green",
+      "description": "It's often seen perched, camouflaged, on a red gorgonian sea fan, waiting to make a short, fast rush at its prey.",
+      "expansion": "sr",
+      "coralCost": "green:2"
+    }
+  },
+  {
+    "id": "sr.main.172",
+    "sourceId": 172,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Malabar Grouper",
+      "zh": ""
+    },
+    "scientificName": "Epinephelus malabaricus",
+    "printedPoints": 7,
+    "lengthCm": 230,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "any:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 2
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "(all players) [BlueCoral][PurpleCoral][GreenCoral][AllPlayers]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_172"
+    ],
+    "visual": {
+      "fishImageAsset": "172.webp",
+      "fishImageLookup": "static/media/172.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 172,
+      "group": "main",
+      "name": "Malabar Grouper",
+      "latin": "Epinephelus malabaricus",
+      "cardCost": 1,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 1,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 7,
+      "length": 230,
+      "abilityType": "WhenPlayed",
+      "ability": "(all players) [BlueCoral][PurpleCoral][GreenCoral][AllPlayers]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 2,
+      "Venomous": 0,
+      "band": null,
+      "description": "Found in tropical estuaries and around coastal coral and rocky reefs, it preys on fish, crustaceans, and occasionally cephalopods.",
+      "expansion": "sr",
+      "coralCost": "any:2"
+    }
+  },
+  {
+    "id": "sr.main.173",
+    "sourceId": 173,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Megamouth Shark",
+      "zh": ""
+    },
+    "scientificName": "Megachasma pelagios",
+    "printedPoints": 9,
+    "lengthCm": 820,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight",
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "school",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[DrawCard][DrawCard][DrawCard][DrawCard][DrawCard]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_173"
+    ],
+    "visual": {
+      "fishImageAsset": "173.webp",
+      "fishImageLookup": "static/media/173.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 173,
+      "group": "main",
+      "name": "Megamouth Shark",
+      "latin": "Megachasma pelagios",
+      "cardCost": 0,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 1,
+      "sunlight": 1,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 9,
+      "length": 820,
+      "abilityType": "WhenPlayed",
+      "ability": "[DrawCard][DrawCard][DrawCard][DrawCard][DrawCard]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "Only around 200 specimens have been observed or caught. It swims with its mouth wide open, filtering water for plankton and jellyfish.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.174",
+    "sourceId": 174,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Mimic Goatfish",
+      "zh": ""
+    },
+    "scientificName": "Mulloidichthys mimicus",
+    "printedPoints": 3,
+    "lengthCm": 30,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "any:1",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "gameEnd",
+    "abilityText": {
+      "raw": "[AnyCoral][AnyCoral]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.gameEnd.card_174"
+    ],
+    "visual": {
+      "fishImageAsset": "174.webp",
+      "fishImageLookup": "static/media/174.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 174,
+      "group": "main",
+      "name": "Mimic Goatfish",
+      "latin": "Mulloidichthys mimicus",
+      "cardCost": 0,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 3,
+      "length": 30,
+      "abilityType": "GameEnd",
+      "ability": "[AnyCoral][AnyCoral]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": null,
+      "description": "It can mimic the coloration of the bluestripe snapper (Lutjanus kasmira) with which it is often found in schools.",
+      "expansion": "sr",
+      "coralCost": "any:1"
+    }
+  },
+  {
+    "id": "sr.main.175",
+    "sourceId": 175,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Moorish Idol",
+      "zh": ""
+    },
+    "scientificName": "Zanclus cornutus",
+    "printedPoints": 3,
+    "lengthCm": 23,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "green:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[BlueCoral]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_175"
+    ],
+    "visual": {
+      "fishImageAsset": "175.webp",
+      "fishImageLookup": "static/media/175.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 175,
+      "group": "main",
+      "name": "Moorish Idol",
+      "latin": "Zanclus cornutus",
+      "cardCost": 2,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 3,
+      "length": 23,
+      "abilityType": "IfActivated",
+      "ability": "[BlueCoral]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": "green",
+      "description": "Its genus name, Zanclus, comes from the Greek word for “sickle” and refers to the long sickle-shaped dorsal fin.",
+      "expansion": "sr",
+      "coralCost": "green:2"
+    }
+  },
+  {
+    "id": "sr.main.176",
+    "sourceId": 176,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Ninja Lanternshark",
+      "zh": ""
+    },
+    "scientificName": "Etmopterus benchleyi",
+    "printedPoints": 2,
+    "lengthCm": 51,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[YoungFish][UnSchoolFish]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_176"
+    ],
+    "visual": {
+      "fishImageAsset": "176.webp",
+      "fishImageLookup": "static/media/176.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 176,
+      "group": "main",
+      "name": "Ninja Lanternshark",
+      "latin": "Etmopterus benchleyi",
+      "cardCost": 1,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 0,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 2,
+      "length": 51,
+      "abilityType": "WhenPlayed",
+      "ability": "[YoungFish][UnSchoolFish]",
+      "Bioluminescent": 1,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "A young cousin of the researcher who identified it suggested its common name, pointing out that “ninjas are awesome.”",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.177",
+    "sourceId": 177,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Nurse Shark",
+      "zh": ""
+    },
+    "scientificName": "Ginglymostoma cirratum",
+    "printedPoints": 5,
+    "lengthCm": 430,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "any:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[BlueCoral][FishFromHandConsume]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_177"
+    ],
+    "visual": {
+      "fishImageAsset": "177.webp",
+      "fishImageLookup": "static/media/177.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 177,
+      "group": "main",
+      "name": "Nurse Shark",
+      "latin": "Ginglymostoma cirratum",
+      "cardCost": 1,
+      "eggCost": 2,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 5,
+      "length": 430,
+      "abilityType": "WhenPlayed",
+      "ability": "[BlueCoral][FishFromHandConsume]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": null,
+      "description": "Found in coral reefs and shallow waters, this bottom-feeder can generate incredible suction with its mouth.",
+      "expansion": "sr",
+      "coralCost": "any:2"
+    }
+  },
+  {
+    "id": "sr.main.178",
+    "sourceId": 178,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Owlfish",
+      "zh": ""
+    },
+    "scientificName": "Pseudobathylagus milleri",
+    "printedPoints": 2,
+    "lengthCm": 21,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[Discard] also, if [BlueCoral][BlueCoral][BlueCoral] in this dive site: [FishEgg]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_178"
+    ],
+    "visual": {
+      "fishImageAsset": "178.webp",
+      "fishImageLookup": "static/media/178.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 178,
+      "group": "main",
+      "name": "Owlfish",
+      "latin": "Pseudobathylagus milleri",
+      "cardCost": 1,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 0,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 2,
+      "length": 21,
+      "abilityType": "IfActivated",
+      "ability": "[Discard] also, if [BlueCoral][BlueCoral][BlueCoral] in this dive site: [FishEgg]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": "blue",
+      "description": "It is characterized by its large eyes (compared to its body size), which allow it to see in the dim light of the deep ocean.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.179",
+    "sourceId": 179,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Portuguese Dogfish",
+      "zh": ""
+    },
+    "scientificName": "Centroscymnus coelolepis",
+    "printedPoints": 3,
+    "lengthCm": 120,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 3
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[YoungFish][FishFromHandConsume]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_179"
+    ],
+    "visual": {
+      "fishImageAsset": "179.webp",
+      "fishImageLookup": "static/media/179.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 179,
+      "group": "main",
+      "name": "Portuguese Dogfish",
+      "latin": "Centroscymnus coelolepis",
+      "cardCost": 3,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 0,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 3,
+      "length": 120,
+      "abilityType": "WhenPlayed",
+      "ability": "[YoungFish][FishFromHandConsume]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "Its acute vision is optimized to detect small prey, but it has been known to take bites out of live seals and even whales.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.180",
+    "sourceId": 180,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Prickly Anglerfish",
+      "zh": ""
+    },
+    "scientificName": "Himantolophus appelii",
+    "printedPoints": 3,
+    "lengthCm": 40,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": "purple",
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [DrawCard]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_180"
+    ],
+    "visual": {
+      "fishImageAsset": "180.webp",
+      "fishImageLookup": "static/media/180.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 180,
+      "group": "main",
+      "name": "Prickly Anglerfish",
+      "latin": "Himantolophus appelii",
+      "cardCost": 0,
+      "eggCost": 0,
+      "youngCost": 1,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 0,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 3,
+      "length": 40,
+      "abilityType": "IfActivated",
+      "ability": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [DrawCard]",
+      "Bioluminescent": 1,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": "purple",
+      "description": "This deep-sea fish has a bioluminescent lure to attract prey, and it has spikes all over its body to help ward off predators.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.181",
+    "sourceId": 181,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Red-lipped Batfish",
+      "zh": ""
+    },
+    "scientificName": "Ogcocephalus darwini",
+    "printedPoints": 3,
+    "lengthCm": 21,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "any:1",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      },
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "gameEnd",
+    "abilityText": {
+      "raw": "[BlueCoral][PurpleCoral][GreenCoral]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.gameEnd.card_181"
+    ],
+    "visual": {
+      "fishImageAsset": "181.webp",
+      "fishImageLookup": "static/media/181.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 181,
+      "group": "main",
+      "name": "Red-lipped Batfish",
+      "latin": "Ogcocephalus darwini",
+      "cardCost": 1,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 3,
+      "length": 21,
+      "abilityType": "GameEnd",
+      "ability": "[BlueCoral][PurpleCoral][GreenCoral]",
+      "Bioluminescent": 1,
+      "Camouflage": 1,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": null,
+      "description": "It “walks” along the sandy bottom of a reef or the ocean floor. Its bright red mouth has the appearance of wearing lipstick.",
+      "expansion": "sr",
+      "coralCost": "any:1"
+    }
+  },
+  {
+    "id": "sr.main.182",
+    "sourceId": 182,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Reef Triggerfish",
+      "zh": ""
+    },
+    "scientificName": "Rhinecanthus rectangulus",
+    "printedPoints": 4,
+    "lengthCm": 30,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "any:1",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[FishFromHand][ArrowDown][AnyCoral][AnyCoral][AnyCoral] (in a dive site with at least 3)",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_182"
+    ],
+    "visual": {
+      "fishImageAsset": "182.webp",
+      "fishImageLookup": "static/media/182.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 182,
+      "group": "main",
+      "name": "Reef Triggerfish",
+      "latin": "Rhinecanthus rectangulus",
+      "cardCost": 0,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 4,
+      "length": 30,
+      "abilityType": "WhenPlayed",
+      "ability": "[FishFromHand][ArrowDown][AnyCoral][AnyCoral][AnyCoral] (in a dive site with at least 3)",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": null,
+      "description": "Called humuhumunukunukuapua'a in Hawaiian (or just humuhumu for short), it is the state fish of Hawaii.",
+      "expansion": "sr",
+      "coralCost": "any:1"
+    }
+  },
+  {
+    "id": "sr.main.183",
+    "sourceId": 183,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Ribbon Sawtail Fish",
+      "zh": ""
+    },
+    "scientificName": "Idiacanthus fasciola",
+    "printedPoints": 4,
+    "lengthCm": 48,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[FishHatch] also, if [GreenCoral][GreenCoral][GreenCoral] in this dive site: [DrawCard]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_183"
+    ],
+    "visual": {
+      "fishImageAsset": "183.webp",
+      "fishImageLookup": "static/media/183.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 183,
+      "group": "main",
+      "name": "Ribbon Sawtail Fish",
+      "latin": "Idiacanthus fasciola",
+      "cardCost": 1,
+      "eggCost": 0,
+      "youngCost": 1,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 0,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 4,
+      "length": 48,
+      "abilityType": "IfActivated",
+      "ability": "[FishHatch] also, if [GreenCoral][GreenCoral][GreenCoral] in this dive site: [DrawCard]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": "green",
+      "description": "It has photophores along its body and a bioluminescent lure. The larval form has eyes on long, periscopic stalks.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.184",
+    "sourceId": 184,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Ribboned Sweetlips",
+      "zh": ""
+    },
+    "scientificName": "Plectorhinchus polytaenia",
+    "printedPoints": 4,
+    "lengthCm": 50,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "green:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[PurpleCoral]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_184"
+    ],
+    "visual": {
+      "fishImageAsset": "184.webp",
+      "fishImageLookup": "static/media/184.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 184,
+      "group": "main",
+      "name": "Ribboned Sweetlips",
+      "latin": "Plectorhinchus polytaenia",
+      "cardCost": 1,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 4,
+      "length": 50,
+      "abilityType": "IfActivated",
+      "ability": "[PurpleCoral]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": "green",
+      "description": "As its common name suggests, this fish has fleshy lips. The inside of its mouth is bright red, and its chin is white.",
+      "expansion": "sr",
+      "coralCost": "green:2"
+    }
+  },
+  {
+    "id": "sr.main.185",
+    "sourceId": 185,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Rose-veiled Fairy Wrasse",
+      "zh": ""
+    },
+    "scientificName": "Cirrhilabrus finifenmaa",
+    "printedPoints": 1,
+    "lengthCm": 7,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "green:1",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[BlueCoral]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_185"
+    ],
+    "visual": {
+      "fishImageAsset": "185.webp",
+      "fishImageLookup": "static/media/185.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 185,
+      "group": "main",
+      "name": "Rose-veiled Fairy Wrasse",
+      "latin": "Cirrhilabrus finifenmaa",
+      "cardCost": 0,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 1,
+      "length": 7,
+      "abilityType": "IfActivated",
+      "ability": "[BlueCoral]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": "green",
+      "description": "When seen in the dark, it appears deep purple with gleaming pink around its head and throughout its fins.",
+      "expansion": "sr",
+      "coralCost": "green:1"
+    }
+  },
+  {
+    "id": "sr.main.186",
+    "sourceId": 186,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Rough Abyssal Grenadier",
+      "zh": ""
+    },
+    "scientificName": "Coryphaenoides yaquinae",
+    "printedPoints": 5,
+    "lengthCm": 63,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "midnight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[FishHatch] also, if [GreenCoral][GreenCoral][GreenCoral] in this dive site: [FishFromHandConsume]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_186"
+    ],
+    "visual": {
+      "fishImageAsset": "186.webp",
+      "fishImageLookup": "static/media/186.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 186,
+      "group": "main",
+      "name": "Rough Abyssal Grenadier",
+      "latin": "Coryphaenoides yaquinae",
+      "cardCost": 0,
+      "eggCost": 2,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 0,
+      "twilight": 0,
+      "midnight": 2,
+      "points": 5,
+      "length": 63,
+      "abilityType": "IfActivated",
+      "ability": "[FishHatch] also, if [GreenCoral][GreenCoral][GreenCoral] in this dive site: [FishFromHandConsume]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": "green",
+      "description": "It has an oxygen-filled swim bladder, rare for deep-sea fish, for bouyancy at the extreme depths it inhabits.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.187",
+    "sourceId": 187,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Roving Coral Grouper",
+      "zh": ""
+    },
+    "scientificName": "Plectropomus pessuliferus",
+    "printedPoints": 8,
+    "lengthCm": 120,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      },
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "any:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 2
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "(all players) [GreenCoral][GreenCoral][AllPlayers]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_187"
+    ],
+    "visual": {
+      "fishImageAsset": "187.webp",
+      "fishImageLookup": "static/media/187.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 187,
+      "group": "main",
+      "name": "Roving Coral Grouper",
+      "latin": "Plectropomus pessuliferus",
+      "cardCost": 0,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 1,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 8,
+      "length": 120,
+      "abilityType": "WhenPlayed",
+      "ability": "(all players) [GreenCoral][GreenCoral][AllPlayers]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 2,
+      "Venomous": 0,
+      "band": null,
+      "description": "It is known to occasionally engage in cooperative hunting, teaming up with the giant moray (Gymnothorax javanicus).",
+      "expansion": "sr",
+      "coralCost": "any:2"
+    }
+  },
+  {
+    "id": "sr.main.188",
+    "sourceId": 188,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Sablefish",
+      "zh": ""
+    },
+    "scientificName": "Anoplopoma fimbria",
+    "printedPoints": 3,
+    "lengthCm": 170,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": "purple",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [FishHatch]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_188"
+    ],
+    "visual": {
+      "fishImageAsset": "188.webp",
+      "fishImageLookup": "static/media/188.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 188,
+      "group": "main",
+      "name": "Sablefish",
+      "latin": "Anoplopoma fimbria",
+      "cardCost": 2,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 0,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 3,
+      "length": 170,
+      "abilityType": "IfActivated",
+      "ability": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [FishHatch]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": "purple",
+      "description": "The sablefish spawns multiple times in a season, and it has a maximum recorded age of 94 years.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.189",
+    "sourceId": 189,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Sand Tiger Shark",
+      "zh": ""
+    },
+    "scientificName": "Carcharias taurus",
+    "printedPoints": 4,
+    "lengthCm": 320,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "any:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[GreenCoral][UnSchoolFish][DrawCard]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_189"
+    ],
+    "visual": {
+      "fishImageAsset": "189.webp",
+      "fishImageLookup": "static/media/189.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 189,
+      "group": "main",
+      "name": "Sand Tiger Shark",
+      "latin": "Carcharias taurus",
+      "cardCost": 0,
+      "eggCost": 2,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 4,
+      "length": 320,
+      "abilityType": "WhenPlayed",
+      "ability": "[GreenCoral][UnSchoolFish][DrawCard]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "Not a close relative of the tiger shark, it is the only shark known to store air in its body to maintain neutral buoyancy.",
+      "expansion": "sr",
+      "coralCost": "any:2"
+    }
+  },
+  {
+    "id": "sr.main.190",
+    "sourceId": 190,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Sarcastic Fringehead",
+      "zh": ""
+    },
+    "scientificName": "Neoclinus blanchardi",
+    "printedPoints": 1,
+    "lengthCm": 30,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[DrawCard][DrawCard]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_190"
+    ],
+    "visual": {
+      "fishImageAsset": "190.webp",
+      "fishImageLookup": "static/media/190.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 190,
+      "group": "main",
+      "name": "Sarcastic Fringehead",
+      "latin": "Neoclinus blanchardi",
+      "cardCost": 0,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 1,
+      "length": 30,
+      "abilityType": "IfActivated",
+      "ability": "[DrawCard][DrawCard]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": "blue",
+      "description": "Males “wrestle” to establish territorial dominance, pressing their distended mouths against each other.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.191",
+    "sourceId": 191,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Shortfin Mako",
+      "zh": ""
+    },
+    "scientificName": "Isurus oxyrinchus",
+    "printedPoints": 6,
+    "lengthCm": 445,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 2
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "(all players) [FishFromHandConsume][FishFromHandConsume][AllPlayers]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_191"
+    ],
+    "visual": {
+      "fishImageAsset": "191.webp",
+      "fishImageLookup": "static/media/191.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 191,
+      "group": "main",
+      "name": "Shortfin Mako",
+      "latin": "Isurus oxyrinchus",
+      "cardCost": 0,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 1,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 1,
+      "midnight": 0,
+      "points": 6,
+      "length": 445,
+      "abilityType": "WhenPlayed",
+      "ability": "(all players) [FishFromHandConsume][FishFromHandConsume][AllPlayers]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 2,
+      "Venomous": 0,
+      "band": null,
+      "description": "One of only five species of sharks known to have warm blood, several degrees warmer than the surrounding water.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.192",
+    "sourceId": 192,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Shortnose Demon Catshark",
+      "zh": ""
+    },
+    "scientificName": "Apristurus internatus",
+    "printedPoints": 3,
+    "lengthCm": 41,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[FreePlayFishFromHand][FishLengthMedium]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_192"
+    ],
+    "visual": {
+      "fishImageAsset": "192.webp",
+      "fishImageLookup": "static/media/192.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 192,
+      "group": "main",
+      "name": "Shortnose Demon Catshark",
+      "latin": "Apristurus internatus",
+      "cardCost": 0,
+      "eggCost": 2,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 0,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 3,
+      "length": 41,
+      "abilityType": "WhenPlayed",
+      "ability": "[FreePlayFishFromHand][FishLengthMedium]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "Most deepwater catsharks lay egg cases with long tendrils at the corners that help attach them to the seafloor.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.193",
+    "sourceId": 193,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Sixgill Sawshark",
+      "zh": ""
+    },
+    "scientificName": "Pliotrema warreni",
+    "printedPoints": 4,
+    "lengthCm": 170,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "electric",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "gameEnd",
+    "abilityText": {
+      "raw": "[YoungFish][FishFromHandConsume]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.gameEnd.card_193"
+    ],
+    "visual": {
+      "fishImageAsset": "193.webp",
+      "fishImageLookup": "static/media/193.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 193,
+      "group": "main",
+      "name": "Sixgill Sawshark",
+      "latin": "Pliotrema warreni",
+      "cardCost": 1,
+      "eggCost": 0,
+      "youngCost": 1,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 1,
+      "midnight": 0,
+      "points": 4,
+      "length": 170,
+      "abilityType": "GameEnd",
+      "ability": "[YoungFish][FishFromHandConsume]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 1,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "It hunts using its two sensitive barbels and electric sense, incapacitating prey with a rostrum that is edged with teeth.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.194",
+    "sourceId": 194,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Spotted Scat",
+      "zh": ""
+    },
+    "scientificName": "Scatophagus argus",
+    "printedPoints": 3,
+    "lengthCm": 45,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "any:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "venomous",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[BlueCoral][PurpleCoral]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_194"
+    ],
+    "visual": {
+      "fishImageAsset": "194.webp",
+      "fishImageLookup": "static/media/194.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 194,
+      "group": "main",
+      "name": "Spotted Scat",
+      "latin": "Scatophagus argus",
+      "cardCost": 1,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 3,
+      "length": 45,
+      "abilityType": "WhenPlayed",
+      "ability": "[BlueCoral][PurpleCoral]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 1,
+      "band": null,
+      "description": "This fish can sting with dorsal and ventral fin spines, inflicting a venom that causes great pain and dizziness for humans.",
+      "expansion": "sr",
+      "coralCost": "any:2"
+    }
+  },
+  {
+    "id": "sr.main.195",
+    "sourceId": 195,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Spotted Wobbegong",
+      "zh": ""
+    },
+    "scientificName": "Orectolobus maculatus",
+    "printedPoints": 5,
+    "lengthCm": 320,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "coverShorterFish",
+        "count": 1
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "any:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[GreenCoral][FishFromHandConsume]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_195"
+    ],
+    "visual": {
+      "fishImageAsset": "195.webp",
+      "fishImageLookup": "static/media/195.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 195,
+      "group": "main",
+      "name": "Spotted Wobbegong",
+      "latin": "Orectolobus maculatus",
+      "cardCost": 0,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 1,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 5,
+      "length": 320,
+      "abilityType": "WhenPlayed",
+      "ability": "[GreenCoral][FishFromHandConsume]",
+      "Bioluminescent": 0,
+      "Camouflage": 1,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "They sometimes gather in distinct social groups, not randomly or according to the amount of food available.",
+      "expansion": "sr",
+      "coralCost": "any:2"
+    }
+  },
+  {
+    "id": "sr.main.196",
+    "sourceId": 196,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Starry Pipefish",
+      "zh": ""
+    },
+    "scientificName": "Halicampus punctatus",
+    "printedPoints": 4,
+    "lengthCm": 17,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "green:1",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[BlueCoral]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_196"
+    ],
+    "visual": {
+      "fishImageAsset": "196.webp",
+      "fishImageLookup": "static/media/196.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 196,
+      "group": "main",
+      "name": "Starry Pipefish",
+      "latin": "Halicampus punctatus",
+      "cardCost": 0,
+      "eggCost": 2,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 4,
+      "length": 17,
+      "abilityType": "IfActivated",
+      "ability": "[BlueCoral]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": "green",
+      "description": "Like the seahorses they resemble, female pipefish deposit partial clutches into the male's brood pouch to gestate.",
+      "expansion": "sr",
+      "coralCost": "green:1"
+    }
+  },
+  {
+    "id": "sr.main.197",
+    "sourceId": 197,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Stellate Puffer",
+      "zh": ""
+    },
+    "scientificName": "Arothron stellatus",
+    "printedPoints": 5,
+    "lengthCm": 120,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 2
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "any:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "venomous",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[PurpleCoral][GreenCoral]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_197"
+    ],
+    "visual": {
+      "fishImageAsset": "197.webp",
+      "fishImageLookup": "static/media/197.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 197,
+      "group": "main",
+      "name": "Stellate Puffer",
+      "latin": "Arothron stellatus",
+      "cardCost": 0,
+      "eggCost": 2,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 5,
+      "length": 120,
+      "abilityType": "WhenPlayed",
+      "ability": "[PurpleCoral][GreenCoral]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 1,
+      "band": null,
+      "description": "In addition to being able to inflate its body, it protects itself by ingesting toxic bacteria throughout its life.",
+      "expansion": "sr",
+      "coralCost": "any:2"
+    }
+  },
+  {
+    "id": "sr.main.198",
+    "sourceId": 198,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Striated Frogfish",
+      "zh": ""
+    },
+    "scientificName": "Antennarius striatus",
+    "printedPoints": 4,
+    "lengthCm": 25,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "purple",
+    "costs": [
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "purple:1",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [Discard]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_198"
+    ],
+    "visual": {
+      "fishImageAsset": "198.webp",
+      "fishImageLookup": "static/media/198.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 198,
+      "group": "main",
+      "name": "Striated Frogfish",
+      "latin": "Antennarius striatus",
+      "cardCost": 0,
+      "eggCost": 0,
+      "youngCost": 1,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 4,
+      "length": 25,
+      "abilityType": "IfActivated",
+      "ability": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [Discard]",
+      "Bioluminescent": 0,
+      "Camouflage": 1,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": "purple",
+      "description": "Called “hairy” for its soft spines, it has the fastest known fish bite (1/6000th of a second), swallowing prey whole.",
+      "expansion": "sr",
+      "coralCost": "purple:1"
+    }
+  },
+  {
+    "id": "sr.main.199",
+    "sourceId": 199,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Striped Eel Catfish",
+      "zh": ""
+    },
+    "scientificName": "Plotosus lineatus",
+    "printedPoints": 4,
+    "lengthCm": 35,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "any:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "venomous",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[BlueCoral][GreenCoral]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_199"
+    ],
+    "visual": {
+      "fishImageAsset": "199.webp",
+      "fishImageLookup": "static/media/199.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 199,
+      "group": "main",
+      "name": "Striped Eel Catfish",
+      "latin": "Plotosus lineatus",
+      "cardCost": 1,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 4,
+      "length": 35,
+      "abilityType": "WhenPlayed",
+      "ability": "[BlueCoral][GreenCoral]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 1,
+      "band": null,
+      "description": "The first dorsal and each of the pectoral fins have a highly venomous spine. Wounds may even be fatal to humans.",
+      "expansion": "sr",
+      "coralCost": "any:2"
+    }
+  },
+  {
+    "id": "sr.main.200",
+    "sourceId": 200,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Swell Shark",
+      "zh": ""
+    },
+    "scientificName": "Cephaloscyllium ventriosum",
+    "printedPoints": 2,
+    "lengthCm": 110,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[FreePlayFishFromHand][Camouflage] only",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_200"
+    ],
+    "visual": {
+      "fishImageAsset": "200.webp",
+      "fishImageLookup": "static/media/200.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 200,
+      "group": "main",
+      "name": "Swell Shark",
+      "latin": "Cephaloscyllium ventriosum",
+      "cardCost": 2,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 1,
+      "midnight": 0,
+      "points": 2,
+      "length": 110,
+      "abilityType": "WhenPlayed",
+      "ability": "[FreePlayFishFromHand][Camouflage] only",
+      "Bioluminescent": 0,
+      "Camouflage": 1,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "As a defense mechanism, this catshark is able to expand its body to twice its regular size by swallowing water.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.201",
+    "sourceId": 201,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Sydney's Pygmy Pipehorse",
+      "zh": ""
+    },
+    "scientificName": "Idiotropiscis lumnitzeri",
+    "printedPoints": 2,
+    "lengthCm": 5,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "green:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[PurpleCoral]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_201"
+    ],
+    "visual": {
+      "fishImageAsset": "201.webp",
+      "fishImageLookup": "static/media/201.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 201,
+      "group": "main",
+      "name": "Sydney's Pygmy Pipehorse",
+      "latin": "Idiotropiscis lumnitzeri",
+      "cardCost": 0,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 2,
+      "length": 5,
+      "abilityType": "IfActivated",
+      "ability": "[PurpleCoral]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": "green",
+      "description": "Seahorses and pipefishes are very similar. There are also a few known species of pipehorses, which have attributes of both.",
+      "expansion": "sr",
+      "coralCost": "green:2"
+    }
+  },
+  {
+    "id": "sr.main.202",
+    "sourceId": 202,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Tasseled Scorpionfish",
+      "zh": ""
+    },
+    "scientificName": "Scorpaenopsis oxycephalus",
+    "printedPoints": 4,
+    "lengthCm": 36,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "camouflage",
+        "count": 1
+      },
+      {
+        "kind": "venomous",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "gameEnd",
+    "abilityText": {
+      "raw": "5 [Wave] if [AnyCoral][AnyCoral][AnyCoral] in ALL your dive sites",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.gameEnd.card_202"
+    ],
+    "visual": {
+      "fishImageAsset": "202.webp",
+      "fishImageLookup": "static/media/202.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 202,
+      "group": "main",
+      "name": "Tasseled Scorpionfish",
+      "latin": "Scorpaenopsis oxycephalus",
+      "cardCost": 2,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 4,
+      "length": 36,
+      "abilityType": "GameEnd",
+      "ability": "5 [Wave] if [AnyCoral][AnyCoral][AnyCoral] in ALL your dive sites",
+      "Bioluminescent": 0,
+      "Camouflage": 1,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 1,
+      "band": null,
+      "description": "The largest species in its genus, this ambush predator has vibrant markings that camouflage it between rocky reefs.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.203",
+    "sourceId": 203,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Tiger Shark",
+      "zh": ""
+    },
+    "scientificName": "Galeocerdo cuvier",
+    "printedPoints": 8,
+    "lengthCm": 550,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "sunlight",
+      "twilight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 2
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "(all players) [FishHatch][FishFromHandConsume][AllPlayers]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_203"
+    ],
+    "visual": {
+      "fishImageAsset": "203.webp",
+      "fishImageLookup": "static/media/203.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 203,
+      "group": "main",
+      "name": "Tiger Shark",
+      "latin": "Galeocerdo cuvier",
+      "cardCost": 1,
+      "eggCost": 1,
+      "youngCost": 1,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 1,
+      "midnight": 0,
+      "points": 8,
+      "length": 550,
+      "abilityType": "WhenPlayed",
+      "ability": "(all players) [FishHatch][FishFromHandConsume][AllPlayers]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 2,
+      "Venomous": 0,
+      "band": null,
+      "description": "The tiger shark is a solitary, nocturnal hunter. It has the widest range of prey among all sharks.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.204",
+    "sourceId": 204,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Tomato Clownfish",
+      "zh": ""
+    },
+    "scientificName": "Amphiprion frenatus",
+    "printedPoints": 1,
+    "lengthCm": 14,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "purple",
+    "costs": [
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "purple:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[BlueCoral]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_204"
+    ],
+    "visual": {
+      "fishImageAsset": "204.webp",
+      "fishImageLookup": "static/media/204.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 204,
+      "group": "main",
+      "name": "Tomato Clownfish",
+      "latin": "Amphiprion frenatus",
+      "cardCost": 0,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 1,
+      "length": 14,
+      "abilityType": "IfActivated",
+      "ability": "[BlueCoral]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": "purple",
+      "description": "A mucous coating lets it shelter inside an anemone, and, in turn, the anemone defends its home from parasites and predators.",
+      "expansion": "sr",
+      "coralCost": "purple:2"
+    }
+  },
+  {
+    "id": "sr.main.205",
+    "sourceId": 205,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Toothy Goby",
+      "zh": ""
+    },
+    "scientificName": "Pleurosicya mossambica",
+    "printedPoints": 2,
+    "lengthCm": 3,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "blue",
+    "costs": [
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "blue:2",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[PurpleCoral]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_205"
+    ],
+    "visual": {
+      "fishImageAsset": "205.webp",
+      "fishImageLookup": "static/media/205.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 205,
+      "group": "main",
+      "name": "Toothy Goby",
+      "latin": "Pleurosicya mossambica",
+      "cardCost": 0,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 2,
+      "length": 3,
+      "abilityType": "IfActivated",
+      "ability": "[PurpleCoral]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": "blue",
+      "description": "Its sucker-like pelvic fins allow the toothy goby to attach itself to soft corals (such as bubble coral) and sponges.",
+      "expansion": "sr",
+      "coralCost": "blue:2"
+    }
+  },
+  {
+    "id": "sr.main.206",
+    "sourceId": 206,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Variegated Lizardfish",
+      "zh": ""
+    },
+    "scientificName": "Synodus variegatus",
+    "printedPoints": 6,
+    "lengthCm": 40,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "young",
+        "count": 1
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "any:1",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "camouflage",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "gameEnd",
+    "abilityText": {
+      "raw": "3 [Wave] if [AnyCoral][AnyCoral][AnyCoral][AnyCoral][AnyCoral] (in a dive site with at least 5)",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.gameEnd.card_206"
+    ],
+    "visual": {
+      "fishImageAsset": "206.webp",
+      "fishImageLookup": "static/media/206.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 206,
+      "group": "main",
+      "name": "Variegated Lizardfish",
+      "latin": "Synodus variegatus",
+      "cardCost": 1,
+      "eggCost": 0,
+      "youngCost": 1,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 6,
+      "length": 40,
+      "abilityType": "GameEnd",
+      "ability": "3 [Wave] if [AnyCoral][AnyCoral][AnyCoral][AnyCoral][AnyCoral] (in a dive site with at least 5)",
+      "Bioluminescent": 0,
+      "Camouflage": 1,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "An ambush predator, its vibrant markings camouflage it between rocky reefs where it waits, scanning for prey.",
+      "expansion": "sr",
+      "coralCost": "any:1"
+    }
+  },
+  {
+    "id": "sr.main.207",
+    "sourceId": 207,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Velvet Belly Lanternshark",
+      "zh": ""
+    },
+    "scientificName": "Etmopterus spinax",
+    "printedPoints": 1,
+    "lengthCm": 60,
+    "sizeClass": "mediumDraft",
+    "allowedZones": [
+      "sunlight",
+      "twilight",
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 2
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      },
+      {
+        "kind": "bioluminescent",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "whenPlayed",
+    "abilityText": {
+      "raw": "[UnSchoolFish][UnSchoolFish]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.whenPlayed.card_207"
+    ],
+    "visual": {
+      "fishImageAsset": "207.webp",
+      "fishImageLookup": "static/media/207.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 207,
+      "group": "main",
+      "name": "Velvet Belly Lanternshark",
+      "latin": "Etmopterus spinax",
+      "cardCost": 2,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 1,
+      "midnight": 1,
+      "points": 1,
+      "length": 60,
+      "abilityType": "WhenPlayed",
+      "ability": "[UnSchoolFish][UnSchoolFish]",
+      "Bioluminescent": 1,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "Its black underside is not bioluminescent and is sharply delineated from the rest of its body like a patch of velvet.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.208",
+    "sourceId": 208,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Yellow Clown Goby",
+      "zh": ""
+    },
+    "scientificName": "Gobiodon okinawae",
+    "printedPoints": 2,
+    "lengthCm": 3,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "any:1",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "venomous",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "gameEnd",
+    "abilityText": {
+      "raw": "[GreenCoral][GreenCoral][GreenCoral]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.gameEnd.card_208"
+    ],
+    "visual": {
+      "fishImageAsset": "208.webp",
+      "fishImageLookup": "static/media/208.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 208,
+      "group": "main",
+      "name": "Yellow Clown Goby",
+      "latin": "Gobiodon okinawae",
+      "cardCost": 0,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 2,
+      "length": 3,
+      "abilityType": "GameEnd",
+      "ability": "[GreenCoral][GreenCoral][GreenCoral]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 1,
+      "band": null,
+      "description": "Unlike most gobies, which are burrowers, these roost in groups of up to 15 in the outer branches of staghorn corals.",
+      "expansion": "sr",
+      "coralCost": "any:1"
+    }
+  },
+  {
+    "id": "sr.main.209",
+    "sourceId": 209,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Yokozuna Slickhead",
+      "zh": ""
+    },
+    "scientificName": "Narcetes shonanmaruae",
+    "printedPoints": 5,
+    "lengthCm": 130,
+    "sizeClass": "largeDraft",
+    "allowedZones": [
+      "midnight"
+    ],
+    "requiredDiveSiteColor": null,
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 3
+      }
+    ],
+    "requirements": [],
+    "tags": [
+      {
+        "kind": "predator",
+        "count": 1
+      }
+    ],
+    "abilityTrigger": "gameEnd",
+    "abilityText": {
+      "raw": "[FishFromHand][ArrowDown][AnyCoral][AnyCoral][AnyCoral][AnyCoral][AnyCoral] (in a dive site with at least 5)",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.gameEnd.card_209"
+    ],
+    "visual": {
+      "fishImageAsset": "209.webp",
+      "fishImageLookup": "static/media/209.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 209,
+      "group": "main",
+      "name": "Yokozuna Slickhead",
+      "latin": "Narcetes shonanmaruae",
+      "cardCost": 3,
+      "eggCost": 0,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 0,
+      "twilight": 0,
+      "midnight": 2,
+      "points": 5,
+      "length": 130,
+      "abilityType": "GameEnd",
+      "ability": "[FishFromHand][ArrowDown][AnyCoral][AnyCoral][AnyCoral][AnyCoral][AnyCoral] (in a dive site with at least 5)",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 1,
+      "Venomous": 0,
+      "band": null,
+      "description": "“Yokozuna” is the highest rank of sumo wrestler. This slickhead is a top predator in Japan's abyssal Suruga Bay.",
+      "expansion": "sr",
+      "coralCost": null
+    }
+  },
+  {
+    "id": "sr.main.210",
+    "sourceId": 210,
+    "set": "sr",
+    "expansion": "sharks_reefs",
+    "group": "main",
+    "name": {
+      "en": "Zebra Seahorse",
+      "zh": ""
+    },
+    "scientificName": "Hippocampus zebra",
+    "printedPoints": 3,
+    "lengthCm": 8,
+    "sizeClass": "smallDraft",
+    "allowedZones": [
+      "sunlight"
+    ],
+    "requiredDiveSiteColor": "green",
+    "costs": [
+      {
+        "kind": "discardCards",
+        "count": 1
+      },
+      {
+        "kind": "resource",
+        "resource": "egg",
+        "count": 1
+      },
+      {
+        "kind": "coralRequirementOrCost",
+        "count": "green:1",
+        "todo": "disambiguate for Sharks & Reefs"
+      }
+    ],
+    "requirements": [],
+    "tags": [],
+    "abilityTrigger": "ifActivated",
+    "abilityText": {
+      "raw": "[AnyCoral]",
+      "zh": ""
+    },
+    "abilityIds": [
+      "unsupported.sr.ifActivated.card_210"
+    ],
+    "visual": {
+      "fishImageAsset": "210.webp",
+      "fishImageLookup": "static/media/210.<hash>.webp",
+      "cardPreviewImage": null,
+      "backgroundAssetHint": "base/blue/purple/green/GameEnd/IfActivated assets in manifest depending on card band/abilityTrigger"
+    },
+    "rawSource": {
+      "id": 210,
+      "group": "main",
+      "name": "Zebra Seahorse",
+      "latin": "Hippocampus zebra",
+      "cardCost": 1,
+      "eggCost": 1,
+      "youngCost": 0,
+      "consuming": 0,
+      "schoolFishCost": 0,
+      "sunlight": 1,
+      "twilight": 0,
+      "midnight": 0,
+      "points": 3,
+      "length": 8,
+      "abilityType": "IfActivated",
+      "ability": "[AnyCoral]",
+      "Bioluminescent": 0,
+      "Camouflage": 0,
+      "Electric": 0,
+      "Predator": 0,
+      "Venomous": 0,
+      "band": "green",
+      "description": "Seahorses are famously ovoviviparous. The male carries the fertilized eggs in a brood pouch situated under the tail.",
+      "expansion": "sr",
+      "coralCost": "green:1"
+    }
+  }
+]
