@@ -3085,6 +3085,7 @@ final class GameBoardViewModelTests: XCTestCase {
         let viewModel = GameBoardViewModel(roomService: service)
         let token = viewModel.rewardPoolViewState.rewards[0]
 
+        XCTAssertEqual(token.title, AppStrings.GameBoard.drawFishCard(count: 1))
         viewModel.selectRewardToken(token.id)
 
         guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
@@ -3092,6 +3093,31 @@ final class GameBoardViewModelTests: XCTestCase {
         }
         XCTAssertEqual(payload.choiceId, choice.choiceId)
         XCTAssertEqual(payload.resolution, .draw(count: 1))
+    }
+
+    func testDrawFourPendingChoiceGeneratesDrawFourRewardTokenAndCommand() {
+        let choice = abilityPendingChoice(
+            cardId: "base.starter.127",
+            kind: .drawFish,
+            drawCount: 4
+        )
+        let service = makeService(
+            hand: ["fish-2"],
+            pendingChoices: [choice.choiceId: choice],
+            fishDrawPile: ["base.main.001", "base.main.002", "base.main.003", "base.main.004"]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        let token = viewModel.rewardPoolViewState.rewards[0]
+
+        XCTAssertEqual(token.title, AppStrings.GameBoard.drawFishCard(count: 4))
+
+        viewModel.selectRewardToken(token.id)
+
+        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolvePendingChoice command.")
+        }
+        XCTAssertEqual(payload.choiceId, choice.choiceId)
+        XCTAssertEqual(payload.resolution, .draw(count: 4))
     }
 
     func testRecoverRewardTokenDrawsFromDeckWhenDiscardPileIsEmpty() {
@@ -3517,7 +3543,8 @@ final class GameBoardViewModelTests: XCTestCase {
 
     private func abilityPendingChoice(
         cardId: CardID,
-        kind: PendingChoiceKind
+        kind: PendingChoiceKind,
+        drawCount: Int = 1
     ) -> PendingChoice {
         PendingChoice(
             choiceId: "choice-ability-\(cardId)",
@@ -3530,8 +3557,8 @@ final class GameBoardViewModelTests: XCTestCase {
             abilityDefinition: AbilityDefinition(
                 abilityId: "ability-\(cardId)",
                 trigger: .ifActivated,
-                effects: [.drawFish(count: 1)],
-                displayText: "发动时：抽 1 张鱼牌"
+                effects: [.drawFish(count: drawCount)],
+                displayText: "发动时：抽 \(drawCount) 张鱼牌"
             ),
             createdAtSequence: 2
         )

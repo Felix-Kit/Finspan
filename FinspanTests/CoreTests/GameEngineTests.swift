@@ -4135,6 +4135,167 @@ final class GameEngineTests: XCTestCase {
         XCTAssertTrue(resolveDrafts.contains(where: \.isTurnCompletion))
     }
 
+    func testBlueLanternfishAbilityIdResolvesToDrawFour() throws {
+        let catalog = try BaseGameCardCatalog()
+        let card = try XCTUnwrap(catalog.starterFishCards.first { $0.id == "base.starter.127" })
+
+        let abilities = AbilityResolver().abilityDefinitions(for: card)
+
+        XCTAssertEqual(card.name, "Blue Lanternfish")
+        XCTAssertEqual(card.abilityIds, [BaseGameAbilityIDs.blueLanternfishWhenPlayedDrawFour])
+        XCTAssertEqual(abilities.map(\.abilityId), [BaseGameAbilityIDs.blueLanternfishWhenPlayedDrawFour])
+        XCTAssertEqual(abilities.first?.trigger, .whenPlayed)
+        XCTAssertEqual(abilities.first?.effects, [.drawFish(count: 4)])
+    }
+
+    func testBuiltInAbilityRegistryMapsBlueLanternfishToDrawFour() throws {
+        let ability = try XCTUnwrap(
+            AbilityRegistry.builtIn.abilityDefinition(
+                for: BaseGameAbilityIDs.blueLanternfishWhenPlayedDrawFour
+            )
+        )
+
+        XCTAssertEqual(ability.trigger, .whenPlayed)
+        XCTAssertEqual(ability.effects, [.drawFish(count: 4)])
+    }
+
+    func testBlueLanternfishWhenPlayedCreatesDrawFourPendingChoice() throws {
+        let catalog = try BaseGameCardCatalog()
+        let engine = GameEngine(cardCatalog: catalog)
+        let state = blueLanternfishPlayState(deck: ["base.main.001"])
+
+        let drafts = try engine.makeEventDrafts(
+            for: blueLanternfishPlayCommand(commandId: "play-blue-lanternfish"),
+            in: state
+        )
+
+        guard case let .pendingChoiceCreated(choice) = drafts.last else {
+            return XCTFail("Expected Blue Lanternfish when-played pending choice.")
+        }
+        XCTAssertEqual(choice.kind, .drawFish)
+        XCTAssertEqual(choice.abilityDefinition?.abilityId, BaseGameAbilityIDs.blueLanternfishWhenPlayedDrawFour)
+        XCTAssertEqual(choice.abilityDefinition?.effects, [.drawFish(count: 4)])
+        XCTAssertFalse(drafts.contains(where: \.isTurnCompletion))
+    }
+
+    func testBlueLanternfishResolveDrawsFourCards() throws {
+        let catalog = try BaseGameCardCatalog()
+        let engine = GameEngine(cardCatalog: catalog)
+        var state = blueLanternfishPlayState(deck: [
+            "base.main.001",
+            "base.main.002",
+            "base.main.003",
+            "base.main.004",
+            "base.main.005"
+        ])
+        state = applying(
+            try engine.makeEventDrafts(
+                for: blueLanternfishPlayCommand(commandId: "play-blue-lanternfish-draw-four"),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        let choice = try XCTUnwrap(state.pendingChoices.values.first)
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(
+                commandId: "resolve-blue-lanternfish-draw-four",
+                choiceId: choice.choiceId,
+                resolution: .draw(count: 4)
+            ),
+            in: state
+        )
+        state = applying(drafts, to: state, using: engine)
+
+        XCTAssertEqual(
+            state.playerGameStates["player-1"]?.hand,
+            ["base.main.001", "base.main.002", "base.main.003", "base.main.004"]
+        )
+        XCTAssertEqual(state.deckState.fishDrawPile, ["base.main.005"])
+        XCTAssertTrue(drafts.contains { draft in
+            guard case let .pendingChoiceResolved(event) = draft else { return false }
+            return event.appliedEffects == [
+                .drawFish(
+                    playerId: "player-1",
+                    cardIds: ["base.main.001", "base.main.002", "base.main.003", "base.main.004"]
+                )
+            ]
+        })
+    }
+
+    func testBlueLanternfishSkipDoesNotDrawCards() throws {
+        let catalog = try BaseGameCardCatalog()
+        let engine = GameEngine(cardCatalog: catalog)
+        var state = blueLanternfishPlayState(deck: [
+            "base.main.001",
+            "base.main.002",
+            "base.main.003",
+            "base.main.004"
+        ])
+        state = applying(
+            try engine.makeEventDrafts(
+                for: blueLanternfishPlayCommand(commandId: "play-blue-lanternfish-skip"),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        let choice = try XCTUnwrap(state.pendingChoices.values.first)
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(
+                commandId: "skip-blue-lanternfish",
+                choiceId: choice.choiceId,
+                resolution: .skip
+            ),
+            in: state
+        )
+        state = applying(drafts, to: state, using: engine)
+
+        XCTAssertEqual(state.playerGameStates["player-1"]?.hand, [])
+        XCTAssertEqual(
+            state.deckState.fishDrawPile,
+            ["base.main.001", "base.main.002", "base.main.003", "base.main.004"]
+        )
+    }
+
+    func testBlueLanternfishDrawFourWithShortDeckDrawsRemainingCards() throws {
+        let catalog = try BaseGameCardCatalog()
+        let engine = GameEngine(cardCatalog: catalog)
+        var state = blueLanternfishPlayState(deck: ["base.main.001", "base.main.002"])
+        state = applying(
+            try engine.makeEventDrafts(
+                for: blueLanternfishPlayCommand(commandId: "play-blue-lanternfish-short-deck"),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        let choice = try XCTUnwrap(state.pendingChoices.values.first)
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(
+                commandId: "resolve-blue-lanternfish-short-deck",
+                choiceId: choice.choiceId,
+                resolution: .draw(count: 4)
+            ),
+            in: state
+        )
+        state = applying(drafts, to: state, using: engine)
+
+        XCTAssertEqual(state.playerGameStates["player-1"]?.hand, ["base.main.001", "base.main.002"])
+        XCTAssertTrue(state.deckState.fishDrawPile.isEmpty)
+    }
+
+    func testSampleDrawOneAbilityStillResolvesOneCard() throws {
+        let ability = try XCTUnwrap(
+            AbilityRegistry.builtIn.abilityDefinition(for: SampleAbilityIDs.fishCWhenPlayedDrawFishOne)
+        )
+
+        XCTAssertEqual(ability.effects, [.drawFish(count: 1)])
+    }
+
     func testAbilityPendingChoiceBlocksNewPlayFishAndDive() throws {
         let engine = GameEngine()
         var state = playFishState()
@@ -4458,6 +4619,30 @@ final class GameEngineTests: XCTestCase {
                     targetSlot: targetSlot,
                     payment: payment
                 )
+            )
+        )
+    }
+
+    private func blueLanternfishPlayState(deck: [CardID]) -> GameState {
+        var state = playFishState()
+        state.playerGameStates["player-1"]?.hand = [
+            "base.starter.127",
+            "base.main.010",
+            "base.main.011"
+        ]
+        state.deckState.fishDrawPile = deck
+        return state
+    }
+
+    private func blueLanternfishPlayCommand(commandId: CommandID) -> PlayerCommand {
+        playFishCommand(
+            commandId: commandId,
+            cardId: "base.starter.127",
+            targetSlot: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 3),
+            payment: PlayFishPayment(
+                discardedCardIds: ["base.main.010", "base.main.011"],
+                eggSources: [],
+                youngSources: []
             )
         )
     }

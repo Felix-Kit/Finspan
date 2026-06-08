@@ -2510,7 +2510,8 @@ final class GameBoardViewModel: ObservableObject {
     func performPendingChoiceAction(_ action: PendingChoiceAction, for choiceId: PendingChoiceID) {
         switch action {
         case .drawFish:
-            resolvePendingChoice(choiceId, resolution: .draw(count: 1))
+            let count = state.pendingChoices[choiceId].map(drawCount(for:)) ?? 1
+            resolvePendingChoice(choiceId, resolution: .draw(count: count))
         case .drawFromDeck:
             resolvePendingChoice(choiceId, resolution: .drawFromDeck)
         case .skip:
@@ -3496,17 +3497,26 @@ final class GameBoardViewModel: ObservableObject {
         state.activePlayerId == choice.playerId
     }
 
+    private func drawCount(for choice: PendingChoice) -> Int {
+        let effect = choice.selectedAbilityEffect ?? choice.abilityDefinition?.effects.first
+        guard case let .drawFish(count) = effect else {
+            return 1
+        }
+        return count
+    }
+
     private func pendingChoiceActionButtons(for choice: PendingChoice) -> [PendingChoiceActionViewData] {
         var actions: [PendingChoiceActionViewData] = []
         let canResolve = canResolvePendingChoice(choice)
 
         switch choice.kind {
         case .drawFish:
+            let count = drawCount(for: choice)
             actions.append(
                 PendingChoiceActionViewData(
                     choiceId: choice.choiceId,
                     action: .drawFish,
-                    title: AppStrings.GameBoard.drawOneFishCard,
+                    title: AppStrings.GameBoard.drawFishCard(count: count),
                     isEnabled: canResolve
                 )
             )
@@ -3590,18 +3600,19 @@ final class GameBoardViewModel: ObservableObject {
         let canResolve = canResolvePendingChoice(choice)
         switch choice.kind {
         case .drawFish:
+            let count = drawCount(for: choice)
             let tokenId = "\(choice.choiceId)-drawFish"
             return [(
                 rewardToken(
                     id: tokenId,
                     kind: .drawFish,
-                    title: AppStrings.GameBoard.drawOneFishCard,
+                    title: AppStrings.GameBoard.drawFishCard(count: count),
                     subtitle: rewardSourceText(for: choice),
                     iconText: "牌",
                     symbolName: "rectangle.stack",
                     isSelectable: canResolve
                 ),
-                .direct(choiceId: choice.choiceId, resolution: .draw(count: 1))
+                .direct(choiceId: choice.choiceId, resolution: .draw(count: count))
             )]
         case .recoverFromDiscardOrDraw:
             guard let playerState = state.playerGameStates[choice.playerId] else {

@@ -19,7 +19,9 @@ struct AbilityRegistry: AbilityDefinitionProvider, Sendable {
 extension AbilityRegistry {
     nonisolated static let sample = AbilityRegistry(definitions: SampleAbilityDefinitions.all)
     nonisolated static let builtIn = AbilityRegistry(
-        definitions: SampleAbilityDefinitions.all + SharksAndReefsAbilityDefinitions.all
+        definitions: SampleAbilityDefinitions.all
+            + BaseGameAbilityDefinitions.all
+            + SharksAndReefsAbilityDefinitions.all
     )
 }
 
@@ -53,6 +55,21 @@ enum SampleAbilityDefinitions {
             trigger: .whenPlayed,
             effects: [.drawFish(count: 1)],
             displayText: "打出时：抽 1 张鱼牌"
+        )
+    ]
+}
+
+enum BaseGameAbilityIDs {
+    nonisolated static let blueLanternfishWhenPlayedDrawFour: AbilityID = "unsupported.base.whenPlayed.card_127"
+}
+
+enum BaseGameAbilityDefinitions {
+    nonisolated static let all: [AbilityDefinition] = [
+        AbilityDefinition(
+            abilityId: BaseGameAbilityIDs.blueLanternfishWhenPlayedDrawFour,
+            trigger: .whenPlayed,
+            effects: [.drawFish(count: 4)],
+            displayText: "打出时：抽 4 张鱼牌"
         )
     ]
 }

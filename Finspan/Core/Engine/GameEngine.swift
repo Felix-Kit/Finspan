@@ -658,7 +658,10 @@ struct GameEngine {
         case .skip:
             return
         case let .draw(count):
-            guard choice.kind == .drawFish, count == 1 else {
+            guard choice.kind == .drawFish,
+                  count > 0,
+                  count == drawCount(for: choice)
+            else {
                 throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
             }
             guard !state.deckState.fishDrawPile.isEmpty else {
@@ -1162,11 +1165,12 @@ struct GameEngine {
                 return [.none]
             }
             return [.skipCoral(playerId: playerId, diveSite: diveSite)]
-        case .draw:
-            guard let cardId = state.deckState.fishDrawPile.first else {
+        case let .draw(count):
+            let cardIds = Array(state.deckState.fishDrawPile.prefix(count))
+            guard !cardIds.isEmpty else {
                 return [.none]
             }
-            return [.drawFish(playerId: playerId, cardIds: [cardId])]
+            return [.drawFish(playerId: playerId, cardIds: cardIds)]
         case let .recoverCard(cardId):
             return [.recoverFromDiscard(playerId: playerId, cardId: cardId)]
         case .drawFromDeck:
@@ -1250,6 +1254,14 @@ struct GameEngine {
             return nil
         }
         return selector
+    }
+
+    private func drawCount(for choice: PendingChoice) -> Int {
+        let effect = choice.selectedAbilityEffect ?? choice.abilityDefinition?.effects.first
+        guard case let .drawFish(count) = effect else {
+            return 1
+        }
+        return count
     }
 
     private func ifActivatedAbilityStepInputs(

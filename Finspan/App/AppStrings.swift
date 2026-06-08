@@ -127,6 +127,7 @@ enum AppStrings {
         static let requiredChoice = "必须处理"
         static let skipChoice = "跳过"
         static let drawOneFishCard = "抽 1 张鱼牌"
+        static func drawFishCard(count: Int) -> String { "抽 \(count) 张鱼牌" }
         static let recoverOneFromDiscard = "从弃牌堆拿回 1 张"
         static let triggeringFishAbilityPrefix = "正在发动"
         static let placeEggAbilityAction = "放置鱼卵"
