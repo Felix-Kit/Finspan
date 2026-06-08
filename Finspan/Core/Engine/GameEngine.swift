@@ -495,9 +495,7 @@ struct GameEngine {
                 actual: targetSlot.diveSiteColor
             )
         }
-        guard card.requirements.isEmpty else {
-            throw CommandValidationError.unsupportedRequirement(card.requirements[0])
-        }
+        try validateRequirements(card.requirements, targetSlot: targetSlot, playerState: playerState)
 
         if let existingLength = try visibleFishLength(in: targetSlot.content) {
             guard card.lengthCm > existingLength else {
@@ -541,6 +539,50 @@ struct GameEngine {
         }
         guard playerState.availableDivers > 0 else {
             throw CommandValidationError.noAvailableDiver
+        }
+    }
+
+    private func validateRequirements(
+        _ requirements: [Requirement],
+        targetSlot: OceanSlot,
+        playerState: PlayerGameState
+    ) throws {
+        for requirement in requirements {
+            guard let coralRequirement = requirement.coralRequirement else {
+                throw CommandValidationError.unsupportedRequirement(requirement)
+            }
+            try validateCoralRequirement(
+                coralRequirement,
+                targetSlot: targetSlot,
+                ocean: playerState.ocean
+            )
+        }
+    }
+
+    private func validateCoralRequirement(
+        _ requirement: CoralRequirement,
+        targetSlot: OceanSlot,
+        ocean: OceanState
+    ) throws {
+        guard targetSlot.address.zone == .sunlit else {
+            throw CommandValidationError.coralRequirementMustBeSunlit(targetSlot.address)
+        }
+        if requirement.diveSite != .any,
+           requirement.diveSite.rawValue != targetSlot.address.diveSite.rawValue {
+            throw CommandValidationError.coralRequirementDiveSiteMismatch(
+                expected: requirement.diveSite,
+                actual: targetSlot.address.diveSite
+            )
+        }
+        guard let reef = ocean.coralReefs.first(where: { $0.diveSite == targetSlot.address.diveSite }) else {
+            throw CommandValidationError.coralReefMissing(targetSlot.address.diveSite)
+        }
+        guard reef.coralCount >= requirement.count else {
+            throw CommandValidationError.insufficientCoral(
+                diveSite: reef.diveSite,
+                required: requirement.count,
+                actual: reef.coralCount
+            )
         }
     }
 

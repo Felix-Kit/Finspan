@@ -267,6 +267,12 @@ enum AppStrings {
         static let mustCoverShorterFish = "这张鱼必须覆盖一条更短的鱼"
         static let cannotCoverLongerOrSameFish = "不能覆盖更长或同长度的鱼"
         static let canCoverShorterFish = "可以覆盖较短的鱼"
+        static let reefFishMustBeSunlit = "这张鱼只能打在阳光层"
+        static let coralReefMissing = "该潜水点没有珊瑚礁"
+        static let coralInsufficient = "珊瑚不足"
+        static func coralRequirementText(count: Int) -> String {
+            "需要至少 \(count) 个珊瑚"
+        }
         static let dragToPlayHere = "拖到这里打出"
         static let slotCannotPlayHere = "该位置不能打出"
         static let payCostsFirst = "请先支付费用"

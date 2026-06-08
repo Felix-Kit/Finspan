@@ -589,6 +589,9 @@ enum PlayFishSlotUnavailableReason: Equatable {
     case coverLengthTooShort
     case zoneMismatch
     case diveSiteMismatch
+    case reefFishMustBeSunlit
+    case coralReefMissing
+    case coralInsufficient
     case unsupportedRequirement
 }
 
@@ -3166,7 +3169,7 @@ final class GameBoardViewModel: ObservableObject {
         guard let card else {
             return AppStrings.GameBoard.unknownCard
         }
-        if !card.requirements.isEmpty {
+        if cardHasUnsupportedRequirementInUI(card) {
             return AppStrings.GameBoard.unsupportedRequirementInUI
         }
         if cardHasUnsupportedCostInUI(card) {
@@ -3228,11 +3231,19 @@ final class GameBoardViewModel: ObservableObject {
             )
         }
 
-        guard card.requirements.isEmpty else {
+        if cardHasUnsupportedRequirementInUI(card) {
             return PlayFishSlotPreview(
                 availability: .unavailable,
                 unavailableReason: .unsupportedRequirement,
                 message: AppStrings.GameBoard.unsupportedRequirementInUI
+            )
+        }
+
+        if cardHasCoralRequirement(card), slot.address.zone != .sunlit {
+            return PlayFishSlotPreview(
+                availability: .unavailable,
+                unavailableReason: .reefFishMustBeSunlit,
+                message: AppStrings.GameBoard.reefFishMustBeSunlit
             )
         }
 
@@ -3251,6 +3262,10 @@ final class GameBoardViewModel: ObservableObject {
                 unavailableReason: .diveSiteMismatch,
                 message: AppStrings.GameBoard.slotDiveSiteMismatch
             )
+        }
+
+        if let coralPreview = coralRequirementPreview(for: card, targetSlot: slot) {
+            return coralPreview
         }
 
         if let existingLength = visibleFishLength(in: slot.content) {
@@ -3285,6 +3300,38 @@ final class GameBoardViewModel: ObservableObject {
         case let .fishCard(cardId):
             return cardsById[cardId]?.lengthCm
         }
+    }
+
+    private func coralRequirementPreview(for card: Card, targetSlot slot: OceanSlot) -> PlayFishSlotPreview? {
+        for requirement in card.requirements.compactMap(\.coralRequirement) {
+            if requirement.diveSite != .any,
+               requirement.diveSite.rawValue != slot.address.diveSite.rawValue {
+                return PlayFishSlotPreview(
+                    availability: .unavailable,
+                    unavailableReason: .diveSiteMismatch,
+                    message: AppStrings.GameBoard.slotDiveSiteMismatch
+                )
+            }
+            guard let reef = activePlayerState?.ocean.coralReefs.first(where: { $0.diveSite == slot.address.diveSite }) else {
+                return PlayFishSlotPreview(
+                    availability: .unavailable,
+                    unavailableReason: .coralReefMissing,
+                    message: AppStrings.GameBoard.coralReefMissing
+                )
+            }
+            guard reef.coralCount >= requirement.count else {
+                return PlayFishSlotPreview(
+                    availability: .unavailable,
+                    unavailableReason: .coralInsufficient,
+                    message: AppStrings.GameBoard.coralInsufficient
+                )
+            }
+        }
+        return nil
+    }
+
+    private func cardHasCoralRequirement(_ card: Card) -> Bool {
+        card.requirements.contains { $0.coralRequirement != nil }
     }
 
     private func slotContentText(_ content: OceanSlotContent) -> String {
@@ -4559,9 +4606,16 @@ final class GameBoardViewModel: ObservableObject {
         }
     }
 
+    private func cardHasUnsupportedRequirementInUI(_ card: Card?) -> Bool {
+        guard let card else {
+            return false
+        }
+        return card.requirements.contains { $0.coralRequirement == nil }
+    }
+
     private func selectedCardUnsupportedItems(_ card: Card) -> [String] {
         var items: [String] = []
-        if !card.requirements.isEmpty {
+        if cardHasUnsupportedRequirementInUI(card) {
             items.append(AppStrings.GameBoard.unsupportedRequirementInUI)
         }
         if abilityResolver.abilityDefinitions(for: card).contains(where: abilityIsUnsupported) {
@@ -4767,6 +4821,14 @@ final class GameBoardViewModel: ObservableObject {
                 return "所选鱼牌不能放入该海域层。"
             case .requiredDiveSiteColorMismatch:
                 return "所选鱼牌不符合该格子颜色要求。"
+            case .coralRequirementMustBeSunlit:
+                return AppStrings.GameBoard.reefFishMustBeSunlit
+            case .coralRequirementDiveSiteMismatch:
+                return AppStrings.GameBoard.slotDiveSiteMismatch
+            case .coralReefMissing:
+                return AppStrings.GameBoard.coralReefMissing
+            case let .insufficientCoral(_, required, _):
+                return AppStrings.GameBoard.coralRequirementText(count: required)
             case .paymentCardNotInHand:
                 return "弃牌支付中包含不在手牌中的卡牌。"
             case .paymentCannotDiscardPlayedCard:

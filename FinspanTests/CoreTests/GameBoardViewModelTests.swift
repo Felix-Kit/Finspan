@@ -1654,6 +1654,72 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(slot.playFishPreview.message, AppStrings.GameBoard.slotDiveSiteMismatch)
     }
 
+    func testReefFishCoralRequirementPreviewRejectsNonSunlightSlot() {
+        let service = makeService(
+            hand: ["reef-fish"],
+            coralReefs: [CoralReefState(diveSite: .blue, coralCount: 2, maxCoral: 6, completionBonus: 6)]
+        )
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: reefFishCatalog())
+
+        viewModel.selectCard("reef-fish")
+
+        let slot = oceanSlot(in: viewModel, address: Self.blueTwilightSlotAddress)
+        XCTAssertEqual(slot.playFishPreview.availability, .unavailable)
+        XCTAssertEqual(slot.playFishPreview.unavailableReason, .reefFishMustBeSunlit)
+        XCTAssertEqual(slot.playFishPreview.message, AppStrings.GameBoard.reefFishMustBeSunlit)
+    }
+
+    func testReefFishCoralRequirementPreviewRejectsInsufficientCoral() {
+        let service = makeService(
+            hand: ["reef-fish"],
+            coralReefs: [CoralReefState(diveSite: .blue, coralCount: 1, maxCoral: 6, completionBonus: 6)]
+        )
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: reefFishCatalog())
+
+        viewModel.selectCard("reef-fish")
+
+        let slot = oceanSlot(in: viewModel, address: Self.slotAddress)
+        XCTAssertEqual(slot.playFishPreview.availability, .unavailable)
+        XCTAssertEqual(slot.playFishPreview.unavailableReason, .coralInsufficient)
+        XCTAssertEqual(slot.playFishPreview.message, AppStrings.GameBoard.coralInsufficient)
+    }
+
+    func testReefFishCoralRequirementPreviewAllowsSunlightWithEnoughCoral() {
+        let service = makeService(
+            hand: ["reef-fish"],
+            coralReefs: [CoralReefState(diveSite: .blue, coralCount: 2, maxCoral: 6, completionBonus: 6)]
+        )
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: reefFishCatalog())
+
+        viewModel.selectCard("reef-fish")
+
+        let slot = oceanSlot(in: viewModel, address: Self.slotAddress)
+        XCTAssertEqual(slot.playFishPreview.availability, .available)
+        XCTAssertEqual(slot.playFishPreview.message, AppStrings.GameBoard.slotAvailable)
+    }
+
+    func testReefFishDragPreviewUsesCoralRequirementReason() {
+        let service = makeService(
+            hand: ["reef-fish"],
+            coralReefs: [CoralReefState(diveSite: .blue, coralCount: 1, maxCoral: 6, completionBonus: 6)]
+        )
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: reefFishCatalog())
+
+        XCTAssertTrue(viewModel.beginDraggingHandCard("reef-fish"))
+        viewModel.updateDragTarget(Self.slotAddress)
+
+        let slot = oceanSlot(in: viewModel, address: Self.slotAddress)
+        XCTAssertTrue(slot.isDropTarget)
+        XCTAssertFalse(slot.isValidDropTarget)
+        XCTAssertEqual(
+            slot.dropTargetReasonText,
+            "\(AppStrings.GameBoard.slotCannotPlayHere)：\(AppStrings.GameBoard.coralInsufficient)"
+        )
+        XCTAssertEqual(viewModel.errorMessage, AppStrings.GameBoard.coralInsufficient)
+        XCTAssertFalse(viewModel.dropHandCard(targetAddress: Self.slotAddress))
+        XCTAssertNil(viewModel.selectedTargetSlot)
+    }
+
     func testSelectingFishMarksDiveUnavailableDuringPlayFishSelection() {
         let service = makeService(hand: ["fish-1", "fish-6"])
         let viewModel = GameBoardViewModel(roomService: service)
@@ -3552,6 +3618,24 @@ final class GameBoardViewModelTests: XCTestCase {
                     name: "Same Length Fish",
                     printedPoints: 2,
                     lengthCm: 30
+                )
+            ]
+        )
+    }
+
+    private func reefFishCatalog() -> TestCardCatalog {
+        let sample = SampleCardCatalog()
+        return TestCardCatalog(
+            starterFishCards: sample.starterFishCards,
+            fishCards: sample.fishCards + [
+                Card(
+                    id: "reef-fish",
+                    name: "Reef Fish",
+                    requirements: [
+                        Requirement(coralRequirement: CoralRequirement(diveSite: .any, count: 2))
+                    ],
+                    printedPoints: 4,
+                    lengthCm: 20
                 )
             ]
         )

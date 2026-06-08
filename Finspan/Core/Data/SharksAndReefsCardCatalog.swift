@@ -126,6 +126,15 @@ private enum FlexibleRuntimeCount: Decodable {
             return digits.last ?? 1
         }
     }
+
+    var stringValue: String {
+        switch self {
+        case let .int(value):
+            return "any:\(value)"
+        case let .string(value):
+            return value
+        }
+    }
 }
 
 private extension Card {
@@ -134,8 +143,8 @@ private extension Card {
             id: dto.id,
             name: dto.name.displayText,
             scientificName: dto.scientificName,
-            costs: try dto.costs.map(Cost.init(sharksAndReefsRuntimeDTO:)),
-            requirements: dto.requirements,
+            costs: try dto.costs.compactMap(Cost.init(sharksAndReefsRuntimeDTO:)),
+            requirements: dto.requirements + dto.costs.compactMap(Requirement.init(sharksAndReefsRuntimeDTO:)),
             abilityIds: dto.abilityIds,
             abilityText: dto.abilityText?.displayText,
             tags: dto.tags,
@@ -149,7 +158,7 @@ private extension Card {
 }
 
 private extension Cost {
-    nonisolated init(sharksAndReefsRuntimeDTO dto: SharksAndReefsRuntimeCostDTO) throws {
+    nonisolated init?(sharksAndReefsRuntimeDTO dto: SharksAndReefsRuntimeCostDTO) throws {
         switch dto.kind {
         case "discardCards":
             self = .discardCards(count: dto.count.numericValue)
@@ -159,10 +168,34 @@ private extension Cost {
         case "coverShorterFish":
             self = .coverShorterFish(count: dto.count.numericValue)
         case "coralRequirementOrCost":
-            self = .resource(kind: ResourceKind(rawValue: "coral"), count: dto.count.numericValue)
+            return nil
         default:
             throw SharksAndReefsCardCatalogError.unsupportedCostKind(dto.kind)
         }
+    }
+}
+
+private extension Requirement {
+    nonisolated init?(sharksAndReefsRuntimeDTO dto: SharksAndReefsRuntimeCostDTO) {
+        guard dto.kind == "coralRequirementOrCost",
+              let coralRequirement = CoralRequirement(sharksAndReefsRuntimeValue: dto.count.stringValue)
+        else {
+            return nil
+        }
+        self.init(coralRequirement: coralRequirement)
+    }
+}
+
+private extension CoralRequirement {
+    nonisolated init?(sharksAndReefsRuntimeValue value: String) {
+        let parts = value.split(separator: ":", maxSplits: 1).map(String.init)
+        guard parts.count == 2,
+              let diveSite = CoralRequirementDiveSite(rawValue: parts[0]),
+              let count = Int(parts[1])
+        else {
+            return nil
+        }
+        self.init(diveSite: diveSite, count: count)
     }
 }
 

@@ -25,6 +25,41 @@ struct Requirement: Codable, Equatable, Sendable {
     var value: String
 }
 
+enum CoralRequirementDiveSite: String, Codable, Equatable, Sendable {
+    case any
+    case blue
+    case purple
+    case green
+}
+
+struct CoralRequirement: Codable, Equatable, Sendable {
+    var diveSite: CoralRequirementDiveSite
+    var count: Int
+}
+
+extension Requirement {
+    nonisolated static let coralKind = "coral"
+
+    nonisolated init(coralRequirement: CoralRequirement) {
+        kind = Self.coralKind
+        value = "\(coralRequirement.diveSite.rawValue):\(coralRequirement.count)"
+    }
+
+    var coralRequirement: CoralRequirement? {
+        guard kind == Self.coralKind else {
+            return nil
+        }
+        let parts = value.split(separator: ":", maxSplits: 1).map(String.init)
+        guard parts.count == 2,
+              let diveSite = CoralRequirementDiveSite(rawValue: parts[0]),
+              let count = Int(parts[1])
+        else {
+            return nil
+        }
+        return CoralRequirement(diveSite: diveSite, count: count)
+    }
+}
+
 struct AbilityCondition: Codable, Equatable, Sendable {
     var kind: String
     var value: String

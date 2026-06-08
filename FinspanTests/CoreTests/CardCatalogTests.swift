@@ -50,6 +50,29 @@ final class CardCatalogTests: XCTestCase {
         XCTAssertTrue(catalog.starterFishCards.allSatisfy { $0.id.hasPrefix("sr.starter.") })
     }
 
+    func testSharksAndReefsCardCatalogMapsCoralRequirementCostToRequirement() throws {
+        let catalog = try SharksAndReefsCardCatalog()
+        let blacktipShark = try XCTUnwrap(catalog.fishCards.first { $0.id == "sr.main.142" })
+
+        XCTAssertTrue(blacktipShark.costs.contains(.discardCards(count: 1)))
+        XCTAssertTrue(blacktipShark.costs.contains(.resource(kind: .young, count: 1)))
+        XCTAssertFalse(blacktipShark.costs.contains(.resource(kind: ResourceKind(rawValue: "coral"), count: 2)))
+        XCTAssertEqual(
+            blacktipShark.requirements.first?.coralRequirement,
+            CoralRequirement(diveSite: .any, count: 2)
+        )
+    }
+
+    func testSharksAndReefsCardCatalogMapsSpecificCoralRequirement() throws {
+        let catalog = try SharksAndReefsCardCatalog()
+        let blueringAngelfish = try XCTUnwrap(catalog.fishCards.first { $0.id == "sr.main.144" })
+
+        XCTAssertEqual(
+            blueringAngelfish.requirements.first?.coralRequirement,
+            CoralRequirement(diveSite: .purple, count: 1)
+        )
+    }
+
     func testCardCatalogFactoryKeepsBaseGameCountsWithoutSharksAndReefs() throws {
         let catalog = try CardCatalogFactory().makeCatalog(for: .baseGame, enabledExpansions: [])
 

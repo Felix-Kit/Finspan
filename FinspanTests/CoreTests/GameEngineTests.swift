@@ -935,6 +935,141 @@ final class GameEngineTests: XCTestCase {
         ))))
     }
 
+    func testReefFishWithCoralRequirementRejectsTwilightSlot() {
+        let engine = GameEngine(cardCatalog: reefFishCatalog())
+        var state = reefFishState(coralReefs: [
+            CoralReefState(diveSite: .blue, coralCount: 2, maxCoral: 6, completionBonus: 6)
+        ])
+        let targetSlot = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 3)
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: playFishCommand(commandId: "reef-twilight", cardId: "reef-fish", targetSlot: targetSlot),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .coralRequirementMustBeSunlit(targetSlot))
+        }
+    }
+
+    func testReefFishWithCoralRequirementAllowsSunlightSlot() throws {
+        let engine = GameEngine(cardCatalog: reefFishCatalog())
+        let state = reefFishState(coralReefs: [
+            CoralReefState(diveSite: .blue, coralCount: 2, maxCoral: 6, completionBonus: 6)
+        ])
+        let targetSlot = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+
+        let drafts = try engine.makeEventDrafts(
+            for: playFishCommand(commandId: "reef-sunlight", cardId: "reef-fish", targetSlot: targetSlot),
+            in: state
+        )
+
+        XCTAssertTrue(drafts.contains(.fishPlayed(FishPlayedEvent(
+            playerId: "player-1",
+            cardId: "reef-fish",
+            targetSlot: targetSlot,
+            payment: .empty,
+            nextActivePlayerId: nil
+        ))))
+    }
+
+    func testReefFishWithCoralRequirementRejectsInsufficientCoral() {
+        let engine = GameEngine(cardCatalog: reefFishCatalog())
+        let state = reefFishState(coralReefs: [
+            CoralReefState(diveSite: .blue, coralCount: 1, maxCoral: 6, completionBonus: 6)
+        ])
+        let targetSlot = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: playFishCommand(commandId: "reef-insufficient", cardId: "reef-fish", targetSlot: targetSlot),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? CommandValidationError,
+                .insufficientCoral(diveSite: .blue, required: 2, actual: 1)
+            )
+        }
+    }
+
+    func testReefFishWithCoralRequirementUsesTargetDiveSiteCoralCount() {
+        let engine = GameEngine(cardCatalog: reefFishCatalog())
+        let state = reefFishState(coralReefs: [
+            CoralReefState(diveSite: .blue, coralCount: 1, maxCoral: 6, completionBonus: 6),
+            CoralReefState(diveSite: .green, coralCount: 6, maxCoral: 6, completionBonus: 5)
+        ])
+        let targetSlot = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: playFishCommand(commandId: "reef-target-site", cardId: "reef-fish", targetSlot: targetSlot),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? CommandValidationError,
+                .insufficientCoral(diveSite: .blue, required: 2, actual: 1)
+            )
+        }
+    }
+
+    func testReefFishWithCoralRequirementAllowsExactCoralCount() throws {
+        let engine = GameEngine(cardCatalog: reefFishCatalog())
+        let state = reefFishState(coralReefs: [
+            CoralReefState(diveSite: .blue, coralCount: 2, maxCoral: 6, completionBonus: 6)
+        ])
+        let targetSlot = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+
+        let drafts = try engine.makeEventDrafts(
+            for: playFishCommand(commandId: "reef-exact", cardId: "reef-fish", targetSlot: targetSlot),
+            in: state
+        )
+
+        XCTAssertTrue(drafts.contains { draft in
+            if case .fishPlayed = draft {
+                return true
+            }
+            return false
+        })
+    }
+
+    func testReefFishWithSpecificCoralRequirementRequiresMatchingDiveSite() {
+        let engine = GameEngine(cardCatalog: reefFishCatalog())
+        let state = reefFishState(coralReefs: CoralReefState.sharksAndReefsInitial)
+        let targetSlot = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: playFishCommand(commandId: "reef-specific-site", cardId: "purple-reef-fish", targetSlot: targetSlot),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? CommandValidationError,
+                .coralRequirementDiveSiteMismatch(expected: .purple, actual: .blue)
+            )
+        }
+    }
+
+    func testBaseGameFishWithoutCoralRequirementIsUnaffectedByMissingCoralReefs() throws {
+        let engine = GameEngine()
+        let state = playFishState()
+        let targetSlot = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+
+        let drafts = try engine.makeEventDrafts(
+            for: playFishCommand(commandId: "base-no-coral", cardId: "fish-6", targetSlot: targetSlot),
+            in: state
+        )
+
+        XCTAssertTrue(drafts.contains { draft in
+            if case .fishPlayed = draft {
+                return true
+            }
+            return false
+        })
+    }
+
     func testCoverShorterFishCostRejectsEmptySlot() {
         let targetSlot = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
         let engine = GameEngine(cardCatalog: coverShorterFishCatalog())
@@ -4140,6 +4275,13 @@ final class GameEngineTests: XCTestCase {
         return state
     }
 
+    private func reefFishState(coralReefs: [CoralReefState]) -> GameState {
+        var state = playFishState()
+        state.playerGameStates["player-1"]?.hand.append(contentsOf: ["reef-fish", "purple-reef-fish"])
+        state.playerGameStates["player-1"]?.ocean.coralReefs = coralReefs
+        return state
+    }
+
     private func coverShorterFishCatalog() -> TestCardCatalog {
         let sample = SampleCardCatalog()
         return TestCardCatalog(
@@ -4157,6 +4299,33 @@ final class GameEngineTests: XCTestCase {
                     name: "Same Length Fish",
                     printedPoints: 2,
                     lengthCm: 30
+                )
+            ]
+        )
+    }
+
+    private func reefFishCatalog() -> TestCardCatalog {
+        let sample = SampleCardCatalog()
+        return TestCardCatalog(
+            starterFishCards: sample.starterFishCards,
+            fishCards: sample.fishCards + [
+                Card(
+                    id: "reef-fish",
+                    name: "Reef Fish",
+                    requirements: [
+                        Requirement(coralRequirement: CoralRequirement(diveSite: .any, count: 2))
+                    ],
+                    printedPoints: 4,
+                    lengthCm: 20
+                ),
+                Card(
+                    id: "purple-reef-fish",
+                    name: "Purple Reef Fish",
+                    requirements: [
+                        Requirement(coralRequirement: CoralRequirement(diveSite: .purple, count: 1))
+                    ],
+                    printedPoints: 4,
+                    lengthCm: 20
                 )
             ]
         )
