@@ -69,33 +69,40 @@ the card aspect ratio source.
 
 The saved finsearch CSS explicitly sets `.card { aspect-ratio: 61/40; }`. That
 display ratio is `1.525`, which differs from the full-card background pixel
-ratio `4394 / 2976 = 1.476478494623656`. The current SwiftUI metrics use the
-asset-derived ratio; matching the webpage more closely will require deciding
-whether to switch visible card layout to the CSS ratio while still using the
-asset dimensions for background image references.
+ratio `4394 / 2976 = 1.476478494623656`. SwiftUI `CardRenderMetrics.cardAspectRatio`
+now uses the CSS ratio `61/40`; the asset-derived ratio remains available only
+as source background metadata.
 
 ## Minimal Runtime Card Face Model
 
-Until the exact finsearch rendering code is available, the app uses a conservative
-local approximation:
+The app now uses a conservative SwiftUI approximation of the finsearch DOM card
+structure:
 
-- one shared aspect ratio derived from the full card background assets
-- `CardRenderMetrics` stores the shared source dimensions, aspect ratio, and
-  fixed hand-card dimensions
-- `FishCardFaceView` renders the current minimal fish-card face
-- compact cost and point areas near the top
-- card name and scientific name near the top-left
-- fish image in the center-left, resolved from local asset files by source id
-- length, zones, and tags near the lower area
+- one shared visible aspect ratio from finsearch CSS: `61/40`
+- `CardRenderMetrics` stores source dimensions, source ratio, CSS card ratio,
+  and fixed hand-card dimensions
+- `FishCardFaceView` renders one complete card face used by hand, ocean slots,
+  and discard pile
+- local full-card background chosen from base / blue / purple / green
+- fish image in the central area, resolved from local asset files by source id
+- fish name and scientific name in the top name area
+- cost icons in the upper-left area
+- zone icons in the left-side vertical area
+- printed points, length, and tags near the lower area
 - ability trigger/text in a right-side panel
-- required dive-site color as a local color accent
+- basic ability token parsing for `[FishEgg]`, `[YoungFish]`, `[School]`,
+  `[Card]`, and `[Wave]`
 
 This is intentionally a display layer only. It does not implement or interpret
 real fish abilities.
 
-The floating hand, discard pile preview/detail, and ocean slots now use this
-same card aspect ratio and minimal face model. This keeps visible cards visually
-consistent while the app still lacks the full finsearch composition algorithm.
+The floating hand, discard pile preview/detail, and ocean slots all use this
+same complete card face and adapt by outer frame / scale only. This stage does
+not implement separate compact / normal / detail rendering modes.
+
+The top HUD was also compressed: the log button now sits next to the settings
+button in the upper-left controls, while weekly goal boxes remain in the upper
+right.
 
 The saved finsearch renderer confirms that the website does not use full
 pre-rendered card images. It composes cards as React DOM:
@@ -115,18 +122,17 @@ pre-rendered card images. It composes cards as React DOM:
 - Text wrapping, font family, icon placement, and masking are approximate.
 - Fish image anchoring/cropping is approximate.
 - Icon-to-rule semantic mapping is not complete.
+- The saved source maps and original font files are still unavailable.
 - A future import step should either preserve the original renderer metadata or
   generate a reviewed local layout schema.
 
 ## TODO
 
-- Add compact / normal / detail rendering modes.
-- Decide whether visible SwiftUI card layout should adopt the webpage CSS ratio
-  `61/40` instead of the current asset-derived ratio.
-- Replace the current approximate card face with a CSS-coordinate-inspired
-  SwiftUI layout using normalized `cqw` values from the reverse-engineering doc.
+- Add compact / normal / detail rendering modes later if the single complete
+  face becomes too dense for very small slots.
 - Improve icon positioning and icon-to-field mapping.
-- Add ability text tokenization for bracket icon tokens.
+- Expand ability text tokenization beyond the minimal supported token set.
 - Improve fish image crop, anchor, and mask handling.
 - Add real visual QA against reviewed source cards.
+- Revisit fonts if the original finsearch font files become available.
 - Keep the runtime fully offline by using only `Finspan/Resources/CardAssets/`.

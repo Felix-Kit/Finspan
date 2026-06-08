@@ -15,6 +15,8 @@ The project currently has a working base-game prototype with:
 * Local room flow using `LocalAuthoritativeRoomService`
 * Command / Event / Reducer architecture
 * Deterministic setup
+* Sample / baseGame data-source switching
+* BaseGameCardCatalog loading local JSON card data
 * 18-slot ocean layout
 * Bottom bonus strip separate from ocean slots
 * Play fish action
@@ -35,6 +37,11 @@ The project currently has a working base-game prototype with:
 * Drag-to-play interaction
 * Play fish covering shorter fish / forage fish
 * Consumed fish tracking
+* Read-only discard pile viewer
+* Local card assets under `Finspan/Resources/CardAssets/`
+* Minimal fish card face rendering through `FishCardFaceView`
+* Shared card rendering metrics through `CardRenderMetrics`
+* AbilityRegistry / AbilityResolver
 * Minimal sample fish ability framework:
 
   * WHEN PLAYED
@@ -211,12 +218,14 @@ Do not regress any of these existing behaviors unless explicitly asked.
 
 ## Data Layer Rules
 
-* Keep sample card data separate from future real base-game data.
+* Keep sample card data separate from real base-game data.
 * `SampleCardCatalog` should remain usable for local development.
-* Future real card data should be loaded through clear catalog / data-source structures.
-* Do not manually add all 125 base game cards in one unreviewable change.
-* Do not tie core functionality to scraping external sites at runtime.
-* If card images or metadata are later sourced from external assets, make the import process explicit and reproducible.
+* `BaseGameCardCatalog` should load reviewed local JSON data.
+* Default sample flow and baseGame flow must both remain usable.
+* Do not tie app runtime functionality to scraping external sites or loading finsearch remote URLs.
+* Finsearch may be used only as a development-time import source.
+* Card images and metadata sourced from finsearch or other external assets must be imported through an explicit, reproducible process.
+* Runtime card assets must be offline local files under `Finspan/Resources/CardAssets/`.
 
 ## DLC / Expansion Rules
 
@@ -250,13 +259,13 @@ Do not regress any of these existing behaviors unless explicitly asked.
 
 Next recommended task:
 
-Implement `AbilityRegistry` / `AbilityResolver` and migrate the current Fish A / Fish B / Fish C sample abilities into the registry.
+Connect `recoverFromDiscardOrDraw` pending choices to the discard pile selection mode.
 
 Constraints for the next task:
 
-* Do not add real 125-card data yet.
 * Do not change current behavior.
 * Do not modify UI unless necessary for compile fixes.
 * Do not modify random logic.
+* Keep sample flow and baseGame flow working.
 * Do not modify final scoring.
 * Do not implement Sharks & Reefs or Nautoma.

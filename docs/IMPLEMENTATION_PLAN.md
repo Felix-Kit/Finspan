@@ -1,127 +1,151 @@
-# Finspan Base Game Minimum Playable Implementation Plan
+# Finspan UI and Real Data Enhancement Plan
 
-## Architecture Check
+当前项目已经完成本地权威基础循环，进入 UI 与真实数据增强阶段。后续工作应继续保持规则引擎、房间服务和 SwiftUI 展示层分离。
 
-The project is mostly ready to enter base game rule implementation. The important source-of-truth flow already exists:
+## 架构原则
 
-- UI sends `PlayerCommand`.
-- `LocalAuthoritativeRoomService` acts as the local authoritative service.
-- `GameEngine` validates commands and produces event drafts.
-- `AuthoritativeEventFactory` assigns sequence, timestamp, room id, and random seed.
-- `GameState` advances through `GameEvent`.
-- UI reads from `RoomService` and does not directly mutate `GameRoom` or `GameState`.
+- UI 只能表达玩家意图并发送 `PlayerCommand`。
+- `LocalAuthoritativeRoomService` 仍是当前本地权威服务，用来模拟未来服务器权威房间。
+- 权威流程保持为：UI → `PlayerCommand` → RoomService → `GameEngine` → `GameEvent` → `GameState`。
+- UI 不直接修改 `GameState`。
+- `GameEngine` 负责合法性校验并产出事件草稿。
+- `GameState` 只能通过应用 `GameEvent` 前进。
+- deterministic setup / `randomSeed` 不能破坏。
+- 随机性仍由 room service 控制，不能在 `GameEngine`、reducer 或 SwiftUI 中引入未受控随机。
+- rule logic 不写进 SwiftUI；SwiftUI 只做状态展示、临时选择和命令构造。
+- `sample` flow 和 `baseGame` flow 都要保留。
 
-Current risks before implementing base game rules:
+## 已完成阶段
 
-- Domain card data was too thin. Fish cards need costs, requirements, and abilities before `playFish` can be implemented without hard-coding rules.
-- Resource modeling must not assume a fixed base-game-only list. Use `ResourceKind` so future expansions can add resources.
-- Rules are currently centered on one `GameRuleSet`; keep it small and delegate expansion behavior through `Ruleset` / `RuleModule` as rules grow.
-- UI currently contains direct user-visible strings. Before polishing, move user-facing Simplified Chinese copy into a centralized place.
-- `GameState` still lacks many base game facts needed for a playable loop, such as player boards, hands, deck/discard zones, resources, divers, weeks, and scoring facts.
-- Event payloads are intentionally minimal. Add event payload fields only for synchronized game facts, not UI state.
+### 1. 基础架构
 
-These risks do not block starting the base game minimum playable version, as long as the next rules work is data-driven and event-sourced.
+- Local room flow 已使用 `LocalAuthoritativeRoomService`。
+- Command / Event / Reducer 架构已落地。
+- `GameConfig.enabledExpansions` 保留。
+- 规则、房间服务、SwiftUI 基本边界已建立。
 
-## Data Catalog Boundaries
+### 2. Deterministic Setup
 
-The current playable loop intentionally uses development sample data:
+- 本地权威 setup 已可通过 seed 和 catalog 构造。
+- `randomSeed` 与事件序列仍由 room service 控制。
+- sample 数据和 base game 数据已经通过 catalog mode 分离。
 
-- `SampleCardCatalog` contains the current sample starter and fish cards. It is not the complete Finspan base game card list.
-- Complete authoritative base game cards should be introduced through `BaseGameCardCatalog` and a `CardDataSource`, such as reviewed JSON or a Swift fixture.
-- `SampleOceanLayout` contains the current sample 18-slot ocean setup. Verified base game ocean mat positions should be introduced separately through `BaseGameOceanLayout`.
-- `DiveSiteBonusLayout.baseGame` is the authoritative printed dive site bonus layout for the base game, not sample data.
+### 3. Minimal `playFish`
 
-Card data and board layout data must remain separate from UI copy and SwiftUI presentation. Future DLC overlays and rule changes should be added through `Ruleset` / `RuleModule` extensions rather than written into base game data.
+- `PlayerCommand.playFish` 已接入。
+- 出牌目标、支付和覆盖更短鱼等核心校验在规则层处理。
+- 已支持弃牌支付、资源支付、`coverShorterFish` cost。
+- 覆盖鱼会保留为 `consumedFish`，并与可见鱼规则区分。
 
-## 1. Basic Domain Model
+### 4. Minimal `dive`
 
-Goal: add only the facts needed by the base game minimum loop.
+- `PlayerCommand.dive` 已接入。
+- printed dive site bonuses 已按步骤解析。
+- `DiveResolutionQueue` 已负责顺序解析，不会一次性生成所有选择。
 
-- Define fish card data using `Card`, `Cost`, `Requirement`, and `AbilityDefinition`.
-- Define player board state, hand, deck, discard, played fish, resources, and diver positions.
-- Keep every model `Codable`, `Equatable`, and `Sendable` where practical.
-- Keep `GameConfig.enabledExpansions` intact, even while only `baseGame` is active.
-- Avoid adding Sharks & Reefs behavior. Only ensure the model can represent future extensions.
+### 5. Pending Choice 和奖励解析
 
-## 2. Deterministic Setup
+- pending choice 架构已落地。
+- 已支持 `placeEgg` / `hatchEgg` / `moveYoungOrSchool`。
+- 已支持 school 自动形成。
+- reward pool UI 已用于当前奖励可选项和目标选择。
 
-Goal: local authoritative setup produces replayable game facts.
+### 6. Week Flow 和 Final Scoring
 
-- `LocalAuthoritativeRoomService` controls `randomSeed`.
-- Add deterministic deck creation and shuffle from seed.
-- Emit setup-related `GameEvent` values for shuffled deck, initial hands, starting player, and initial board facts.
-- Ensure rebuilding `GameState` from event log recreates the same setup.
+- End of Week / Week Flow 已接入。
+- Side A 周目标最小计分已接入。
+- Final scoring 已接入。
+- 最终结算 UI 已接入。
 
-## 3. Minimal `playFish`
+### 7. Catalog Mode 和 Base Game JSON Catalog
 
-Goal: one active player can play a valid fish card through Command/Event.
+- `GameDataMode` / catalog mode 已接入 lobby 和 room service。
+- `SampleCardCatalog` 保留用于 sample flow。
+- `BaseGameCardCatalog` 已从本地 JSON 加载 base game card data。
+- base main fish 125 张和 base starter fish 10 张已导入本地资源。
 
-- UI sends `PlayerCommand.playFish`.
-- `GameEngine` validates active player, card ownership, `Cost`, and `Requirement`.
-- Engine emits event drafts such as fish played and resources spent.
-- `GameState` updates only by applying resulting `GameEvent` values.
-- Do not implement full fish abilities yet. Ability data can exist but most effects can be unsupported until needed.
+### 8. Card Assets Import 和最小牌面渲染
 
-## 4. Minimal `dive`
+- finsearch 素材已作为开发期导入来源，不作为运行时远程依赖。
+- 本地 `CardAssets` 已包含 fish image、icon、background / band 素材。
+- `CardRenderMetrics` 已用本地背景素材尺寸推导统一卡牌比例。
+- `FishCardFaceView` 已提供最小近似牌面。
+- 手牌、弃牌堆和 ocean slot 已使用同一鱼牌牌面组件 / 比例。
 
-Goal: one active player can perform a basic dive action.
+### 9. Major GameBoard HUD Polish
 
-- UI sends `PlayerCommand.dive`.
-- Validate active player and legal destination using current board facts.
-- Emit event facts for diver movement and any minimal resource/card gain needed for the first loop.
-- Do not implement advanced ability interactions.
+- 顶部 HUD、玩家头像、当前行动摘要、周目标四格、周目标详情面板已接入。
+- 右侧行动确认区已接入。
+- 日志已改为折叠 / sheet 查看。
+- 已支持强制结束当前对局返回主页。
+- 已支持弃牌堆只读查看。
 
-## 5. End Of Week
+### 10. Ability Registry
 
-Goal: preserve the existing six-turn week cadence and add minimal week cleanup.
+- `AbilityRegistry` / `AbilityResolver` 已落地。
+- Fish A / Fish B / Fish C sample ability 已迁移到 registry / resolver。
+- 真实 base game 全量能力尚未映射。
 
-- Continue emitting `turnEnded`.
-- Every six turns emit `weekEnded`.
-- Add base cleanup/reset facts as events.
-- Keep scoring and achievements separate from cleanup logic.
+## 下一阶段计划
 
-## 6. End Of Game Scoring
+### 1. 接入弃牌堆选择模式
 
-Goal: produce deterministic final score facts.
+目标：让 `recoverFromDiscardOrDraw` 可以使用弃牌堆面板完成选择。
 
-- Add `ScoreCategory` and `ScoreBreakdown` use in scoring output.
-- Emit final scoring events and `gameEnded`.
-- Keep score categories data-driven so expansions can add categories later.
-- Do not hard-code DLC score categories in base game.
+- 当前弃牌堆详情主要是只读查看。
+- 下一步应让 pending choice 进入弃牌堆选择模式。
+- 选择弃牌后仍必须发送对应 `PlayerCommand`，由 `GameEngine` 校验并产出 `GameEvent`。
+- 弃牌堆为空时保留从牌堆抽牌的 fallback。
 
-## 7. UI Integration
+### 2. 优化 `FishCardFaceView` 展示密度
 
-Goal: expose the minimum playable loop without putting rules in SwiftUI.
+目标：建立 compact / normal / detail 三种展示密度。
 
-- Keep SwiftUI views as command senders and state renderers.
-- Move user-facing copy to centralized Simplified Chinese strings before UI grows.
-- Add simple hand, board, player resources, current action, and scoring displays.
-- Keep UI animation, sheets, and coordinates local-only; never synchronize them as game facts.
+- compact：用于 ocean slot、小型预览和堆叠手牌。
+- normal：用于当前手牌、弃牌堆列表和常规面板。
+- detail：用于将来的卡牌详情、能力阅读和视觉 QA。
+- 三种模式共享 `CardRenderMetrics` 和本地素材路径，不引入远程运行时依赖。
 
-## 8. Later Sharks & Reefs DLC
+### 3. 真实能力映射优先级规划
 
-Out of scope for the current phase.
+目标：逐步接入真实鱼牌能力，而不是一次性写入所有能力。
 
-Future support should come through:
+- 先按已有能力效果类型归类，复用 `AbilityRegistry` / `AbilityResolver`。
+- 优先映射可复用、低风险、已经有 pending choice 支撑的能力。
+- 未支持能力继续显示“能力暂未接入”类型的可跳过状态。
+- 不在 SwiftUI 中按 card id 写规则逻辑。
 
-- `Expansion.sharksAndReefs`
-- `GameConfig.enabledExpansions`
-- `SharksAndReefsRuleModule`
-- Additional `ResourceKind` values
-- Additional `Requirement`, `Cost`, `AbilityDefinition`, `AchievementDefinition`, and `ScoreCategory` data
-- Board overlay facts represented as game facts, not UI-only state
+### 4. 多玩家 Board 查看
 
-## 9. Later Nautoma
+目标：点击对手头像查看对手 board。
 
-Out of scope for the current phase.
+- ViewModel 可计算查看对象和只读 board view state。
+- 规则层不因查看对手 board 产生事件。
+- 当前玩家行动和支付选择仍以 active player / local player 规则为准。
 
-Future support should come through:
+### 5. S&R 扩展预留
 
-- `Expansion.nautoma`
-- `NautomaRuleModule`
-- Command generation for automated behavior
-- Rule-module hooks that can alter setup, turn order, scoring, and action selection without changing SwiftUI rules
+目标：保持 base game 稳定，同时为 Sharks & Reefs 后续模块留接口。
 
-## Recommended Next Step
+- 不把 S&R 规则混进 base game。
+- 后续通过 `SharksAndReefsRuleModule`、扩展 `ResourceKind`、`Requirement`、`Cost`、`AbilityDefinition`、`ScoreCategory` 等接入。
+- S&R 数据和素材导入应独立、可复现。
 
-Implement the base game setup domain next: deck model, deterministic shuffle, initial hand events, and reducer coverage. Do not implement fish abilities until `playFish` can validate a plain card through `Cost` and `Requirement`.
+### 6. Nautoma 后置
+
+目标：Nautoma 不作为普通玩家 board 的简单复制。
+
+- 后续通过 `NautomaRuleModule` 接入自动行为和简化 solo 规则。
+- 在 base game loop 稳定、真实能力映射更完整后再启动。
+
+### 7. 联机 / 服务器后置
+
+目标：未来把本地权威服务替换为服务器权威房间。
+
+- 当前保持 `LocalAuthoritativeRoomService` 的事件源模型。
+- 后续再实现房间列表、reconnect、恢复事件日志、服务器同步和冲突处理。
+- Host 仍只是管理权限，不是权威规则源。
+
+## 当前建议下一步
+
+优先实现 `recoverFromDiscardOrDraw` 与弃牌堆选择模式联动。完成后再推进 `FishCardFaceView` 的 compact / normal / detail 展示密度，然后逐步规划真实鱼牌能力映射。
