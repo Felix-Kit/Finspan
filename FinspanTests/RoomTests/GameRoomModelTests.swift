@@ -116,4 +116,17 @@ final class GameRoomModelTests: XCTestCase {
         XCTAssertTrue(config.enabledExpansions.isEmpty)
         XCTAssertEqual(config.gameDataMode, .baseGame)
     }
+
+    func testOceanStateDecodesMissingCoralReefsAsEmpty() throws {
+        let data = """
+        {
+          "resources": [],
+          "slots": []
+        }
+        """.data(using: .utf8)!
+
+        let ocean = try JSONDecoder().decode(OceanState.self, from: data)
+
+        XCTAssertTrue(ocean.coralReefs.isEmpty)
+    }
 }

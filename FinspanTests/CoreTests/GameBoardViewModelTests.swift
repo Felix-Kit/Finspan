@@ -722,6 +722,31 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(cardFace?.localFishImagePrefix, "57")
     }
 
+    func testGameBoardViewModelHidesCoralReefsWhenNotInitialized() {
+        let service = makeService(hand: ["starter-fish-1"])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertTrue(viewModel.oceanColumns.allSatisfy { $0.coralReef == nil })
+    }
+
+    func testGameBoardViewModelShowsSharksAndReefsCoralReefs() {
+        let service = makeService(
+            hand: ["starter-fish-1"],
+            enabledExpansions: [.sharksAndReefs],
+            coralReefs: CoralReefState.sharksAndReefsInitial
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        let reefs = viewModel.oceanColumns.compactMap(\.coralReef)
+
+        XCTAssertEqual(reefs.count, 3)
+        XCTAssertEqual(reefs.map(\.diveSite), [.blue, .purple, .green])
+        XCTAssertEqual(reefs.map(\.coralCount), [0, 0, 0])
+        XCTAssertEqual(reefs.map(\.maxCoral), [6, 6, 6])
+        XCTAssertEqual(reefs.map(\.completionBonus), [6, 8, 5])
+        XCTAssertEqual(reefs.map(\.progressText), ["0/6", "0/6", "0/6"])
+        XCTAssertEqual(reefs.map(\.completionBonusText), ["+6", "+8", "+5"])
+    }
+
     func testOceanSlotCardFaceShowsFishCardAndUsesSharedAspectRatio() {
         let service = makeService(hand: ["starter-fish-1"])
         setContent(.fishCard("starter-fish-1"), at: Self.slotAddress, in: service)
@@ -3106,9 +3131,12 @@ final class GameBoardViewModelTests: XCTestCase {
         weeklyAchievementResults: [WeeklyAchievementResult] = [],
         finalScoreResult: FinalScoreResult? = nil,
         additionalPlayers: [RoomPlayer] = [],
+        enabledExpansions: [Expansion] = [],
+        coralReefs: [CoralReefState] = [],
         eventLog: [GameEvent] = []
     ) -> CapturingRoomService {
         var ocean = OceanState.baseGameInitial(for: "player-1")
+        ocean.coralReefs = coralReefs
         if clearAllSlotResources {
             for slotIndex in ocean.slots.indices {
                 ocean.slots[slotIndex].resources = []
@@ -3140,7 +3168,11 @@ final class GameBoardViewModelTests: XCTestCase {
                 roomCode: "LOCAL",
                 hostPlayerId: "player-1",
                 players: roomPlayers,
-                gameConfig: GameConfig(playerCount: 1, randomSeed: 1),
+                gameConfig: GameConfig(
+                    playerCount: 1,
+                    enabledExpansions: enabledExpansions,
+                    randomSeed: 1
+                ),
                 createdAt: Date(timeIntervalSince1970: 1_000),
                 updatedAt: Date(timeIntervalSince1970: 1_000)
             ),

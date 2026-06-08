@@ -42,6 +42,14 @@ enum AppStrings {
         }
     }
 
+    static func coralReefProgressText(coralCount: Int, maxCoral: Int) -> String {
+        "\(coralCount)/\(maxCoral)"
+    }
+
+    static func coralReefCompletionBonusText(completionBonus: Int) -> String {
+        "+\(completionBonus)"
+    }
+
     enum GameBoard {
         static let title = "游戏面板"
         static let turn = "回合"
@@ -78,6 +86,7 @@ enum AppStrings {
         static let noError = "暂无错误"
         static let hand = "当前玩家手牌"
         static let ocean = "玩家海域"
+        static let coralReef = "珊瑚礁"
         static let actionPanel = "出牌操作"
         static let divePanel = "潜水操作"
         static let chooseDiveSite = "选择潜水点"

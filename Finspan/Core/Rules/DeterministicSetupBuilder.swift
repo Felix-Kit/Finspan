@@ -2,9 +2,14 @@ import Foundation
 
 struct DeterministicSetupBuilder {
     private let catalog: any CardCatalog
+    private let enabledExpansions: [Expansion]
 
-    init(catalog: any CardCatalog = SampleCardCatalog()) {
+    init(
+        catalog: any CardCatalog = SampleCardCatalog(),
+        enabledExpansions: [Expansion] = []
+    ) {
         self.catalog = catalog
+        self.enabledExpansions = enabledExpansions
     }
 
     func makeSetup(players: [RoomPlayer], randomSeed: Int) throws -> GameSetup {
@@ -48,7 +53,7 @@ struct DeterministicSetupBuilder {
                     hand: starterHand + fishHand,
                     availableDivers: 6,
                     usedDivers: 0,
-                    ocean: .baseGameInitial(for: player.playerId)
+                    ocean: initialOcean(for: player.playerId)
                 )
             )
         }
@@ -63,5 +68,12 @@ struct DeterministicSetupBuilder {
                 discardPile: []
             )
         )
+    }
+
+    private func initialOcean(for playerId: PlayerID) -> OceanState {
+        guard enabledExpansions.contains(.sharksAndReefs) else {
+            return .baseGameInitial(for: playerId)
+        }
+        return .sharksAndReefsInitial(for: playerId)
     }
 }

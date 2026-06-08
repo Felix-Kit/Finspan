@@ -513,8 +513,23 @@ struct OceanDiveSiteColumnViewData: Identifiable, Equatable {
 
     let diveSite: DiveSite
     let title: String
+    let coralReef: CoralReefViewState?
     let slots: [OceanSlotViewData]
     let zoneSections: [OceanZoneSectionViewData]
+}
+
+struct CoralReefViewState: Identifiable, Equatable {
+    var id: String { diveSite.rawValue }
+
+    let diveSite: DiveSite
+    let iconAssetName: String
+    let coralCount: Int
+    let maxCoral: Int
+    let completionBonus: Int
+    let isEnabled: Bool
+    let title: String
+    let progressText: String
+    let completionBonusText: String
 }
 
 struct OceanZoneSectionViewData: Identifiable, Equatable {
@@ -1614,6 +1629,7 @@ final class GameBoardViewModel: ObservableObject {
             return OceanDiveSiteColumnViewData(
                 diveSite: diveSite,
                 title: AppStrings.oceanDiveSiteName(diveSite),
+                coralReef: coralReefViewState(for: diveSite),
                 slots: columnSlots,
                 zoneSections: OceanZone.allCases.map { zone in
                     OceanZoneSectionViewData(
@@ -3896,6 +3912,39 @@ final class GameBoardViewModel: ObservableObject {
             isHighlightedByRewardSelection: rewardHighlightText != nil,
             rewardSelectionReasonText: rewardHighlightText
         )
+    }
+
+    private func coralReefViewState(for diveSite: DiveSite) -> CoralReefViewState? {
+        guard let reef = activePlayerState?.ocean.coralReefs.first(where: { $0.diveSite == diveSite }) else {
+            return nil
+        }
+        return CoralReefViewState(
+            diveSite: reef.diveSite,
+            iconAssetName: coralReefIconAssetName(for: reef.diveSite),
+            coralCount: reef.coralCount,
+            maxCoral: reef.maxCoral,
+            completionBonus: reef.completionBonus,
+            isEnabled: true,
+            title: AppStrings.GameBoard.coralReef,
+            progressText: AppStrings.coralReefProgressText(
+                coralCount: reef.coralCount,
+                maxCoral: reef.maxCoral
+            ),
+            completionBonusText: AppStrings.coralReefCompletionBonusText(
+                completionBonus: reef.completionBonus
+            )
+        )
+    }
+
+    private func coralReefIconAssetName(for diveSite: DiveSite) -> String {
+        switch diveSite {
+        case .blue:
+            return "BlueCoral"
+        case .purple:
+            return "PurpleCoral"
+        case .green:
+            return "GreenCoral"
+        }
     }
 
     private func rewardSelectionHighlightText(for slot: OceanSlot) -> String? {

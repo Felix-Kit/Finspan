@@ -42,7 +42,10 @@ final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring 
         )
         self.engine = engine ?? GameEngine(cardCatalog: catalog)
         self.reducer = reducer
-        self.setupBuilder = setupBuilder ?? DeterministicSetupBuilder(catalog: catalog)
+        self.setupBuilder = setupBuilder ?? DeterministicSetupBuilder(
+            catalog: catalog,
+            enabledExpansions: []
+        )
         self.cardCatalogFactory = cardCatalogFactory
         self.cardCatalog = catalog
         self.gameDataMode = gameDataMode
@@ -121,7 +124,13 @@ final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring 
         )
         cardCatalog = catalog
         engine = GameEngine(cardCatalog: catalog)
-        setupBuilder = DeterministicSetupBuilder(catalog: catalog)
+        setupBuilder = DeterministicSetupBuilder(
+            catalog: catalog,
+            enabledExpansions: setupEnabledExpansions(
+                for: gameDataMode,
+                enabledExpansions: enabledExpansions
+            )
+        )
     }
 
     private func configureGameDataMode(_ mode: GameDataMode) throws {
@@ -132,7 +141,13 @@ final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring 
         gameDataMode = mode
         cardCatalog = catalog
         engine = GameEngine(cardCatalog: catalog)
-        setupBuilder = DeterministicSetupBuilder(catalog: catalog)
+        setupBuilder = DeterministicSetupBuilder(
+            catalog: catalog,
+            enabledExpansions: setupEnabledExpansions(
+                for: mode,
+                enabledExpansions: enabledExpansions
+            )
+        )
     }
 
     private func configureGameConfig(_ config: GameConfig) throws {
@@ -144,7 +159,23 @@ final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring 
         enabledExpansions = config.enabledExpansions
         cardCatalog = catalog
         engine = GameEngine(cardCatalog: catalog)
-        setupBuilder = DeterministicSetupBuilder(catalog: catalog)
+        setupBuilder = DeterministicSetupBuilder(
+            catalog: catalog,
+            enabledExpansions: setupEnabledExpansions(
+                for: config.gameDataMode,
+                enabledExpansions: config.enabledExpansions
+            )
+        )
+    }
+
+    private func setupEnabledExpansions(
+        for mode: GameDataMode,
+        enabledExpansions: [Expansion]
+    ) -> [Expansion] {
+        guard mode == .baseGame else {
+            return []
+        }
+        return enabledExpansions
     }
 
     private static func makeCatalogOrSample(

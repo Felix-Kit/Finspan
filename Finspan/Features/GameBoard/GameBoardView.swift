@@ -600,6 +600,10 @@ struct GameBoardView: View {
                                     .font(.headline)
                                     .frame(maxWidth: .infinity, alignment: .leading)
 
+                                if let coralReef = column.coralReef {
+                                    coralReefBadge(coralReef)
+                                }
+
                                 ForEach(column.zoneSections) { section in
                                     zoneSectionPanel(section)
                                 }
@@ -1437,6 +1441,54 @@ struct GameBoardView: View {
         )
     }
 
+    private func coralReefBadge(_ reef: CoralReefViewState) -> some View {
+        HStack(spacing: 8) {
+            coralReefIcon(reef)
+                .frame(width: 16, height: 16)
+
+            Text(reef.progressText)
+                .font(.caption.weight(.black))
+                .lineLimit(1)
+
+            Spacer(minLength: 4)
+
+            Text(reef.completionBonusText)
+                .font(.caption.weight(.black))
+                .foregroundStyle(coralReefColor(reef.diveSite))
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(coralReefColor(reef.diveSite).opacity(0.12))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(coralReefColor(reef.diveSite).opacity(0.32), lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(reef.title) \(reef.progressText) \(reef.completionBonusText)")
+    }
+
+    private func coralReefIcon(_ reef: CoralReefViewState) -> some View {
+        Group {
+            if let resourceName = localIconResourceName(prefix: reef.iconAssetName) {
+                Image(resourceName, bundle: .main)
+                    .resizable()
+                    .scaledToFit()
+            } else {
+                Circle()
+                    .fill(coralReefColor(reef.diveSite).opacity(0.86))
+                    .overlay(
+                        Circle()
+                            .stroke(.white.opacity(0.75), lineWidth: 1)
+                    )
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
     private func slotBackgroundColor(_ slot: OceanSlotViewData) -> Color {
         if slot.isHighlightedByDiveQueue {
             return Color.orange.opacity(0.14)
@@ -1540,6 +1592,35 @@ struct GameBoardView: View {
         case .midnight:
             return .indigo
         }
+    }
+
+    private func coralReefColor(_ diveSite: DiveSite) -> Color {
+        switch diveSite {
+        case .blue:
+            return .cyan
+        case .purple:
+            return .purple
+        case .green:
+            return .green
+        }
+    }
+
+    private func localIconResourceName(prefix: String) -> String? {
+        for directory in ["Resources/CardAssets/icons", "CardAssets/icons"] {
+            for fileExtension in ["svg", "png", "webp"] {
+                let urls = Bundle.main.urls(
+                    forResourcesWithExtension: fileExtension,
+                    subdirectory: directory
+                ) ?? []
+                if let url = urls.first(where: { url in
+                    let baseName = url.deletingPathExtension().lastPathComponent
+                    return baseName == prefix || baseName.hasPrefix("\(prefix).")
+                }) {
+                    return url.lastPathComponent
+                }
+            }
+        }
+        return nil
     }
 
     private func resourceTokenBackgroundColor(_ token: SlotResourceTokenViewState) -> Color {

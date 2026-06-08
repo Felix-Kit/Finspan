@@ -175,12 +175,57 @@ struct OceanSlot: Codable, Equatable, Sendable {
     }
 }
 
+struct CoralReefState: Codable, Equatable, Sendable {
+    var diveSite: DiveSite
+    var coralCount: Int
+    var maxCoral: Int
+    var completionBonus: Int
+
+    static let maxCoral = 6
+
+    static let sharksAndReefsInitial: [CoralReefState] = [
+        CoralReefState(diveSite: .blue, coralCount: 0, maxCoral: maxCoral, completionBonus: 6),
+        CoralReefState(diveSite: .purple, coralCount: 0, maxCoral: maxCoral, completionBonus: 8),
+        CoralReefState(diveSite: .green, coralCount: 0, maxCoral: maxCoral, completionBonus: 5)
+    ]
+}
+
 struct OceanState: Codable, Equatable, Sendable {
     var resources: [ResourceQuantity]
     var slots: [OceanSlot]
+    var coralReefs: [CoralReefState]
+
+    init(
+        resources: [ResourceQuantity],
+        slots: [OceanSlot],
+        coralReefs: [CoralReefState] = []
+    ) {
+        self.resources = resources
+        self.slots = slots
+        self.coralReefs = coralReefs
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case resources
+        case slots
+        case coralReefs
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        resources = try container.decodeIfPresent([ResourceQuantity].self, forKey: .resources) ?? []
+        slots = try container.decodeIfPresent([OceanSlot].self, forKey: .slots) ?? []
+        coralReefs = try container.decodeIfPresent([CoralReefState].self, forKey: .coralReefs) ?? []
+    }
 
     static func baseGameInitial(for playerId: PlayerID) -> OceanState {
         SampleOceanLayout.baseGameInitial(for: playerId)
+    }
+
+    static func sharksAndReefsInitial(for playerId: PlayerID) -> OceanState {
+        var ocean = baseGameInitial(for: playerId)
+        ocean.coralReefs = CoralReefState.sharksAndReefsInitial
+        return ocean
     }
 }
 

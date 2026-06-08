@@ -167,6 +167,14 @@ final class DeterministicSetupTests: XCTestCase {
         XCTAssertTrue(service.gameState.deckState.fishDrawPile.allSatisfy { $0.hasPrefix("base.main.") })
     }
 
+    func testBaseGameModeWithoutSharksAndReefsDoesNotInitializeCoralReefs() throws {
+        let service = try makeStartedService(seed: 123, gameDataMode: .baseGame)
+
+        for playerState in service.gameState.playerGameStates.values {
+            XCTAssertTrue(playerState.ocean.coralReefs.isEmpty)
+        }
+    }
+
     func testBaseGameModeSetupIsDeterministicForSameSeed() throws {
         let first = try makeStartedService(seed: 456, gameDataMode: .baseGame)
         let second = try makeStartedService(seed: 456, gameDataMode: .baseGame)
@@ -192,6 +200,23 @@ final class DeterministicSetupTests: XCTestCase {
         XCTAssertEqual(service.gameState.deckState.fishDrawPile.count, 191)
         XCTAssertEqual(allSetupCards.count, 215)
         XCTAssertTrue(allSetupCards.contains { $0.hasPrefix("sr.") })
+    }
+
+    func testBaseGameModeWithSharksAndReefsInitializesCoralReefs() throws {
+        let service = try makeStartedService(
+            seed: 123,
+            gameDataMode: .baseGame,
+            enabledExpansions: [.sharksAndReefs]
+        )
+
+        for playerState in service.gameState.playerGameStates.values {
+            let reefs = playerState.ocean.coralReefs
+            XCTAssertEqual(reefs.count, 3)
+            XCTAssertEqual(reefs.map(\.diveSite), [.blue, .purple, .green])
+            XCTAssertEqual(reefs.map(\.coralCount), [0, 0, 0])
+            XCTAssertEqual(reefs.map(\.maxCoral), [6, 6, 6])
+            XCTAssertEqual(reefs.map(\.completionBonus), [6, 8, 5])
+        }
     }
 
     func testBaseGameModeWithSharksAndReefsSetupIsDeterministicForSameSeed() throws {
@@ -224,6 +249,7 @@ final class DeterministicSetupTests: XCTestCase {
         XCTAssertEqual(service.gameState.deckState.fishDrawPile.count, 23)
         XCTAssertTrue(service.gameState.deckState.starterFishDrawPile.allSatisfy { $0.hasPrefix("starter-fish-") })
         XCTAssertTrue(service.gameState.deckState.fishDrawPile.allSatisfy { $0.hasPrefix("fish-") })
+        XCTAssertTrue(service.gameState.playerGameStates.values.allSatisfy { $0.ocean.coralReefs.isEmpty })
     }
 
     func testBaseGameModeSetupDoesNotIncludeSharksAndReefsCards() throws {
