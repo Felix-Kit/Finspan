@@ -2316,6 +2316,262 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(nextChoice.choiceId, queue.currentStep?.pendingChoice.choiceId)
     }
 
+    func testGainCoralAbilityResolvesFromBuiltInRegistry() {
+        let card = Card(
+            id: "fixture-blue-coral",
+            name: "Blue Coral Fixture",
+            abilityIds: [SharksAndReefsAbilityIDs.blueCoralIfActivated]
+        )
+
+        let abilities = AbilityResolver().abilityDefinitions(for: card)
+
+        XCTAssertEqual(abilities.map(\.abilityId), [SharksAndReefsAbilityIDs.blueCoralIfActivated])
+        XCTAssertEqual(abilities.first?.effects, [.gainCoral(selector: .blue, count: 1)])
+    }
+
+    func testWhenPlayedGainCoralAbilityCreatesCompoundPendingChoice() throws {
+        let engine = GameEngine(cardCatalog: sharksAndReefsAbilityCatalog())
+        var state = playFishState()
+        state.playerGameStates["player-1"]?.hand.append("sr.main.194")
+        state.playerGameStates["player-1"]?.ocean.coralReefs = CoralReefState.sharksAndReefsInitial
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+
+        let drafts = try engine.makeEventDrafts(
+            for: playFishCommand(commandId: "play-blue-purple-coral", cardId: "sr.main.194", targetSlot: target),
+            in: state
+        )
+
+        guard case let .pendingChoiceCreated(choice) = drafts.last else {
+            return XCTFail("Expected a when-played compound pending choice.")
+        }
+        XCTAssertEqual(choice.kind, .compoundAbility)
+        XCTAssertEqual(choice.expectedInput, .abilityEffectSelection)
+        XCTAssertEqual(choice.abilityDefinition?.abilityId, SharksAndReefsAbilityIDs.bluePurpleCoralWhenPlayed)
+        XCTAssertEqual(
+            choice.compoundAbilityProgress?.remainingEffects,
+            [
+                .gainCoral(selector: .blue, count: 1),
+                .gainCoral(selector: .purple, count: 1)
+            ]
+        )
+    }
+
+    func testWhenPlayedGainCoralCompoundChoiceCreatesFreeCoralTargetChoice() throws {
+        let engine = GameEngine(cardCatalog: sharksAndReefsAbilityCatalog())
+        var state = playFishState()
+        state.playerGameStates["player-1"]?.hand.append("sr.main.194")
+        state.playerGameStates["player-1"]?.ocean.coralReefs = CoralReefState.sharksAndReefsInitial
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: playFishCommand(commandId: "play-compound-coral", cardId: "sr.main.194", targetSlot: target),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        let compoundChoice = try XCTUnwrap(state.pendingChoices.values.first)
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(
+                commandId: "choose-blue-coral",
+                choiceId: compoundChoice.choiceId,
+                resolution: .chooseAbilityEffect(.gainCoral(selector: .blue, count: 1))
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceCreated(targetChoice) = drafts.last else {
+            return XCTFail("Expected a target gain coral pending choice.")
+        }
+        XCTAssertEqual(targetChoice.kind, .gainCoral)
+        XCTAssertEqual(targetChoice.expectedInput, .coralPlacement)
+        XCTAssertEqual(targetChoice.selectedAbilityEffect, .gainCoral(selector: .blue, count: 1))
+    }
+
+    func testSpecificGainCoralAbilityResolveIncrementsCoralWithoutPayment() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        state.playerGameStates["player-1"]?.ocean.coralReefs = CoralReefState.sharksAndReefsInitial
+        let choice = gainCoralAbilityPendingChoice(selector: .blue, cardId: "sr.main.171")
+        state.pendingChoices[choice.choiceId] = choice
+        let startingHand = state.playerGameStates["player-1"]?.hand
+        let startingDiscard = state.playerGameStates["player-1"]?.discardPile
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(
+                commandId: "resolve-blue-coral-ability",
+                choiceId: choice.choiceId,
+                resolution: .gainCoralFromAbility(diveSite: .blue)
+            ),
+            in: state
+        )
+        state = applying(drafts, to: state, using: engine)
+
+        XCTAssertEqual(coralCount(.blue, in: state), 1)
+        XCTAssertEqual(state.playerGameStates["player-1"]?.hand, startingHand)
+        XCTAssertEqual(state.playerGameStates["player-1"]?.discardPile, startingDiscard)
+        XCTAssertTrue(drafts.contains { draft in
+            guard case let .pendingChoiceResolved(event) = draft else { return false }
+            return event.appliedEffects == [
+                .gainCoralFromAbility(playerId: "player-1", diveSite: .blue, sourceCardId: "sr.main.171")
+            ]
+        })
+    }
+
+    func testAnyGainCoralAbilityCanChooseAnyNotFullDiveSite() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        state.playerGameStates["player-1"]?.ocean.coralReefs = CoralReefState.sharksAndReefsInitial
+        let choice = gainCoralAbilityPendingChoice(selector: .any, cardId: "sr.main.210")
+        state.pendingChoices[choice.choiceId] = choice
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(
+                commandId: "resolve-any-coral-ability",
+                choiceId: choice.choiceId,
+                resolution: .gainCoralFromAbility(diveSite: .green)
+            ),
+            in: state
+        )
+        state = applying(drafts, to: state, using: engine)
+
+        XCTAssertEqual(coralCount(.green, in: state), 1)
+        XCTAssertEqual(coralCount(.blue, in: state), 0)
+    }
+
+    func testGainCoralAbilityRejectsFullCoralReef() {
+        let engine = GameEngine()
+        var state = playFishState()
+        state.playerGameStates["player-1"]?.ocean.coralReefs = [
+            CoralReefState(diveSite: .blue, coralCount: 6, maxCoral: 6, completionBonus: 6)
+        ]
+        let choice = gainCoralAbilityPendingChoice(selector: .blue, cardId: "sr.main.171")
+        state.pendingChoices[choice.choiceId] = choice
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "resolve-full-coral-ability",
+                    choiceId: choice.choiceId,
+                    resolution: .gainCoralFromAbility(diveSite: .blue)
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .invalidPendingChoiceResolution(choice.choiceId))
+        }
+    }
+
+    func testSkippingGainCoralAbilityDoesNotChangeCoral() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        state.playerGameStates["player-1"]?.ocean.coralReefs = CoralReefState.sharksAndReefsInitial
+        let choice = gainCoralAbilityPendingChoice(selector: .blue, cardId: "sr.main.171")
+        state.pendingChoices[choice.choiceId] = choice
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(commandId: "skip-coral-ability", choiceId: choice.choiceId, resolution: .skip),
+            in: state
+        )
+        state = applying(drafts, to: state, using: engine)
+
+        XCTAssertEqual(coralCount(.blue, in: state), 0)
+    }
+
+    func testIfActivatedGainCoralAbilityCreatesDiveQueuePendingChoice() throws {
+        let engine = GameEngine(cardCatalog: sharksAndReefsAbilityCatalog())
+        var state = abilityDiveState(cardId: "sr.main.171")
+        state.playerGameStates["player-1"]?.ocean.coralReefs = CoralReefState.sharksAndReefsInitial
+        state = applying(
+            try engine.makeEventDrafts(for: diveCommand(commandId: "dive-blue-coral-ability"), in: state),
+            to: state,
+            using: engine
+        )
+        let printedChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "skip-printed-before-coral-ability",
+                    choiceId: printedChoice.choiceId,
+                    resolution: .skip
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        let abilityChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        XCTAssertEqual(abilityChoice.kind, .gainCoral)
+        XCTAssertEqual(abilityChoice.expectedInput, .coralPlacement)
+        XCTAssertEqual(abilityChoice.abilityDefinition?.abilityId, SharksAndReefsAbilityIDs.blueCoralIfActivated)
+    }
+
+    func testIfActivatedGainCoralAbilityResolveContinuesDiveQueue() throws {
+        let engine = GameEngine(cardCatalog: sharksAndReefsAbilityCatalog())
+        var state = abilityDiveState(cardId: "sr.main.171")
+        state.playerGameStates["player-1"]?.ocean.coralReefs = CoralReefState.sharksAndReefsInitial
+        state = applying(
+            try engine.makeEventDrafts(for: diveCommand(commandId: "dive-blue-coral-resolve"), in: state),
+            to: state,
+            using: engine
+        )
+        let printedChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "skip-printed-before-coral-resolve",
+                    choiceId: printedChoice.choiceId,
+                    resolution: .skip
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        let abilityChoice = try XCTUnwrap(state.pendingChoices.values.first)
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(
+                commandId: "resolve-if-activated-coral",
+                choiceId: abilityChoice.choiceId,
+                resolution: .gainCoralFromAbility(diveSite: .blue)
+            ),
+            in: state
+        )
+        state = applying(drafts, to: state, using: engine)
+
+        XCTAssertEqual(coralCount(.blue, in: state), 1)
+        XCTAssertTrue(drafts.contains { draft in
+            guard case let .pendingChoiceResolved(event) = draft else { return false }
+            return event.diveQueueUpdate != nil
+        })
+    }
+
+    func testCoralReefOverlayCannotUseFreeGainCoralAbilityResolution() throws {
+        let engine = GameEngine()
+        var state = applying(
+            try engine.makeEventDrafts(for: diveCommand(commandId: "dive-coral-free-rejected"), in: coralDiveState()),
+            to: coralDiveState(),
+            using: engine
+        )
+        let choice = try XCTUnwrap(state.pendingChoices.values.first)
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "reject-free-coral-overlay",
+                    choiceId: choice.choiceId,
+                    resolution: .gainCoralFromAbility(diveSite: .blue)
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .invalidPendingChoiceResolution(choice.choiceId))
+        }
+    }
+
     func testActiveDiveQueuePreventsPlayFishAndDive() throws {
         let engine = GameEngine()
         let initialState = blueDiveQueueState()
@@ -4124,6 +4380,30 @@ final class GameEngineTests: XCTestCase {
         return state
     }
 
+    private func gainCoralAbilityPendingChoice(
+        selector: CoralDiveSiteSelector,
+        cardId: CardID
+    ) -> PendingChoice {
+        let ability = AbilityDefinition(
+            abilityId: "fixture-gain-coral-\(selector.rawValue)",
+            trigger: .ifActivated,
+            effects: [.gainCoral(selector: selector, count: 1)],
+            isOptional: true,
+            displayText: "发动时：获得 1 个珊瑚"
+        )
+        return PendingChoice(
+            choiceId: "choice-gain-coral-\(selector.rawValue)",
+            playerId: "player-1",
+            source: .fishAbility(cardId),
+            kind: .gainCoral,
+            options: [],
+            expectedInput: .coralPlacement,
+            isOptional: true,
+            abilityDefinition: ability,
+            createdAtSequence: 10
+        )
+    }
+
     private func fishBCompoundSelectorState(
         engine: GameEngine,
         addSecondFish: Bool = false
@@ -4326,6 +4606,36 @@ final class GameEngineTests: XCTestCase {
                     ],
                     printedPoints: 4,
                     lengthCm: 20
+                )
+            ]
+        )
+    }
+
+    private func sharksAndReefsAbilityCatalog() -> TestCardCatalog {
+        let sample = SampleCardCatalog()
+        return TestCardCatalog(
+            starterFishCards: sample.starterFishCards,
+            fishCards: sample.fishCards + [
+                Card(
+                    id: "sr.main.171",
+                    name: "Blue Coral Ability Fish",
+                    abilityIds: [SharksAndReefsAbilityIDs.blueCoralIfActivated],
+                    printedPoints: 3,
+                    lengthCm: 20
+                ),
+                Card(
+                    id: "sr.main.194",
+                    name: "Blue Purple Coral Ability Fish",
+                    abilityIds: [SharksAndReefsAbilityIDs.bluePurpleCoralWhenPlayed],
+                    printedPoints: 4,
+                    lengthCm: 25
+                ),
+                Card(
+                    id: "sr.main.210",
+                    name: "Any Coral Ability Fish",
+                    abilityIds: [SharksAndReefsAbilityIDs.anyCoralIfActivated],
+                    printedPoints: 5,
+                    lengthCm: 30
                 )
             ]
         )

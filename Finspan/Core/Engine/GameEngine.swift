@@ -260,6 +260,7 @@ struct GameEngine {
             return [diverMoved, .pendingChoiceCreated(firstChoice)]
         case let .resolvePendingChoice(payload):
             let queueProgress = diveQueueProgressAfterResolving(payload, in: state)
+            let nonQueueNextChoice = nonQueueCompoundChoiceAfterResolving(payload, in: state)
             var drafts: [DomainEventDraft] = [
                 .pendingChoiceResolved(
                     PendingChoiceResolvedEvent(
@@ -276,6 +277,10 @@ struct GameEngine {
                 )
             ]
             if let nextChoice = queueProgress.nextChoice {
+                drafts.append(.pendingChoiceCreated(nextChoice))
+                return drafts
+            }
+            if let nextChoice = nonQueueNextChoice {
                 drafts.append(.pendingChoiceCreated(nextChoice))
                 return drafts
             }
@@ -715,6 +720,8 @@ struct GameEngine {
                 for: choice,
                 in: state
             )
+        case let .gainCoralFromAbility(diveSite):
+            try validateAbilityCoralGain(diveSite: diveSite, for: choice, in: state)
         case .chooseOption:
             throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
         case let .chooseAbilityEffect(effect):
@@ -788,6 +795,28 @@ struct GameEngine {
             guard playerState.hand.contains(cardId) else {
                 throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
             }
+        }
+    }
+
+    private func validateAbilityCoralGain(
+        diveSite: DiveSite,
+        for choice: PendingChoice,
+        in state: GameState
+    ) throws {
+        guard choice.kind == .gainCoral,
+              choice.expectedInput == .coralPlacement,
+              let playerState = state.playerGameStates[choice.playerId],
+              let reef = playerState.ocean.coralReefs.first(where: { $0.diveSite == diveSite }),
+              reef.coralCount < reef.maxCoral
+        else {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+
+        guard let selector = gainCoralSelector(for: choice) else {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+        if let fixedDiveSite = selector.fixedDiveSite, fixedDiveSite != diveSite {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
         }
     }
 
@@ -1168,6 +1197,13 @@ struct GameEngine {
                 return [.none]
             }
             return [.gainCoral(playerId: playerId, diveSite: diveSite, payment: .discard(cardId: cardId))]
+        case let .gainCoralFromAbility(diveSite):
+            guard let choice = state.pendingChoices[payload.choiceId],
+                  let sourceCardId = abilitySourceCardId(for: choice)
+            else {
+                return [.none]
+            }
+            return [.gainCoralFromAbility(playerId: playerId, diveSite: diveSite, sourceCardId: sourceCardId)]
         case let .chooseTarget(target):
             guard let choice = state.pendingChoices[payload.choiceId] else {
                 return [.none]
@@ -1199,6 +1235,21 @@ struct GameEngine {
             return nil
         }
         return diveSite
+    }
+
+    private func abilitySourceCardId(for choice: PendingChoice) -> CardID? {
+        if case let .fishAbility(cardId) = choice.source {
+            return cardId
+        }
+        return choice.compoundAbilityProgress?.sourceCardId
+    }
+
+    private func gainCoralSelector(for choice: PendingChoice) -> CoralDiveSiteSelector? {
+        let effect = choice.selectedAbilityEffect ?? choice.abilityDefinition?.effects.first
+        guard case let .gainCoral(selector, _) = effect else {
+            return nil
+        }
+        return selector
     }
 
     private func ifActivatedAbilityStepInputs(
@@ -1340,12 +1391,11 @@ struct GameEngine {
         }
 
         guard let progress = choice.compoundAbilityProgress,
-              compoundEffectUnit(for: choice.kind) != nil
+              let completedEffect = compoundEffectUnit(for: choice)
         else {
             return nil
         }
 
-        let completedEffect = compoundEffectUnit(for: choice.kind) ?? .unsupported
         var updatedProgress = progress
         updatedProgress.remainingEffects = decrement(completedEffect, from: progress.remainingEffects)
         updatedProgress.completedEffects.append(completedEffect)
@@ -1375,6 +1425,49 @@ struct GameEngine {
         return (.advanced(advancedQueue), nextChoice)
     }
 
+    private func nonQueueCompoundChoiceAfterResolving(
+        _ payload: ResolvePendingChoiceCommand,
+        in state: GameState
+    ) -> PendingChoice? {
+        guard let choice = state.pendingChoices[payload.choiceId],
+              choice.diveQueueId == nil
+        else {
+            return nil
+        }
+
+        if choice.kind == .compoundAbility {
+            guard case let .chooseAbilityEffect(effect) = payload.resolution,
+                  let progress = choice.compoundAbilityProgress
+            else {
+                return nil
+            }
+            return compoundTargetChoice(
+                from: choice,
+                progress: progress,
+                effect: normalizedSingleEffect(effect)
+            )
+        }
+
+        guard let progress = choice.compoundAbilityProgress,
+              let completedEffect = compoundEffectUnit(for: choice)
+        else {
+            return nil
+        }
+
+        var updatedProgress = progress
+        updatedProgress.remainingEffects = decrement(completedEffect, from: progress.remainingEffects)
+        updatedProgress.completedEffects.append(completedEffect)
+
+        guard !abilityProgressIsComplete(updatedProgress) else {
+            return nil
+        }
+
+        return compoundSelectorChoice(
+            from: choice,
+            progress: updatedProgress
+        )
+    }
+
     private func setCurrentStepPendingChoice(_ choice: PendingChoice, in queue: inout DiveResolutionQueue) {
         guard queue.steps.indices.contains(queue.currentStepIndex) else {
             return
@@ -1399,6 +1492,7 @@ struct GameEngine {
             isOptional: false,
             abilityDefinition: choice.abilityDefinition,
             compoundAbilityProgress: progress,
+            selectedAbilityEffect: effect,
             createdAtSequence: choice.createdAtSequence
         )
     }
@@ -1466,10 +1560,11 @@ struct GameEngine {
     private func effectCount(_ effect: AbilityEffectUnit) -> Int {
         switch effect {
         case let .drawFish(count),
-             let .placeEgg(count),
-             let .hatchEgg(count),
-             let .moveYoungOrSchool(count),
-             let .recoverFromDiscardOrDraw(count):
+            let .placeEgg(count),
+            let .hatchEgg(count),
+            let .moveYoungOrSchool(count),
+             let .recoverFromDiscardOrDraw(count),
+             let .gainCoral(_, count):
             return count
         case .unsupported:
             return 0
@@ -1488,6 +1583,8 @@ struct GameEngine {
             return .moveYoungOrSchool(count: count)
         case .recoverFromDiscardOrDraw:
             return .recoverFromDiscardOrDraw(count: count)
+        case let .gainCoral(selector, _):
+            return .gainCoral(selector: selector, count: count)
         case .unsupported:
             return .unsupported
         }
@@ -1505,6 +1602,8 @@ struct GameEngine {
             return "moveYoungOrSchool"
         case .recoverFromDiscardOrDraw:
             return "recoverFromDiscardOrDraw"
+        case let .gainCoral(selector, _):
+            return "gainCoral-\(selector.rawValue)"
         case .unsupported:
             return "unsupported"
         }
@@ -1522,6 +1621,8 @@ struct GameEngine {
             return .moveYoungOrSchool
         case .recoverFromDiscardOrDraw:
             return .recoverFromDiscardOrDraw
+        case .gainCoral:
+            return .gainCoral
         case .unsupported:
             return .unsupported
         }
@@ -1538,9 +1639,15 @@ struct GameEngine {
             return .sourceAndTargetSlots
         case .recoverFromDiscardOrDraw:
             return .cardSelection
+        case .gainCoral:
+            return .coralPlacement
         case .unsupported:
             return .none
         }
+    }
+
+    private func compoundEffectUnit(for choice: PendingChoice) -> AbilityEffectUnit? {
+        choice.selectedAbilityEffect ?? compoundEffectUnit(for: choice.kind)
     }
 
     private func compoundEffectUnit(for kind: PendingChoiceKind) -> AbilityEffectUnit? {
@@ -1555,8 +1662,9 @@ struct GameEngine {
             return .moveYoungOrSchool(count: 1)
         case .recoverFromDiscardOrDraw:
             return .recoverFromDiscardOrDraw(count: 1)
+        case .gainCoral:
+            return nil
         case .compoundAbility,
-             .gainCoral,
              .bottomBonus,
              .placeholder,
              .unsupported:
@@ -1778,6 +1886,8 @@ struct GameEngine {
                 applyResourceChange(kind, amount: amount, at: target, to: &state)
             case let .gainCoral(playerId, diveSite, payment):
                 applyCoralGain(playerId: playerId, diveSite: diveSite, payment: payment, to: &state)
+            case let .gainCoralFromAbility(playerId, diveSite, _):
+                applyCoralGainFromAbility(playerId: playerId, diveSite: diveSite, to: &state)
             case .skipCoral:
                 break
             }
@@ -1807,6 +1917,25 @@ struct GameEngine {
             }
             playerState.hand.remove(at: handIndex)
             playerState.discardPile.append(cardId)
+        }
+
+        let maxCoral = playerState.ocean.coralReefs[reefIndex].maxCoral
+        playerState.ocean.coralReefs[reefIndex].coralCount = min(
+            playerState.ocean.coralReefs[reefIndex].coralCount + 1,
+            maxCoral
+        )
+        state.playerGameStates[playerId] = playerState
+    }
+
+    private func applyCoralGainFromAbility(
+        playerId: PlayerID,
+        diveSite: DiveSite,
+        to state: inout GameState
+    ) {
+        guard var playerState = state.playerGameStates[playerId],
+              let reefIndex = playerState.ocean.coralReefs.firstIndex(where: { $0.diveSite == diveSite })
+        else {
+            return
         }
 
         let maxCoral = playerState.ocean.coralReefs[reefIndex].maxCoral

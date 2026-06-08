@@ -62,5 +62,26 @@ enum AbilityEffectUnit: Codable, Equatable, Sendable {
     case hatchEgg(count: Int)
     case moveYoungOrSchool(count: Int)
     case recoverFromDiscardOrDraw(count: Int)
+    case gainCoral(selector: CoralDiveSiteSelector, count: Int)
     case unsupported
+}
+
+enum CoralDiveSiteSelector: String, Codable, Equatable, Sendable {
+    case blue
+    case purple
+    case green
+    case any
+
+    var fixedDiveSite: DiveSite? {
+        switch self {
+        case .blue:
+            return .blue
+        case .purple:
+            return .purple
+        case .green:
+            return .green
+        case .any:
+            return nil
+        }
+    }
 }

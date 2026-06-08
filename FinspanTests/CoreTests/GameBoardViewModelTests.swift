@@ -2854,6 +2854,103 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(rewardPool.instructionText, AppStrings.GameBoard.chooseCoralPayment)
     }
 
+    func testGainCoralAbilityPendingChoiceGeneratesFreeCoralRewardToken() {
+        let choice = gainCoralAbilityPendingChoice(selector: .blue)
+        let service = makeService(
+            hand: [],
+            pendingChoices: [choice.choiceId: choice],
+            clearAllSlotResources: true,
+            coralReefs: CoralReefState.sharksAndReefsInitial
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let rewardPool = viewModel.rewardPoolViewState
+
+        XCTAssertEqual(rewardPool.rewards.map(\.kind), [.gainCoral])
+        XCTAssertEqual(rewardPool.rewards.first?.title, AppStrings.GameBoard.gainOneCoral)
+        XCTAssertEqual(rewardPool.rewards.first?.isSelectable, true)
+        XCTAssertEqual(rewardPool.instructionText, AppStrings.GameBoard.chooseCoralDiveSite)
+    }
+
+    func testAnyGainCoralAbilityPendingChoiceGeneratesDiveSiteRewardTokens() {
+        let choice = gainCoralAbilityPendingChoice(selector: .any)
+        let service = makeService(
+            hand: [],
+            pendingChoices: [choice.choiceId: choice],
+            clearAllSlotResources: true,
+            coralReefs: CoralReefState.sharksAndReefsInitial
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.rewardPoolViewState.rewards.map(\.title), [
+            "\(AppStrings.oceanDiveSiteName(.blue)) \(AppStrings.GameBoard.gainOneCoral)",
+            "\(AppStrings.oceanDiveSiteName(.purple)) \(AppStrings.GameBoard.gainOneCoral)",
+            "\(AppStrings.oceanDiveSiteName(.green)) \(AppStrings.GameBoard.gainOneCoral)"
+        ])
+    }
+
+    func testSelectingGainCoralAbilityRewardTokenBuildsFreeResolveCommand() throws {
+        let choice = gainCoralAbilityPendingChoice(selector: .blue)
+        let service = makeService(
+            hand: [],
+            pendingChoices: [choice.choiceId: choice],
+            clearAllSlotResources: true,
+            coralReefs: CoralReefState.sharksAndReefsInitial
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        let token = try XCTUnwrap(viewModel.rewardPoolViewState.rewards.first)
+
+        viewModel.selectRewardToken(token.id)
+
+        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolvePendingChoice command.")
+        }
+        XCTAssertEqual(payload.choiceId, choice.choiceId)
+        XCTAssertEqual(payload.resolution, .gainCoralFromAbility(diveSite: .blue))
+    }
+
+    func testFullCoralReefDisablesGainCoralAbilityToken() throws {
+        let choice = gainCoralAbilityPendingChoice(selector: .blue)
+        let service = makeService(
+            hand: [],
+            pendingChoices: [choice.choiceId: choice],
+            clearAllSlotResources: true,
+            coralReefs: [
+                CoralReefState(diveSite: .blue, coralCount: 6, maxCoral: 6, completionBonus: 6)
+            ]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        let token = try XCTUnwrap(viewModel.rewardPoolViewState.rewards.first)
+
+        XCTAssertEqual(token.isSelectable, false)
+        XCTAssertEqual(token.unavailableReasonText, AppStrings.GameBoard.coralReefFull)
+    }
+
+    func testCoralReefOverlayRewardPoolStillRequiresPaymentTokens() {
+        let choice = pendingChoice(kind: .gainCoral, source: .coralReef(.blue))
+        let service = makeService(
+            hand: ["fish-2"],
+            pendingChoices: [choice.choiceId: choice],
+            coralReefs: CoralReefState.sharksAndReefsInitial
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(
+            viewModel.rewardPoolViewState.rewards.map(\.title),
+            [
+                AppStrings.GameBoard.payOneEgg,
+                AppStrings.GameBoard.payOneYoung,
+                AppStrings.GameBoard.discardOneHandCard,
+                AppStrings.GameBoard.skipChoice
+            ]
+        )
+        XCTAssertFalse(
+            viewModel.rewardPoolViewState.rewards.contains {
+                $0.title == AppStrings.GameBoard.gainOneCoral
+            }
+        )
+    }
+
     func testSelectingCoralEggRewardTokenThenSourceBuildsGainCoralCommand() throws {
         let choice = pendingChoice(kind: .gainCoral, source: .coralReef(.blue))
         let service = makeService(
@@ -3436,6 +3533,29 @@ final class GameBoardViewModelTests: XCTestCase {
                 effects: [.drawFish(count: 1)],
                 displayText: "发动时：抽 1 张鱼牌"
             ),
+            createdAtSequence: 2
+        )
+    }
+
+    private func gainCoralAbilityPendingChoice(
+        selector: CoralDiveSiteSelector,
+        cardId: CardID = "sr.main.171"
+    ) -> PendingChoice {
+        let ability = AbilityDefinition(
+            abilityId: "fixture-gain-coral-\(selector.rawValue)",
+            trigger: .ifActivated,
+            effects: [.gainCoral(selector: selector, count: 1)],
+            displayText: "发动时：获得 1 个珊瑚"
+        )
+        return PendingChoice(
+            choiceId: "choice-ability-coral-\(selector.rawValue)",
+            playerId: "player-1",
+            source: .fishAbility(cardId),
+            kind: .gainCoral,
+            options: [],
+            expectedInput: .coralPlacement,
+            isOptional: true,
+            abilityDefinition: ability,
             createdAtSequence: 2
         )
     }

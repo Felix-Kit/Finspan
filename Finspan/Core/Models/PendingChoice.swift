@@ -12,6 +12,7 @@ struct PendingChoice: Identifiable, Codable, Equatable, Sendable {
     var isOptional: Bool
     var abilityDefinition: AbilityDefinition? = nil
     var compoundAbilityProgress: CompoundAbilityProgress? = nil
+    var selectedAbilityEffect: AbilityEffectUnit? = nil
     var createdAtSequence: EventID
 
     var id: PendingChoiceID { choiceId }
@@ -51,6 +52,7 @@ enum PendingChoiceExpectedInput: Codable, Equatable, Sendable {
     case cardSelection
     case sourceAndTargetSlots
     case coralPayment
+    case coralPlacement
     case abilityEffectSelection
     case count(Int)
 }
@@ -65,6 +67,7 @@ enum PendingChoiceResolution: Codable, Equatable, Sendable {
     case gainCoralWithEgg(source: OceanSlotAddress)
     case gainCoralWithYoung(source: OceanSlotAddress)
     case gainCoralByDiscard(cardId: CardID)
+    case gainCoralFromAbility(diveSite: DiveSite)
     case chooseOption(String)
     case chooseAbilityEffect(AbilityEffectUnit)
     case finishAbility
@@ -78,6 +81,7 @@ enum PendingChoiceAppliedEffect: Codable, Equatable, Sendable {
     case hatchEgg(target: OceanSlotAddress, amount: Int)
     case moveResource(source: OceanSlotAddress, target: OceanSlotAddress, kind: ResourceKind, amount: Int)
     case gainCoral(playerId: PlayerID, diveSite: DiveSite, payment: CoralPayment)
+    case gainCoralFromAbility(playerId: PlayerID, diveSite: DiveSite, sourceCardId: CardID)
     case skipCoral(playerId: PlayerID, diveSite: DiveSite)
     case placeholder(String)
 }

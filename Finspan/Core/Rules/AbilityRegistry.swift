@@ -18,6 +18,9 @@ struct AbilityRegistry: AbilityDefinitionProvider, Sendable {
 
 extension AbilityRegistry {
     nonisolated static let sample = AbilityRegistry(definitions: SampleAbilityDefinitions.all)
+    nonisolated static let builtIn = AbilityRegistry(
+        definitions: SampleAbilityDefinitions.all + SharksAndReefsAbilityDefinitions.all
+    )
 }
 
 enum SampleAbilityIDs {
@@ -54,12 +57,53 @@ enum SampleAbilityDefinitions {
     ]
 }
 
+enum SharksAndReefsAbilityIDs {
+    nonisolated static let blueCoralIfActivated: AbilityID = "unsupported.sr.ifActivated.card_171"
+    nonisolated static let purpleCoralIfActivated: AbilityID = "unsupported.sr.ifActivated.card_154"
+    nonisolated static let anyCoralIfActivated: AbilityID = "unsupported.sr.ifActivated.card_210"
+    nonisolated static let bluePurpleCoralWhenPlayed: AbilityID = "unsupported.sr.whenPlayed.card_194"
+}
+
+enum SharksAndReefsAbilityDefinitions {
+    nonisolated static let all: [AbilityDefinition] = [
+        AbilityDefinition(
+            abilityId: SharksAndReefsAbilityIDs.blueCoralIfActivated,
+            trigger: .ifActivated,
+            effects: [.gainCoral(selector: .blue, count: 1)],
+            displayText: "发动时：获得 1 个蓝色珊瑚"
+        ),
+        AbilityDefinition(
+            abilityId: SharksAndReefsAbilityIDs.purpleCoralIfActivated,
+            trigger: .ifActivated,
+            effects: [.gainCoral(selector: .purple, count: 1)],
+            displayText: "发动时：获得 1 个紫色珊瑚"
+        ),
+        AbilityDefinition(
+            abilityId: SharksAndReefsAbilityIDs.anyCoralIfActivated,
+            trigger: .ifActivated,
+            effects: [.gainCoral(selector: .any, count: 1)],
+            displayText: "发动时：选择一个潜水点获得 1 个珊瑚"
+        ),
+        AbilityDefinition(
+            abilityId: SharksAndReefsAbilityIDs.bluePurpleCoralWhenPlayed,
+            trigger: .whenPlayed,
+            effects: [
+                .gainCoral(selector: .blue, count: 1),
+                .gainCoral(selector: .purple, count: 1)
+            ],
+            canResolveInAnyOrder: true,
+            isOptional: true,
+            displayText: "打出时：获得 1 个蓝色珊瑚和 1 个紫色珊瑚"
+        )
+    ]
+}
+
 struct AbilityResolver: Sendable {
     private let provider: any AbilityDefinitionProvider
     private let fallbackAbilityIdsByCardId: [CardID: [AbilityID]]
 
     nonisolated init(
-        provider: any AbilityDefinitionProvider = AbilityRegistry.sample,
+        provider: any AbilityDefinitionProvider = AbilityRegistry.builtIn,
         fallbackAbilityIdsByCardId: [CardID: [AbilityID]] = [:]
     ) {
         self.provider = provider

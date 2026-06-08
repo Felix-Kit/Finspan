@@ -1315,12 +1315,18 @@ final class GameBoardViewModel: ObservableObject {
             return AppStrings.GameBoard.rewardMoveResourceActionSummary(playerName: playerName)
         case .gainCoralWithEgg,
              .gainCoralWithYoung,
-             .gainCoralByDiscard:
+             .gainCoralByDiscard,
+             .gainCoralFromAbility:
             if let effect = payload.appliedEffects.first(where: {
-                if case .gainCoral = $0 { return true }
-                return false
+                switch $0 {
+                case .gainCoral,
+                     .gainCoralFromAbility:
+                    return true
+                default:
+                    return false
+                }
             }),
-               case let .gainCoral(_, diveSite, _) = effect {
+               let diveSite = coralDiveSite(from: effect) {
                 return AppStrings.GameBoard.rewardGainCoralActionSummary(
                     playerName: playerName,
                     diveSiteName: AppStrings.oceanDiveSiteName(diveSite)
@@ -1335,6 +1341,16 @@ final class GameBoardViewModel: ObservableObject {
                 return AppStrings.GameBoard.rewardSkipCoralActionSummary(playerName: playerName)
             }
             return AppStrings.GameBoard.rewardResolvedActionSummary(playerName: playerName)
+        }
+    }
+
+    private func coralDiveSite(from effect: PendingChoiceAppliedEffect) -> DiveSite? {
+        switch effect {
+        case let .gainCoral(_, diveSite, _),
+             let .gainCoralFromAbility(_, diveSite, _):
+            return diveSite
+        default:
+            return nil
         }
     }
 
@@ -3446,10 +3462,11 @@ final class GameBoardViewModel: ObservableObject {
     private func abilityEffectCount(_ effect: AbilityEffectUnit) -> Int {
         switch effect {
         case let .drawFish(count),
-             let .placeEgg(count),
+            let .placeEgg(count),
              let .hatchEgg(count),
              let .moveYoungOrSchool(count),
-             let .recoverFromDiscardOrDraw(count):
+             let .recoverFromDiscardOrDraw(count),
+             let .gainCoral(_, count):
             return count
         case .unsupported:
             return 0
@@ -3468,6 +3485,8 @@ final class GameBoardViewModel: ObservableObject {
             return "moveYoungOrSchool"
         case .recoverFromDiscardOrDraw:
             return "recoverFromDiscardOrDraw"
+        case let .gainCoral(selector, _):
+            return "gainCoral-\(selector.rawValue)"
         case .unsupported:
             return "unsupported"
         }
@@ -3662,6 +3681,9 @@ final class GameBoardViewModel: ObservableObject {
                 .chooseMoveSource(choiceId: choice.choiceId)
             )]
         case .gainCoral:
+            guard choice.expectedInput == .coralPayment else {
+                return abilityCoralRewardEntries(for: choice)
+            }
             guard let playerState = state.playerGameStates[choice.playerId],
                   let diveSite = coralDiveSite(for: choice),
                   let reef = playerState.ocean.coralReefs.first(where: { $0.diveSite == diveSite })
@@ -3766,6 +3788,31 @@ final class GameBoardViewModel: ObservableObject {
                         .direct(choiceId: choice.choiceId, resolution: .chooseAbilityEffect(.hatchEgg(count: 1)))
                     ))
                 }
+
+                for effect in progress.remainingEffects {
+                    guard case let .gainCoral(selector, count) = effect else {
+                        continue
+                    }
+                    for index in 0..<count {
+                        let tokenId = "\(choice.choiceId)-compoundGainCoral-\(selector.rawValue)-\(index)"
+                        entries.append((
+                            rewardToken(
+                                id: tokenId,
+                                kind: .gainCoral,
+                                title: AppStrings.GameBoard.gainOneCoral,
+                                subtitle: selector.fixedDiveSite.map(AppStrings.oceanDiveSiteName) ?? AppStrings.GameBoard.chooseCoralDiveSite,
+                                iconText: "珊",
+                                symbolName: "hexagon.fill",
+                                countText: "\(index + 1)/\(count)",
+                                isSelectable: canResolve
+                            ),
+                            .direct(
+                                choiceId: choice.choiceId,
+                                resolution: .chooseAbilityEffect(.gainCoral(selector: selector, count: 1))
+                            )
+                        ))
+                    }
+                }
             }
             let tokenId = "\(choice.choiceId)-finishAbility"
             entries.append((
@@ -3830,6 +3877,44 @@ final class GameBoardViewModel: ObservableObject {
             isUnsupported: isUnsupported,
             unavailableReasonText: unavailableReasonText
         )
+    }
+
+    private func abilityCoralRewardEntries(
+        for choice: PendingChoice
+    ) -> [(token: RewardTokenViewState, action: RewardTokenAction)] {
+        guard let playerState = state.playerGameStates[choice.playerId],
+              let selector = gainCoralSelector(for: choice)
+        else {
+            return []
+        }
+
+        let diveSites = selector.fixedDiveSite.map { [$0] } ?? DiveSite.allCases
+        return diveSites.compactMap { diveSite in
+            guard let reef = playerState.ocean.coralReefs.first(where: { $0.diveSite == diveSite }) else {
+                return nil
+            }
+            let isAvailable = canResolvePendingChoice(choice) && reef.coralCount < reef.maxCoral
+            let tokenId = "\(choice.choiceId)-ability-coral-\(diveSite.rawValue)"
+            let progressText = AppStrings.coralReefProgressText(
+                coralCount: reef.coralCount,
+                maxCoral: reef.maxCoral
+            )
+            return (
+                rewardToken(
+                    id: tokenId,
+                    kind: .gainCoral,
+                    title: selector.fixedDiveSite == nil
+                        ? "\(AppStrings.oceanDiveSiteName(diveSite)) \(AppStrings.GameBoard.gainOneCoral)"
+                        : AppStrings.GameBoard.gainOneCoral,
+                    subtitle: progressText,
+                    iconText: "珊",
+                    symbolName: "hexagon.fill",
+                    isSelectable: isAvailable,
+                    unavailableReasonText: isAvailable ? nil : AppStrings.GameBoard.coralReefFull
+                ),
+                .direct(choiceId: choice.choiceId, resolution: .gainCoralFromAbility(diveSite: diveSite))
+            )
+        }
     }
 
     func pendingChoiceTargets(for choice: PendingChoice) -> [PendingChoiceTargetViewData] {
@@ -4034,7 +4119,9 @@ final class GameBoardViewModel: ObservableObject {
         case .moveYoungOrSchool:
             return AppStrings.GameBoard.chooseRewardThenSource
         case .gainCoral:
-            return AppStrings.GameBoard.chooseCoralPayment
+            return choice.expectedInput == .coralPayment
+                ? AppStrings.GameBoard.chooseCoralPayment
+                : AppStrings.GameBoard.chooseCoralDiveSite
         case .bottomBonus,
              .placeholder,
              .unsupported:
@@ -4072,6 +4159,8 @@ final class GameBoardViewModel: ObservableObject {
             return AppStrings.GameBoard.payOneYoung
         case .gainCoralByDiscard:
             return AppStrings.GameBoard.discardOneHandCard
+        case .gainCoralFromAbility:
+            return AppStrings.GameBoard.gainOneCoral
         case .chooseOption:
             return AppStrings.GameBoard.chooseOption
         case .chooseAbilityEffect:
@@ -4156,6 +4245,14 @@ final class GameBoardViewModel: ObservableObject {
             return nil
         }
         return diveSite
+    }
+
+    private func gainCoralSelector(for choice: PendingChoice) -> CoralDiveSiteSelector? {
+        let effect = choice.selectedAbilityEffect ?? choice.abilityDefinition?.effects.first
+        guard case let .gainCoral(selector, _) = effect else {
+            return nil
+        }
+        return selector
     }
 
     private func rewardSelectionHighlightText(for slot: OceanSlot) -> String? {
