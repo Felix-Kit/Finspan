@@ -2764,6 +2764,79 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(rewardPool.instructionText, AppStrings.GameBoard.chooseRewardThenSource)
     }
 
+    func testCoralReefPendingChoiceGeneratesPaymentAndSkipRewardTokens() {
+        let choice = pendingChoice(kind: .gainCoral, source: .coralReef(.blue))
+        let service = makeService(
+            hand: ["fish-2"],
+            pendingChoices: [choice.choiceId: choice],
+            coralReefs: CoralReefState.sharksAndReefsInitial
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let rewardPool = viewModel.rewardPoolViewState
+
+        XCTAssertEqual(rewardPool.rewards.map(\.kind), [.gainCoral, .gainCoral, .gainCoral, .skipOrEnd])
+        XCTAssertEqual(
+            rewardPool.rewards.map(\.title),
+            [
+                AppStrings.GameBoard.payOneEgg,
+                AppStrings.GameBoard.payOneYoung,
+                AppStrings.GameBoard.discardOneHandCard,
+                AppStrings.GameBoard.skipChoice
+            ]
+        )
+        XCTAssertEqual(rewardPool.instructionText, AppStrings.GameBoard.chooseCoralPayment)
+    }
+
+    func testSelectingCoralEggRewardTokenThenSourceBuildsGainCoralCommand() throws {
+        let choice = pendingChoice(kind: .gainCoral, source: .coralReef(.blue))
+        let service = makeService(
+            hand: ["fish-2"],
+            pendingChoices: [choice.choiceId: choice],
+            coralReefs: CoralReefState.sharksAndReefsInitial
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        let token = try XCTUnwrap(viewModel.rewardPoolViewState.rewards.first { $0.title == AppStrings.GameBoard.payOneEgg })
+
+        viewModel.selectRewardToken(token.id)
+
+        XCTAssertEqual(viewModel.rewardPoolViewState.instructionText, AppStrings.GameBoard.chooseCoralResourceSource)
+        XCTAssertTrue(
+            viewModel.oceanSlots.contains {
+                $0.address == Self.resourceSourceAddress
+                    && $0.rewardSelectionReasonText == AppStrings.GameBoard.chooseCoralResourceSource
+            }
+        )
+
+        viewModel.selectTargetSlot(Self.resourceSourceAddress)
+
+        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolvePendingChoice command.")
+        }
+        XCTAssertEqual(payload.choiceId, choice.choiceId)
+        XCTAssertEqual(payload.resolution, .gainCoralWithEgg(source: Self.resourceSourceAddress))
+    }
+
+    func testSelectingCoralDiscardRewardTokenThenHandCardBuildsGainCoralCommand() throws {
+        let choice = pendingChoice(kind: .gainCoral, source: .coralReef(.blue))
+        let service = makeService(
+            hand: ["fish-2"],
+            pendingChoices: [choice.choiceId: choice],
+            coralReefs: CoralReefState.sharksAndReefsInitial
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        let token = try XCTUnwrap(viewModel.rewardPoolViewState.rewards.first { $0.title == AppStrings.GameBoard.discardOneHandCard })
+
+        viewModel.selectRewardToken(token.id)
+        viewModel.selectHandCard("fish-2")
+
+        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolvePendingChoice command.")
+        }
+        XCTAssertEqual(payload.choiceId, choice.choiceId)
+        XCTAssertEqual(payload.resolution, .gainCoralByDiscard(cardId: "fish-2"))
+    }
+
     func testCompoundAbilityPendingChoiceGeneratesRemainingRewardTokens() {
         let choice = compoundAbilityPendingChoice()
         let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
@@ -3246,6 +3319,8 @@ final class GameBoardViewModelTests: XCTestCase {
         switch source {
         case .bottomBonus:
             return .bottomBonus
+        case .coralReefOverlay:
+            return .gainCoral
         case let .printedDiveBonus(zone):
             switch zone {
             case .sunlit:
@@ -3341,6 +3416,8 @@ final class GameBoardViewModelTests: XCTestCase {
             return .cardSelection
         case .moveYoungOrSchool:
             return .sourceAndTargetSlots
+        case .gainCoral:
+            return .coralPayment
         case .drawFish,
              .compoundAbility,
              .bottomBonus,

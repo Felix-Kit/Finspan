@@ -27,6 +27,7 @@ struct DiveResolutionStep: Codable, Equatable, Sendable {
 
 enum DiveResolutionStepSource: Codable, Equatable, Sendable {
     case printedDiveBonus(OceanZone)
+    case coralReefOverlay(diveSite: DiveSite)
     case bottomBonus
     case fishAbility(cardId: CardID, address: OceanSlotAddress)
     case compoundFishAbility(cardId: CardID, address: OceanSlotAddress)

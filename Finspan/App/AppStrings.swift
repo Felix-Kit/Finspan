@@ -146,6 +146,14 @@ enum AppStrings {
         static let moveYoung = "移动幼鱼"
         static let moveSchool = "移动鱼群"
         static let gainCoral = "获得珊瑚"
+        static let payOneEgg = "支付 1 个鱼卵"
+        static let payOneYoung = "支付 1 个幼鱼"
+        static let discardOneHandCard = "弃 1 张手牌"
+        static let chooseCoralPayment = "选择珊瑚支付方式"
+        static let chooseCoralResourceSource = "选择支付来源"
+        static let chooseCoralDiscardCard = "选择要弃掉的手牌"
+        static let noCoralPaymentResource = "没有可支付的资源"
+        static let noCoralPaymentHandCard = "没有可弃掉的手牌"
         static let scatterSchool = "打散鱼群"
         static let abilityUnsupported = "能力暂未接入"
         static let bottomBonus = "底部奖励"
@@ -433,6 +441,14 @@ enum AppStrings {
             "\(playerName) 移动幼鱼 / 鱼群"
         }
 
+        static func rewardGainCoralActionSummary(playerName: String, diveSiteName: String) -> String {
+            "\(playerName) 在\(diveSiteName)获得 1 个珊瑚"
+        }
+
+        static func rewardSkipCoralActionSummary(playerName: String) -> String {
+            "\(playerName) 跳过珊瑚礁奖励"
+        }
+
         static func weekEndedActionSummary(week: Int) -> String {
             "第 \(week) 周结束"
         }
@@ -538,6 +554,8 @@ enum AppStrings {
             return "从弃牌堆拿回 1 张牌"
         case .moveYoungOrSchool:
             return "移动幼鱼或鱼群"
+        case .gainCoral:
+            return "获得珊瑚"
         case .compoundAbility:
             return "鱼牌能力"
         case .bottomBonus:
@@ -553,6 +571,8 @@ enum AppStrings {
         switch source {
         case let .diveBonus(site):
             return "\(diveActionSiteName(site))奖励"
+        case let .coralReef(diveSite):
+            return "\(oceanDiveSiteName(diveSite))珊瑚礁"
         case .fishAbility:
             return "鱼牌能力"
         case .endGameAbility:

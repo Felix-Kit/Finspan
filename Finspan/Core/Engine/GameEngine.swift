@@ -655,6 +655,24 @@ struct GameEngine {
                 for: choice,
                 in: state
             )
+        case let .gainCoralWithEgg(source):
+            try validateCoralPayment(
+                .egg(source: source),
+                for: choice,
+                in: state
+            )
+        case let .gainCoralWithYoung(source):
+            try validateCoralPayment(
+                .young(source: source),
+                for: choice,
+                in: state
+            )
+        case let .gainCoralByDiscard(cardId):
+            try validateCoralPayment(
+                .discard(cardId: cardId),
+                for: choice,
+                in: state
+            )
         case .chooseOption:
             throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
         case let .chooseAbilityEffect(effect):
@@ -696,10 +714,51 @@ struct GameEngine {
         case .drawFish,
              .recoverFromDiscardOrDraw,
              .moveYoungOrSchool,
+             .gainCoral,
              .compoundAbility,
              .bottomBonus,
              .placeholder,
              .unsupported:
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+    }
+
+    private func validateCoralPayment(
+        _ payment: CoralPayment,
+        for choice: PendingChoice,
+        in state: GameState
+    ) throws {
+        guard choice.kind == .gainCoral,
+              let diveSite = coralDiveSite(for: choice),
+              let playerState = state.playerGameStates[choice.playerId],
+              let reef = playerState.ocean.coralReefs.first(where: { $0.diveSite == diveSite }),
+              reef.coralCount < reef.maxCoral
+        else {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+
+        switch payment {
+        case let .egg(source):
+            try validateCoralResourcePayment(source: source, kind: .egg, for: choice, playerState: playerState)
+        case let .young(source):
+            try validateCoralResourcePayment(source: source, kind: .young, for: choice, playerState: playerState)
+        case let .discard(cardId):
+            guard playerState.hand.contains(cardId) else {
+                throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+            }
+        }
+    }
+
+    private func validateCoralResourcePayment(
+        source: OceanSlotAddress,
+        kind: ResourceKind,
+        for choice: PendingChoice,
+        playerState: PlayerGameState
+    ) throws {
+        guard source.playerId == choice.playerId,
+              let slot = playerState.ocean.slots.first(where: { $0.address == source }),
+              resourceAmount(kind, in: slot) > 0
+        else {
             throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
         }
     }
@@ -802,6 +861,16 @@ struct GameEngine {
                     ))
                 }
             }
+            if zone == .twilight,
+               let coralReefStep = coralReefStepInput(
+                diveSite: diveSite,
+                commandId: commandId,
+                playerId: playerId,
+                queueId: queueId,
+                playerState: playerState
+               ) {
+                stepInputs.append(coralReefStep)
+            }
             stepInputs.append(
                 contentsOf: ifActivatedAbilityStepInputs(
                     zone: zone,
@@ -850,6 +919,41 @@ struct GameEngine {
             diveSite: diveSite,
             steps: steps,
             currentStepIndex: 0
+        )
+    }
+
+    private func coralReefStepInput(
+        diveSite: DiveActionSite,
+        commandId: CommandID,
+        playerId: PlayerID,
+        queueId: DiveResolutionQueueID,
+        playerState: PlayerGameState
+    ) -> (source: DiveResolutionStepSource, pendingChoice: PendingChoice)? {
+        guard let oceanDiveSite = diveBonusLayout.oceanDiveSite(for: diveSite),
+              let reef = playerState.ocean.coralReefs.first(where: { $0.diveSite == oceanDiveSite }),
+              reef.coralCount < reef.maxCoral
+        else {
+            return nil
+        }
+
+        return (
+            source: .coralReefOverlay(diveSite: oceanDiveSite),
+            pendingChoice: PendingChoice(
+                choiceId: "\(commandId)-coral-reef-\(oceanDiveSite.rawValue)",
+                playerId: playerId,
+                source: .coralReef(oceanDiveSite),
+                diveQueueId: queueId,
+                diveStepId: "",
+                kind: .gainCoral,
+                options: [
+                    PendingChoiceOption(optionId: "egg", label: "egg"),
+                    PendingChoiceOption(optionId: "young", label: "young"),
+                    PendingChoiceOption(optionId: "discard", label: "discard")
+                ],
+                expectedInput: .coralPayment,
+                isOptional: true,
+                createdAtSequence: 0
+            )
         )
     }
 
@@ -980,7 +1084,13 @@ struct GameEngine {
     ) -> [PendingChoiceAppliedEffect] {
         switch payload.resolution {
         case .skip:
-            return [.none]
+            guard let choice = state.pendingChoices[payload.choiceId],
+                  choice.kind == .gainCoral,
+                  let diveSite = coralDiveSite(for: choice)
+            else {
+                return [.none]
+            }
+            return [.skipCoral(playerId: playerId, diveSite: diveSite)]
         case .draw:
             guard let cardId = state.deckState.fishDrawPile.first else {
                 return [.none]
@@ -995,6 +1105,27 @@ struct GameEngine {
             return [.drawFish(playerId: playerId, cardIds: [cardId])]
         case let .moveResource(source, target, kind):
             return [.moveResource(source: source, target: target, kind: kind, amount: 1)]
+        case let .gainCoralWithEgg(source):
+            guard let choice = state.pendingChoices[payload.choiceId],
+                  let diveSite = coralDiveSite(for: choice)
+            else {
+                return [.none]
+            }
+            return [.gainCoral(playerId: playerId, diveSite: diveSite, payment: .egg(source: source))]
+        case let .gainCoralWithYoung(source):
+            guard let choice = state.pendingChoices[payload.choiceId],
+                  let diveSite = coralDiveSite(for: choice)
+            else {
+                return [.none]
+            }
+            return [.gainCoral(playerId: playerId, diveSite: diveSite, payment: .young(source: source))]
+        case let .gainCoralByDiscard(cardId):
+            guard let choice = state.pendingChoices[payload.choiceId],
+                  let diveSite = coralDiveSite(for: choice)
+            else {
+                return [.none]
+            }
+            return [.gainCoral(playerId: playerId, diveSite: diveSite, payment: .discard(cardId: cardId))]
         case let .chooseTarget(target):
             guard let choice = state.pendingChoices[payload.choiceId] else {
                 return [.none]
@@ -1007,6 +1138,7 @@ struct GameEngine {
             case .drawFish,
                  .recoverFromDiscardOrDraw,
                  .moveYoungOrSchool,
+                 .gainCoral,
                  .compoundAbility,
                  .bottomBonus,
                  .placeholder,
@@ -1018,6 +1150,13 @@ struct GameEngine {
              .finishAbility:
             return [.none]
         }
+    }
+
+    private func coralDiveSite(for choice: PendingChoice) -> DiveSite? {
+        guard case let .coralReef(diveSite) = choice.source else {
+            return nil
+        }
+        return diveSite
     }
 
     private func ifActivatedAbilityStepInputs(
@@ -1375,6 +1514,7 @@ struct GameEngine {
         case .recoverFromDiscardOrDraw:
             return .recoverFromDiscardOrDraw(count: 1)
         case .compoundAbility,
+             .gainCoral,
              .bottomBonus,
              .placeholder,
              .unsupported:
@@ -1594,8 +1734,45 @@ struct GameEngine {
             case let .moveResource(source, target, kind, amount):
                 applyResourceChange(kind, amount: -amount, at: source, to: &state)
                 applyResourceChange(kind, amount: amount, at: target, to: &state)
+            case let .gainCoral(playerId, diveSite, payment):
+                applyCoralGain(playerId: playerId, diveSite: diveSite, payment: payment, to: &state)
+            case .skipCoral:
+                break
             }
         }
+    }
+
+    private func applyCoralGain(
+        playerId: PlayerID,
+        diveSite: DiveSite,
+        payment: CoralPayment,
+        to state: inout GameState
+    ) {
+        guard var playerState = state.playerGameStates[playerId],
+              let reefIndex = playerState.ocean.coralReefs.firstIndex(where: { $0.diveSite == diveSite })
+        else {
+            return
+        }
+
+        switch payment {
+        case let .egg(source):
+            removeResource(.egg, from: source, in: &playerState)
+        case let .young(source):
+            removeResource(.young, from: source, in: &playerState)
+        case let .discard(cardId):
+            guard let handIndex = playerState.hand.firstIndex(of: cardId) else {
+                return
+            }
+            playerState.hand.remove(at: handIndex)
+            playerState.discardPile.append(cardId)
+        }
+
+        let maxCoral = playerState.ocean.coralReefs[reefIndex].maxCoral
+        playerState.ocean.coralReefs[reefIndex].coralCount = min(
+            playerState.ocean.coralReefs[reefIndex].coralCount + 1,
+            maxCoral
+        )
+        state.playerGameStates[playerId] = playerState
     }
 
     private func applyResourcePayment(

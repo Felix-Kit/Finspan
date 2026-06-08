@@ -19,6 +19,7 @@ struct PendingChoice: Identifiable, Codable, Equatable, Sendable {
 
 enum PendingChoiceSource: Codable, Equatable, Sendable {
     case diveBonus(DiveActionSite)
+    case coralReef(DiveSite)
     case fishAbility(CardID)
     case endGameAbility
     case allPlayers
@@ -32,6 +33,7 @@ enum PendingChoiceKind: String, Codable, Equatable, Sendable {
     case hatchEgg
     case recoverFromDiscardOrDraw
     case moveYoungOrSchool
+    case gainCoral
     case compoundAbility
     case bottomBonus
     case placeholder
@@ -48,6 +50,7 @@ enum PendingChoiceExpectedInput: Codable, Equatable, Sendable {
     case targetSlot
     case cardSelection
     case sourceAndTargetSlots
+    case coralPayment
     case abilityEffectSelection
     case count(Int)
 }
@@ -59,6 +62,9 @@ enum PendingChoiceResolution: Codable, Equatable, Sendable {
     case recoverCard(CardID)
     case drawFromDeck
     case moveResource(source: OceanSlotAddress, target: OceanSlotAddress, kind: ResourceKind)
+    case gainCoralWithEgg(source: OceanSlotAddress)
+    case gainCoralWithYoung(source: OceanSlotAddress)
+    case gainCoralByDiscard(cardId: CardID)
     case chooseOption(String)
     case chooseAbilityEffect(AbilityEffectUnit)
     case finishAbility
@@ -71,5 +77,13 @@ enum PendingChoiceAppliedEffect: Codable, Equatable, Sendable {
     case placeEgg(target: OceanSlotAddress, amount: Int)
     case hatchEgg(target: OceanSlotAddress, amount: Int)
     case moveResource(source: OceanSlotAddress, target: OceanSlotAddress, kind: ResourceKind, amount: Int)
+    case gainCoral(playerId: PlayerID, diveSite: DiveSite, payment: CoralPayment)
+    case skipCoral(playerId: PlayerID, diveSite: DiveSite)
     case placeholder(String)
+}
+
+enum CoralPayment: Codable, Equatable, Sendable {
+    case egg(source: OceanSlotAddress)
+    case young(source: OceanSlotAddress)
+    case discard(cardId: CardID)
 }

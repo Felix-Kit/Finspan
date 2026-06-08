@@ -823,6 +823,8 @@ private enum RewardTokenAction: Equatable {
     case direct(choiceId: PendingChoiceID, resolution: PendingChoiceResolution)
     case chooseTarget(choiceId: PendingChoiceID, kind: PendingChoiceKind)
     case chooseMoveSource(choiceId: PendingChoiceID)
+    case chooseCoralResource(choiceId: PendingChoiceID, tokenId: String, kind: ResourceKind)
+    case chooseCoralHandCard(choiceId: PendingChoiceID, tokenId: String)
     case unsupported
 }
 
@@ -830,6 +832,8 @@ private enum RewardSelectionMode: Equatable {
     case target(choiceId: PendingChoiceID, tokenId: String, kind: PendingChoiceKind)
     case moveSource(choiceId: PendingChoiceID, tokenId: String)
     case moveTarget(choiceId: PendingChoiceID, tokenId: String, source: OceanSlotAddress, kind: ResourceKind)
+    case coralResource(choiceId: PendingChoiceID, tokenId: String, kind: ResourceKind)
+    case coralHandCard(choiceId: PendingChoiceID, tokenId: String)
 }
 
 enum PendingChoiceAction: String, Equatable {
@@ -1237,7 +1241,7 @@ final class GameBoardViewModel: ObservableObject {
             switch rewardSelectionMode {
             case .moveSource, .moveTarget:
                 return .moveResource
-            case .target:
+            case .target, .coralResource, .coralHandCard:
                 return .rewardSelection
             case nil:
                 break
@@ -1306,7 +1310,27 @@ final class GameBoardViewModel: ObservableObject {
             return AppStrings.GameBoard.rewardResolvedActionSummary(playerName: playerName)
         case .moveResource:
             return AppStrings.GameBoard.rewardMoveResourceActionSummary(playerName: playerName)
+        case .gainCoralWithEgg,
+             .gainCoralWithYoung,
+             .gainCoralByDiscard:
+            if let effect = payload.appliedEffects.first(where: {
+                if case .gainCoral = $0 { return true }
+                return false
+            }),
+               case let .gainCoral(_, diveSite, _) = effect {
+                return AppStrings.GameBoard.rewardGainCoralActionSummary(
+                    playerName: playerName,
+                    diveSiteName: AppStrings.oceanDiveSiteName(diveSite)
+                )
+            }
+            return AppStrings.GameBoard.rewardResolvedActionSummary(playerName: playerName)
         default:
+            if payload.appliedEffects.contains(where: {
+                if case .skipCoral = $0 { return true }
+                return false
+            }) {
+                return AppStrings.GameBoard.rewardSkipCoralActionSummary(playerName: playerName)
+            }
             return AppStrings.GameBoard.rewardResolvedActionSummary(playerName: playerName)
         }
     }
@@ -1795,10 +1819,20 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     private var canSelectHandCards: Bool {
-        state.phase == .playing
+        if isSelectingCoralDiscardCard {
+            return true
+        }
+        return state.phase == .playing
             && activePlayerState != nil
             && !hasBlockingPendingChoices
             && state.activeDiveQueue == nil
+    }
+
+    private var isSelectingCoralDiscardCard: Bool {
+        if case .coralHandCard = rewardSelectionMode {
+            return true
+        }
+        return false
     }
 
     private var canSelectDiscardPaymentCards: Bool {
@@ -1957,6 +1991,16 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     func selectHandCard(_ cardId: CardID) {
+        if case let .coralHandCard(choiceId, _) = rewardSelectionMode {
+            guard let choice = state.pendingChoices[choiceId],
+                  state.playerGameStates[choice.playerId]?.hand.contains(cardId) == true
+            else {
+                errorMessage = AppStrings.GameBoard.unknownCard
+                return
+            }
+            resolvePendingChoice(choiceId, resolution: .gainCoralByDiscard(cardId: cardId))
+            return
+        }
         guard canSelectHandCards else {
             errorMessage = handBlockingMessage
             return
@@ -2107,6 +2151,12 @@ final class GameBoardViewModel: ObservableObject {
         case let .chooseMoveSource(choiceId):
             rewardSelectionMode = .moveSource(choiceId: choiceId, tokenId: tokenId)
             errorMessage = AppStrings.GameBoard.chooseSource
+        case let .chooseCoralResource(choiceId, tokenId, kind):
+            rewardSelectionMode = .coralResource(choiceId: choiceId, tokenId: tokenId, kind: kind)
+            errorMessage = AppStrings.GameBoard.chooseCoralResourceSource
+        case let .chooseCoralHandCard(choiceId, tokenId):
+            rewardSelectionMode = .coralHandCard(choiceId: choiceId, tokenId: tokenId)
+            errorMessage = AppStrings.GameBoard.chooseCoralDiscardCard
         case .unsupported:
             rewardSelectionMode = nil
             errorMessage = AppStrings.GameBoard.abilityUnsupported
@@ -2163,6 +2213,27 @@ final class GameBoardViewModel: ObservableObject {
                 choiceId,
                 resolution: .moveResource(source: sourceAddress, target: address, kind: kind)
             )
+            return true
+        case let .coralResource(choiceId, _, kind):
+            guard let choice = state.pendingChoices[choiceId],
+                  let playerState = state.playerGameStates[choice.playerId],
+                  let source = playerState.ocean.slots.first(where: { $0.address == address }),
+                  resourceAmount(kind, in: source) > 0
+            else {
+                errorMessage = AppStrings.GameBoard.chooseCoralResourceSource
+                return true
+            }
+            switch kind {
+            case .egg:
+                resolvePendingChoice(choiceId, resolution: .gainCoralWithEgg(source: address))
+            case .young:
+                resolvePendingChoice(choiceId, resolution: .gainCoralWithYoung(source: address))
+            default:
+                errorMessage = AppStrings.GameBoard.chooseCoralResourceSource
+            }
+            return true
+        case .coralHandCard:
+            errorMessage = AppStrings.GameBoard.chooseCoralDiscardCard
             return true
         }
     }
@@ -3386,7 +3457,8 @@ final class GameBoardViewModel: ObservableObject {
             }
         case .placeEgg,
              .hatchEgg,
-             .moveYoungOrSchool:
+             .moveYoungOrSchool,
+             .gainCoral:
             break
         case .compoundAbility:
             if let progress = choice.compoundAbilityProgress {
@@ -3542,6 +3614,73 @@ final class GameBoardViewModel: ObservableObject {
                 ),
                 .chooseMoveSource(choiceId: choice.choiceId)
             )]
+        case .gainCoral:
+            guard let playerState = state.playerGameStates[choice.playerId],
+                  let diveSite = coralDiveSite(for: choice),
+                  let reef = playerState.ocean.coralReefs.first(where: { $0.diveSite == diveSite })
+            else {
+                return []
+            }
+            let hasEgg = playerState.ocean.slots.contains { resourceAmount(.egg, in: $0) > 0 }
+            let hasYoung = playerState.ocean.slots.contains { resourceAmount(.young, in: $0) > 0 }
+            let hasHandCard = !playerState.hand.isEmpty
+            let progressText = AppStrings.coralReefProgressText(
+                coralCount: reef.coralCount,
+                maxCoral: reef.maxCoral
+            )
+            return [
+                (
+                    rewardToken(
+                        id: "\(choice.choiceId)-coral-egg",
+                        kind: .gainCoral,
+                        title: AppStrings.GameBoard.payOneEgg,
+                        subtitle: progressText,
+                        iconText: "卵",
+                        symbolName: "circle",
+                        isSelectable: canResolve && hasEgg,
+                        unavailableReasonText: hasEgg ? nil : AppStrings.GameBoard.noCoralPaymentResource
+                    ),
+                    .chooseCoralResource(choiceId: choice.choiceId, tokenId: "\(choice.choiceId)-coral-egg", kind: .egg)
+                ),
+                (
+                    rewardToken(
+                        id: "\(choice.choiceId)-coral-young",
+                        kind: .gainCoral,
+                        title: AppStrings.GameBoard.payOneYoung,
+                        subtitle: progressText,
+                        iconText: "幼",
+                        symbolName: "circle.dotted",
+                        isSelectable: canResolve && hasYoung,
+                        unavailableReasonText: hasYoung ? nil : AppStrings.GameBoard.noCoralPaymentResource
+                    ),
+                    .chooseCoralResource(choiceId: choice.choiceId, tokenId: "\(choice.choiceId)-coral-young", kind: .young)
+                ),
+                (
+                    rewardToken(
+                        id: "\(choice.choiceId)-coral-discard",
+                        kind: .gainCoral,
+                        title: AppStrings.GameBoard.discardOneHandCard,
+                        subtitle: progressText,
+                        iconText: "牌",
+                        symbolName: "rectangle.stack.badge.minus",
+                        isSelectable: canResolve && hasHandCard,
+                        unavailableReasonText: hasHandCard ? nil : AppStrings.GameBoard.noCoralPaymentHandCard
+                    ),
+                    .chooseCoralHandCard(choiceId: choice.choiceId, tokenId: "\(choice.choiceId)-coral-discard")
+                ),
+                (
+                    rewardToken(
+                        id: "\(choice.choiceId)-coral-skip",
+                        kind: .skipOrEnd,
+                        title: AppStrings.GameBoard.skipChoice,
+                        subtitle: AppStrings.GameBoard.optionalChoice,
+                        iconText: "跳",
+                        symbolName: "forward.end",
+                        isSelectable: canResolve
+                    ),
+                    .direct(choiceId: choice.choiceId, resolution: .skip)
+                )
+            ]
         case .compoundAbility:
             var entries: [(token: RewardTokenViewState, action: RewardTokenAction)] = []
             if let progress = choice.compoundAbilityProgress {
@@ -3754,6 +3893,7 @@ final class GameBoardViewModel: ObservableObject {
         case .drawFish,
              .recoverFromDiscardOrDraw,
              .moveYoungOrSchool,
+             .gainCoral,
              .compoundAbility,
              .bottomBonus,
              .placeholder,
@@ -3774,6 +3914,8 @@ final class GameBoardViewModel: ObservableObject {
                 : AppStrings.GameBoard.chooseDiscardCardToRecover
         case .moveYoungOrSchool:
             return AppStrings.GameBoard.moveYoungOrSchool
+        case .gainCoral:
+            return AppStrings.GameBoard.chooseCoralPayment
         case .drawFish,
              .compoundAbility,
              .bottomBonus,
@@ -3801,6 +3943,9 @@ final class GameBoardViewModel: ObservableObject {
         case let .diveBonus(diveSite):
             let prefix = AppStrings.GameBoard.triggering
             return "\(prefix)：\(AppStrings.diveActionSiteName(diveSite))"
+        case let .coralReef(diveSite):
+            let prefix = AppStrings.GameBoard.triggering
+            return "\(prefix)：\(AppStrings.oceanDiveSiteName(diveSite))\(AppStrings.GameBoard.coralReef)"
         case let .fishAbility(cardId):
             let prefix = AppStrings.GameBoard.activating
             return "\(prefix)：\(cardTitle(cardId))"
@@ -3824,6 +3969,10 @@ final class GameBoardViewModel: ObservableObject {
                 return AppStrings.GameBoard.chooseSource
             case .moveTarget:
                 return AppStrings.GameBoard.chooseTarget
+            case .coralResource:
+                return AppStrings.GameBoard.chooseCoralResourceSource
+            case .coralHandCard:
+                return AppStrings.GameBoard.chooseCoralDiscardCard
             }
         }
 
@@ -3837,6 +3986,8 @@ final class GameBoardViewModel: ObservableObject {
             return AppStrings.GameBoard.chooseRewardThenTarget
         case .moveYoungOrSchool:
             return AppStrings.GameBoard.chooseRewardThenSource
+        case .gainCoral:
+            return AppStrings.GameBoard.chooseCoralPayment
         case .bottomBonus,
              .placeholder,
              .unsupported:
@@ -3868,6 +4019,12 @@ final class GameBoardViewModel: ObservableObject {
             return AppStrings.GameBoard.drawFish
         case .moveResource:
             return AppStrings.GameBoard.moveYoungOrSchool
+        case .gainCoralWithEgg:
+            return AppStrings.GameBoard.payOneEgg
+        case .gainCoralWithYoung:
+            return AppStrings.GameBoard.payOneYoung
+        case .gainCoralByDiscard:
+            return AppStrings.GameBoard.discardOneHandCard
         case .chooseOption:
             return AppStrings.GameBoard.chooseOption
         case .chooseAbilityEffect:
@@ -3947,6 +4104,13 @@ final class GameBoardViewModel: ObservableObject {
         }
     }
 
+    private func coralDiveSite(for choice: PendingChoice) -> DiveSite? {
+        guard case let .coralReef(diveSite) = choice.source else {
+            return nil
+        }
+        return diveSite
+    }
+
     private func rewardSelectionHighlightText(for slot: OceanSlot) -> String? {
         guard let rewardSelectionMode else {
             return nil
@@ -3977,6 +4141,16 @@ final class GameBoardViewModel: ObservableObject {
                 return nil
             }
             return AppStrings.GameBoard.chooseTarget
+        case let .coralResource(choiceId, _, kind):
+            guard let choice = state.pendingChoices[choiceId],
+                  slot.address.playerId == choice.playerId,
+                  resourceAmount(kind, in: slot) > 0
+            else {
+                return nil
+            }
+            return AppStrings.GameBoard.chooseCoralResourceSource
+        case .coralHandCard:
+            return nil
         }
     }
 
@@ -4190,6 +4364,7 @@ final class GameBoardViewModel: ObservableObject {
         case let .printedDiveBonus(zone):
             return slot.address.zone == zone
         case .bottomBonus,
+             .coralReefOverlay,
              .fishAbility,
              .compoundFishAbility:
             return false
@@ -4208,6 +4383,9 @@ final class GameBoardViewModel: ObservableObject {
         if case let .printedDiveBonus(zone) = currentStep.source,
            slot.address.zone == zone {
             return "正在触发：\(AppStrings.oceanZoneName(zone))奖励"
+        }
+        if case .coralReefOverlay = currentStep.source {
+            return AppStrings.GameBoard.gainCoral
         }
         return nil
     }

@@ -26,6 +26,6 @@ build/
 # Optional: do not commit official rule PDFs/assets unless repo is private and you understand the copyright risk
 #Docs/Rules/*.pdf
 #docs/Rules/*.pdf
-Assets/Official/
-references/webpage/
-references/webpage/
+# Assets/Official/
+# references/webpage/
+# references/webpage/

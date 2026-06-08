@@ -2047,6 +2047,140 @@ final class GameEngineTests: XCTestCase {
         )
     }
 
+    func testDiveWithoutSharksAndReefsDoesNotCreateCoralReefOffer() throws {
+        let engine = GameEngine()
+        let state = coralDiveState(coralReefs: [])
+
+        let drafts = try engine.makeEventDrafts(
+            for: diveCommand(commandId: "dive-no-coral"),
+            in: state
+        )
+
+        guard case let .diverMoved(diverMoved) = drafts.first else {
+            return XCTFail("Expected diverMoved.")
+        }
+        XCTAssertNil(diverMoved.diveResolutionQueue)
+        XCTAssertFalse(drafts.contains(where: \.isPendingChoiceCreated))
+    }
+
+    func testDiveWithSharksAndReefsCreatesOneCoralReefOffer() throws {
+        let engine = GameEngine()
+        let state = coralDiveState()
+
+        let drafts = try engine.makeEventDrafts(
+            for: diveCommand(commandId: "dive-coral"),
+            in: state
+        )
+
+        guard case let .diverMoved(diverMoved) = drafts.first,
+              let queue = diverMoved.diveResolutionQueue,
+              case let .pendingChoiceCreated(choice) = drafts.last
+        else {
+            return XCTFail("Expected coral dive queue.")
+        }
+        XCTAssertEqual(queue.steps.filter { $0.source == .coralReefOverlay(diveSite: .blue) }.count, 1)
+        XCTAssertEqual(choice.kind, .gainCoral)
+        XCTAssertEqual(choice.source, .coralReef(.blue))
+        XCTAssertEqual(choice.expectedInput, .coralPayment)
+    }
+
+    func testFullCoralReefDoesNotCreateGainableCoralOffer() throws {
+        let engine = GameEngine()
+        let state = coralDiveState(coralCount: 6)
+
+        let drafts = try engine.makeEventDrafts(
+            for: diveCommand(commandId: "dive-full-coral"),
+            in: state
+        )
+
+        guard case let .diverMoved(diverMoved) = drafts.first else {
+            return XCTFail("Expected diverMoved.")
+        }
+        XCTAssertNil(diverMoved.diveResolutionQueue)
+        XCTAssertFalse(drafts.contains(where: \.isPendingChoiceCreated))
+    }
+
+    func testSkippingCoralReefOfferDoesNotChangeCoralCount() throws {
+        let engine = GameEngine()
+        let initialState = coralDiveState()
+        var state = applying(
+            try engine.makeEventDrafts(for: diveCommand(commandId: "dive-coral-skip"), in: initialState),
+            to: initialState,
+            using: engine
+        )
+        let choice = try XCTUnwrap(state.pendingChoices.values.first)
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(commandId: "skip-coral", choiceId: choice.choiceId, resolution: .skip),
+            in: state
+        )
+        state = applying(drafts, to: state, using: engine)
+
+        XCTAssertEqual(coralCount(.blue, in: state), 0)
+        XCTAssertTrue(drafts.contains { draft in
+            guard case let .pendingChoiceResolved(event) = draft else { return false }
+            return event.appliedEffects == [.skipCoral(playerId: "player-1", diveSite: .blue)]
+        })
+    }
+
+    func testPayingEggForCoralReefOfferRemovesEggAndIncreasesCoral() throws {
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 3)
+        let state = try resolveFirstCoralOffer(
+            resolution: .gainCoralWithEgg(source: source),
+            sourceResources: [ResourceQuantity(kind: .egg, amount: 1)]
+        )
+
+        XCTAssertEqual(resourceAmount(.egg, at: source, in: state), 0)
+        XCTAssertEqual(coralCount(.blue, in: state), 1)
+    }
+
+    func testPayingYoungForCoralReefOfferRemovesYoungAndIncreasesCoral() throws {
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 3)
+        let state = try resolveFirstCoralOffer(
+            resolution: .gainCoralWithYoung(source: source),
+            sourceResources: [ResourceQuantity(kind: .young, amount: 1)]
+        )
+
+        XCTAssertEqual(resourceAmount(.young, at: source, in: state), 0)
+        XCTAssertEqual(coralCount(.blue, in: state), 1)
+    }
+
+    func testDiscardingHandCardForCoralReefOfferDiscardsCardAndIncreasesCoral() throws {
+        let state = try resolveFirstCoralOffer(
+            resolution: .gainCoralByDiscard(cardId: "fish-1"),
+            sourceResources: []
+        )
+
+        XCTAssertFalse(state.playerGameStates["player-1"]?.hand.contains("fish-1") ?? true)
+        XCTAssertEqual(state.playerGameStates["player-1"]?.discardPile, ["fish-1"])
+        XCTAssertEqual(coralCount(.blue, in: state), 1)
+    }
+
+    func testResolvingCoralReefOfferContinuesDiveQueue() throws {
+        let engine = GameEngine()
+        let initialState = coralDiveState(includeBottomBonus: true)
+        let state = applying(
+            try engine.makeEventDrafts(for: diveCommand(commandId: "dive-coral-continues"), in: initialState),
+            to: initialState,
+            using: engine
+        )
+        let choice = try XCTUnwrap(state.pendingChoices.values.first)
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(commandId: "resolve-coral-continues", choiceId: choice.choiceId, resolution: .skip),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(resolved) = drafts.first,
+              case let .advanced(queue) = resolved.diveQueueUpdate,
+              case let .pendingChoiceCreated(nextChoice) = drafts.last
+        else {
+            return XCTFail("Expected coral skip to advance to next dive queue step.")
+        }
+        XCTAssertEqual(queue.currentStep?.source, .bottomBonus)
+        XCTAssertEqual(nextChoice.choiceId, queue.currentStep?.pendingChoice.choiceId)
+    }
+
     func testActiveDiveQueuePreventsPlayFishAndDive() throws {
         let engine = GameEngine()
         let initialState = blueDiveQueueState()
@@ -3783,6 +3917,59 @@ final class GameEngineTests: XCTestCase {
         return state
     }
 
+    private func coralDiveState(
+        coralReefs: [CoralReefState] = CoralReefState.sharksAndReefsInitial,
+        coralCount: Int = 0,
+        includeBottomBonus: Bool = false
+    ) -> GameState {
+        var state = playFishState()
+        clearOceanContent(for: "player-1", in: &state)
+        clearResources(for: "player-1", in: &state)
+        state.playerGameStates["player-1"]?.ocean.coralReefs = coralReefs.map { reef in
+            guard reef.diveSite == .blue else { return reef }
+            return CoralReefState(
+                diveSite: reef.diveSite,
+                coralCount: coralCount,
+                maxCoral: reef.maxCoral,
+                completionBonus: reef.completionBonus
+            )
+        }
+        if !includeBottomBonus {
+            state.playerGameStates["player-1"]?.diveSitesReachedBottomThisWeek = [.blue]
+        }
+        return state
+    }
+
+    private func resolveFirstCoralOffer(
+        resolution: PendingChoiceResolution,
+        sourceResources: [ResourceQuantity]
+    ) throws -> GameState {
+        let engine = GameEngine()
+        var initialState = coralDiveState()
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 3)
+        setResources(sourceResources, at: source, in: &initialState)
+        var state = applying(
+            try engine.makeEventDrafts(for: diveCommand(commandId: "dive-coral-pay"), in: initialState),
+            to: initialState,
+            using: engine
+        )
+        let choice = try XCTUnwrap(state.pendingChoices.values.first)
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(commandId: "resolve-coral-pay", choiceId: choice.choiceId, resolution: resolution),
+            in: state
+        )
+        state = applying(drafts, to: state, using: engine)
+        return state
+    }
+
+    private func coralCount(_ diveSite: DiveSite, in state: GameState) -> Int {
+        state.playerGameStates["player-1"]?
+            .ocean
+            .coralReefs
+            .first(where: { $0.diveSite == diveSite })?
+            .coralCount ?? 0
+    }
+
     private func abilityDiveState(cardId: CardID, addSecondFish: Bool = false) -> GameState {
         var state = playFishState()
         state.playerGameStates["player-1"]?.diveSitesReachedBottomThisWeek = [.blue]
@@ -3922,6 +4109,8 @@ final class GameEngineTests: XCTestCase {
             return .cardSelection
         case .moveYoungOrSchool:
             return .sourceAndTargetSlots
+        case .gainCoral:
+            return .coralPayment
         case .drawFish,
              .compoundAbility,
              .bottomBonus,
