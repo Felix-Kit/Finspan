@@ -23,6 +23,200 @@ enum FishCardFaceKind: Equatable {
     case placeholder
 }
 
+struct FishCardFaceIconViewState: Equatable {
+    let assetName: String
+    let fallbackText: String
+    let accessibilityText: String
+}
+
+enum FishCardAbilitySegment: Equatable {
+    case text(String)
+    case icon(FishCardFaceIconViewState)
+
+    var isIcon: Bool {
+        if case .icon = self {
+            return true
+        }
+        return false
+    }
+}
+
+enum FishCardAbilityPanelStyle: String, Equatable {
+    case none
+    case tanBrush
+    case yellowBrush
+}
+
+enum FishCardAbilityTokenParser {
+    static let supportedTokenNames: Set<String> = [
+        "AllPlayers",
+        "AnyCoral",
+        "ArrowDown",
+        "Bioluminescent",
+        "BlueCoral",
+        "Camouflage",
+        "Card",
+        "ConsumeFish",
+        "ConsumeFish1",
+        "ConsumeFish2",
+        "ConsumeFish3",
+        "Discard",
+        "DrawCard",
+        "Electric",
+        "Estuary",
+        "FishEgg",
+        "FishFromHand",
+        "FishFromHandConsume",
+        "FishHatch",
+        "FishLengthLarge",
+        "FishLengthMedium",
+        "FishLengthSmall",
+        "FlipperBlue",
+        "FlipperGreen",
+        "FlipperPurple",
+        "FreePlayFishFromHand",
+        "GreenCoral",
+        "PlayFishBottomRow",
+        "Predator",
+        "PurpleCoral",
+        "School",
+        "SchoolFeederMove",
+        "SchoolFish",
+        "Sun",
+        "UnSchoolFish",
+        "Venomous",
+        "Wave",
+        "YoungFish"
+    ]
+
+    static func parse(_ text: String) -> [FishCardAbilitySegment] {
+        guard !text.isEmpty else {
+            return []
+        }
+
+        var segments: [FishCardAbilitySegment] = []
+        var currentIndex = text.startIndex
+
+        while let open = nextTokenStart(in: text, from: currentIndex),
+              let close = matchingTokenEnd(in: text, from: open) {
+            appendText(String(text[currentIndex..<open]), to: &segments)
+
+            let token = String(text[text.index(after: open)..<close])
+            if let icon = icon(for: token) {
+                segments.append(.icon(icon))
+            } else {
+                segments.append(.icon(unknownIcon(for: token)))
+            }
+            currentIndex = text.index(after: close)
+        }
+
+        appendText(String(text[currentIndex...]), to: &segments)
+        return segments
+    }
+
+    private static func nextTokenStart(in text: String, from index: String.Index) -> String.Index? {
+        text[index...].firstIndex { $0 == "[" || $0 == "{" }
+    }
+
+    private static func matchingTokenEnd(in text: String, from open: String.Index) -> String.Index? {
+        let closeCharacter: Character = text[open] == "[" ? "]" : "}"
+        return text[open...].firstIndex(of: closeCharacter)
+    }
+
+    private static func appendText(_ text: String, to segments: inout [FishCardAbilitySegment]) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return
+        }
+        segments.append(.text(trimmed))
+    }
+
+    private static func icon(for token: String) -> FishCardFaceIconViewState? {
+        switch token {
+        case "AllPlayers":
+            return FishCardFaceIconViewState(assetName: "AllPlayers", fallbackText: "全员", accessibilityText: "所有玩家")
+        case "AnyCoral":
+            return FishCardFaceIconViewState(assetName: "AnyCoral", fallbackText: "任意珊瑚", accessibilityText: "任意珊瑚")
+        case "ArrowDown":
+            return FishCardFaceIconViewState(assetName: "ArrowDown", fallbackText: "向下", accessibilityText: "向下")
+        case "Bioluminescent":
+            return FishCardFaceIconViewState(assetName: "Bioluminescent", fallbackText: "光", accessibilityText: "生物发光")
+        case "BlueCoral":
+            return FishCardFaceIconViewState(assetName: "BlueCoral", fallbackText: "蓝珊瑚", accessibilityText: "蓝色珊瑚")
+        case "Camouflage":
+            return FishCardFaceIconViewState(assetName: "Camouflage", fallbackText: "隐", accessibilityText: "伪装")
+        case "ConsumeFish", "ConsumeFish1":
+            return FishCardFaceIconViewState(assetName: "ConsumeFish1", fallbackText: "吞", accessibilityText: "覆盖鱼")
+        case "ConsumeFish2":
+            return FishCardFaceIconViewState(assetName: "ConsumeFish2", fallbackText: "吞2", accessibilityText: "覆盖两条鱼")
+        case "ConsumeFish3":
+            return FishCardFaceIconViewState(assetName: "ConsumeFish3", fallbackText: "吞3", accessibilityText: "覆盖三条鱼")
+        case "Discard":
+            return FishCardFaceIconViewState(assetName: "Discard", fallbackText: "弃", accessibilityText: "弃牌")
+        case "DrawCard":
+            return FishCardFaceIconViewState(assetName: "DrawCard", fallbackText: "抽牌", accessibilityText: "抽牌")
+        case "Electric":
+            return FishCardFaceIconViewState(assetName: "Electric", fallbackText: "电", accessibilityText: "放电")
+        case "Estuary":
+            return FishCardFaceIconViewState(assetName: "Estuary", fallbackText: "河口", accessibilityText: "河口")
+        case "FishEgg":
+            return FishCardFaceIconViewState(assetName: "FishEgg", fallbackText: "卵", accessibilityText: "鱼卵")
+        case "FishFromHand", "Card":
+            return FishCardFaceIconViewState(assetName: "FishFromHand", fallbackText: "手牌", accessibilityText: "从手牌打出鱼")
+        case "FishFromHandConsume":
+            return FishCardFaceIconViewState(assetName: "FishFromHandConsume", fallbackText: "吞手牌", accessibilityText: "从手牌覆盖鱼")
+        case "FishHatch":
+            return FishCardFaceIconViewState(assetName: "FishHatch", fallbackText: "孵", accessibilityText: "孵化")
+        case "FishLengthLarge":
+            return FishCardFaceIconViewState(assetName: "FishLengthLarge", fallbackText: "大", accessibilityText: "大型鱼")
+        case "FishLengthMedium":
+            return FishCardFaceIconViewState(assetName: "FishLengthMedium", fallbackText: "中", accessibilityText: "中型鱼")
+        case "FishLengthSmall":
+            return FishCardFaceIconViewState(assetName: "FishLengthSmall", fallbackText: "小", accessibilityText: "小型鱼")
+        case "FlipperBlue":
+            return FishCardFaceIconViewState(assetName: "FlipperBlue", fallbackText: "蓝", accessibilityText: "蓝色潜水点")
+        case "FlipperGreen":
+            return FishCardFaceIconViewState(assetName: "FlipperGreen", fallbackText: "绿", accessibilityText: "绿色潜水点")
+        case "FlipperPurple":
+            return FishCardFaceIconViewState(assetName: "FlipperPurple", fallbackText: "紫", accessibilityText: "紫色潜水点")
+        case "FreePlayFishFromHand":
+            return FishCardFaceIconViewState(assetName: "FreePlayFishFromHand", fallbackText: "免费出鱼", accessibilityText: "免费从手牌打出鱼")
+        case "GreenCoral":
+            return FishCardFaceIconViewState(assetName: "GreenCoral", fallbackText: "绿珊瑚", accessibilityText: "绿色珊瑚")
+        case "PlayFishBottomRow":
+            return FishCardFaceIconViewState(assetName: "PlayFishBottomRow", fallbackText: "底行出鱼", accessibilityText: "底行出鱼")
+        case "Predator":
+            return FishCardFaceIconViewState(assetName: "Predator", fallbackText: "捕", accessibilityText: "捕食者")
+        case "PurpleCoral":
+            return FishCardFaceIconViewState(assetName: "PurpleCoral", fallbackText: "紫珊瑚", accessibilityText: "紫色珊瑚")
+        case "School", "SchoolFish":
+            return FishCardFaceIconViewState(assetName: "SchoolFish", fallbackText: "群", accessibilityText: "鱼群")
+        case "SchoolFeederMove":
+            return FishCardFaceIconViewState(assetName: "SchoolFeederMove", fallbackText: "移群", accessibilityText: "移动鱼群")
+        case "Sun":
+            return FishCardFaceIconViewState(assetName: "Sun", fallbackText: "阳", accessibilityText: "阳光层")
+        case "UnSchoolFish":
+            return FishCardFaceIconViewState(assetName: "UnSchoolFish", fallbackText: "散群", accessibilityText: "移除鱼群")
+        case "Venomous":
+            return FishCardFaceIconViewState(assetName: "Venomous", fallbackText: "毒", accessibilityText: "有毒")
+        case "Wave":
+            return FishCardFaceIconViewState(assetName: "Wave", fallbackText: "分", accessibilityText: "分数")
+        case "YoungFish":
+            return FishCardFaceIconViewState(assetName: "YoungFish", fallbackText: "幼", accessibilityText: "幼鱼")
+        default:
+            return nil
+        }
+    }
+
+    private static func unknownIcon(for token: String) -> FishCardFaceIconViewState {
+        FishCardFaceIconViewState(
+            assetName: "UnknownToken",
+            fallbackText: "?",
+            accessibilityText: "未知图标 \(token)"
+        )
+    }
+}
+
 struct FishCardFaceViewState: Equatable {
     let kind: FishCardFaceKind
     let cardId: CardID?
@@ -37,9 +231,28 @@ struct FishCardFaceViewState: Equatable {
     let tagsText: String
     let abilityTriggerText: String?
     let abilityText: String
+    let costIcons: [FishCardFaceIconViewState]
+    let zoneIcons: [FishCardFaceIconViewState]
+    let tagIcons: [FishCardFaceIconViewState]
+    let sizeClassIcon: FishCardFaceIconViewState
+    let abilitySegments: [FishCardAbilitySegment]
+    let backgroundAssetPrefix: String
+    let abilityStripAssetPrefix: String?
+    let abilityPanelStyle: FishCardAbilityPanelStyle
     let localFishImagePrefix: String?
     let aspectRatio: Double
     let isPlaceholder: Bool
+}
+
+struct GameHudControlViewState: Equatable {
+    let settingsButtonText: String
+    let logButtonText: String
+    let canShowLog: Bool
+    let placement: GameHudControlPlacement
+}
+
+enum GameHudControlPlacement: String, Equatable {
+    case topLeft
 }
 
 struct HandCardViewState: Identifiable, Equatable {
@@ -101,6 +314,7 @@ struct GameTopBarViewState: Equatable {
 }
 
 struct GameHudViewState: Equatable {
+    let leftControls: GameHudControlViewState
     let playerHud: TopPlayerHudViewState
     let weeklyGoalHud: WeeklyGoalHudViewState
     let canShowLog: Bool
@@ -687,6 +901,12 @@ final class GameBoardViewModel: ObservableObject {
 
     var gameHudViewState: GameHudViewState {
         GameHudViewState(
+            leftControls: GameHudControlViewState(
+                settingsButtonText: AppStrings.GameBoard.settings,
+                logButtonText: AppStrings.GameBoard.logButton,
+                canShowLog: true,
+                placement: .topLeft
+            ),
             playerHud: topPlayerHudViewState,
             weeklyGoalHud: weeklyGoalHudViewState,
             canShowLog: true,
@@ -1631,7 +1851,7 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     private var handStackRestingOffsetY: Double {
-        72
+        46
     }
 
     private var handStackPulledOutOffsetY: Double {
@@ -2427,7 +2647,7 @@ final class GameBoardViewModel: ObservableObject {
             stackOffsetX: Double(stackIndex) * handStackOverlapOffsetX,
             stackOffsetY: isPulledOutFromStack ? handStackPulledOutOffsetY : handStackRestingOffsetY,
             stackZIndex: isPulledOutFromStack ? 1_000 : Double(stackIndex),
-            visibleHeightRatio: isPulledOutFromStack ? 1 : 0.48,
+            visibleHeightRatio: isPulledOutFromStack ? 1 : 0.68,
             cardWidth: Self.fixedHandCardWidth,
             cardHeight: Self.fixedHandCardHeight,
             scale: Self.fixedHandCardScale
@@ -2491,6 +2711,14 @@ final class GameBoardViewModel: ObservableObject {
                 tagsText: AppStrings.GameBoard.cardFaceNoTags,
                 abilityTriggerText: nil,
                 abilityText: AppStrings.GameBoard.abilityUnsupported,
+                costIcons: [cardIcon(assetName: "NoCost", fallbackText: "-", accessibilityText: AppStrings.GameBoard.noCost)],
+                zoneIcons: [],
+                tagIcons: [],
+                sizeClassIcon: cardIcon(assetName: "FishLengthMedium", fallbackText: "中", accessibilityText: "中型鱼"),
+                abilitySegments: FishCardAbilityTokenParser.parse(AppStrings.GameBoard.abilityUnsupported),
+                backgroundAssetPrefix: cardBackgroundAssetPrefix(for: nil),
+                abilityStripAssetPrefix: nil,
+                abilityPanelStyle: .none,
                 localFishImagePrefix: nil,
                 aspectRatio: CardRenderMetrics.cardAspectRatio,
                 isPlaceholder: true
@@ -2498,6 +2726,9 @@ final class GameBoardViewModel: ObservableObject {
         }
 
         let abilityText = card.abilityText?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let displayAbilityText = abilityText?.isEmpty == false
+            ? abilityText!
+            : cardAbilitySummaryText(card)
         return FishCardFaceViewState(
             kind: .fishCard,
             cardId: cardId,
@@ -2511,9 +2742,15 @@ final class GameBoardViewModel: ObservableObject {
             requiredDiveSiteText: cardRequiredDiveSiteText(card),
             tagsText: cardTagsText(card.tags),
             abilityTriggerText: cardAbilityTriggerText(card),
-            abilityText: abilityText?.isEmpty == false
-                ? abilityText!
-                : cardAbilitySummaryText(card),
+            abilityText: displayAbilityText,
+            costIcons: cardCostIcons(card),
+            zoneIcons: cardZoneIcons(card),
+            tagIcons: cardTagIcons(card.tags),
+            sizeClassIcon: cardSizeClassIcon(card),
+            abilitySegments: FishCardAbilityTokenParser.parse(displayAbilityText),
+            backgroundAssetPrefix: cardBackgroundAssetPrefix(for: card.requiredDiveSiteColor),
+            abilityStripAssetPrefix: abilityStripAssetPrefix(for: card),
+            abilityPanelStyle: abilityPanelStyle(for: card),
             localFishImagePrefix: card.visualAssetName ?? inferredFishImagePrefix(cardId: card.id),
             aspectRatio: CardRenderMetrics.cardAspectRatio,
             isPlaceholder: false
@@ -2537,6 +2774,14 @@ final class GameBoardViewModel: ObservableObject {
                 tagsText: AppStrings.GameBoard.cardFaceNoTags,
                 abilityTriggerText: nil,
                 abilityText: AppStrings.GameBoard.cardFaceNoAbility,
+                costIcons: [cardIcon(assetName: "NoCost", fallbackText: "-", accessibilityText: AppStrings.GameBoard.noCost)],
+                zoneIcons: [],
+                tagIcons: [],
+                sizeClassIcon: cardIcon(assetName: "FishLengthMedium", fallbackText: "中", accessibilityText: "中型鱼"),
+                abilitySegments: FishCardAbilityTokenParser.parse(AppStrings.GameBoard.cardFaceNoAbility),
+                backgroundAssetPrefix: cardBackgroundAssetPrefix(for: nil),
+                abilityStripAssetPrefix: nil,
+                abilityPanelStyle: .none,
                 localFishImagePrefix: nil,
                 aspectRatio: CardRenderMetrics.cardAspectRatio,
                 isPlaceholder: true
@@ -2556,6 +2801,14 @@ final class GameBoardViewModel: ObservableObject {
                 tagsText: AppStrings.GameBoard.forageFish,
                 abilityTriggerText: nil,
                 abilityText: AppStrings.GameBoard.cardFaceNoAbility,
+                costIcons: [cardIcon(assetName: "NoCost", fallbackText: "-", accessibilityText: AppStrings.GameBoard.noCost)],
+                zoneIcons: [],
+                tagIcons: [],
+                sizeClassIcon: cardSizeClassIcon(lengthCm: fish.lengthCm),
+                abilitySegments: FishCardAbilityTokenParser.parse(AppStrings.GameBoard.cardFaceNoAbility),
+                backgroundAssetPrefix: cardBackgroundAssetPrefix(for: nil),
+                abilityStripAssetPrefix: nil,
+                abilityPanelStyle: .none,
                 localFishImagePrefix: nil,
                 aspectRatio: CardRenderMetrics.cardAspectRatio,
                 isPlaceholder: false
@@ -2563,6 +2816,173 @@ final class GameBoardViewModel: ObservableObject {
         case let .fishCard(cardId):
             return fishCardFaceViewState(cardId: cardId)
         }
+    }
+
+    private func cardBackgroundAssetPrefix(for color: DiveSiteColor?) -> String {
+        switch color {
+        case .blue:
+            return "blue"
+        case .purple:
+            return "purple"
+        case .green:
+            return "green"
+        case nil:
+            return "base"
+        }
+    }
+
+    private func abilityStripAssetPrefix(for card: Card) -> String? {
+        guard let trigger = cardAbilityTriggerText(card) else {
+            return nil
+        }
+        if trigger == AppStrings.GameBoard.abilityTriggerIfActivated {
+            return "IfActivated"
+        }
+        if trigger == AppStrings.GameBoard.abilityTriggerGameEnd {
+            return "GameEnd"
+        }
+        return nil
+    }
+
+    private func abilityPanelStyle(for card: Card) -> FishCardAbilityPanelStyle {
+        guard let trigger = cardAbilityTriggerText(card) else {
+            return .none
+        }
+        if trigger == AppStrings.GameBoard.abilityTriggerIfActivated {
+            return .tanBrush
+        }
+        if trigger == AppStrings.GameBoard.abilityTriggerGameEnd {
+            return .yellowBrush
+        }
+        return .none
+    }
+
+    private func cardCostIcons(_ card: Card) -> [FishCardFaceIconViewState] {
+        let icons = card.costs.flatMap { cost -> [FishCardFaceIconViewState] in
+            switch cost {
+            case let .discardCards(count):
+                return repeatedIcon(
+                    assetName: "FishFromHand",
+                    fallbackText: "手牌",
+                    accessibilityText: AppStrings.GameBoard.discardPayment,
+                    count: count
+                )
+            case let .resource(kind, count):
+                return repeatedIcon(for: kind, count: count)
+            case let .coverShorterFish(count):
+                return repeatedIcon(
+                    assetName: "ConsumeFish1",
+                    fallbackText: "吞",
+                    accessibilityText: AppStrings.GameBoard.canCoverShorterFish,
+                    count: count
+                )
+            }
+        }
+        if icons.isEmpty {
+            return [cardIcon(assetName: "NoCost", fallbackText: "-", accessibilityText: AppStrings.GameBoard.noCost)]
+        }
+        return icons
+    }
+
+    private func repeatedIcon(for kind: ResourceKind, count: Int) -> [FishCardFaceIconViewState] {
+        if kind == .egg {
+            return repeatedIcon(assetName: "FishEgg", fallbackText: "卵", accessibilityText: resourceName(kind), count: count)
+        }
+        if kind == .young {
+            return repeatedIcon(assetName: "YoungFish", fallbackText: "幼", accessibilityText: resourceName(kind), count: count)
+        }
+        if kind == .school {
+            return repeatedIcon(assetName: "SchoolFish", fallbackText: "群", accessibilityText: resourceName(kind), count: count)
+        }
+        return repeatedIcon(assetName: "NoCost", fallbackText: resourceName(kind), accessibilityText: resourceName(kind), count: count)
+    }
+
+    private func repeatedIcon(
+        assetName: String,
+        fallbackText: String,
+        accessibilityText: String,
+        count: Int
+    ) -> [FishCardFaceIconViewState] {
+        guard count > 0 else {
+            return []
+        }
+        return Array(repeating: cardIcon(assetName: assetName, fallbackText: fallbackText, accessibilityText: accessibilityText), count: count)
+    }
+
+    private func cardZoneIcons(_ card: Card) -> [FishCardFaceIconViewState] {
+        card.allowedZones.map { zone in
+            switch zone {
+            case .sunlit:
+                return cardIcon(assetName: "Sun", fallbackText: "阳", accessibilityText: AppStrings.oceanZoneName(zone))
+            case .twilight:
+                return cardIcon(assetName: "Dusk", fallbackText: "暮", accessibilityText: AppStrings.oceanZoneName(zone))
+            case .midnight:
+                return cardIcon(assetName: "Night", fallbackText: "深", accessibilityText: AppStrings.oceanZoneName(zone))
+            }
+        }
+    }
+
+    private func cardTagIcons(_ tags: [CardTag]) -> [FishCardFaceIconViewState] {
+        tags.flatMap { tag -> [FishCardFaceIconViewState] in
+            let icon = cardTagIcon(tag)
+            return Array(repeating: icon, count: max(tag.count, 1))
+        }
+    }
+
+    private func cardTagIcon(_ tag: CardTag) -> FishCardFaceIconViewState {
+        switch tag.kind {
+        case "predator":
+            return cardIcon(assetName: "Predator", fallbackText: "捕", accessibilityText: cardTagName(tag.kind))
+        case "bioluminescent":
+            return cardIcon(assetName: "Bioluminescent", fallbackText: "光", accessibilityText: cardTagName(tag.kind))
+        case "camouflage":
+            return cardIcon(assetName: "Camouflage", fallbackText: "隐", accessibilityText: cardTagName(tag.kind))
+        case "electric":
+            return cardIcon(assetName: "Electric", fallbackText: "电", accessibilityText: cardTagName(tag.kind))
+        case "venomous":
+            return cardIcon(assetName: "Venomous", fallbackText: "毒", accessibilityText: cardTagName(tag.kind))
+        default:
+            return cardIcon(assetName: "NoCost", fallbackText: cardTagName(tag.kind), accessibilityText: cardTagName(tag.kind))
+        }
+    }
+
+    private func cardIcon(
+        assetName: String,
+        fallbackText: String,
+        accessibilityText: String
+    ) -> FishCardFaceIconViewState {
+        FishCardFaceIconViewState(
+            assetName: assetName,
+            fallbackText: fallbackText,
+            accessibilityText: accessibilityText
+        )
+    }
+
+    private func cardSizeClassIcon(_ card: Card) -> FishCardFaceIconViewState {
+        cardSizeClassIcon(lengthCm: card.lengthCm)
+    }
+
+    private func cardSizeClassIcon(lengthCm: Int) -> FishCardFaceIconViewState {
+        switch inferredSizeClass(lengthCm: lengthCm) {
+        case "smallDraft":
+            return cardIcon(assetName: "FishLengthSmall", fallbackText: "小", accessibilityText: "小型鱼")
+        case "largeDraft":
+            return cardIcon(assetName: "FishLengthLarge", fallbackText: "大", accessibilityText: "大型鱼")
+        case "mediumDraft":
+            return cardIcon(assetName: "FishLengthMedium", fallbackText: "中", accessibilityText: "中型鱼")
+        default:
+            return cardIcon(assetName: "FishLengthMedium", fallbackText: "中", accessibilityText: "中型鱼")
+        }
+    }
+
+    private func inferredSizeClass(lengthCm: Int) -> String {
+        if lengthCm < 50 {
+            return "smallDraft"
+        }
+        if lengthCm < 150 {
+            return "mediumDraft"
+        }
+        return "largeDraft"
     }
 
     private func cardTagsText(_ tags: [CardTag]) -> String {
@@ -2578,6 +2998,14 @@ final class GameBoardViewModel: ObservableObject {
         switch kind {
         case "predator":
             return "捕食者"
+        case "bioluminescent":
+            return "生物发光"
+        case "camouflage":
+            return "伪装"
+        case "electric":
+            return "放电"
+        case "venomous":
+            return "有毒"
         case "schooling":
             return "成群"
         case "reef":

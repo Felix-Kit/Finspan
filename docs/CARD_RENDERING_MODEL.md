@@ -84,21 +84,30 @@ structure:
 - `FishCardFaceView` renders one complete card face used by hand, ocean slots,
   and discard pile
 - local full-card background chosen from base / blue / purple / green
-- fish image in the central area, resolved from local asset files by source id
+- fish image in the CSS-inspired silhouette area, resolved from local asset
+  files by source id
 - fish name and scientific name in the top name area
 - cost icons in the upper-left area
 - zone icons in the left-side vertical area
-- printed points, length, and tags near the lower area
+- printed points, length, and size-class icons in CSS-inspired lower-left areas
+- tag icons near the title when present
 - ability trigger/text in a right-side panel
-- basic ability token parsing for `[FishEgg]`, `[YoungFish]`, `[School]`,
-  `[Card]`, and `[Wave]`
+- IF ACTIVATED uses the local `IfActivated` tan brush/strip background
+- GAME END uses the local `GameEnd` yellow brush/strip background
+- WHEN PLAYED remains a transparent icon-composition area
+- ability token parsing covers the current runtime base-game tokens, including
+  `[FishFromHand]`, `[ArrowDown]`, `[PlayFishBottomRow]`, `[FishEgg]`,
+  `[YoungFish]`, `[SchoolFish]`, `[Wave]`, `[AllPlayers]`, flipper icons,
+  length icons, and consume/discard/draw/hatch tokens
 
 This is intentionally a display layer only. It does not implement or interpret
 real fish abilities.
 
 The floating hand, discard pile preview/detail, and ocean slots all use this
 same complete card face and adapt by outer frame / scale only. This stage does
-not implement separate compact / normal / detail rendering modes.
+not implement separate compact / normal / detail rendering modes. Resting hand
+cards now expose about 68% of their height, and selected hand cards are pulled
+out from the same stack without a negative bottom offset clipping the card.
 
 The top HUD was also compressed: the log button now sits next to the settings
 button in the upper-left controls, while weekly goal boxes remain in the upper
@@ -115,13 +124,17 @@ pre-rendered card images. It composes cards as React DOM:
 - `IfActivated` and `GameEnd` ability strips use PNG strip backgrounds.
 - blue / purple / green are full-card background choices, not a separate
   right-side color strip.
+- SwiftUI layout now keeps the main CSS cqw coordinates in `CardRenderMetrics`:
+  cost top 3, zones top 11.5, silhouette left/top 22/19, points top 37,
+  length top 48, and ability width 30.
 
 ## Known Gaps
 
-- Exact finsearch card composition rules are unavailable in this repository.
+- Some exact finsearch card composition rules are still approximated in SwiftUI.
 - Text wrapping, font family, icon placement, and masking are approximate.
 - Fish image anchoring/cropping is approximate.
-- Icon-to-rule semantic mapping is not complete.
+- Icon-to-rule semantic mapping covers current base-game display tokens, but is
+  not a complete rules mapping.
 - The saved source maps and original font files are still unavailable.
 - A future import step should either preserve the original renderer metadata or
   generate a reviewed local layout schema.
@@ -130,8 +143,10 @@ pre-rendered card images. It composes cards as React DOM:
 
 - Add compact / normal / detail rendering modes later if the single complete
   face becomes too dense for very small slots.
-- Improve icon positioning and icon-to-field mapping.
-- Expand ability text tokenization beyond the minimal supported token set.
+- Improve icon positioning and special icon-group layouts beyond the current
+  Abyssal Halosaur / Bluespine Unicornfish / Clown Anemonefish focused cases.
+- Expand ability text tokenization for expansion-only tokens as those cards
+  become runtime data.
 - Improve fish image crop, anchor, and mask handling.
 - Add real visual QA against reviewed source cards.
 - Revisit fonts if the original finsearch font files become available.

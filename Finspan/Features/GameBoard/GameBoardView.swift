@@ -179,67 +179,71 @@ struct GameBoardView: View {
 
     private var gameHud: some View {
         let hud = viewModel.gameHudViewState
-        return HStack(alignment: .top, spacing: 12) {
-            Button {
-                isShowingSettings = true
-            } label: {
-                Image(systemName: "gearshape.fill")
-                    .font(.title3.weight(.semibold))
-                    .frame(width: 40, height: 40)
-            }
-            .buttonStyle(.bordered)
-            .accessibilityLabel(hud.settingsButtonText)
+        return HStack(alignment: .top, spacing: 10) {
+            HStack(spacing: 8) {
+                Button {
+                    isShowingSettings = true
+                } label: {
+                    Image(systemName: "gearshape.fill")
+                        .font(.headline.weight(.semibold))
+                        .frame(width: 34, height: 34)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel(hud.leftControls.settingsButtonText)
 
-            VStack(spacing: 8) {
+                Button {
+                    viewModel.showEventLog()
+                } label: {
+                    Image(systemName: "list.bullet.rectangle")
+                        .font(.headline.weight(.semibold))
+                        .frame(width: 34, height: 34)
+                }
+                .buttonStyle(.bordered)
+                .disabled(!hud.leftControls.canShowLog)
+                .accessibilityLabel(hud.leftControls.logButtonText)
+            }
+
+            VStack(spacing: 5) {
                 playerHud(hud.playerHud)
                 if let summary = hud.playerHud.lastActionSummaryText {
                     Text(summary)
-                        .font(.headline.weight(.semibold))
+                        .font(.callout.weight(.semibold))
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 5)
                         .background(
                             Capsule()
                                 .fill(Color(.secondarySystemBackground))
-                                .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
+                                .shadow(color: .black.opacity(0.1), radius: 5, y: 2)
                         )
                 }
             }
             .frame(maxWidth: .infinity)
 
-            VStack(alignment: .trailing, spacing: 8) {
-                weeklyGoalBoxes(hud.weeklyGoalHud)
-                Button {
-                    viewModel.showEventLog()
-                } label: {
-                    Label(hud.logButtonText, systemImage: "list.bullet.rectangle")
-                }
-                .buttonStyle(.bordered)
-                .disabled(!hud.canShowLog)
-            }
+            weeklyGoalBoxes(hud.weeklyGoalHud)
         }
         .padding(.horizontal, 18)
-        .padding(.top, 8)
+        .padding(.top, 6)
     }
 
     private func playerHud(_ viewState: TopPlayerHudViewState) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             ForEach(viewState.players) { player in
                 Button {
                     viewModel.selectPlayerAvatar(player.playerId)
                 } label: {
-                    VStack(spacing: 4) {
+                    VStack(spacing: 2) {
                         Text(player.avatarText)
-                            .font(player.isActive ? .headline.weight(.black) : .callout.weight(.bold))
+                            .font(player.isActive ? .callout.weight(.black) : .caption.weight(.bold))
                             .foregroundStyle(.white)
-                            .frame(width: player.isActive ? 48 : 38, height: player.isActive ? 48 : 38)
+                            .frame(width: player.isActive ? 38 : 32, height: player.isActive ? 38 : 32)
                             .background(Circle().fill(avatarColor(player.colorName)))
                             .overlay(
                                 Circle()
-                                    .stroke(player.isActive ? Color.yellow : (player.isSelectedForPreview ? Color.accentColor : Color.white.opacity(0.7)), lineWidth: player.isActive ? 4 : 2)
+                                    .stroke(player.isActive ? Color.yellow : (player.isSelectedForPreview ? Color.accentColor : Color.white.opacity(0.7)), lineWidth: player.isActive ? 3 : 1.5)
                             )
-                            .shadow(color: player.isActive ? Color.yellow.opacity(0.35) : .clear, radius: 8)
+                            .shadow(color: player.isActive ? Color.yellow.opacity(0.28) : .clear, radius: 5)
 
                         Text(player.displayName)
                             .font(.caption2.weight(player.isActive ? .black : .semibold))
@@ -250,25 +254,25 @@ struct GameBoardView: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 4)
         .background(Capsule().fill(Color(.tertiarySystemBackground).opacity(0.92)))
     }
 
     private func weeklyGoalBoxes(_ viewState: WeeklyGoalHudViewState) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             ForEach(viewState.boxes) { box in
                 Button {
                     viewModel.selectWeeklyGoalBox(box.index)
                 } label: {
-                    VStack(spacing: 3) {
+                    VStack(spacing: 2) {
                         Text(box.iconText)
-                            .font(.headline)
+                            .font(.subheadline)
                         Text(box.title)
                             .font(.caption2.weight(.black))
                             .lineLimit(1)
                     }
-                    .frame(width: box.isCurrent ? 74 : 62, height: box.isCurrent ? 64 : 54)
+                    .frame(width: box.isCurrent ? 62 : 54, height: box.isCurrent ? 52 : 46)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
                             .fill(box.isGameEndBox ? Color.indigo.opacity(0.18) : Color(.secondarySystemBackground))
@@ -277,7 +281,7 @@ struct GameBoardView: View {
                         RoundedRectangle(cornerRadius: 8)
                             .stroke(box.isCurrent ? Color.yellow : Color.secondary.opacity(0.28), lineWidth: box.isCurrent ? 3 : 1)
                     )
-                    .offset(y: box.isCurrent ? 6 : 0)
+                    .offset(y: box.isCurrent ? 4 : 0)
                 }
                 .buttonStyle(.plain)
             }

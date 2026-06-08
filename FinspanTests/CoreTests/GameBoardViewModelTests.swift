@@ -347,6 +347,18 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.isEventLogPresented)
     }
 
+    func testHudLeftControlsContainSettingsAndLogButtons() {
+        let service = makeService(hand: [])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let controls = viewModel.gameHudViewState.leftControls
+
+        XCTAssertEqual(controls.placement, .topLeft)
+        XCTAssertEqual(controls.settingsButtonText, AppStrings.GameBoard.settings)
+        XCTAssertEqual(controls.logButtonText, AppStrings.GameBoard.logButton)
+        XCTAssertTrue(controls.canShowLog)
+        XCTAssertEqual(viewModel.gameHudViewState.weeklyGoalHud.boxes.count, 4)
+    }
+
     func testSettingsMenuViewStateShowsEndCurrentGameAction() {
         let service = makeService(hand: [])
         let viewModel = GameBoardViewModel(roomService: service)
@@ -480,12 +492,218 @@ final class GameBoardViewModelTests: XCTestCase {
         let viewModel = GameBoardViewModel(roomService: service)
         let card = viewModel.handViewState.cards.first
 
+        XCTAssertEqual(CardRenderMetrics.cardAspectRatio, 61.0 / 40.0)
         XCTAssertEqual(card?.cardFace.kind, .fishCard)
         XCTAssertEqual(card?.cardFace.displayName, "Starter Fish 1")
         XCTAssertEqual(card?.cardFace.aspectRatio, CardRenderMetrics.cardAspectRatio)
         XCTAssertEqual(card?.cardWidth, CardRenderMetrics.handCardWidth)
         XCTAssertEqual(card?.cardHeight, CardRenderMetrics.handCardHeight)
         XCTAssertEqual(card?.scale, 1)
+    }
+
+    func testHandSlotAndDiscardPileReuseSameCompleteFishCardFaceData() {
+        let service = makeService(
+            hand: ["fish-4"],
+            emptySlots: [Self.slotAddress],
+            discardPile: ["fish-4"]
+        )
+        setContent(.fishCard("fish-4"), at: Self.slotAddress, in: service)
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let handFace = viewModel.handViewState.cards.first?.cardFace
+        let slotFace = oceanSlot(in: viewModel, address: Self.slotAddress).cardFace
+        let discardFace = viewModel.discardPileViewState.topCards.first
+
+        XCTAssertEqual(handFace, slotFace)
+        XCTAssertEqual(handFace, discardFace)
+        XCTAssertEqual(handFace?.backgroundAssetPrefix, "green")
+        XCTAssertEqual(handFace?.zoneIcons.map { $0.assetName }, ["Dusk"])
+        XCTAssertEqual(handFace?.costIcons.map { $0.assetName }, ["NoCost"])
+    }
+
+    func testCardFaceBackgroundAssetUsesDiveSiteBandOrBase() {
+        let service = makeService(hand: ["starter-fish-1", "fish-4"])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let faces = Dictionary(uniqueKeysWithValues: viewModel.handViewState.cards.map { ($0.cardId, $0.cardFace) })
+
+        XCTAssertEqual(faces["starter-fish-1"]?.backgroundAssetPrefix, "base")
+        XCTAssertEqual(faces["fish-4"]?.backgroundAssetPrefix, "green")
+    }
+
+    func testCardFaceAbilityTokenParserRecognizesKnownTokensAndUsesSafeUnknownFallback() {
+        let segments = FishCardAbilityTokenParser.parse("[FishEgg] [YoungFish] [School] [Card] [Wave] {ArrowDown} {PlayFishBottomRow} [Mystery]")
+
+        XCTAssertEqual(
+            segments,
+            [
+                .icon(FishCardFaceIconViewState(assetName: "FishEgg", fallbackText: "卵", accessibilityText: "鱼卵")),
+                .icon(FishCardFaceIconViewState(assetName: "YoungFish", fallbackText: "幼", accessibilityText: "幼鱼")),
+                .icon(FishCardFaceIconViewState(assetName: "SchoolFish", fallbackText: "群", accessibilityText: "鱼群")),
+                .icon(FishCardFaceIconViewState(assetName: "FishFromHand", fallbackText: "手牌", accessibilityText: "从手牌打出鱼")),
+                .icon(FishCardFaceIconViewState(assetName: "Wave", fallbackText: "分", accessibilityText: "分数")),
+                .icon(FishCardFaceIconViewState(assetName: "ArrowDown", fallbackText: "向下", accessibilityText: "向下")),
+                .icon(FishCardFaceIconViewState(assetName: "PlayFishBottomRow", fallbackText: "底行出鱼", accessibilityText: "底行出鱼")),
+                .icon(FishCardFaceIconViewState(assetName: "UnknownToken", fallbackText: "?", accessibilityText: "未知图标 Mystery"))
+            ]
+        )
+    }
+
+    func testBaseGameCardFaceUsesLocalFishImageSourceIdAndTokenizedAbility() throws {
+        let catalog = try BaseGameCardCatalog()
+        let service = makeService(hand: ["base.main.001"])
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalogProvider: { catalog }
+        )
+        let cardFace = viewModel.handViewState.cards.first?.cardFace
+
+        XCTAssertEqual(cardFace?.localFishImagePrefix, "1")
+        XCTAssertFalse(cardFace?.backgroundAssetPrefix.contains("http") ?? true)
+        XCTAssertTrue(cardFace?.abilitySegments.contains(.icon(FishCardFaceIconViewState(assetName: "Wave", fallbackText: "分", accessibilityText: "分数"))) ?? false)
+    }
+
+    func testScannedRuntimeAbilityTokensAreCoveredByCardFaceParser() {
+        let scannedRuntimeTokens: Set<String> = [
+            "AllPlayers",
+            "ArrowDown",
+            "ConsumeFish1",
+            "ConsumeFish2",
+            "ConsumeFish3",
+            "Discard",
+            "DrawCard",
+            "Estuary",
+            "FishEgg",
+            "FishFromHand",
+            "FishHatch",
+            "FishLengthLarge",
+            "FishLengthMedium",
+            "FishLengthSmall",
+            "FlipperBlue",
+            "FlipperGreen",
+            "FlipperPurple",
+            "PlayFishBottomRow",
+            "Predator",
+            "SchoolFeederMove",
+            "SchoolFish",
+            "Sun",
+            "Wave",
+            "YoungFish"
+        ]
+
+        XCTAssertTrue(scannedRuntimeTokens.isSubset(of: FishCardAbilityTokenParser.supportedTokenNames))
+    }
+
+    func testAbyssalHalosaurCardFaceMapsRealTokensToIcons() throws {
+        let catalog = try BaseGameCardCatalog()
+        let service = makeService(hand: ["base.main.002"])
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalogProvider: { catalog }
+        )
+        let cardFace = try XCTUnwrap(viewModel.handViewState.cards.first?.cardFace)
+
+        XCTAssertEqual(cardFace.displayName, "Abyssal Halosaur")
+        XCTAssertEqual(cardFace.localFishImagePrefix, "2")
+        XCTAssertEqual(cardFace.backgroundAssetPrefix, "base")
+        XCTAssertEqual(cardFace.costIcons.map(\.assetName), ["YoungFish"])
+        XCTAssertEqual(cardFace.zoneIcons.map(\.assetName), ["Night"])
+        XCTAssertEqual(cardFace.sizeClassIcon.assetName, "FishLengthMedium")
+        XCTAssertEqual(cardFace.abilityPanelStyle, .none)
+        XCTAssertEqual(cardFace.printedPointsText, "3分")
+        XCTAssertEqual(cardFace.lengthText, "90 厘米")
+        XCTAssertEqual(cardFace.abilityTriggerText, AppStrings.GameBoard.abilityTriggerWhenPlayed)
+        XCTAssertEqual(
+            cardFace.abilitySegments,
+            [
+                .icon(FishCardFaceIconViewState(assetName: "FishFromHand", fallbackText: "手牌", accessibilityText: "从手牌打出鱼")),
+                .icon(FishCardFaceIconViewState(assetName: "ArrowDown", fallbackText: "向下", accessibilityText: "向下")),
+                .icon(FishCardFaceIconViewState(assetName: "PlayFishBottomRow", fallbackText: "底行出鱼", accessibilityText: "底行出鱼"))
+            ]
+        )
+        XCTAssertFalse(cardFace.abilitySegments.containsRawToken("ArrowDown"))
+        XCTAssertFalse(cardFace.abilitySegments.containsRawToken("PlayFishBottomRow"))
+        XCTAssertFalse(cardFace.abilitySegments.containsText("牌"))
+    }
+
+    func testBluespineUnicornfishUsesIfActivatedTanAbilityPanel() throws {
+        let catalog = try BaseGameCardCatalog()
+        let service = makeService(hand: ["base.main.025"])
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalogProvider: { catalog }
+        )
+        let cardFace = try XCTUnwrap(viewModel.handViewState.cards.first?.cardFace)
+
+        XCTAssertEqual(cardFace.displayName, "Bluespine Unicornfish")
+        XCTAssertEqual(cardFace.abilityTriggerText, AppStrings.GameBoard.abilityTriggerIfActivated)
+        XCTAssertEqual(cardFace.abilityPanelStyle, .tanBrush)
+        XCTAssertEqual(cardFace.abilityStripAssetPrefix, "IfActivated")
+        XCTAssertTrue(cardFace.abilitySegments.contains(.text("(all players)")))
+        XCTAssertTrue(cardFace.abilitySegments.contains(.icon(FishCardFaceIconViewState(assetName: "FishHatch", fallbackText: "孵", accessibilityText: "孵化"))))
+        XCTAssertTrue(cardFace.abilitySegments.contains(.icon(FishCardFaceIconViewState(assetName: "AllPlayers", fallbackText: "全员", accessibilityText: "所有玩家"))))
+    }
+
+    func testClownAnemonefishUsesGameEndYellowAbilityPanel() throws {
+        let catalog = try BaseGameCardCatalog()
+        let service = makeService(hand: ["base.main.030"])
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalogProvider: { catalog }
+        )
+        let cardFace = try XCTUnwrap(viewModel.handViewState.cards.first?.cardFace)
+
+        XCTAssertEqual(cardFace.displayName, "Clown Anemonefish")
+        XCTAssertEqual(cardFace.abilityTriggerText, AppStrings.GameBoard.abilityTriggerGameEnd)
+        XCTAssertEqual(cardFace.abilityPanelStyle, .yellowBrush)
+        XCTAssertEqual(cardFace.abilityStripAssetPrefix, "GameEnd")
+        XCTAssertTrue(cardFace.abilitySegments.contains(.icon(FishCardFaceIconViewState(assetName: "Wave", fallbackText: "分", accessibilityText: "分数"))))
+        XCTAssertEqual(cardFace.abilitySegments.filterYoungFishIconCount, 2)
+    }
+
+    func testCardFaceLayoutMetricsUseFinsearchCqwCoordinates() {
+        XCTAssertEqual(CardRenderMetrics.cardAspectRatio, 61.0 / 40.0)
+        XCTAssertEqual(CardRenderMetrics.CardFaceLayout.costTop, 3)
+        XCTAssertEqual(CardRenderMetrics.CardFaceLayout.zonesTop, 11.5)
+        XCTAssertEqual(CardRenderMetrics.CardFaceLayout.silhouetteLeft, 22)
+        XCTAssertEqual(CardRenderMetrics.CardFaceLayout.silhouetteTop, 19)
+        XCTAssertEqual(CardRenderMetrics.CardFaceLayout.pointsTop, 37)
+        XCTAssertEqual(CardRenderMetrics.CardFaceLayout.lengthTop, 48)
+        XCTAssertEqual(CardRenderMetrics.CardFaceLayout.abilityWidth, 30)
+    }
+
+    func testAbyssalHalosaurHandSlotAndDiscardPileReuseSameCardFace() throws {
+        let catalog = try BaseGameCardCatalog()
+        let service = makeService(
+            hand: ["base.main.002"],
+            emptySlots: [Self.slotAddress],
+            discardPile: ["base.main.002"]
+        )
+        setContent(.fishCard("base.main.002"), at: Self.slotAddress, in: service)
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalogProvider: { catalog }
+        )
+
+        let handFace = try XCTUnwrap(viewModel.handViewState.cards.first?.cardFace)
+        XCTAssertEqual(oceanSlot(in: viewModel, address: Self.slotAddress).cardFace, handFace)
+        XCTAssertEqual(viewModel.discardPileViewState.topCards.first, handFace)
+    }
+
+    func testMediumLengthBucketMapsToMediumSizeIcon() {
+        let card = Card(
+            id: "size-class-card",
+            name: "Size Class Card",
+            allowedZones: [.midnight],
+            printedPoints: 1,
+            lengthCm: 90
+        )
+        let service = makeService(hand: ["size-class-card"])
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalogProvider: { TestCardCatalog(fishCards: [card]) }
+        )
+
+        XCTAssertEqual(viewModel.handViewState.cards.first?.cardFace.sizeClassIcon.assetName, "FishLengthMedium")
     }
 
     func testBaseGameHandCardFaceInfersLocalFishImagePrefix() throws {
@@ -538,6 +756,7 @@ final class GameBoardViewModelTests: XCTestCase {
 
         XCTAssertFalse(slot.resourceTokens.isEmpty)
         XCTAssertEqual(slot.cardFace.aspectRatio, CardRenderMetrics.cardAspectRatio)
+        XCTAssertEqual(slot.playFishPreview.availability, .unavailable)
     }
 
     func testDiscardPileViewStateIsEmptyWhenCurrentPlayerHasNoDiscard() {
@@ -683,10 +902,10 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertNil(hand.pulledOutCardId)
         XCTAssertEqual(hand.cards.map(\.stackIndex), [0, 1, 2])
         XCTAssertEqual(hand.cards.map(\.stackOffsetX), [0, 74, 148])
-        XCTAssertEqual(hand.cards.map(\.stackOffsetY), [72, 72, 72])
+        XCTAssertEqual(hand.cards.map(\.stackOffsetY), [46, 46, 46])
         XCTAssertEqual(hand.cards.map(\.stackZIndex), [0, 1, 2])
         XCTAssertTrue(hand.cards.allSatisfy { !$0.isPulledOutFromStack })
-        XCTAssertTrue(hand.cards.allSatisfy { $0.visibleHeightRatio == 0.48 })
+        XCTAssertTrue(hand.cards.allSatisfy { $0.visibleHeightRatio == 0.68 })
     }
 
     func testSelectedHandCardIsPulledOutFromSameStackCard() {
@@ -1427,7 +1646,7 @@ final class GameBoardViewModelTests: XCTestCase {
         let viewModel = GameBoardViewModel(roomService: service)
 
         XCTAssertEqual(viewModel.oceanSlots.count, 18)
-        XCTAssertTrue(viewModel.oceanSlots.allSatisfy { $0.aspectRatio == 0.72 })
+        XCTAssertTrue(viewModel.oceanSlots.allSatisfy { $0.aspectRatio == CardRenderMetrics.cardAspectRatio })
         XCTAssertEqual(viewModel.oceanColumns.count, 3)
         XCTAssertEqual(viewModel.oceanColumns.map(\.slots.count), [6, 6, 6])
         XCTAssertEqual(viewModel.oceanColumns[0].diveSite, .blue)
@@ -3126,6 +3345,14 @@ final class GameBoardViewModelTests: XCTestCase {
                     tagsText: AppStrings.GameBoard.cardFaceNoTags,
                     abilityTriggerText: nil,
                     abilityText: AppStrings.GameBoard.cardFaceNoAbility,
+                    costIcons: [FishCardFaceIconViewState(assetName: "NoCost", fallbackText: "-", accessibilityText: AppStrings.GameBoard.noCost)],
+                    zoneIcons: [],
+                    tagIcons: [],
+                    sizeClassIcon: FishCardFaceIconViewState(assetName: "FishLengthMedium", fallbackText: "中", accessibilityText: "中型鱼"),
+                    abilitySegments: FishCardAbilityTokenParser.parse(AppStrings.GameBoard.cardFaceNoAbility),
+                    backgroundAssetPrefix: "base",
+                    abilityStripAssetPrefix: nil,
+                    abilityPanelStyle: .none,
                     localFishImagePrefix: nil,
                     aspectRatio: CardRenderMetrics.cardAspectRatio,
                     isPlaceholder: true
@@ -3140,7 +3367,7 @@ final class GameBoardViewModelTests: XCTestCase {
                     message: ""
                 ),
                 resourceTokens: [],
-                aspectRatio: 0.72,
+                aspectRatio: CardRenderMetrics.cardAspectRatio,
                 isDropTarget: false,
                 isValidDropTarget: false,
                 dropTargetReasonText: nil,
@@ -3260,6 +3487,35 @@ private final class CapturingRoomService: RoomService {
         gameState = .empty
         snapshot = .empty
         eventLog = []
+    }
+}
+
+private extension Array where Element == FishCardAbilitySegment {
+    func containsRawToken(_ token: String) -> Bool {
+        contains { segment in
+            if case let .text(text) = segment {
+                return text.contains("{\(token)}") || text.contains("[\(token)]")
+            }
+            return false
+        }
+    }
+
+    func containsText(_ text: String) -> Bool {
+        contains { segment in
+            if case let .text(segmentText) = segment {
+                return segmentText.contains(text)
+            }
+            return false
+        }
+    }
+
+    var filterYoungFishIconCount: Int {
+        filter { segment in
+            if case let .icon(icon) = segment {
+                return icon.assetName == "YoungFish"
+            }
+            return false
+        }.count
     }
 }
 

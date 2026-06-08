@@ -29,22 +29,27 @@ struct FloatingHandView: View {
                     .frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    ZStack(alignment: .bottomLeading) {
-                        ForEach(viewState.cards) { card in
-                            stackedCardButton(card)
+                    HStack {
+                        Spacer(minLength: 0)
+                        ZStack(alignment: .bottomLeading) {
+                            ForEach(viewState.cards) { card in
+                                stackedCardButton(card)
+                            }
                         }
+                        .frame(
+                            width: handStackWidth,
+                            height: 252,
+                            alignment: .bottomLeading
+                        )
+                        Spacer(minLength: 0)
                     }
-                    .frame(
-                        width: handStackWidth,
-                        height: 252,
-                        alignment: .bottomLeading
-                    )
+                    .frame(maxWidth: .infinity)
                     .padding(.horizontal, 18)
                 }
                 .scrollClipDisabled()
             }
         }
-        .padding(.bottom, -46)
+        .padding(.bottom, 8)
         .shadow(color: .black.opacity(0.22), radius: 14, x: 0, y: -2)
         .animation(.spring(response: 0.28, dampingFraction: 0.86), value: viewState.pulledOutCardId)
     }
