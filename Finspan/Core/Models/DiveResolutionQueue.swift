@@ -62,11 +62,56 @@ enum AbilityEffectUnit: Codable, Equatable, Sendable {
     case hatchEgg(count: Int)
     case moveYoungOrSchool(count: Int)
     case recoverFromDiscardOrDraw(count: Int)
+    case gameEndScore(condition: GameEndScoreCondition, points: Int)
+    case placeEggOnMatchingFish(filter: EggPlacementFilter, mode: EggPlacementMode)
+    case playFishFromHand(filter: HandFishFilter, placement: FishPlacementConstraint, costMode: PlayFishCostMode)
     case gainCoral(selector: CoralDiveSiteSelector, count: Int)
     case scatterSchool(count: Int)
     case consumeFishFromHand(count: Int)
     case playFishForFree(filter: FreePlayFishFilter, count: Int)
     case unsupported
+}
+
+enum GameEndScoreCondition: Codable, Equatable, Sendable {
+    case noTokensOnThisFish
+    case consumedFishUnderThisFishAtLeast(Int)
+    case youngOnThisFishExactly(Int)
+    case bottomRow
+    case schoolOnThisFish
+    case eggYoungAndSchoolOnThisFish
+    case allDiveSitesHaveCoralAtLeast(Int)
+    case anyDiveSiteHasCoralAtLeast(Int)
+}
+
+enum EggPlacementFilter: Codable, Equatable, Sendable {
+    case lengthBucket(FishLengthBucket)
+    case topRow
+    case bottomRow
+    case diveSite(DiveSite)
+    case tag(String)
+}
+
+enum EggPlacementMode: Codable, Equatable, Sendable {
+    case onEachEligibleFish
+    case chooseOneEligibleFish
+}
+
+enum HandFishFilter: Codable, Equatable, Sendable {
+    case any
+    case tag(String)
+    case lengthBucket(FishLengthBucket)
+    case unsupported(String)
+}
+
+enum FishPlacementConstraint: Codable, Equatable, Sendable {
+    case topRow
+    case bottomRow
+    case sunlight
+    case diveSite(DiveSite)
+}
+
+enum PlayFishCostMode: Codable, Equatable, Sendable {
+    case payCost
 }
 
 enum FreePlayFishFilter: Codable, Equatable, Sendable {

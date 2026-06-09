@@ -125,6 +125,7 @@ enum AppStrings {
         static let gameEndAbilityPhaseEmpty = "没有可发动的游戏结束能力。"
         static let gameEndAbilityAvailable = "可发动"
         static let gameEndAbilityActivated = "已处理"
+        static let gameEndAbilityAutomaticScoring = "计分时自动计算"
         static let gameEndAbilityUnsupported = "能力暂未接入"
         static let finishGameEndAbilities = "进入最终计分"
         static let playerColor = "玩家颜色"
@@ -187,6 +188,12 @@ enum AppStrings {
         static let playFishForFreeTarget = "选择免费出牌位置"
         static let playFishForFreeNoMatchingHandCard = "没有符合条件的手牌鱼"
         static let playFishForFreeFilterMismatch = "这张鱼不符合能力限制"
+        static let placeEggOnMatchingFish = "匹配鱼放置鱼卵"
+        static let playFishFromHand = "从手牌打出鱼"
+        static let playFishFromHandHandCard = "选择要打出的鱼"
+        static let playFishFromHandTarget = "选择出牌位置"
+        static let playFishFromHandPayment = "支付费用并确认"
+        static let playFishFromHandNoMatchingHandCard = "没有符合条件的手牌鱼"
         static let abilityUnsupported = "能力暂未接入"
         static let bottomBonus = "底部奖励"
         static let firstBottomBonus = "首次到底奖励"
@@ -614,12 +621,16 @@ enum AppStrings {
             return "移动幼鱼或鱼群"
         case .gainCoral:
             return "获得珊瑚"
+        case .placeEggOnMatchingFish:
+            return "匹配鱼放置鱼卵"
         case .scatterSchool:
             return "打散鱼群"
         case .consumeFishFromHand:
             return "吞噬手牌鱼"
         case .playFishForFree:
             return "免费打出手牌鱼"
+        case .playFishFromHand:
+            return "从手牌打出鱼"
         case .compoundAbility:
             return "鱼牌能力"
         case .bottomBonus:

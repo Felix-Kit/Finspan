@@ -61,6 +61,29 @@ enum SampleAbilityDefinitions {
 
 enum BaseGameAbilityIDs {
     nonisolated static let blueLanternfishWhenPlayedDrawFour: AbilityID = "unsupported.base.whenPlayed.card_127"
+    nonisolated static let abyssalAnglerfishGameEnd: AbilityID = "unsupported.base.gameEnd.card_001"
+    nonisolated static let angelsharkGameEnd: AbilityID = "unsupported.base.gameEnd.card_004"
+    nonisolated static let atlanticBonitoGameEnd: AbilityID = "unsupported.base.gameEnd.card_008"
+    nonisolated static let atlanticSalmonGameEnd: AbilityID = "unsupported.base.gameEnd.card_011"
+    nonisolated static let binocularFishGameEnd: AbilityID = "unsupported.base.gameEnd.card_019"
+    nonisolated static let blobSculpinGameEnd: AbilityID = "unsupported.base.gameEnd.card_023"
+    nonisolated static let chineseTrumpetfishGameEnd: AbilityID = "unsupported.base.gameEnd.card_028"
+    nonisolated static let clownAnemonefishGameEnd: AbilityID = "unsupported.base.gameEnd.card_030"
+    nonisolated static let commonFangtoothGameEnd: AbilityID = "unsupported.base.gameEnd.card_031"
+    nonisolated static let cookiecutterSharkGameEnd: AbilityID = "unsupported.base.gameEnd.card_032"
+    nonisolated static let crocodilefishGameEnd: AbilityID = "unsupported.base.gameEnd.card_035"
+    nonisolated static let europeanAnchovyGameEnd: AbilityID = "unsupported.base.gameEnd.card_041"
+    nonisolated static let facelessCuskGameEnd: AbilityID = "unsupported.base.gameEnd.card_044"
+    nonisolated static let giantTrevallyGameEnd: AbilityID = "unsupported.base.gameEnd.card_054"
+    nonisolated static let largetoothFlounderGameEnd: AbilityID = "unsupported.base.gameEnd.card_069"
+    nonisolated static let leafySeadragonGameEnd: AbilityID = "unsupported.base.gameEnd.card_070"
+    nonisolated static let marianaSnailfishGameEnd: AbilityID = "unsupported.base.gameEnd.card_077"
+    nonisolated static let oceanSunfishGameEnd: AbilityID = "unsupported.base.gameEnd.card_081"
+    nonisolated static let paleChimaeraGameEnd: AbilityID = "unsupported.base.gameEnd.card_085"
+    nonisolated static let pudgyCuskEelGameEnd: AbilityID = "unsupported.base.gameEnd.card_093"
+    nonisolated static let sloansViperfishGameEnd: AbilityID = "unsupported.base.gameEnd.card_105"
+    nonisolated static let stripedMarlinGameEnd: AbilityID = "unsupported.base.gameEnd.card_115"
+    nonisolated static let yellowtailSnapperGameEnd: AbilityID = "unsupported.base.gameEnd.card_125"
 }
 
 enum BaseGameAbilityDefinitions {
@@ -70,8 +93,184 @@ enum BaseGameAbilityDefinitions {
             trigger: .whenPlayed,
             effects: [.drawFish(count: 4)],
             displayText: "打出时：抽 4 张鱼牌"
+        ),
+        gameEndScore(
+            BaseGameAbilityIDs.abyssalAnglerfishGameEnd,
+            condition: .noTokensOnThisFish,
+            points: 3,
+            displayText: "游戏结束计分：若此鱼上没有任何标记，得 3 分"
+        ),
+        gameEndScore(
+            BaseGameAbilityIDs.angelsharkGameEnd,
+            condition: .consumedFishUnderThisFishAtLeast(3),
+            points: 10,
+            displayText: "游戏结束计分：若此鱼下方有至少 3 条被吞食鱼，得 10 分"
+        ),
+        gameEndScore(
+            BaseGameAbilityIDs.atlanticBonitoGameEnd,
+            condition: .consumedFishUnderThisFishAtLeast(2),
+            points: 6,
+            displayText: "游戏结束计分：若此鱼下方有至少 2 条被吞食鱼，得 6 分"
+        ),
+        playFishFromHand(
+            BaseGameAbilityIDs.atlanticSalmonGameEnd,
+            placement: .topRow,
+            displayText: "游戏结束：支付费用，从手牌打出 1 张鱼到河口"
+        ),
+        placeEgg(
+            BaseGameAbilityIDs.binocularFishGameEnd,
+            filter: .lengthBucket(.small),
+            mode: .onEachEligibleFish,
+            displayText: "游戏结束：在每条小型鱼上放置 1 个鱼卵"
+        ),
+        playFishFromHand(
+            BaseGameAbilityIDs.blobSculpinGameEnd,
+            placement: .diveSite(.green),
+            displayText: "游戏结束：支付费用，从手牌打出 1 张鱼到绿色潜水点"
+        ),
+        placeEgg(
+            BaseGameAbilityIDs.chineseTrumpetfishGameEnd,
+            filter: .lengthBucket(.medium),
+            mode: .onEachEligibleFish,
+            displayText: "游戏结束：在每条中型鱼上放置 1 个鱼卵"
+        ),
+        gameEndScore(
+            BaseGameAbilityIDs.clownAnemonefishGameEnd,
+            condition: .youngOnThisFishExactly(2),
+            points: 6,
+            displayText: "游戏结束计分：若此鱼上正好有 2 个幼鱼，得 6 分"
+        ),
+        gameEndScore(
+            BaseGameAbilityIDs.commonFangtoothGameEnd,
+            condition: .consumedFishUnderThisFishAtLeast(1),
+            points: 3,
+            displayText: "游戏结束计分：若此鱼下方有至少 1 条被吞食鱼，得 3 分"
+        ),
+        gameEndScore(
+            BaseGameAbilityIDs.cookiecutterSharkGameEnd,
+            condition: .bottomRow,
+            points: 5,
+            displayText: "游戏结束计分：若此鱼在底行，得 5 分"
+        ),
+        playFishFromHand(
+            BaseGameAbilityIDs.crocodilefishGameEnd,
+            placement: .diveSite(.blue),
+            displayText: "游戏结束：支付费用，从手牌打出 1 张鱼到蓝色潜水点"
+        ),
+        placeEgg(
+            BaseGameAbilityIDs.europeanAnchovyGameEnd,
+            filter: .topRow,
+            mode: .chooseOneEligibleFish,
+            displayText: "游戏结束：选择河口中 1 条鱼放置 1 个鱼卵"
+        ),
+        playFishFromHand(
+            BaseGameAbilityIDs.facelessCuskGameEnd,
+            placement: .bottomRow,
+            displayText: "游戏结束：支付费用，从手牌打出 1 张鱼到底行"
+        ),
+        playFishFromHand(
+            BaseGameAbilityIDs.giantTrevallyGameEnd,
+            placement: .diveSite(.purple),
+            displayText: "游戏结束：支付费用，从手牌打出 1 张鱼到紫色潜水点"
+        ),
+        placeEgg(
+            BaseGameAbilityIDs.largetoothFlounderGameEnd,
+            filter: .diveSite(.green),
+            mode: .chooseOneEligibleFish,
+            displayText: "游戏结束：选择绿色潜水点中 1 条鱼放置 1 个鱼卵"
+        ),
+        gameEndScore(
+            BaseGameAbilityIDs.leafySeadragonGameEnd,
+            condition: .schoolOnThisFish,
+            points: 3,
+            displayText: "游戏结束计分：若此鱼上有鱼群，得 3 分"
+        ),
+        placeEgg(
+            BaseGameAbilityIDs.marianaSnailfishGameEnd,
+            filter: .bottomRow,
+            mode: .onEachEligibleFish,
+            displayText: "游戏结束：在底行每条鱼上放置 1 个鱼卵"
+        ),
+        placeEgg(
+            BaseGameAbilityIDs.oceanSunfishGameEnd,
+            filter: .lengthBucket(.large),
+            mode: .onEachEligibleFish,
+            displayText: "游戏结束：在每条大型鱼上放置 1 个鱼卵"
+        ),
+        gameEndScore(
+            BaseGameAbilityIDs.paleChimaeraGameEnd,
+            condition: .eggYoungAndSchoolOnThisFish,
+            points: 10,
+            displayText: "游戏结束计分：若此鱼上有鱼卵、幼鱼和鱼群，得 10 分"
+        ),
+        placeEgg(
+            BaseGameAbilityIDs.pudgyCuskEelGameEnd,
+            filter: .diveSite(.blue),
+            mode: .onEachEligibleFish,
+            displayText: "游戏结束：在蓝色潜水点每条鱼上放置 1 个鱼卵"
+        ),
+        placeEgg(
+            BaseGameAbilityIDs.sloansViperfishGameEnd,
+            filter: .tag("predator"),
+            mode: .onEachEligibleFish,
+            displayText: "游戏结束：在每条捕食者鱼上放置 1 个鱼卵"
+        ),
+        playFishFromHand(
+            BaseGameAbilityIDs.stripedMarlinGameEnd,
+            placement: .sunlight,
+            displayText: "游戏结束：支付费用，从手牌打出 1 张鱼到阳光层"
+        ),
+        placeEgg(
+            BaseGameAbilityIDs.yellowtailSnapperGameEnd,
+            filter: .diveSite(.purple),
+            mode: .onEachEligibleFish,
+            displayText: "游戏结束：在紫色潜水点每条鱼上放置 1 个鱼卵"
         )
     ]
+
+    nonisolated private static func gameEndScore(
+        _ abilityId: AbilityID,
+        condition: GameEndScoreCondition,
+        points: Int,
+        displayText: String
+    ) -> AbilityDefinition {
+        AbilityDefinition(
+            abilityId: abilityId,
+            trigger: .gameEnd,
+            effects: [.gameEndScore(condition: condition, points: points)],
+            isOptional: false,
+            displayText: displayText
+        )
+    }
+
+    nonisolated private static func placeEgg(
+        _ abilityId: AbilityID,
+        filter: EggPlacementFilter,
+        mode: EggPlacementMode,
+        displayText: String
+    ) -> AbilityDefinition {
+        AbilityDefinition(
+            abilityId: abilityId,
+            trigger: .gameEnd,
+            effects: [.placeEggOnMatchingFish(filter: filter, mode: mode)],
+            isOptional: true,
+            displayText: displayText
+        )
+    }
+
+    nonisolated private static func playFishFromHand(
+        _ abilityId: AbilityID,
+        placement: FishPlacementConstraint,
+        displayText: String
+    ) -> AbilityDefinition {
+        AbilityDefinition(
+            abilityId: abilityId,
+            trigger: .gameEnd,
+            effects: [.playFishFromHand(filter: .any, placement: placement, costMode: .payCost)],
+            isOptional: true,
+            displayText: displayText
+        )
+    }
 }
 
 enum SharksAndReefsAbilityIDs {
@@ -86,8 +285,15 @@ enum SharksAndReefsAbilityIDs {
     nonisolated static let freePlaySmallWhenPlayed: AbilityID = "unsupported.sr.whenPlayed.card_170"
     nonisolated static let freePlayMediumWhenPlayed: AbilityID = "unsupported.sr.whenPlayed.card_192"
     nonisolated static let freePlayCamouflageWhenPlayed: AbilityID = "unsupported.sr.whenPlayed.card_200"
+    nonisolated static let scatterSchoolTwiceGameEnd: AbilityID = "unsupported.sr.gameEnd.card_146"
+    nonisolated static let blueCoralThreeGameEnd: AbilityID = "unsupported.sr.gameEnd.card_147"
+    nonisolated static let freePlayMediumDuskySharkGameEnd: AbilityID = "unsupported.sr.gameEnd.card_149"
+    nonisolated static let purpleCoralThreeGameEnd: AbilityID = "unsupported.sr.gameEnd.card_153"
+    nonisolated static let freePlayMediumFrilledSharkGameEnd: AbilityID = "unsupported.sr.gameEnd.card_156"
     nonisolated static let anyCoralTwiceGameEnd: AbilityID = "unsupported.sr.gameEnd.card_174"
     nonisolated static let bluePurpleGreenCoralGameEnd: AbilityID = "unsupported.sr.gameEnd.card_181"
+    nonisolated static let allDiveSitesCoralThreeGameEnd: AbilityID = "unsupported.sr.gameEnd.card_202"
+    nonisolated static let anyDiveSiteCoralFiveGameEnd: AbilityID = "unsupported.sr.gameEnd.card_206"
     nonisolated static let greenCoralThreeGameEnd: AbilityID = "unsupported.sr.gameEnd.card_208"
 }
 
@@ -180,6 +386,55 @@ enum SharksAndReefsAbilityDefinitions {
             displayText: "打出时：免费打出 1 张伪装鱼"
         ),
         AbilityDefinition(
+            abilityId: SharksAndReefsAbilityIDs.scatterSchoolTwiceGameEnd,
+            trigger: .gameEnd,
+            effects: [
+                .scatterSchool(count: 1),
+                .scatterSchool(count: 1)
+            ],
+            canResolveInAnyOrder: false,
+            isOptional: true,
+            displayText: "游戏结束：打散鱼群 2 次"
+        ),
+        AbilityDefinition(
+            abilityId: SharksAndReefsAbilityIDs.blueCoralThreeGameEnd,
+            trigger: .gameEnd,
+            effects: [
+                .gainCoral(selector: .blue, count: 1),
+                .gainCoral(selector: .blue, count: 1),
+                .gainCoral(selector: .blue, count: 1)
+            ],
+            canResolveInAnyOrder: false,
+            isOptional: true,
+            displayText: "游戏结束：获得 3 个蓝色珊瑚"
+        ),
+        AbilityDefinition(
+            abilityId: SharksAndReefsAbilityIDs.freePlayMediumDuskySharkGameEnd,
+            trigger: .gameEnd,
+            effects: [.playFishForFree(filter: .lengthBucket(.medium), count: 1)],
+            isOptional: true,
+            displayText: "游戏结束：免费打出 1 张中型鱼"
+        ),
+        AbilityDefinition(
+            abilityId: SharksAndReefsAbilityIDs.purpleCoralThreeGameEnd,
+            trigger: .gameEnd,
+            effects: [
+                .gainCoral(selector: .purple, count: 1),
+                .gainCoral(selector: .purple, count: 1),
+                .gainCoral(selector: .purple, count: 1)
+            ],
+            canResolveInAnyOrder: false,
+            isOptional: true,
+            displayText: "游戏结束：获得 3 个紫色珊瑚"
+        ),
+        AbilityDefinition(
+            abilityId: SharksAndReefsAbilityIDs.freePlayMediumFrilledSharkGameEnd,
+            trigger: .gameEnd,
+            effects: [.playFishForFree(filter: .lengthBucket(.medium), count: 1)],
+            isOptional: true,
+            displayText: "游戏结束：免费打出 1 张中型鱼"
+        ),
+        AbilityDefinition(
             abilityId: SharksAndReefsAbilityIDs.anyCoralTwiceGameEnd,
             trigger: .gameEnd,
             effects: [
@@ -201,6 +456,20 @@ enum SharksAndReefsAbilityDefinitions {
             canResolveInAnyOrder: false,
             isOptional: true,
             displayText: "游戏结束：获得蓝色、紫色、绿色珊瑚各 1 个"
+        ),
+        AbilityDefinition(
+            abilityId: SharksAndReefsAbilityIDs.allDiveSitesCoralThreeGameEnd,
+            trigger: .gameEnd,
+            effects: [.gameEndScore(condition: .allDiveSitesHaveCoralAtLeast(3), points: 5)],
+            isOptional: false,
+            displayText: "游戏结束计分：若所有潜水点都有至少 3 个珊瑚，得 5 分"
+        ),
+        AbilityDefinition(
+            abilityId: SharksAndReefsAbilityIDs.anyDiveSiteCoralFiveGameEnd,
+            trigger: .gameEnd,
+            effects: [.gameEndScore(condition: .anyDiveSiteHasCoralAtLeast(5), points: 3)],
+            isOptional: false,
+            displayText: "游戏结束计分：若任一潜水点有至少 5 个珊瑚，得 3 分"
         ),
         AbilityDefinition(
             abilityId: SharksAndReefsAbilityIDs.greenCoralThreeGameEnd,

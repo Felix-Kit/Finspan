@@ -2401,6 +2401,37 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertFalse(unsupportedRow.canActivate)
     }
 
+    func testGameEndAbilityPhaseShowsAutomaticScoringRows() throws {
+        let catalog = gameEndAbilityCatalog()
+        let service = makeService(
+            hand: [],
+            phase: .endGamePending,
+            currentWeek: 4,
+            activePlayerId: nil
+        )
+        setContent(.fishCard("gameEnd.scoring"), at: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0), in: service)
+        setContent(.fishCard("sr.gameEnd.greenCoral"), at: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 1), in: service)
+        setContent(.fishCard("gameEnd.unsupported"), at: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 2), in: service)
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalogProvider: { catalog }
+        )
+
+        let phase = try XCTUnwrap(viewModel.gameEndAbilityPhaseViewState)
+        let scoringRow = try XCTUnwrap(phase.abilityRows.first { $0.fishName == "Scoring Game End Fish" })
+        let executableRow = try XCTUnwrap(phase.abilityRows.first { $0.fishName == "Green Coral Game End Fish" })
+        let unsupportedRow = try XCTUnwrap(phase.abilityRows.first { $0.fishName == "Unsupported Game End Fish" })
+
+        XCTAssertEqual(scoringRow.statusText, AppStrings.GameBoard.gameEndAbilityAutomaticScoring)
+        XCTAssertFalse(scoringRow.isSupported)
+        XCTAssertFalse(scoringRow.canActivate)
+        XCTAssertEqual(executableRow.statusText, AppStrings.GameBoard.gameEndAbilityAvailable)
+        XCTAssertTrue(executableRow.canActivate)
+        XCTAssertEqual(unsupportedRow.statusText, AppStrings.GameBoard.gameEndAbilityUnsupported)
+        XCTAssertFalse(unsupportedRow.canActivate)
+        XCTAssertTrue(phase.canFinish)
+    }
+
     func testGameEndAbilityPhaseActionsSubmitCommands() throws {
         let catalog = gameEndAbilityCatalog()
         let service = makeService(
@@ -4136,6 +4167,10 @@ final class GameBoardViewModelTests: XCTestCase {
             return .consumeFishConsumer
         case .playFishForFree:
             return .freePlayHandCard
+        case .placeEggOnMatchingFish:
+            return .matchingEggTarget
+        case .playFishFromHand:
+            return .playFishFromHandCard
         case .drawFish,
              .compoundAbility,
              .bottomBonus,
@@ -4305,6 +4340,14 @@ final class GameBoardViewModelTests: XCTestCase {
                     abilityText: "游戏结束：获得 3 个绿色珊瑚",
                     printedPoints: 1,
                     lengthCm: 21
+                ),
+                Card(
+                    id: "gameEnd.scoring",
+                    name: "Scoring Game End Fish",
+                    abilityIds: [BaseGameAbilityIDs.abyssalAnglerfishGameEnd],
+                    abilityText: "游戏结束计分：若此鱼上没有任何标记，得 3 分",
+                    printedPoints: 1,
+                    lengthCm: 20
                 ),
                 Card(
                     id: "gameEnd.unsupported",

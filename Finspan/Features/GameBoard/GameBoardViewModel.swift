@@ -844,6 +844,7 @@ enum RewardTokenKind: String, Equatable {
     case scatterSchool
     case consumeFish
     case playFishForFree
+    case playFishFromHand
     case unsupported
 }
 
@@ -859,6 +860,9 @@ private enum RewardTokenAction: Equatable {
     case chooseConsumeFishHandCard(choiceId: PendingChoiceID, tokenId: String)
     case chooseFreePlayHandCard(choiceId: PendingChoiceID, tokenId: String)
     case chooseFreePlayTarget(choiceId: PendingChoiceID, tokenId: String, cardId: CardID)
+    case choosePlayFishFromHandCard(choiceId: PendingChoiceID, tokenId: String)
+    case choosePlayFishFromHandTarget(choiceId: PendingChoiceID, tokenId: String, cardId: CardID)
+    case choosePlayFishFromHandPayment(choiceId: PendingChoiceID, tokenId: String, cardId: CardID, targetSlot: OceanSlotAddress)
     case unsupported
 }
 
@@ -874,6 +878,9 @@ private enum RewardSelectionMode: Equatable {
     case consumeFishHandCard(choiceId: PendingChoiceID, tokenId: String)
     case freePlayHandCard(choiceId: PendingChoiceID, tokenId: String)
     case freePlayTarget(choiceId: PendingChoiceID, tokenId: String, cardId: CardID)
+    case playFishFromHandCard(choiceId: PendingChoiceID, tokenId: String)
+    case playFishFromHandTarget(choiceId: PendingChoiceID, tokenId: String, cardId: CardID)
+    case playFishFromHandPayment(choiceId: PendingChoiceID, tokenId: String, cardId: CardID, targetSlot: OceanSlotAddress)
 }
 
 enum PendingChoiceAction: String, Equatable {
@@ -1304,7 +1311,10 @@ final class GameBoardViewModel: ObservableObject {
                  .consumeFishConsumer,
                  .consumeFishHandCard,
                  .freePlayHandCard,
-                 .freePlayTarget:
+                 .freePlayTarget,
+                 .playFishFromHandCard,
+                 .playFishFromHandTarget,
+                 .playFishFromHandPayment:
                 return .rewardSelection
             case nil:
                 break
@@ -1401,6 +1411,22 @@ final class GameBoardViewModel: ObservableObject {
             }),
                case let .fishPlayedForFree(_, cardId, _) = effect {
                 return AppStrings.GameBoard.rewardPlayFishForFreeActionSummary(
+                    playerName: playerName,
+                    cardName: cardTitle(cardId)
+                )
+            }
+            return AppStrings.GameBoard.rewardResolvedActionSummary(playerName: playerName)
+        case .choosePlayFishFromHand:
+            return AppStrings.GameBoard.playFishFromHandHandCard
+        case .choosePlayFishFromHandTarget:
+            return AppStrings.GameBoard.playFishFromHandTarget
+        case .playFishFromHand:
+            if let effect = payload.appliedEffects.first(where: {
+                if case .fishPlayedFromHand = $0 { return true }
+                return false
+            }),
+               case let .fishPlayedFromHand(_, cardId, _, _) = effect {
+                return AppStrings.GameBoard.fishPlayedActionSummary(
                     playerName: playerName,
                     cardName: cardTitle(cardId)
                 )
@@ -1673,10 +1699,13 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     var activePlayerState: PlayerGameState? {
-        guard let activePlayerId = state.activePlayerId else {
-            return nil
+        if let activePlayerId = state.activePlayerId {
+            return state.playerGameStates[activePlayerId]
         }
-        return state.playerGameStates[activePlayerId]
+        if let choice = state.pendingChoices.values.sorted(by: { $0.createdAtSequence < $1.createdAtSequence }).first {
+            return state.playerGameStates[choice.playerId]
+        }
+        return nil
     }
 
     var handCards: [GameBoardCardViewData] {
@@ -1939,13 +1968,19 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     var canSubmitPlayFish: Bool {
-        guard state.phase == .playing,
-              selectedCard != nil,
+        guard selectedCard != nil,
               selectedTargetSlotIsAvailable,
-              !hasBlockingPendingChoices,
               state.activeDiveQueue == nil,
-              (activePlayerState?.availableDivers ?? 0) > 0,
               !selectedCardHasUnsupportedUICost
+        else {
+            return false
+        }
+        if gameEndPlayFishFromHandPaymentChoice != nil {
+            return hasCompleteDiscardPayment && hasCompleteResourcePayment
+        }
+        guard state.phase == .playing,
+              !hasBlockingPendingChoices,
+              (activePlayerState?.availableDivers ?? 0) > 0
         else {
             return false
         }
@@ -1960,8 +1995,21 @@ final class GameBoardViewModel: ObservableObject {
         selectedCardId.flatMap { cardsById[$0] }
     }
 
+    private var gameEndPlayFishFromHandPaymentChoice: PendingChoice? {
+        state.pendingChoices.values.first { choice in
+            choice.kind == .playFishFromHand
+                && choice.expectedInput == .playFishFromHandPayment
+                && choice.playFishFromHandProgress?.selectedCardId == selectedCardId
+                && choice.playFishFromHandProgress?.targetSlot == selectedTargetSlot
+        }
+    }
+
     private var canSelectHandCards: Bool {
-        if isSelectingCoralDiscardCard || isSelectingConsumeFishHandCard || isSelectingFreePlayHandCard {
+        if isSelectingCoralDiscardCard
+            || isSelectingConsumeFishHandCard
+            || isSelectingFreePlayHandCard
+            || isSelectingPlayFishFromHandCard
+            || gameEndPlayFishFromHandPaymentChoice != nil {
             return true
         }
         return state.phase == .playing
@@ -1991,6 +2039,13 @@ final class GameBoardViewModel: ObservableObject {
         return false
     }
 
+    private var isSelectingPlayFishFromHandCard: Bool {
+        if case .playFishFromHandCard = rewardSelectionMode {
+            return true
+        }
+        return false
+    }
+
     private var canSelectDiscardPaymentCards: Bool {
         guard canSelectHandCards,
               selectedCardId != nil,
@@ -2002,7 +2057,11 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     private var handBlockingMessage: String? {
-        if isSelectingCoralDiscardCard || isSelectingConsumeFishHandCard || isSelectingFreePlayHandCard {
+        if isSelectingCoralDiscardCard
+            || isSelectingConsumeFishHandCard
+            || isSelectingFreePlayHandCard
+            || isSelectingPlayFishFromHandCard
+            || gameEndPlayFishFromHandPaymentChoice != nil {
             return nil
         }
         if hasBlockingPendingChoices {
@@ -2089,6 +2148,10 @@ final class GameBoardViewModel: ObservableObject {
               let slot = activePlayerState.ocean.slots.first(where: { $0.address == selectedTargetSlot })
         else {
             return false
+        }
+        if let choice = gameEndPlayFishFromHandPaymentChoice,
+           let card = selectedCard {
+            return playFishFromHandTargetIsLegal(slot, card: card, for: choice)
         }
         return playFishSlotPreview(for: slot).isSelectable
     }
@@ -2178,6 +2241,21 @@ final class GameBoardViewModel: ObservableObject {
                 return
             }
             resolvePendingChoice(choiceId, resolution: .chooseFreePlayFish(cardId))
+            return
+        }
+        if case let .playFishFromHandCard(choiceId, _) = rewardSelectionMode {
+            guard let choice = state.pendingChoices[choiceId],
+                  playFishFromHandCardIsLegal(cardId, for: choice)
+            else {
+                errorMessage = AppStrings.GameBoard.playFishForFreeFilterMismatch
+                return
+            }
+            selectedCardId = cardId
+            selectedTargetSlot = nil
+            selectedDiscardCardIds = []
+            clearResourcePaymentSelection()
+            self.rewardSelectionMode = nil
+            resolvePendingChoice(choiceId, resolution: .choosePlayFishFromHand(cardId))
             return
         }
         guard canSelectHandCards else {
@@ -2322,7 +2400,7 @@ final class GameBoardViewModel: ObservableObject {
         selectedRewardTokenId = tokenId
         switch entry.action {
         case let .direct(choiceId, resolution):
-            rewardSelectionMode = nil
+            self.rewardSelectionMode = nil
             resolvePendingChoice(choiceId, resolution: resolution)
         case let .chooseTarget(choiceId, kind):
             rewardSelectionMode = .target(choiceId: choiceId, tokenId: tokenId, kind: kind)
@@ -2354,6 +2432,24 @@ final class GameBoardViewModel: ObservableObject {
         case let .chooseFreePlayTarget(choiceId, tokenId, cardId):
             rewardSelectionMode = .freePlayTarget(choiceId: choiceId, tokenId: tokenId, cardId: cardId)
             errorMessage = AppStrings.GameBoard.playFishForFreeTarget
+        case let .choosePlayFishFromHandCard(choiceId, tokenId):
+            rewardSelectionMode = .playFishFromHandCard(choiceId: choiceId, tokenId: tokenId)
+            errorMessage = AppStrings.GameBoard.playFishFromHandHandCard
+        case let .choosePlayFishFromHandTarget(choiceId, tokenId, cardId):
+            rewardSelectionMode = .playFishFromHandTarget(choiceId: choiceId, tokenId: tokenId, cardId: cardId)
+            errorMessage = AppStrings.GameBoard.playFishFromHandTarget
+        case let .choosePlayFishFromHandPayment(choiceId, tokenId, cardId, targetSlot):
+            rewardSelectionMode = .playFishFromHandPayment(
+                choiceId: choiceId,
+                tokenId: tokenId,
+                cardId: cardId,
+                targetSlot: targetSlot
+            )
+            selectedCardId = cardId
+            selectedTargetSlot = targetSlot
+            selectedDiscardCardIds = []
+            clearResourcePaymentSelection()
+            errorMessage = AppStrings.GameBoard.playFishFromHandPayment
         case .unsupported:
             rewardSelectionMode = nil
             errorMessage = AppStrings.GameBoard.abilityUnsupported
@@ -2488,6 +2584,29 @@ final class GameBoardViewModel: ObservableObject {
             }
             resolvePendingChoice(choiceId, resolution: .playFishForFree(cardId: cardId, targetSlot: address))
             return true
+        case .playFishFromHandCard:
+            errorMessage = AppStrings.GameBoard.playFishFromHandHandCard
+            return true
+        case let .playFishFromHandTarget(choiceId, _, cardId):
+            guard let choice = state.pendingChoices[choiceId],
+                  let playerState = state.playerGameStates[choice.playerId],
+                  let target = playerState.ocean.slots.first(where: { $0.address == address }),
+                  let card = cardsById[cardId],
+                  playFishFromHandTargetIsLegal(target, card: card, for: choice)
+            else {
+                errorMessage = AppStrings.GameBoard.playFishFromHandTarget
+                return true
+            }
+            selectedCardId = cardId
+            selectedTargetSlot = address
+            selectedDiscardCardIds = []
+            clearResourcePaymentSelection()
+            self.rewardSelectionMode = nil
+            resolvePendingChoice(choiceId, resolution: .choosePlayFishFromHandTarget(address))
+            return true
+        case .playFishFromHandPayment:
+            errorMessage = AppStrings.GameBoard.playFishFromHandPayment
+            return true
         }
     }
 
@@ -2533,7 +2652,11 @@ final class GameBoardViewModel: ObservableObject {
         let viewState = rightActionPanelViewState
         switch viewState.actionKind {
         case .playFishPayment:
-            submitPlayFish()
+            if gameEndPlayFishFromHandPaymentChoice != nil {
+                submitGameEndPlayFishFromHand()
+            } else {
+                submitPlayFish()
+            }
         case .pendingChoice,
              .rewardSelection,
              .moveResource:
@@ -2697,6 +2820,49 @@ final class GameBoardViewModel: ObservableObject {
             errorMessage = localizedErrorMessage(for: error)
             refresh()
         }
+    }
+
+    private func submitGameEndPlayFishFromHand() {
+        guard let choice = gameEndPlayFishFromHandPaymentChoice,
+              let selectedCardId,
+              let selectedTargetSlot
+        else {
+            errorMessage = AppStrings.GameBoard.playFishFromHandPayment
+            return
+        }
+        guard selectedTargetSlotIsAvailable else {
+            errorMessage = AppStrings.GameBoard.selectSlot
+            return
+        }
+        guard !selectedCardHasUnsupportedUICost else {
+            errorMessage = AppStrings.GameBoard.costUnsupportedInUI
+            return
+        }
+        guard hasCompleteDiscardPayment else {
+            errorMessage = AppStrings.GameBoard.discardPaymentIncomplete
+            return
+        }
+        guard selectedEggSources.count == resourceCostCount(.egg, for: selectedCard) else {
+            errorMessage = AppStrings.GameBoard.eggPaymentIncomplete
+            return
+        }
+        guard selectedYoungSources.count == resourceCostCount(.young, for: selectedCard) else {
+            errorMessage = AppStrings.GameBoard.youngPaymentIncomplete
+            return
+        }
+
+        resolvePendingChoice(
+            choice.choiceId,
+            resolution: .playFishFromHand(
+                cardId: selectedCardId,
+                targetSlot: selectedTargetSlot,
+                payment: PlayFishPayment(
+                    discardedCardIds: Array(selectedDiscardCardIds).sorted(),
+                    eggSources: selectedEggSources,
+                    youngSources: selectedYoungSources
+                )
+            )
+        )
     }
 
     func submitDive(to diveSite: DiveActionSite) {
@@ -3486,6 +3652,14 @@ final class GameBoardViewModel: ObservableObject {
                 ? nil
                 : AppStrings.GameBoard.playFishForFreeFilterMismatch
         }
+        if case let .playFishFromHandCard(choiceId, _) = rewardSelectionMode {
+            guard let choice = state.pendingChoices[choiceId] else {
+                return AppStrings.GameBoard.playFishFromHandHandCard
+            }
+            return playFishFromHandCardIsLegal(card.id, for: choice)
+                ? nil
+                : AppStrings.GameBoard.playFishForFreeFilterMismatch
+        }
         if cardHasUnsupportedRequirementInUI(card) {
             return AppStrings.GameBoard.unsupportedRequirementInUI
         }
@@ -3787,6 +3961,10 @@ final class GameBoardViewModel: ObservableObject {
              let .consumeFishFromHand(count),
              let .playFishForFree(_, count):
             return count
+        case .gameEndScore,
+             .placeEggOnMatchingFish,
+             .playFishFromHand:
+            return 1
         case .unsupported:
             return 0
         }
@@ -3804,6 +3982,12 @@ final class GameBoardViewModel: ObservableObject {
             return "moveYoungOrSchool"
         case .recoverFromDiscardOrDraw:
             return "recoverFromDiscardOrDraw"
+        case .gameEndScore:
+            return "gameEndScore"
+        case .placeEggOnMatchingFish:
+            return "placeEggOnMatchingFish"
+        case .playFishFromHand:
+            return "playFishFromHand"
         case let .gainCoral(selector, _):
             return "gainCoral-\(selector.rawValue)"
         case .scatterSchool:
@@ -3819,6 +4003,7 @@ final class GameBoardViewModel: ObservableObject {
 
     private func canResolvePendingChoice(_ choice: PendingChoice) -> Bool {
         state.activePlayerId == choice.playerId
+            || (state.phase == .endGamePending && state.pendingChoices[choice.choiceId] != nil)
     }
 
     private func drawCount(for choice: PendingChoice) -> Int {
@@ -3856,12 +4041,14 @@ final class GameBoardViewModel: ObservableObject {
                 )
             }
         case .placeEgg,
+             .placeEggOnMatchingFish,
              .hatchEgg,
              .moveYoungOrSchool,
              .gainCoral,
              .scatterSchool,
              .consumeFishFromHand,
-             .playFishForFree:
+             .playFishForFree,
+             .playFishFromHand:
             break
         case .compoundAbility:
             if let progress = choice.compoundAbilityProgress {
@@ -4088,12 +4275,16 @@ final class GameBoardViewModel: ObservableObject {
                     .direct(choiceId: choice.choiceId, resolution: .skip)
                 )
             ]
+        case .placeEggOnMatchingFish:
+            return placeEggOnMatchingFishRewardEntries(for: choice)
         case .scatterSchool:
             return scatterSchoolRewardEntries(for: choice)
         case .consumeFishFromHand:
             return consumeFishFromHandRewardEntries(for: choice)
         case .playFishForFree:
             return playFishForFreeRewardEntries(for: choice)
+        case .playFishFromHand:
+            return playFishFromHandRewardEntries(for: choice)
         case .compoundAbility:
             var entries: [(token: RewardTokenViewState, action: RewardTokenAction)] = []
             if let progress = choice.compoundAbilityProgress {
@@ -4281,6 +4472,100 @@ final class GameBoardViewModel: ObservableObject {
         )
     }
 
+    private func placeEggOnMatchingFishRewardEntries(
+        for choice: PendingChoice
+    ) -> [(token: RewardTokenViewState, action: RewardTokenAction)] {
+        let canResolve = canResolvePendingChoice(choice)
+        let targetCount = pendingChoiceTargets(for: choice).count
+        let tokenId = "\(choice.choiceId)-matching-egg"
+        let isOnEach = choice.expectedInput == PendingChoiceExpectedInput.none
+        return [(
+            rewardToken(
+                id: tokenId,
+                kind: .placeEgg,
+                title: AppStrings.GameBoard.placeEggOnMatchingFish,
+                subtitle: isOnEach
+                    ? AppStrings.GameBoard.compoundAbilityProgressText(
+                        title: AppStrings.GameBoard.placeEggAbilityAction,
+                        completedCount: 0,
+                        totalCount: targetCount
+                    )
+                    : AppStrings.GameBoard.chooseLeftTarget,
+                iconText: "卵",
+                symbolName: "circle",
+                isSelectable: canResolve && targetCount > 0,
+                unavailableReasonText: targetCount > 0 ? nil : AppStrings.GameBoard.noPendingChoiceTargets
+            ),
+            isOnEach
+                ? .direct(choiceId: choice.choiceId, resolution: .finishAbility)
+                : .chooseTarget(choiceId: choice.choiceId, kind: .placeEggOnMatchingFish)
+        )]
+    }
+
+    private func playFishFromHandRewardEntries(
+        for choice: PendingChoice
+    ) -> [(token: RewardTokenViewState, action: RewardTokenAction)] {
+        guard let playerState = state.playerGameStates[choice.playerId] else {
+            return []
+        }
+        let canResolve = canResolvePendingChoice(choice)
+        if choice.expectedInput == .playFishFromHandPayment,
+           let progress = choice.playFishFromHandProgress,
+           let cardId = progress.selectedCardId,
+           let targetSlot = progress.targetSlot {
+            let tokenId = "\(choice.choiceId)-paid-payment"
+            return [(
+                rewardToken(
+                    id: tokenId,
+                    kind: .playFishFromHand,
+                    title: AppStrings.GameBoard.playFishFromHandPayment,
+                    subtitle: cardTitle(cardId),
+                    iconText: "付",
+                    symbolName: "checkmark.circle",
+                    isSelectable: canResolve
+                ),
+                .choosePlayFishFromHandPayment(
+                    choiceId: choice.choiceId,
+                    tokenId: tokenId,
+                    cardId: cardId,
+                    targetSlot: targetSlot
+                )
+            )]
+        }
+        if choice.expectedInput == .playFishFromHandTargetSlot,
+           let cardId = choice.playFishFromHandProgress?.selectedCardId {
+            let tokenId = "\(choice.choiceId)-paid-target"
+            return [(
+                rewardToken(
+                    id: tokenId,
+                    kind: .playFishFromHand,
+                    title: AppStrings.GameBoard.playFishFromHandTarget,
+                    subtitle: cardTitle(cardId),
+                    iconText: "位",
+                    symbolName: "scope",
+                    isSelectable: canResolve
+                ),
+                .choosePlayFishFromHandTarget(choiceId: choice.choiceId, tokenId: tokenId, cardId: cardId)
+            )]
+        }
+
+        let hasMatchingCard = playerState.hand.contains { playFishFromHandCardIsLegal($0, for: choice) }
+        let tokenId = "\(choice.choiceId)-paid-hand"
+        return [(
+            rewardToken(
+                id: tokenId,
+                kind: .playFishFromHand,
+                title: AppStrings.GameBoard.playFishFromHand,
+                subtitle: handFishFilterText(handFishFilter(for: choice) ?? .unsupported("unknown")),
+                iconText: "牌",
+                symbolName: "fish",
+                isSelectable: canResolve && hasMatchingCard,
+                unavailableReasonText: hasMatchingCard ? nil : AppStrings.GameBoard.playFishFromHandNoMatchingHandCard
+            ),
+            .choosePlayFishFromHandCard(choiceId: choice.choiceId, tokenId: tokenId)
+        )]
+    }
+
     private func abilityCoralRewardEntries(
         for choice: PendingChoice
     ) -> [(token: RewardTokenViewState, action: RewardTokenAction)] {
@@ -4451,7 +4736,7 @@ final class GameBoardViewModel: ObservableObject {
 
     func pendingChoiceTargets(for choice: PendingChoice) -> [PendingChoiceTargetViewData] {
         guard let playerState = state.playerGameStates[choice.playerId],
-              choice.kind == .placeEgg || choice.kind == .hatchEgg
+              choice.kind == .placeEgg || choice.kind == .hatchEgg || choice.kind == .placeEggOnMatchingFish
         else {
             return []
         }
@@ -4552,6 +4837,8 @@ final class GameBoardViewModel: ObservableObject {
         switch choice.kind {
         case .placeEgg:
             return slot.content.hasFish && resourceAmount(.egg, in: slot) == 0
+        case .placeEggOnMatchingFish:
+            return matchingEggTargetIsLegal(slot, for: choice)
         case .hatchEgg:
             return resourceAmount(.egg, in: slot) > 0
         case .drawFish,
@@ -4561,6 +4848,7 @@ final class GameBoardViewModel: ObservableObject {
              .scatterSchool,
              .consumeFishFromHand,
              .playFishForFree,
+             .playFishFromHand,
              .compoundAbility,
              .bottomBonus,
              .placeholder,
@@ -4575,6 +4863,10 @@ final class GameBoardViewModel: ObservableObject {
             return AppStrings.GameBoard.choosePlaceEggTarget
         case .hatchEgg:
             return AppStrings.GameBoard.chooseHatchEggTarget
+        case .placeEggOnMatchingFish:
+            return choice.expectedInput == .matchingEggTarget
+                ? AppStrings.GameBoard.choosePlaceEggTarget
+                : AppStrings.GameBoard.placeEggOnMatchingFish
         case .recoverFromDiscardOrDraw:
             return state.playerGameStates[choice.playerId]?.discardPile.isEmpty == true
                 ? AppStrings.GameBoard.discardPileEmptyDrawHint
@@ -4595,6 +4887,15 @@ final class GameBoardViewModel: ObservableObject {
             return choice.expectedInput == .freePlayTargetSlot
                 ? AppStrings.GameBoard.playFishForFreeTarget
                 : AppStrings.GameBoard.playFishForFreeHandCard
+        case .playFishFromHand:
+            switch choice.expectedInput {
+            case .playFishFromHandTargetSlot:
+                return AppStrings.GameBoard.playFishFromHandTarget
+            case .playFishFromHandPayment:
+                return AppStrings.GameBoard.playFishFromHandPayment
+            default:
+                return AppStrings.GameBoard.playFishFromHandHandCard
+            }
         case .drawFish,
              .compoundAbility,
              .bottomBonus,
@@ -4605,7 +4906,7 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     private func noPendingChoiceTargetsText(for choice: PendingChoice) -> String? {
-        if choice.kind == .placeEgg || choice.kind == .hatchEgg {
+        if choice.kind == .placeEgg || choice.kind == .hatchEgg || choice.kind == .placeEggOnMatchingFish {
             return pendingChoiceTargets(for: choice).isEmpty ? AppStrings.GameBoard.noPendingChoiceTargets : nil
         }
         if choice.kind == .moveYoungOrSchool {
@@ -4618,6 +4919,9 @@ final class GameBoardViewModel: ObservableObject {
             return nil
         }
         if choice.kind == .playFishForFree {
+            return nil
+        }
+        if choice.kind == .playFishFromHand {
             return nil
         }
         if choice.kind == .recoverFromDiscardOrDraw {
@@ -4673,6 +4977,12 @@ final class GameBoardViewModel: ObservableObject {
                 return AppStrings.GameBoard.playFishForFreeHandCard
             case .freePlayTarget:
                 return AppStrings.GameBoard.playFishForFreeTarget
+            case .playFishFromHandCard:
+                return AppStrings.GameBoard.playFishFromHandHandCard
+            case .playFishFromHandTarget:
+                return AppStrings.GameBoard.playFishFromHandTarget
+            case .playFishFromHandPayment:
+                return AppStrings.GameBoard.playFishFromHandPayment
             }
         }
 
@@ -4682,6 +4992,7 @@ final class GameBoardViewModel: ObservableObject {
              .compoundAbility:
             return AppStrings.GameBoard.chooseRewardToken
         case .placeEgg,
+             .placeEggOnMatchingFish,
              .hatchEgg:
             return AppStrings.GameBoard.chooseRewardThenTarget
         case .moveYoungOrSchool:
@@ -4702,6 +5013,15 @@ final class GameBoardViewModel: ObservableObject {
             return choice.expectedInput == .freePlayTargetSlot
                 ? AppStrings.GameBoard.playFishForFreeTarget
                 : AppStrings.GameBoard.playFishForFreeHandCard
+        case .playFishFromHand:
+            switch choice.expectedInput {
+            case .playFishFromHandTargetSlot:
+                return AppStrings.GameBoard.playFishFromHandTarget
+            case .playFishFromHandPayment:
+                return AppStrings.GameBoard.playFishFromHandPayment
+            default:
+                return AppStrings.GameBoard.playFishFromHandHandCard
+            }
         case .bottomBonus,
              .placeholder,
              .unsupported:
@@ -4753,6 +5073,12 @@ final class GameBoardViewModel: ObservableObject {
             return AppStrings.GameBoard.playFishForFreeHandCard
         case .playFishForFree:
             return AppStrings.GameBoard.playFishForFree
+        case .choosePlayFishFromHand:
+            return AppStrings.GameBoard.playFishFromHandHandCard
+        case .choosePlayFishFromHandTarget:
+            return AppStrings.GameBoard.playFishFromHandTarget
+        case .playFishFromHand:
+            return AppStrings.GameBoard.playFishFromHand
         case .chooseOption:
             return AppStrings.GameBoard.chooseOption
         case .chooseAbilityEffect:
@@ -4972,6 +5298,136 @@ final class GameBoardViewModel: ObservableObject {
         }
     }
 
+    private func playFishFromHandCardIsLegal(_ cardId: CardID, for choice: PendingChoice) -> Bool {
+        guard choice.kind == .playFishFromHand,
+              choice.expectedInput == .playFishFromHandCard,
+              state.playerGameStates[choice.playerId]?.hand.contains(cardId) == true,
+              let card = cardsById[cardId],
+              let filter = handFishFilter(for: choice)
+        else {
+            return false
+        }
+        return handFishFilterMatches(card, filter: filter)
+    }
+
+    private func handFishFilter(for choice: PendingChoice) -> HandFishFilter? {
+        let effect = choice.selectedAbilityEffect ?? choice.abilityDefinition?.effects.first
+        guard case let .playFishFromHand(filter, _, _) = effect else {
+            return nil
+        }
+        return filter
+    }
+
+    private func handFishFilterMatches(_ card: Card, filter: HandFishFilter) -> Bool {
+        switch filter {
+        case .any:
+            return true
+        case let .tag(kind):
+            return card.tags.contains { $0.kind == kind && $0.count > 0 }
+        case let .lengthBucket(bucket):
+            return lengthBucket(for: card.lengthCm) == bucket
+        case .unsupported:
+            return false
+        }
+    }
+
+    private func handFishFilterText(_ filter: HandFishFilter) -> String {
+        switch filter {
+        case .any:
+            return AppStrings.GameBoard.playFishFromHandHandCard
+        case let .tag(kind):
+            return cardTagName(kind)
+        case let .lengthBucket(bucket):
+            switch bucket {
+            case .small:
+                return "小型鱼"
+            case .medium:
+                return "中型鱼"
+            case .large:
+                return "大型鱼"
+            }
+        case .unsupported:
+            return AppStrings.GameBoard.abilityUnsupported
+        }
+    }
+
+    private func playFishFromHandTargetIsLegal(
+        _ slot: OceanSlot,
+        card: Card,
+        for choice: PendingChoice
+    ) -> Bool {
+        guard choice.kind == .playFishFromHand,
+              slot.address.playerId == choice.playerId,
+              placementConstraintMatches(slot.address, for: choice)
+        else {
+            return false
+        }
+        return playFishSlotPreview(for: slot, card: card).isSelectable
+    }
+
+    private func placementConstraintMatches(_ address: OceanSlotAddress, for choice: PendingChoice) -> Bool {
+        let effect = choice.selectedAbilityEffect ?? choice.abilityDefinition?.effects.first
+        guard case let .playFishFromHand(_, placement, _) = effect else {
+            return false
+        }
+        switch placement {
+        case .topRow:
+            return address.rowIndex == 0
+        case .bottomRow:
+            return address.rowIndex == 5
+        case .sunlight:
+            return address.zone == .sunlit
+        case let .diveSite(diveSite):
+            return address.diveSite == diveSite
+        }
+    }
+
+    private func matchingEggTargetIsLegal(_ slot: OceanSlot, for choice: PendingChoice) -> Bool {
+        let effect = choice.selectedAbilityEffect ?? choice.abilityDefinition?.effects.first
+        guard slot.address.playerId == choice.playerId,
+              slot.content.hasFish,
+              resourceAmount(.egg, in: slot) == 0,
+              case let .placeEggOnMatchingFish(filter, _) = effect
+        else {
+            return false
+        }
+        return eggPlacementFilterMatches(slot, filter: filter)
+    }
+
+    private func eggPlacementFilterMatches(_ slot: OceanSlot, filter: EggPlacementFilter) -> Bool {
+        switch filter {
+        case let .lengthBucket(bucket):
+            guard let lengthCm = fishLengthForEggFilter(in: slot.content) else {
+                return false
+            }
+            return lengthBucket(for: lengthCm) == bucket
+        case .topRow:
+            return slot.address.rowIndex == 0
+        case .bottomRow:
+            return slot.address.rowIndex == 5
+        case let .diveSite(diveSite):
+            return slot.address.diveSite == diveSite
+        case let .tag(kind):
+            guard case let .fishCard(cardId) = slot.content,
+                  let card = cardsById[cardId]
+            else {
+                return false
+            }
+            return card.tags.contains { $0.kind == kind && $0.count > 0 }
+        }
+    }
+
+    private func fishLengthForEggFilter(in content: OceanSlotContent) -> Int? {
+        switch content {
+        case .empty:
+            return nil
+        case let .forageFish(fish):
+            return fish.lengthCm
+        case let .fishCard(cardId):
+            return cardsById[cardId]?.lengthCm
+        }
+    }
+
     private func rewardSelectionHighlightText(for slot: OceanSlot) -> String? {
         guard let rewardSelectionMode else {
             return nil
@@ -5048,6 +5504,19 @@ final class GameBoardViewModel: ObservableObject {
                 return nil
             }
             return AppStrings.GameBoard.playFishForFreeTarget
+        case .playFishFromHandCard:
+            return nil
+        case let .playFishFromHandTarget(choiceId, _, cardId):
+            guard let choice = state.pendingChoices[choiceId],
+                  slot.address.playerId == choice.playerId,
+                  let card = cardsById[cardId],
+                  playFishFromHandTargetIsLegal(slot, card: card, for: choice)
+            else {
+                return nil
+            }
+            return AppStrings.GameBoard.playFishFromHandTarget
+        case .playFishFromHandPayment:
+            return nil
         }
     }
 
@@ -5348,11 +5817,19 @@ final class GameBoardViewModel: ObservableObject {
                         abilityId: ability.abilityId
                     )
                     let isActivated = state.activatedGameEndAbilitySourceIds.contains(source.id)
-                    let isSupported = !ability.effects.contains(.unsupported)
+                    let isScoringOnly = ability.effects.allSatisfy { effect in
+                        if case .gameEndScore = effect {
+                            return true
+                        }
+                        return false
+                    }
+                    let isSupported = !ability.effects.contains(.unsupported) && !isScoringOnly
                     let canActivate = state.pendingChoices.isEmpty && isSupported && !isActivated
                     let statusText: String
                     if isActivated {
                         statusText = AppStrings.GameBoard.gameEndAbilityActivated
+                    } else if isScoringOnly {
+                        statusText = AppStrings.GameBoard.gameEndAbilityAutomaticScoring
                     } else if isSupported {
                         statusText = AppStrings.GameBoard.gameEndAbilityAvailable
                     } else {

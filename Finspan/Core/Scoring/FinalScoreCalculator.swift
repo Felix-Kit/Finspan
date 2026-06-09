@@ -76,6 +76,12 @@ struct FinalScoreResult: Codable, Equatable, Sendable {
 }
 
 struct FinalScoreCalculator: Sendable {
+    private let abilityResolver: AbilityResolver
+
+    init(abilityResolver: AbilityResolver = AbilityResolver()) {
+        self.abilityResolver = abilityResolver
+    }
+
     func calculate(in state: GameState, cardCatalog: any CardCatalog) -> FinalScoreResult {
         let cardsById = Dictionary(
             uniqueKeysWithValues: (cardCatalog.starterFishCards + cardCatalog.fishCards).map { ($0.id, $0) }
@@ -131,8 +137,10 @@ struct FinalScoreCalculator: Sendable {
             }
             return total + reef.completionBonus
         }
-        // TODO: Insert the GAME END ability pending choice flow before final scoring.
-        let gameEndAbilityPoints = 0
+        let gameEndAbilityPoints = gameEndAbilityPoints(
+            playerState: playerState,
+            cardsById: cardsById
+        )
         let totalPoints = weeklyAchievementPoints
             + fishPrintedPoints
             + gameEndAbilityPoints
@@ -162,5 +170,69 @@ struct FinalScoreCalculator: Sendable {
         playerState.ocean.slots.reduce(0) { total, slot in
             total + (slot.resources.first(where: { $0.kind == kind })?.amount ?? 0)
         }
+    }
+
+    private func gameEndAbilityPoints(
+        playerState: PlayerGameState,
+        cardsById: [CardID: Card]
+    ) -> Int {
+        playerState.ocean.slots.reduce(0) { total, slot in
+            guard case let .fishCard(cardId) = slot.content,
+                  let card = cardsById[cardId]
+            else {
+                return total
+            }
+            let points = abilityResolver.abilityDefinitions(for: card, trigger: .gameEnd)
+                .flatMap(\.effects)
+                .reduce(0) { subtotal, effect in
+                    guard case let .gameEndScore(condition, points) = effect,
+                          gameEndScoreConditionIsMet(condition, slot: slot, playerState: playerState)
+                    else {
+                        return subtotal
+                    }
+                    return subtotal + points
+                }
+            return total + points
+        }
+    }
+
+    private func gameEndScoreConditionIsMet(
+        _ condition: GameEndScoreCondition,
+        slot: OceanSlot,
+        playerState: PlayerGameState
+    ) -> Bool {
+        switch condition {
+        case .noTokensOnThisFish:
+            return resourceAmount(.egg, in: slot) == 0
+                && resourceAmount(.young, in: slot) == 0
+                && resourceAmount(.school, in: slot) == 0
+        case let .consumedFishUnderThisFishAtLeast(count):
+            return slot.consumedFish.count >= count
+        case let .youngOnThisFishExactly(count):
+            return resourceAmount(.young, in: slot) == count
+        case .bottomRow:
+            return slot.address.rowIndex == 5
+        case .schoolOnThisFish:
+            return resourceAmount(.school, in: slot) > 0
+        case .eggYoungAndSchoolOnThisFish:
+            return resourceAmount(.egg, in: slot) > 0
+                && resourceAmount(.young, in: slot) > 0
+                && resourceAmount(.school, in: slot) > 0
+        case let .allDiveSitesHaveCoralAtLeast(count):
+            guard !playerState.ocean.coralReefs.isEmpty else {
+                return false
+            }
+            return DiveSite.allCases.allSatisfy { diveSite in
+                playerState.ocean.coralReefs
+                    .first(where: { $0.diveSite == diveSite })
+                    .map { $0.coralCount >= count } ?? false
+            }
+        case let .anyDiveSiteHasCoralAtLeast(count):
+            return playerState.ocean.coralReefs.contains { $0.coralCount >= count }
+        }
+    }
+
+    private func resourceAmount(_ kind: ResourceKind, in slot: OceanSlot) -> Int {
+        slot.resources.first(where: { $0.kind == kind })?.amount ?? 0
     }
 }

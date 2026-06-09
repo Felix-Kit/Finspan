@@ -288,6 +288,10 @@ struct GameEngine {
                 return drafts
             }
             if let nextChoice = nonQueueNextChoice {
+                if shouldMarkGameEndSourceBeforeNextChoice(payload),
+                   let source = gameEndAbilitySource(for: resolvedChoice) {
+                    drafts.append(.gameEndAbilityActivated(GameEndAbilityActivatedEvent(source: source)))
+                }
                 drafts.append(.pendingChoiceCreated(nextChoice))
                 return drafts
             }
@@ -708,7 +712,7 @@ struct GameEngine {
                 throw CommandValidationError.fishDrawPileEmpty
             }
         case let .chooseTarget(target):
-            guard choice.kind == .placeEgg || choice.kind == .hatchEgg else {
+            guard choice.kind == .placeEgg || choice.kind == .hatchEgg || choice.kind == .placeEggOnMatchingFish else {
                 throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
             }
             try validatePendingChoiceTarget(
@@ -776,6 +780,18 @@ struct GameEngine {
             try validateFreePlayFishSelection(cardId, for: choice, in: state)
         case let .playFishForFree(cardId, targetSlot):
             try validatePlayFishForFree(cardId: cardId, targetSlot: targetSlot, for: choice, in: state)
+        case let .choosePlayFishFromHand(cardId):
+            try validatePlayFishFromHandSelection(cardId, for: choice, in: state)
+        case let .choosePlayFishFromHandTarget(targetSlot):
+            try validatePlayFishFromHandTarget(targetSlot, for: choice, in: state)
+        case let .playFishFromHand(cardId, targetSlot, payment):
+            try validatePlayFishFromHand(
+                cardId: cardId,
+                targetSlot: targetSlot,
+                payment: payment,
+                for: choice,
+                in: state
+            )
         case .chooseOption:
             throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
         case let .chooseAbilityEffect(effect):
@@ -785,6 +801,12 @@ struct GameEngine {
                 throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
             }
         case .finishAbility:
+            if choice.kind == .placeEggOnMatchingFish,
+               case let .placeEggOnMatchingFish(_, mode) = selectedEffect(for: choice),
+               mode == .onEachEligibleFish,
+               choice.isOptional {
+                return
+            }
             guard choice.kind == .compoundAbility, choice.isOptional else {
                 throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
             }
@@ -848,6 +870,12 @@ struct GameEngine {
             else {
                 throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
             }
+        case .placeEggOnMatchingFish:
+            guard choice.expectedInput == .matchingEggTarget,
+                  matchingEggTargetIsLegal(slot, for: choice)
+            else {
+                throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+            }
         case .hatchEgg:
             guard resourceAmount(.egg, in: slot) > 0 else {
                 throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
@@ -859,6 +887,7 @@ struct GameEngine {
              .scatterSchool,
              .consumeFishFromHand,
              .playFishForFree,
+             .playFishFromHand,
              .compoundAbility,
              .bottomBonus,
              .placeholder,
@@ -1004,6 +1033,178 @@ struct GameEngine {
             throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
         }
         try validateFishPlacement(card, targetSlot: slot, playerState: playerState)
+    }
+
+    private func validatePlayFishFromHandSelection(
+        _ cardId: CardID,
+        for choice: PendingChoice,
+        in state: GameState
+    ) throws {
+        guard choice.kind == .playFishFromHand,
+              choice.expectedInput == .playFishFromHandCard,
+              let playerState = state.playerGameStates[choice.playerId],
+              playerState.hand.contains(cardId),
+              let card = card(withId: cardId),
+              handFishFilterMatches(card, for: choice)
+        else {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+    }
+
+    private func validatePlayFishFromHandTarget(
+        _ targetSlot: OceanSlotAddress,
+        for choice: PendingChoice,
+        in state: GameState
+    ) throws {
+        guard choice.kind == .playFishFromHand,
+              choice.expectedInput == .playFishFromHandTargetSlot,
+              let selectedCardId = choice.playFishFromHandProgress?.selectedCardId,
+              targetSlot.playerId == choice.playerId,
+              let playerState = state.playerGameStates[choice.playerId],
+              playerState.hand.contains(selectedCardId),
+              let card = card(withId: selectedCardId),
+              handFishFilterMatches(card, for: choice),
+              let slot = playerState.ocean.slots.first(where: { $0.address == targetSlot })
+        else {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+        guard placementConstraintMatches(slot.address, for: choice) else {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+        try validateFishPlacement(card, targetSlot: slot, playerState: playerState)
+    }
+
+    private func validatePlayFishFromHand(
+        cardId: CardID,
+        targetSlot: OceanSlotAddress,
+        payment: PlayFishPayment,
+        for choice: PendingChoice,
+        in state: GameState
+    ) throws {
+        guard choice.kind == .playFishFromHand,
+              choice.expectedInput == .playFishFromHandPayment,
+              let progress = choice.playFishFromHandProgress,
+              progress.selectedCardId == cardId,
+              progress.targetSlot == targetSlot,
+              let playerState = state.playerGameStates[choice.playerId],
+              playerState.hand.contains(cardId),
+              let card = card(withId: cardId),
+              handFishFilterMatches(card, for: choice),
+              let slot = playerState.ocean.slots.first(where: { $0.address == targetSlot })
+        else {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+        guard placementConstraintMatches(slot.address, for: choice) else {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+        try validateFishPlacement(card, targetSlot: slot, playerState: playerState)
+        try validatePayment(
+            payment,
+            for: card,
+            payload: PlayFishCommand(cardId: cardId, targetSlot: targetSlot, payment: payment),
+            playerState: playerState
+        )
+    }
+
+    private func handFishFilterMatches(_ card: Card, for choice: PendingChoice) -> Bool {
+        guard case let .playFishFromHand(filter, _, _) = selectedEffect(for: choice) else {
+            return false
+        }
+        return handFishFilterMatches(card, filter: filter)
+    }
+
+    private func handFishFilterMatches(_ card: Card, filter: HandFishFilter) -> Bool {
+        switch filter {
+        case .any:
+            return true
+        case let .tag(kind):
+            return card.tags.contains { $0.kind == kind && $0.count > 0 }
+        case let .lengthBucket(bucket):
+            return lengthBucket(for: card.lengthCm) == bucket
+        case .unsupported:
+            return false
+        }
+    }
+
+    private func placementConstraintMatches(_ address: OceanSlotAddress, for choice: PendingChoice) -> Bool {
+        guard case let .playFishFromHand(_, placement, _) = selectedEffect(for: choice) else {
+            return false
+        }
+        return placementConstraintMatches(address, placement: placement)
+    }
+
+    private func placementConstraintMatches(
+        _ address: OceanSlotAddress,
+        placement: FishPlacementConstraint
+    ) -> Bool {
+        switch placement {
+        case .topRow:
+            return address.rowIndex == 0
+        case .bottomRow:
+            return address.rowIndex == 5
+        case .sunlight:
+            return address.zone == .sunlit
+        case let .diveSite(diveSite):
+            return address.diveSite == diveSite
+        }
+    }
+
+    private func selectedEffect(for choice: PendingChoice) -> AbilityEffectUnit {
+        choice.selectedAbilityEffect ?? choice.abilityDefinition?.effects.first ?? .unsupported
+    }
+
+    private func matchingEggTargetIsLegal(_ slot: OceanSlot, for choice: PendingChoice) -> Bool {
+        guard slot.address.playerId == choice.playerId,
+              slot.content.hasFish,
+              resourceAmount(.egg, in: slot) == 0,
+              case let .placeEggOnMatchingFish(filter, _) = selectedEffect(for: choice)
+        else {
+            return false
+        }
+        return eggPlacementFilterMatches(slot, filter: filter)
+    }
+
+    private func eggPlacementTargets(for choice: PendingChoice, in state: GameState) -> [OceanSlotAddress] {
+        guard let playerState = state.playerGameStates[choice.playerId] else {
+            return []
+        }
+        return playerState.ocean.slots
+            .filter { matchingEggTargetIsLegal($0, for: choice) }
+            .map(\.address)
+    }
+
+    private func eggPlacementFilterMatches(_ slot: OceanSlot, filter: EggPlacementFilter) -> Bool {
+        switch filter {
+        case let .lengthBucket(bucket):
+            guard let lengthCm = fishLengthForEggFilter(in: slot.content) else {
+                return false
+            }
+            return lengthBucket(for: lengthCm) == bucket
+        case .topRow:
+            return slot.address.rowIndex == 0
+        case .bottomRow:
+            return slot.address.rowIndex == 5
+        case let .diveSite(diveSite):
+            return slot.address.diveSite == diveSite
+        case let .tag(kind):
+            guard case let .fishCard(cardId) = slot.content,
+                  let card = card(withId: cardId)
+            else {
+                return false
+            }
+            return card.tags.contains { $0.kind == kind && $0.count > 0 }
+        }
+    }
+
+    private func fishLengthForEggFilter(in content: OceanSlotContent) -> Int? {
+        switch content {
+        case .empty:
+            return nil
+        case let .forageFish(fish):
+            return fish.lengthCm
+        case let .fishCard(cardId):
+            return card(withId: cardId)?.lengthCm
+        }
     }
 
     private func freePlayFilterMatches(_ card: Card, for choice: PendingChoice) -> Bool {
@@ -1522,12 +1723,26 @@ struct GameEngine {
             return [.none]
         case let .playFishForFree(cardId, targetSlot):
             return [.fishPlayedForFree(playerId: playerId, cardId: cardId, targetSlot: targetSlot)]
+        case .choosePlayFishFromHand,
+             .choosePlayFishFromHandTarget:
+            return [.none]
+        case let .playFishFromHand(cardId, targetSlot, payment):
+            return [
+                .fishPlayedFromHand(
+                    playerId: playerId,
+                    cardId: cardId,
+                    targetSlot: targetSlot,
+                    payment: payment
+                )
+            ]
         case let .chooseTarget(target):
             guard let choice = state.pendingChoices[payload.choiceId] else {
                 return [.none]
             }
             switch choice.kind {
             case .placeEgg:
+                return [.placeEgg(target: target, amount: 1)]
+            case .placeEggOnMatchingFish:
                 return [.placeEgg(target: target, amount: 1)]
             case .hatchEgg:
                 return [.hatchEgg(target: target, amount: 1)]
@@ -1538,6 +1753,7 @@ struct GameEngine {
                  .scatterSchool,
                  .consumeFishFromHand,
                  .playFishForFree,
+                 .playFishFromHand,
                  .compoundAbility,
                  .bottomBonus,
                  .placeholder,
@@ -1545,9 +1761,19 @@ struct GameEngine {
                 return [.none]
             }
         case .chooseOption,
-             .chooseAbilityEffect,
-             .finishAbility:
+             .chooseAbilityEffect:
             return [.none]
+        case .finishAbility:
+            guard let choice = state.pendingChoices[payload.choiceId],
+                  choice.kind == .placeEggOnMatchingFish
+            else {
+                return [.none]
+            }
+            let targets = eggPlacementTargets(for: choice, in: state)
+            guard !targets.isEmpty else {
+                return [.none]
+            }
+            return targets.map { .placeEgg(target: $0, amount: 1) }
         }
     }
 
@@ -1575,6 +1801,35 @@ struct GameEngine {
             return nil
         }
         return gameEndAbilitySource(from: sourceId)
+    }
+
+    private func shouldMarkGameEndSourceBeforeNextChoice(_ payload: ResolvePendingChoiceCommand) -> Bool {
+        switch payload.resolution {
+        case .playFishForFree,
+             .playFishFromHand:
+            return true
+        case .skip,
+             .chooseTarget,
+             .draw,
+             .recoverCard,
+             .drawFromDeck,
+             .moveResource,
+             .gainCoralWithEgg,
+             .gainCoralWithYoung,
+             .gainCoralByDiscard,
+             .gainCoralFromAbility,
+             .chooseScatterSchoolSource,
+             .placeScatterSchoolYoung,
+             .chooseConsumeFishConsumer,
+             .consumeFishFromHand,
+             .chooseFreePlayFish,
+             .choosePlayFishFromHand,
+             .choosePlayFishFromHandTarget,
+             .chooseOption,
+             .chooseAbilityEffect,
+             .finishAbility:
+            return false
+        }
     }
 
     private func gameEndAbilitySource(from sourceId: String) -> GameEndAbilitySource? {
@@ -1687,7 +1942,20 @@ struct GameEngine {
         var ability: AbilityDefinition
 
         var isSupported: Bool {
-            !ability.effects.contains(.unsupported)
+            isExecutable
+        }
+
+        var isExecutable: Bool {
+            !ability.effects.contains(.unsupported) && !isScoringOnly
+        }
+
+        var isScoringOnly: Bool {
+            ability.effects.allSatisfy { effect in
+                if case .gameEndScore = effect {
+                    return true
+                }
+                return false
+            }
         }
     }
 
@@ -2050,6 +2318,9 @@ struct GameEngine {
         if let freePlayChoice = nonQueuePlayFishForFreeChoiceAfterResolving(payload, choice: choice) {
             return freePlayChoice
         }
+        if let playFishChoice = nonQueuePlayFishFromHandChoiceAfterResolving(payload, choice: choice) {
+            return playFishChoice
+        }
 
         guard let progress = choice.compoundAbilityProgress,
               let completedEffect = compoundEffectUnit(for: choice)
@@ -2158,6 +2429,47 @@ struct GameEngine {
                for: cardId,
                sourceAddress: targetSlot,
                choiceId: "\(choice.choiceId)-free-when-played",
+               playerId: choice.playerId
+           ) {
+            return whenPlayedChoice
+        }
+        guard let progress = choice.compoundAbilityProgress,
+              let completedEffect = compoundEffectUnit(for: choice)
+        else {
+            return nil
+        }
+
+        var updatedProgress = progress
+        updatedProgress.remainingEffects = decrement(completedEffect, from: progress.remainingEffects)
+        updatedProgress.completedEffects.append(completedEffect)
+
+        guard !abilityProgressIsComplete(updatedProgress) else {
+            return nil
+        }
+        return compoundSelectorChoice(from: choice, progress: updatedProgress)
+    }
+
+    private func nonQueuePlayFishFromHandChoiceAfterResolving(
+        _ payload: ResolvePendingChoiceCommand,
+        choice: PendingChoice
+    ) -> PendingChoice? {
+        guard choice.kind == .playFishFromHand else {
+            return nil
+        }
+        if case .skip = payload.resolution {
+            return nil
+        }
+        if let nextChoice = playFishFromHandChoiceAfterResolving(
+            choice: choice,
+            resolution: payload.resolution
+        ) {
+            return nextChoice
+        }
+        if case let .playFishFromHand(cardId, targetSlot, _) = payload.resolution,
+           let whenPlayedChoice = whenPlayedPendingChoice(
+               for: cardId,
+               sourceAddress: targetSlot,
+               choiceId: "\(choice.choiceId)-paid-when-played",
                playerId: choice.playerId
            ) {
             return whenPlayedChoice
@@ -2310,6 +2622,74 @@ struct GameEngine {
         )
     }
 
+    private func playFishFromHandChoiceAfterResolving(
+        choice: PendingChoice,
+        resolution: PendingChoiceResolution
+    ) -> PendingChoice? {
+        guard choice.kind == .playFishFromHand else {
+            return nil
+        }
+
+        switch resolution {
+        case let .choosePlayFishFromHand(cardId):
+            return playFishFromHandTargetChoice(from: choice, cardId: cardId)
+        case let .choosePlayFishFromHandTarget(targetSlot):
+            guard let selectedCardId = choice.playFishFromHandProgress?.selectedCardId else {
+                return nil
+            }
+            return playFishFromHandPaymentChoice(from: choice, cardId: selectedCardId, targetSlot: targetSlot)
+        case .playFishFromHand:
+            return nil
+        default:
+            return nil
+        }
+    }
+
+    private func playFishFromHandTargetChoice(
+        from choice: PendingChoice,
+        cardId: CardID
+    ) -> PendingChoice {
+        PendingChoice(
+            choiceId: "\(choice.choiceId)-paid-target",
+            playerId: choice.playerId,
+            source: choice.source,
+            diveQueueId: choice.diveQueueId,
+            diveStepId: choice.diveStepId,
+            kind: .playFishFromHand,
+            options: [],
+            expectedInput: .playFishFromHandTargetSlot,
+            isOptional: false,
+            abilityDefinition: choice.abilityDefinition,
+            compoundAbilityProgress: choice.compoundAbilityProgress,
+            playFishFromHandProgress: PlayFishFromHandProgress(selectedCardId: cardId),
+            selectedAbilityEffect: choice.selectedAbilityEffect,
+            createdAtSequence: choice.createdAtSequence
+        )
+    }
+
+    private func playFishFromHandPaymentChoice(
+        from choice: PendingChoice,
+        cardId: CardID,
+        targetSlot: OceanSlotAddress
+    ) -> PendingChoice {
+        PendingChoice(
+            choiceId: "\(choice.choiceId)-paid-payment",
+            playerId: choice.playerId,
+            source: choice.source,
+            diveQueueId: choice.diveQueueId,
+            diveStepId: choice.diveStepId,
+            kind: .playFishFromHand,
+            options: [],
+            expectedInput: .playFishFromHandPayment,
+            isOptional: false,
+            abilityDefinition: choice.abilityDefinition,
+            compoundAbilityProgress: choice.compoundAbilityProgress,
+            playFishFromHandProgress: PlayFishFromHandProgress(selectedCardId: cardId, targetSlot: targetSlot),
+            selectedAbilityEffect: choice.selectedAbilityEffect,
+            createdAtSequence: choice.createdAtSequence
+        )
+    }
+
     private func setCurrentStepPendingChoice(_ choice: PendingChoice, in queue: inout DiveResolutionQueue) {
         guard queue.steps.indices.contains(queue.currentStepIndex) else {
             return
@@ -2411,6 +2791,10 @@ struct GameEngine {
              let .consumeFishFromHand(count),
              let .playFishForFree(_, count):
             return count
+        case .gameEndScore,
+             .placeEggOnMatchingFish,
+             .playFishFromHand:
+            return 1
         case .unsupported:
             return 0
         }
@@ -2428,6 +2812,12 @@ struct GameEngine {
             return .moveYoungOrSchool(count: count)
         case .recoverFromDiscardOrDraw:
             return .recoverFromDiscardOrDraw(count: count)
+        case let .gameEndScore(condition, points):
+            return .gameEndScore(condition: condition, points: points)
+        case let .placeEggOnMatchingFish(filter, mode):
+            return .placeEggOnMatchingFish(filter: filter, mode: mode)
+        case let .playFishFromHand(filter, placement, costMode):
+            return .playFishFromHand(filter: filter, placement: placement, costMode: costMode)
         case let .gainCoral(selector, _):
             return .gainCoral(selector: selector, count: count)
         case .scatterSchool:
@@ -2453,6 +2843,12 @@ struct GameEngine {
             return "moveYoungOrSchool"
         case .recoverFromDiscardOrDraw:
             return "recoverFromDiscardOrDraw"
+        case let .gameEndScore(condition, points):
+            return "gameEndScore-\(gameEndScoreConditionKey(condition))-\(points)"
+        case let .placeEggOnMatchingFish(filter, mode):
+            return "placeEggOnMatchingFish-\(eggPlacementFilterKey(filter))-\(mode)"
+        case let .playFishFromHand(filter, placement, costMode):
+            return "playFishFromHand-\(handFishFilterKey(filter))-\(placementConstraintKey(placement))-\(costMode)"
         case let .gainCoral(selector, _):
             return "gainCoral-\(selector.rawValue)"
         case .scatterSchool:
@@ -2479,6 +2875,68 @@ struct GameEngine {
         }
     }
 
+    private func gameEndScoreConditionKey(_ condition: GameEndScoreCondition) -> String {
+        switch condition {
+        case .noTokensOnThisFish:
+            return "noTokens"
+        case let .consumedFishUnderThisFishAtLeast(count):
+            return "consumedAtLeast-\(count)"
+        case let .youngOnThisFishExactly(count):
+            return "youngExactly-\(count)"
+        case .bottomRow:
+            return "bottomRow"
+        case .schoolOnThisFish:
+            return "school"
+        case .eggYoungAndSchoolOnThisFish:
+            return "eggYoungSchool"
+        case let .allDiveSitesHaveCoralAtLeast(count):
+            return "allCoralAtLeast-\(count)"
+        case let .anyDiveSiteHasCoralAtLeast(count):
+            return "anyCoralAtLeast-\(count)"
+        }
+    }
+
+    private func eggPlacementFilterKey(_ filter: EggPlacementFilter) -> String {
+        switch filter {
+        case let .lengthBucket(bucket):
+            return "length-\(bucket.rawValue)"
+        case .topRow:
+            return "topRow"
+        case .bottomRow:
+            return "bottomRow"
+        case let .diveSite(diveSite):
+            return "diveSite-\(diveSite.rawValue)"
+        case let .tag(kind):
+            return "tag-\(kind)"
+        }
+    }
+
+    private func handFishFilterKey(_ filter: HandFishFilter) -> String {
+        switch filter {
+        case .any:
+            return "any"
+        case let .tag(kind):
+            return "tag-\(kind)"
+        case let .lengthBucket(bucket):
+            return "length-\(bucket.rawValue)"
+        case let .unsupported(value):
+            return "unsupported-\(value)"
+        }
+    }
+
+    private func placementConstraintKey(_ placement: FishPlacementConstraint) -> String {
+        switch placement {
+        case .topRow:
+            return "topRow"
+        case .bottomRow:
+            return "bottomRow"
+        case .sunlight:
+            return "sunlight"
+        case let .diveSite(diveSite):
+            return "diveSite-\(diveSite.rawValue)"
+        }
+    }
+
     private func pendingChoiceKind(for effect: AbilityEffectUnit) -> PendingChoiceKind {
         switch effect {
         case .drawFish:
@@ -2491,6 +2949,12 @@ struct GameEngine {
             return .moveYoungOrSchool
         case .recoverFromDiscardOrDraw:
             return .recoverFromDiscardOrDraw
+        case .gameEndScore:
+            return .unsupported
+        case .placeEggOnMatchingFish:
+            return .placeEggOnMatchingFish
+        case .playFishFromHand:
+            return .playFishFromHand
         case .gainCoral:
             return .gainCoral
         case .scatterSchool:
@@ -2515,6 +2979,12 @@ struct GameEngine {
             return .sourceAndTargetSlots
         case .recoverFromDiscardOrDraw:
             return .cardSelection
+        case .gameEndScore:
+            return .none
+        case let .placeEggOnMatchingFish(_, mode):
+            return mode == .onEachEligibleFish ? .none : .matchingEggTarget
+        case .playFishFromHand:
+            return .playFishFromHandCard
         case .gainCoral:
             return .coralPlacement
         case .scatterSchool:
@@ -2544,6 +3014,10 @@ struct GameEngine {
             return .moveYoungOrSchool(count: 1)
         case .recoverFromDiscardOrDraw:
             return .recoverFromDiscardOrDraw(count: 1)
+        case .placeEggOnMatchingFish:
+            return nil
+        case .playFishFromHand:
+            return nil
         case .gainCoral:
             return nil
         case .scatterSchool:
@@ -2796,6 +3270,14 @@ struct GameEngine {
                 targetSlot: targetSlot,
                 to: &state
             )
+        case let .fishPlayedFromHand(playerId, cardId, targetSlot, payment):
+            applyFishPlayedFromHand(
+                playerId: playerId,
+                cardId: cardId,
+                targetSlot: targetSlot,
+                payment: payment,
+                to: &state
+            )
         }
     }
     }
@@ -2839,6 +3321,30 @@ struct GameEngine {
             playerState.ocean.slots[slotIndex].consumedFish.append(consumedFish)
         }
         playerState.ocean.slots[slotIndex].content = .fishCard(cardId)
+        state.playerGameStates[playerId] = playerState
+    }
+
+    private func applyFishPlayedFromHand(
+        playerId: PlayerID,
+        cardId: CardID,
+        targetSlot: OceanSlotAddress,
+        payment: PlayFishPayment,
+        to state: inout GameState
+    ) {
+        guard var playerState = state.playerGameStates[playerId],
+              let slotIndex = playerState.ocean.slots.firstIndex(where: { $0.address == targetSlot })
+        else {
+            return
+        }
+
+        let discardedCardIds = Set(payment.discardedCardIds + [cardId])
+        playerState.hand.removeAll { discardedCardIds.contains($0) }
+        if let consumedFish = consumedFish(from: playerState.ocean.slots[slotIndex].content) {
+            playerState.ocean.slots[slotIndex].consumedFish.append(consumedFish)
+        }
+        playerState.ocean.slots[slotIndex].content = .fishCard(cardId)
+        applyResourcePayment(payment, to: &playerState)
+        playerState.discardPile.append(contentsOf: payment.discardedCardIds)
         state.playerGameStates[playerId] = playerState
     }
 

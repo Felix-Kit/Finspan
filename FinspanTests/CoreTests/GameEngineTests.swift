@@ -829,6 +829,242 @@ final class GameEngineTests: XCTestCase {
         }
     }
 
+    func testBuiltInGameEndScoringAbilityIdsResolveToScoringEffects() {
+        let resolver = AbilityResolver()
+        let cases: [(AbilityID, AbilityEffectUnit)] = [
+            (BaseGameAbilityIDs.abyssalAnglerfishGameEnd, .gameEndScore(condition: .noTokensOnThisFish, points: 3)),
+            (BaseGameAbilityIDs.angelsharkGameEnd, .gameEndScore(condition: .consumedFishUnderThisFishAtLeast(3), points: 10)),
+            (BaseGameAbilityIDs.atlanticBonitoGameEnd, .gameEndScore(condition: .consumedFishUnderThisFishAtLeast(2), points: 6)),
+            (BaseGameAbilityIDs.clownAnemonefishGameEnd, .gameEndScore(condition: .youngOnThisFishExactly(2), points: 6)),
+            (BaseGameAbilityIDs.commonFangtoothGameEnd, .gameEndScore(condition: .consumedFishUnderThisFishAtLeast(1), points: 3)),
+            (BaseGameAbilityIDs.cookiecutterSharkGameEnd, .gameEndScore(condition: .bottomRow, points: 5)),
+            (BaseGameAbilityIDs.leafySeadragonGameEnd, .gameEndScore(condition: .schoolOnThisFish, points: 3)),
+            (BaseGameAbilityIDs.paleChimaeraGameEnd, .gameEndScore(condition: .eggYoungAndSchoolOnThisFish, points: 10)),
+            (SharksAndReefsAbilityIDs.allDiveSitesCoralThreeGameEnd, .gameEndScore(condition: .allDiveSitesHaveCoralAtLeast(3), points: 5)),
+            (SharksAndReefsAbilityIDs.anyDiveSiteCoralFiveGameEnd, .gameEndScore(condition: .anyDiveSiteHasCoralAtLeast(5), points: 3))
+        ]
+
+        for (abilityId, expectedEffect) in cases {
+            let card = Card(id: "card-\(abilityId)", name: abilityId, abilityIds: [abilityId])
+            let ability = resolver.abilityDefinitions(for: card, trigger: .gameEnd).first
+
+            XCTAssertEqual(ability?.effects, [expectedEffect], abilityId)
+            XCTAssertEqual(ability?.isOptional, false, abilityId)
+        }
+    }
+
+    func testBuiltInGameEndExecutableAbilityIdsResolveToGenericEffects() {
+        let resolver = AbilityResolver()
+        let cases: [(AbilityID, AbilityEffectUnit)] = [
+            (BaseGameAbilityIDs.binocularFishGameEnd, .placeEggOnMatchingFish(filter: .lengthBucket(.small), mode: .onEachEligibleFish)),
+            (BaseGameAbilityIDs.chineseTrumpetfishGameEnd, .placeEggOnMatchingFish(filter: .lengthBucket(.medium), mode: .onEachEligibleFish)),
+            (BaseGameAbilityIDs.europeanAnchovyGameEnd, .placeEggOnMatchingFish(filter: .topRow, mode: .chooseOneEligibleFish)),
+            (BaseGameAbilityIDs.largetoothFlounderGameEnd, .placeEggOnMatchingFish(filter: .diveSite(.green), mode: .chooseOneEligibleFish)),
+            (BaseGameAbilityIDs.marianaSnailfishGameEnd, .placeEggOnMatchingFish(filter: .bottomRow, mode: .onEachEligibleFish)),
+            (BaseGameAbilityIDs.oceanSunfishGameEnd, .placeEggOnMatchingFish(filter: .lengthBucket(.large), mode: .onEachEligibleFish)),
+            (BaseGameAbilityIDs.pudgyCuskEelGameEnd, .placeEggOnMatchingFish(filter: .diveSite(.blue), mode: .onEachEligibleFish)),
+            (BaseGameAbilityIDs.sloansViperfishGameEnd, .placeEggOnMatchingFish(filter: .tag("predator"), mode: .onEachEligibleFish)),
+            (BaseGameAbilityIDs.yellowtailSnapperGameEnd, .placeEggOnMatchingFish(filter: .diveSite(.purple), mode: .onEachEligibleFish)),
+            (BaseGameAbilityIDs.atlanticSalmonGameEnd, .playFishFromHand(filter: .any, placement: .topRow, costMode: .payCost)),
+            (BaseGameAbilityIDs.blobSculpinGameEnd, .playFishFromHand(filter: .any, placement: .diveSite(.green), costMode: .payCost)),
+            (BaseGameAbilityIDs.crocodilefishGameEnd, .playFishFromHand(filter: .any, placement: .diveSite(.blue), costMode: .payCost)),
+            (BaseGameAbilityIDs.facelessCuskGameEnd, .playFishFromHand(filter: .any, placement: .bottomRow, costMode: .payCost)),
+            (BaseGameAbilityIDs.giantTrevallyGameEnd, .playFishFromHand(filter: .any, placement: .diveSite(.purple), costMode: .payCost)),
+            (BaseGameAbilityIDs.stripedMarlinGameEnd, .playFishFromHand(filter: .any, placement: .sunlight, costMode: .payCost)),
+            (SharksAndReefsAbilityIDs.blueCoralThreeGameEnd, .gainCoral(selector: .blue, count: 1)),
+            (SharksAndReefsAbilityIDs.purpleCoralThreeGameEnd, .gainCoral(selector: .purple, count: 1)),
+            (SharksAndReefsAbilityIDs.scatterSchoolTwiceGameEnd, .scatterSchool(count: 1)),
+            (SharksAndReefsAbilityIDs.freePlayMediumDuskySharkGameEnd, .playFishForFree(filter: .lengthBucket(.medium), count: 1)),
+            (SharksAndReefsAbilityIDs.freePlayMediumFrilledSharkGameEnd, .playFishForFree(filter: .lengthBucket(.medium), count: 1))
+        ]
+
+        for (abilityId, expectedFirstEffect) in cases {
+            let card = Card(id: "card-\(abilityId)", name: abilityId, abilityIds: [abilityId])
+            let ability = resolver.abilityDefinitions(for: card, trigger: .gameEnd).first
+
+            XCTAssertEqual(ability?.effects.first, expectedFirstEffect, abilityId)
+            XCTAssertEqual(ability?.isOptional, true, abilityId)
+        }
+    }
+
+    func testKnownMixedGameEndAbilityIdsRemainUnsupported() {
+        let resolver = AbilityResolver()
+        let unsupportedIds = [
+            "unsupported.base.gameEnd.card_062",
+            "unsupported.base.gameEnd.card_109",
+            "unsupported.base.gameEnd.card_117",
+            "unsupported.sr.gameEnd.card_141",
+            "unsupported.sr.gameEnd.card_193",
+            "unsupported.sr.gameEnd.card_209"
+        ]
+
+        for abilityId in unsupportedIds {
+            let card = Card(id: "card-\(abilityId)", name: abilityId, abilityIds: [abilityId])
+            let ability = resolver.abilityDefinitions(for: card, trigger: .gameEnd).first
+
+            XCTAssertEqual(ability?.effects, [.unsupported], abilityId)
+        }
+    }
+
+    func testScoringOnlyGameEndAbilitiesScoreVisibleFishOnlyAndDoNotAffectPrintedPoints() {
+        let calculator = FinalScoreCalculator()
+        var state = gameEndAbilityState(cardIds: ["gameEnd.noTokens", "gameEnd.youngTwo"])
+        state.weeklyAchievementResults = []
+        clearResources(for: "player-1", in: &state)
+        let youngAddress = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 1)
+        let bottomAddress = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 5)
+        setContent(.fishCard("gameEnd.bottomRow"), at: bottomAddress, in: &state)
+        setResources([ResourceQuantity(kind: .young, amount: 2)], at: youngAddress, in: &state)
+        setConsumedFish([ConsumedFish(cardId: "gameEnd.consumedOne")], at: bottomAddress, in: &state)
+        setContent(
+            .forageFish(ForageFish(forageFishId: "forage", name: "Forage", lengthCm: 5, diveSite: .purple, rowIndex: 0)),
+            at: OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 0),
+            in: &state
+        )
+        setConsumedFish(
+            [ConsumedFish(cardId: "gameEnd.noTokens")],
+            at: OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 0),
+            in: &state
+        )
+
+        let result = calculator.calculate(in: state, cardCatalog: gameEndAbilityCatalog())
+        let playerScore = result.results.first { $0.playerId == "player-1" }
+
+        XCTAssertEqual(playerScore?.fishPrintedPoints, 3)
+        XCTAssertEqual(playerScore?.gameEndAbilityPoints, 14)
+        XCTAssertEqual(playerScore?.totalPoints, 21)
+    }
+
+    func testGameEndScoringCoralConditionsUseCurrentReefCounts() {
+        let calculator = FinalScoreCalculator()
+        var state = gameEndAbilityState(cardIds: ["gameEnd.allReefs3", "gameEnd.anyReef5"])
+        state.weeklyAchievementResults = []
+        state.playerGameStates["player-1"]?.ocean.coralReefs = [
+            CoralReefState(diveSite: .blue, coralCount: 3, maxCoral: 6, completionBonus: 6),
+            CoralReefState(diveSite: .purple, coralCount: 5, maxCoral: 6, completionBonus: 8),
+            CoralReefState(diveSite: .green, coralCount: 3, maxCoral: 6, completionBonus: 5)
+        ]
+
+        let result = calculator.calculate(in: state, cardCatalog: gameEndAbilityCatalog())
+        let playerScore = result.results.first { $0.playerId == "player-1" }
+
+        XCTAssertEqual(playerScore?.gameEndAbilityPoints, 8)
+    }
+
+    func testGameEndOnEachMatchingEggAbilityPlacesEggsAndSkipsSlotsWithEggs() throws {
+        let engine = GameEngine(cardCatalog: gameEndAbilityCatalog())
+        var state = gameEndAbilityState(cardIds: ["gameEnd.smallEgg", "small.eligible", "medium.ineligible"])
+        let source = gameEndAbilitySource(cardId: "gameEnd.smallEgg", abilityId: BaseGameAbilityIDs.binocularFishGameEnd)
+        let smallAddress = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 1)
+        let mediumAddress = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 2)
+        let alreadyHasEggAddress = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 0)
+        setContent(.fishCard("small.hasEgg"), at: alreadyHasEggAddress, in: &state)
+        setResources([ResourceQuantity(kind: .egg, amount: 1)], at: alreadyHasEggAddress, in: &state)
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: activateGameEndAbilityCommand(commandId: "activate-small-eggs", source: source),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        let choice = try XCTUnwrap(state.pendingChoices.values.first)
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "finish-small-eggs", choiceId: choice.choiceId, resolution: .finishAbility),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        XCTAssertEqual(resourceAmount(.egg, at: source.slotAddress, in: state), 1)
+        XCTAssertEqual(resourceAmount(.egg, at: smallAddress, in: state), 1)
+        XCTAssertEqual(resourceAmount(.egg, at: mediumAddress, in: state), 0)
+        XCTAssertEqual(resourceAmount(.egg, at: alreadyHasEggAddress, in: state), 1)
+        XCTAssertTrue(state.activatedGameEndAbilitySourceIds.contains(source.id))
+    }
+
+    func testGameEndPaidPlayFishFromHandRequiresPaymentAndPlacesFish() throws {
+        let engine = GameEngine(cardCatalog: gameEndAbilityCatalog())
+        var state = gameEndAbilityState(cardIds: ["gameEnd.playBottom"])
+        let source = gameEndAbilitySource(cardId: "gameEnd.playBottom", abilityId: BaseGameAbilityIDs.facelessCuskGameEnd)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 5)
+        state.playerGameStates["player-1"]?.hand = ["paid.hand", "payment.card"]
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: activateGameEndAbilityCommand(commandId: "activate-paid-play", source: source),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        var choice = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "choose-paid-card", choiceId: choice.choiceId, resolution: .choosePlayFishFromHand("paid.hand")),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        choice = try XCTUnwrap(state.pendingChoices.values.first)
+        XCTAssertEqual(choice.expectedInput, .playFishFromHandTargetSlot)
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "choose-paid-target", choiceId: choice.choiceId, resolution: .choosePlayFishFromHandTarget(target)),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        choice = try XCTUnwrap(state.pendingChoices.values.first)
+        XCTAssertEqual(choice.expectedInput, .playFishFromHandPayment)
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "paid-play-no-payment",
+                    choiceId: choice.choiceId,
+                    resolution: .playFishFromHand(cardId: "paid.hand", targetSlot: target, payment: .empty)
+                ),
+                in: state
+            )
+        )
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "paid-play-with-payment",
+                    choiceId: choice.choiceId,
+                    resolution: .playFishFromHand(
+                        cardId: "paid.hand",
+                        targetSlot: target,
+                        payment: PlayFishPayment(
+                            discardedCardIds: ["payment.card"],
+                            eggSources: [],
+                            youngSources: []
+                        )
+                    )
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        let playerState = try XCTUnwrap(state.playerGameStates["player-1"])
+        XCTAssertEqual(playerState.ocean.slots.first { $0.address == target }?.content, .fishCard("paid.hand"))
+        XCTAssertFalse(playerState.hand.contains("paid.hand"))
+        XCTAssertFalse(playerState.hand.contains("payment.card"))
+        XCTAssertEqual(playerState.discardPile, ["payment.card"])
+        XCTAssertTrue(state.activatedGameEndAbilitySourceIds.contains(source.id))
+    }
+
     func testGameEndAbilityEffectsAreIncludedInFinalScoreAfterFinish() throws {
         let engine = GameEngine(cardCatalog: gameEndAbilityCatalog())
         var state = gameEndAbilityState(cardIds: ["sr.gameEnd.anyCoral"])
@@ -5904,6 +6140,10 @@ final class GameEngineTests: XCTestCase {
             return .consumeFishConsumer
         case .playFishForFree:
             return .freePlayHandCard
+        case .placeEggOnMatchingFish:
+            return .matchingEggTarget
+        case .playFishFromHand:
+            return .playFishFromHandCard
         case .drawFish,
              .compoundAbility,
              .bottomBonus,
@@ -6096,6 +6336,93 @@ final class GameEngineTests: XCTestCase {
                     abilityText: "游戏结束：未接入能力",
                     printedPoints: 1,
                     lengthCm: 22
+                ),
+                Card(
+                    id: "gameEnd.noTokens",
+                    name: "No Tokens Scoring Fish",
+                    abilityIds: [BaseGameAbilityIDs.abyssalAnglerfishGameEnd],
+                    printedPoints: 1,
+                    lengthCm: 20
+                ),
+                Card(
+                    id: "gameEnd.youngTwo",
+                    name: "Young Two Scoring Fish",
+                    abilityIds: [BaseGameAbilityIDs.clownAnemonefishGameEnd],
+                    printedPoints: 1,
+                    lengthCm: 20
+                ),
+                Card(
+                    id: "gameEnd.bottomRow",
+                    name: "Bottom Row Scoring Fish",
+                    abilityIds: [BaseGameAbilityIDs.cookiecutterSharkGameEnd],
+                    printedPoints: 1,
+                    lengthCm: 20
+                ),
+                Card(
+                    id: "gameEnd.consumedOne",
+                    name: "Consumed Scoring Fish",
+                    abilityIds: [BaseGameAbilityIDs.commonFangtoothGameEnd],
+                    printedPoints: 1,
+                    lengthCm: 20
+                ),
+                Card(
+                    id: "gameEnd.allReefs3",
+                    name: "All Reefs Scoring Fish",
+                    abilityIds: [SharksAndReefsAbilityIDs.allDiveSitesCoralThreeGameEnd],
+                    printedPoints: 0,
+                    lengthCm: 20
+                ),
+                Card(
+                    id: "gameEnd.anyReef5",
+                    name: "Any Reef Scoring Fish",
+                    abilityIds: [SharksAndReefsAbilityIDs.anyDiveSiteCoralFiveGameEnd],
+                    printedPoints: 0,
+                    lengthCm: 20
+                ),
+                Card(
+                    id: "gameEnd.smallEgg",
+                    name: "Small Egg Game End Fish",
+                    abilityIds: [BaseGameAbilityIDs.binocularFishGameEnd],
+                    printedPoints: 1,
+                    lengthCm: 10
+                ),
+                Card(
+                    id: "small.eligible",
+                    name: "Small Eligible",
+                    printedPoints: 1,
+                    lengthCm: 10
+                ),
+                Card(
+                    id: "small.hasEgg",
+                    name: "Small Has Egg",
+                    printedPoints: 1,
+                    lengthCm: 10
+                ),
+                Card(
+                    id: "medium.ineligible",
+                    name: "Medium Ineligible",
+                    printedPoints: 1,
+                    lengthCm: 80
+                ),
+                Card(
+                    id: "gameEnd.playBottom",
+                    name: "Paid Bottom Game End Fish",
+                    abilityIds: [BaseGameAbilityIDs.facelessCuskGameEnd],
+                    printedPoints: 1,
+                    lengthCm: 20
+                ),
+                Card(
+                    id: "paid.hand",
+                    name: "Paid Hand Fish",
+                    costs: [.discardCards(count: 1)],
+                    printedPoints: 1,
+                    lengthCm: 20
+                ),
+                Card(
+                    id: "payment.card",
+                    name: "Payment Card",
+                    printedPoints: 1,
+                    lengthCm: 20
                 )
             ]
         )

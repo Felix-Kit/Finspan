@@ -46,37 +46,11 @@ struct GameBoardView: View {
                         .padding(.top, 12)
                         .padding(.bottom, 20)
 
-                        FloatingHandView(
-                            viewState: viewModel.handViewState,
-                            onSelectCard: { cardId in
-                                viewModel.selectHandCard(cardId)
-                            },
-                            onBeginDrag: { cardId in
-                                viewModel.beginDraggingHandCard(cardId)
-                            },
-                            onDragChanged: { _, location in
-                                viewModel.updateDragTarget(slotAddress(at: location))
-                            },
-                            onDropOnBoard: { cardId, location in
-                                guard let address = slotAddress(at: location) else {
-                                    viewModel.cancelHandCardDrag()
-                                    return false
-                                }
-                                return viewModel.dropHandCard(cardId, targetAddress: address)
-                            },
-                            onCancelSelection: {
-                                viewModel.cancelPlayFishSelection()
-                            }
-                        )
-                        .background(Color.clear)
-
-                        discardPileEntry(viewModel.discardPileViewState)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-                            .padding(.trailing, 22)
-                            .padding(.bottom, 132)
+                        bottomCardDock
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                     }
                     .toolbar(.hidden, for: .navigationBar)
-                    .ignoresSafeArea(.container, edges: .top)
+                    .ignoresSafeArea(.container, edges: [.top, .bottom])
                 }
             }
         }
@@ -461,11 +435,57 @@ struct GameBoardView: View {
         )
     }
 
+    private var bottomCardDock: some View {
+        ZStack(alignment: .bottom) {
+            Rectangle()
+                .fill(Color(.systemBackground).opacity(0.94))
+                .frame(maxWidth: .infinity, minHeight: 286, maxHeight: 286)
+                .overlay(alignment: .top) {
+                    Rectangle()
+                        .fill(Color.secondary.opacity(0.14))
+                        .frame(height: 1)
+                }
+                .ignoresSafeArea(.container, edges: .bottom)
+
+            FloatingHandView(
+                viewState: viewModel.handViewState,
+                onSelectCard: { cardId in
+                    viewModel.selectHandCard(cardId)
+                },
+                onBeginDrag: { cardId in
+                    viewModel.beginDraggingHandCard(cardId)
+                },
+                onDragChanged: { _, location in
+                    viewModel.updateDragTarget(slotAddress(at: location))
+                },
+                onDropOnBoard: { cardId, location in
+                    guard let address = slotAddress(at: location) else {
+                        viewModel.cancelHandCardDrag()
+                        return false
+                    }
+                    return viewModel.dropHandCard(cardId, targetAddress: address)
+                },
+                onCancelSelection: {
+                    viewModel.cancelPlayFishSelection()
+                }
+            )
+            .padding(.bottom, 6)
+
+            HStack {
+                Spacer(minLength: 0)
+                discardPileEntry(viewModel.discardPileViewState)
+            }
+            .padding(.trailing, 38)
+            .padding(.bottom, 20)
+            .allowsHitTesting(true)
+        }
+    }
+
     private func discardPileEntry(_ viewState: DiscardPileViewState) -> some View {
         Button {
             viewModel.showDiscardPile()
         } label: {
-            VStack(alignment: .trailing, spacing: 6) {
+            VStack(alignment: .center, spacing: 6) {
                 discardPileStack(viewState)
 
                 Text(viewState.countText)
@@ -476,32 +496,25 @@ struct GameBoardView: View {
                     .padding(.vertical, 5)
                     .background(Capsule().fill(viewState.isEmpty ? Color.secondary : Color.accentColor))
             }
-            .padding(8)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(.systemBackground).opacity(0.86))
-                    .shadow(color: .black.opacity(0.22), radius: 10, y: 4)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
-            )
+            .padding(.vertical, 4)
+            .padding(.horizontal, 6)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(viewState.title)，\(viewState.countText)")
     }
 
     private func discardPileStack(_ viewState: DiscardPileViewState) -> some View {
-        let width: CGFloat = 118
+        let width: CGFloat = 82
         let height = width / CardRenderMetrics.cardAspectRatio
         return ZStack(alignment: .center) {
             if viewState.topCards.isEmpty {
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(.secondarySystemBackground))
+                    .fill(Color(.tertiarySystemBackground))
                     .overlay(
                         VStack(spacing: 4) {
                             Image(systemName: "tray")
-                                .font(.title3.weight(.semibold))
+                                .font(.callout.weight(.semibold))
                             Text(viewState.emptyText)
                                 .font(.caption2.weight(.semibold))
                                 .lineLimit(1)
@@ -518,14 +531,14 @@ struct GameBoardView: View {
                 ForEach(Array(viewState.topCards.enumerated()), id: \.offset) { index, card in
                     FishCardFaceView(viewState: card)
                         .frame(width: width, height: height)
-                        .rotationEffect(.degrees(Double(index - 1) * 2.5))
-                        .offset(x: CGFloat(index) * 8, y: CGFloat(index) * -5)
+                        .rotationEffect(.degrees(Double(index - 1) * 1.2))
+                        .offset(x: CGFloat(index) * 4, y: CGFloat(index) * -3)
                         .shadow(color: .black.opacity(0.16), radius: 5, y: 3)
                         .zIndex(Double(index))
                 }
             }
         }
-        .frame(width: width + 22, height: height + 16, alignment: .center)
+        .frame(width: width + 18, height: height + 12, alignment: .center)
     }
 
     private func discardPileDetailPanel(_ detail: DiscardPileDetailViewState) -> some View {
@@ -1623,6 +1636,7 @@ struct GameBoardView: View {
              .scatterSchool,
              .consumeFish,
              .playFishForFree,
+             .playFishFromHand,
              .unsupported:
             return .red.opacity(0.12)
         }
