@@ -3152,6 +3152,61 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(payload.resolution, .consumeFishFromHand("consume.short"))
     }
 
+    func testPlayFishForFreeShowsHandRewardTokenAndFiltersHandCards() throws {
+        let choice = playFishForFreePendingChoice(filter: .lengthBucket(.small))
+        let service = makeService(
+            hand: ["free.small", "free.medium"],
+            pendingChoices: [choice.choiceId: choice]
+        )
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalogProvider: { self.playFishForFreeCatalog() }
+        )
+        let token = try XCTUnwrap(viewModel.rewardPoolViewState.rewards.first)
+
+        XCTAssertEqual(token.kind, .playFishForFree)
+        XCTAssertEqual(token.title, AppStrings.GameBoard.playFishForFree)
+        viewModel.selectRewardToken(token.id)
+
+        XCTAssertEqual(viewModel.rewardPoolViewState.instructionText, AppStrings.GameBoard.playFishForFreeHandCard)
+        XCTAssertNil(viewModel.handViewState.cards.first { $0.cardId == "free.small" }?.unavailableReasonText)
+        XCTAssertEqual(
+            viewModel.handViewState.cards.first { $0.cardId == "free.medium" }?.unavailableReasonText,
+            AppStrings.GameBoard.playFishForFreeFilterMismatch
+        )
+    }
+
+    func testPlayFishForFreeTargetStepHighlightsLegalSlotAndBuildsResolveCommand() throws {
+        let choice = playFishForFreePendingChoice(
+            expectedInput: .freePlayTargetSlot,
+            progress: PlayFishForFreeProgress(selectedCardId: "free.sunlight")
+        )
+        let service = makeService(
+            hand: ["free.sunlight"],
+            pendingChoices: [choice.choiceId: choice],
+            emptySlots: [Self.slotAddress, Self.blueTwilightSlotAddress]
+        )
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalogProvider: { self.playFishForFreeCatalog() }
+        )
+        let token = try XCTUnwrap(viewModel.rewardPoolViewState.rewards.first)
+
+        viewModel.selectRewardToken(token.id)
+
+        XCTAssertTrue(oceanSlot(in: viewModel, address: Self.slotAddress).isHighlightedByRewardSelection)
+        XCTAssertFalse(oceanSlot(in: viewModel, address: Self.blueTwilightSlotAddress).isHighlightedByRewardSelection)
+        viewModel.selectTargetSlot(Self.blueTwilightSlotAddress)
+        XCTAssertTrue(service.submittedCommands.isEmpty)
+        viewModel.selectTargetSlot(Self.slotAddress)
+
+        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolvePendingChoice command.")
+        }
+        XCTAssertEqual(payload.choiceId, choice.choiceId)
+        XCTAssertEqual(payload.resolution, .playFishForFree(cardId: "free.sunlight", targetSlot: Self.slotAddress))
+    }
+
     func testCompoundAbilityPendingChoiceGeneratesRemainingRewardTokens() {
         let choice = compoundAbilityPendingChoice()
         let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
@@ -3790,6 +3845,33 @@ final class GameBoardViewModelTests: XCTestCase {
         )
     }
 
+    private func playFishForFreePendingChoice(
+        filter: FreePlayFishFilter = .any,
+        expectedInput: PendingChoiceExpectedInput = .freePlayHandCard,
+        progress: PlayFishForFreeProgress? = nil
+    ) -> PendingChoice {
+        let ability = AbilityDefinition(
+            abilityId: "fixture-play-fish-for-free",
+            trigger: .whenPlayed,
+            effects: [.playFishForFree(filter: filter, count: 1)],
+            isOptional: true,
+            displayText: "打出时：免费打出手牌鱼"
+        )
+        return PendingChoice(
+            choiceId: "choice-play-fish-for-free",
+            playerId: "player-1",
+            source: .fishAbility("fixture.free"),
+            kind: .playFishForFree,
+            options: [],
+            expectedInput: expectedInput,
+            isOptional: true,
+            abilityDefinition: ability,
+            playFishForFreeProgress: progress,
+            selectedAbilityEffect: .playFishForFree(filter: filter, count: 1),
+            createdAtSequence: 2
+        )
+    }
+
     private func compoundAbilityPendingChoice() -> PendingChoice {
         let sourceAddress = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
         let ability = AbilityDefinition(
@@ -3838,6 +3920,8 @@ final class GameBoardViewModelTests: XCTestCase {
             return .scatterSchoolSource
         case .consumeFishFromHand:
             return .consumeFishConsumer
+        case .playFishForFree:
+            return .freePlayHandCard
         case .drawFish,
              .compoundAbility,
              .bottomBonus,
@@ -4002,6 +4086,16 @@ final class GameBoardViewModelTests: XCTestCase {
                 Card(id: "consume.short", name: "Short Fish", printedPoints: 1, lengthCm: 10),
                 Card(id: "consume.same", name: "Same Fish", printedPoints: 1, lengthCm: 40),
                 Card(id: "consume.long", name: "Long Fish", printedPoints: 1, lengthCm: 60)
+            ]
+        )
+    }
+
+    private func playFishForFreeCatalog() -> TestCardCatalog {
+        TestCardCatalog(
+            fishCards: [
+                Card(id: "free.small", name: "Free Small", printedPoints: 1, lengthCm: 10),
+                Card(id: "free.medium", name: "Free Medium", printedPoints: 1, lengthCm: 80),
+                Card(id: "free.sunlight", name: "Free Sunlight", allowedZones: [.sunlit], printedPoints: 2, lengthCm: 30)
             ]
         )
     }

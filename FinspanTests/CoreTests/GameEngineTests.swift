@@ -2863,6 +2863,314 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(nextChoice.choiceId, queue.currentStep?.pendingChoice.choiceId)
     }
 
+    func testPlayFishForFreeAbilityIdsResolveFromRealSharksAndReefsCatalog() throws {
+        let catalog = try SharksAndReefsCardCatalog()
+        let lollipop = try XCTUnwrap(catalog.fishCards.first { $0.id == "sr.main.170" })
+        let swell = try XCTUnwrap(catalog.fishCards.first { $0.id == "sr.main.200" })
+
+        let lollipopAbility = AbilityResolver().abilityDefinitions(for: lollipop).first
+        let swellAbility = AbilityResolver().abilityDefinitions(for: swell).first
+
+        XCTAssertEqual(lollipop.name, "Lollipop Catshark")
+        XCTAssertEqual(lollipop.abilityText, "[FreePlayFishFromHand][FishLengthSmall] only")
+        XCTAssertEqual(lollipopAbility?.effects, [.playFishForFree(filter: .lengthBucket(.small), count: 1)])
+        XCTAssertEqual(swell.name, "Swell Shark")
+        XCTAssertEqual(swell.abilityText, "[FreePlayFishFromHand][Camouflage] only")
+        XCTAssertEqual(swellAbility?.effects, [.playFishForFree(filter: .tag("camouflage"), count: 1)])
+    }
+
+    func testWhenPlayedPlayFishForFreeCreatesPendingChoice() throws {
+        let engine = GameEngine(cardCatalog: sharksAndReefsAbilityCatalog())
+        var state = playFishState()
+        state.playerGameStates["player-1"]?.hand.append("sr.main.170")
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+
+        let drafts = try engine.makeEventDrafts(
+            for: playFishCommand(commandId: "play-free-ability", cardId: "sr.main.170", targetSlot: target),
+            in: state
+        )
+
+        guard case let .pendingChoiceCreated(choice) = drafts.last else {
+            return XCTFail("Expected play fish for free pending choice.")
+        }
+        XCTAssertEqual(choice.kind, .playFishForFree)
+        XCTAssertEqual(choice.expectedInput, .freePlayHandCard)
+        XCTAssertEqual(choice.abilityDefinition?.abilityId, SharksAndReefsAbilityIDs.freePlaySmallWhenPlayed)
+    }
+
+    func testIfActivatedPlayFishForFreeCreatesDiveQueuePendingChoice() throws {
+        let engine = GameEngine(cardCatalog: playFishForFreeIfActivatedCatalog(), abilityResolver: playFishForFreeIfActivatedResolver())
+        var state = abilityDiveState(cardId: "fixture.if.free")
+        state = applying(
+            try engine.makeEventDrafts(for: diveCommand(commandId: "dive-if-free"), in: state),
+            to: state,
+            using: engine
+        )
+        let printedChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "skip-printed-before-free", choiceId: printedChoice.choiceId, resolution: .skip),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        let freeChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        XCTAssertEqual(freeChoice.kind, .playFishForFree)
+        XCTAssertEqual(freeChoice.expectedInput, .freePlayHandCard)
+    }
+
+    func testPlayFishForFreeHandSelectionRequiresMatchingFilterAndCreatesTargetChoice() throws {
+        let engine = GameEngine(cardCatalog: playFishForFreeCatalog())
+        var state = playFishForFreeState(hand: ["free.small", "free.medium"])
+        let choice = playFishForFreePendingChoice(filter: .lengthBucket(.small))
+        state.pendingChoices[choice.choiceId] = choice
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "free-medium-rejected", choiceId: choice.choiceId, resolution: .chooseFreePlayFish("free.medium")),
+                in: state
+            )
+        )
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(commandId: "free-small-selected", choiceId: choice.choiceId, resolution: .chooseFreePlayFish("free.small")),
+            in: state
+        )
+        guard case let .pendingChoiceCreated(nextChoice) = drafts.last else {
+            return XCTFail("Expected free play target choice.")
+        }
+        XCTAssertEqual(nextChoice.expectedInput, .freePlayTargetSlot)
+        XCTAssertEqual(nextChoice.playFishForFreeProgress?.selectedCardId, "free.small")
+    }
+
+    func testPlayFishForFreeDoesNotPayCostsAndPlacesFish() throws {
+        let engine = GameEngine(cardCatalog: playFishForFreeCatalog())
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        let eggSource = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 3)
+        var state = playFishForFreeState(hand: ["free.costly", "discard-candidate"])
+        setResources([ResourceQuantity(kind: .egg, amount: 1), ResourceQuantity(kind: .young, amount: 1)], at: eggSource, in: &state)
+        let choice = playFishForFreePendingChoice(
+            expectedInput: .freePlayTargetSlot,
+            progress: PlayFishForFreeProgress(selectedCardId: "free.costly")
+        )
+        state.pendingChoices[choice.choiceId] = choice
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "free-costly",
+                    choiceId: choice.choiceId,
+                    resolution: .playFishForFree(cardId: "free.costly", targetSlot: target)
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        let playerState = try XCTUnwrap(state.playerGameStates["player-1"])
+        XCTAssertEqual(playerState.hand, ["discard-candidate"])
+        XCTAssertEqual(playerState.discardPile, [])
+        XCTAssertEqual(resourceAmount(.egg, at: eggSource, in: state), 1)
+        XCTAssertEqual(resourceAmount(.young, at: eggSource, in: state), 1)
+        XCTAssertEqual(playerState.ocean.slots.first { $0.address == target }?.content, .fishCard("free.costly"))
+    }
+
+    func testPlayFishForFreeStillChecksPlacementRules() throws {
+        let engine = GameEngine(cardCatalog: playFishForFreeCatalog())
+        let twilight = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 3)
+        let wrongColor = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        let coverEmpty = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 0)
+        var state = playFishForFreeState(hand: ["free.sunlight", "free.green", "free.cover"])
+        let choice = playFishForFreePendingChoice(
+            expectedInput: .freePlayTargetSlot,
+            progress: PlayFishForFreeProgress(selectedCardId: "free.sunlight")
+        )
+        state.pendingChoices[choice.choiceId] = choice
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "free-zone", choiceId: choice.choiceId, resolution: .playFishForFree(cardId: "free.sunlight", targetSlot: twilight)),
+                in: state
+            )
+        )
+
+        state.pendingChoices[choice.choiceId] = playFishForFreePendingChoice(
+            expectedInput: .freePlayTargetSlot,
+            progress: PlayFishForFreeProgress(selectedCardId: "free.green")
+        )
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "free-color", choiceId: choice.choiceId, resolution: .playFishForFree(cardId: "free.green", targetSlot: wrongColor)),
+                in: state
+            )
+        )
+
+        state.pendingChoices[choice.choiceId] = playFishForFreePendingChoice(
+            expectedInput: .freePlayTargetSlot,
+            progress: PlayFishForFreeProgress(selectedCardId: "free.cover")
+        )
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "free-cover", choiceId: choice.choiceId, resolution: .playFishForFree(cardId: "free.cover", targetSlot: coverEmpty)),
+                in: state
+            )
+        )
+    }
+
+    func testPlayFishForFreeStillChecksCoralRequirement() throws {
+        let engine = GameEngine(cardCatalog: playFishForFreeCatalog())
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        var state = playFishForFreeState(hand: ["free.reef"])
+        state.playerGameStates["player-1"]?.ocean.coralReefs = CoralReefState.sharksAndReefsInitial
+        let choice = playFishForFreePendingChoice(
+            expectedInput: .freePlayTargetSlot,
+            progress: PlayFishForFreeProgress(selectedCardId: "free.reef")
+        )
+        state.pendingChoices[choice.choiceId] = choice
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "free-reef-insufficient", choiceId: choice.choiceId, resolution: .playFishForFree(cardId: "free.reef", targetSlot: target)),
+                in: state
+            )
+        )
+
+        state.playerGameStates["player-1"]?.ocean.coralReefs = [
+            CoralReefState(diveSite: .blue, coralCount: 2, maxCoral: 6, completionBonus: 6)
+        ]
+        XCTAssertNoThrow(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "free-reef-ok", choiceId: choice.choiceId, resolution: .playFishForFree(cardId: "free.reef", targetSlot: target)),
+                in: state
+            )
+        )
+    }
+
+    func testPlayFishForFreeCoveringShorterFishAppendsConsumedFish() throws {
+        let engine = GameEngine(cardCatalog: playFishForFreeCatalog())
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        var state = playFishForFreeState(hand: ["free.cover"])
+        setContent(.fishCard("free.small"), at: target, in: &state)
+        setConsumedFish([ConsumedFish(cardId: "already-consumed")], at: target, in: &state)
+        let choice = playFishForFreePendingChoice(
+            expectedInput: .freePlayTargetSlot,
+            progress: PlayFishForFreeProgress(selectedCardId: "free.cover")
+        )
+        state.pendingChoices[choice.choiceId] = choice
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "free-cover-consume", choiceId: choice.choiceId, resolution: .playFishForFree(cardId: "free.cover", targetSlot: target)),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        let slot = try XCTUnwrap(state.playerGameStates["player-1"]?.ocean.slots.first { $0.address == target })
+        XCTAssertEqual(slot.content, .fishCard("free.cover"))
+        XCTAssertEqual(slot.consumedFish.first, ConsumedFish(cardId: "already-consumed"))
+        XCTAssertEqual(slot.consumedFish.last, ConsumedFish(cardId: "free.small", lengthCm: 10))
+    }
+
+    func testSkippingPlayFishForFreeDoesNotMoveHandCard() throws {
+        let engine = GameEngine(cardCatalog: playFishForFreeCatalog())
+        var state = playFishForFreeState(hand: ["free.small"])
+        let choice = playFishForFreePendingChoice()
+        state.pendingChoices[choice.choiceId] = choice
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "skip-free-play", choiceId: choice.choiceId, resolution: .skip),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        XCTAssertEqual(state.playerGameStates["player-1"]?.hand, ["free.small"])
+        XCTAssertTrue(state.pendingChoices.isEmpty)
+    }
+
+    func testPlayFishForFreeTriggersWhenPlayedAbilityOfFreePlayedFish() throws {
+        let engine = GameEngine(cardCatalog: playFishForFreeCatalog(), abilityResolver: playFishForFreeResolver())
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        var state = playFishForFreeState(hand: ["free.withAbility"])
+        let choice = playFishForFreePendingChoice(
+            expectedInput: .freePlayTargetSlot,
+            progress: PlayFishForFreeProgress(selectedCardId: "free.withAbility")
+        )
+        state.pendingChoices[choice.choiceId] = choice
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(
+                commandId: "free-trigger-when-played",
+                choiceId: choice.choiceId,
+                resolution: .playFishForFree(cardId: "free.withAbility", targetSlot: target)
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceCreated(nextChoice) = drafts.last else {
+            return XCTFail("Expected free-played fish's WHEN PLAYED ability to trigger.")
+        }
+        XCTAssertEqual(nextChoice.kind, .drawFish)
+        XCTAssertEqual(nextChoice.source, .fishAbility("free.withAbility"))
+    }
+
+    func testPlayFishForFreeResolveContinuesDiveQueue() throws {
+        let engine = GameEngine(cardCatalog: playFishForFreeIfActivatedCatalog(), abilityResolver: playFishForFreeIfActivatedResolver())
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 0)
+        var state = abilityDiveState(cardId: "fixture.if.free")
+        state.playerGameStates["player-1"]?.diveSitesReachedBottomThisWeek = []
+        state.playerGameStates["player-1"]?.hand.append("free.small")
+        state = applying(
+            try engine.makeEventDrafts(for: diveCommand(commandId: "dive-free-continues"), in: state),
+            to: state,
+            using: engine
+        )
+        let printedChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "skip-before-free-continues", choiceId: printedChoice.choiceId, resolution: .skip),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        var freeChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "choose-free-fish-continues", choiceId: freeChoice.choiceId, resolution: .chooseFreePlayFish("free.small")),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        freeChoice = try XCTUnwrap(state.pendingChoices.values.first)
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(
+                commandId: "resolve-free-continues",
+                choiceId: freeChoice.choiceId,
+                resolution: .playFishForFree(cardId: "free.small", targetSlot: target)
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(resolved) = drafts.first,
+              case let .advanced(queue) = resolved.diveQueueUpdate,
+              case let .pendingChoiceCreated(nextChoice) = drafts.last
+        else {
+            return XCTFail("Expected free play to advance to the next dive queue step.")
+        }
+        XCTAssertEqual(queue.currentStep?.source, .bottomBonus)
+        XCTAssertEqual(nextChoice.choiceId, queue.currentStep?.pendingChoice.choiceId)
+    }
+
     func testWhenPlayedScatterSchoolCreatesPendingChoice() throws {
         let engine = GameEngine(cardCatalog: sharksAndReefsAbilityCatalog())
         var state = playFishState()
@@ -5175,6 +5483,41 @@ final class GameEngineTests: XCTestCase {
         return state
     }
 
+    private func playFishForFreePendingChoice(
+        filter: FreePlayFishFilter = .any,
+        expectedInput: PendingChoiceExpectedInput = .freePlayHandCard,
+        progress: PlayFishForFreeProgress? = nil
+    ) -> PendingChoice {
+        let ability = AbilityDefinition(
+            abilityId: "fixture-play-fish-for-free",
+            trigger: .whenPlayed,
+            effects: [.playFishForFree(filter: filter, count: 1)],
+            isOptional: true,
+            displayText: "打出时：免费打出手牌鱼"
+        )
+        return PendingChoice(
+            choiceId: "choice-play-fish-for-free",
+            playerId: "player-1",
+            source: .fishAbility("fixture.free"),
+            kind: .playFishForFree,
+            options: [],
+            expectedInput: expectedInput,
+            isOptional: true,
+            abilityDefinition: ability,
+            playFishForFreeProgress: progress,
+            selectedAbilityEffect: .playFishForFree(filter: filter, count: 1),
+            createdAtSequence: 10
+        )
+    }
+
+    private func playFishForFreeState(hand: [CardID]) -> GameState {
+        var state = playFishState()
+        clearOceanContent(for: "player-1", in: &state)
+        clearResources(for: "player-1", in: &state)
+        state.playerGameStates["player-1"]?.hand = hand
+        return state
+    }
+
     private func scatterSchoolTargets() -> [OceanSlotAddress] {
         [
             OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0),
@@ -5334,6 +5677,8 @@ final class GameEngineTests: XCTestCase {
             return .scatterSchoolSource
         case .consumeFishFromHand:
             return .consumeFishConsumer
+        case .playFishForFree:
+            return .freePlayHandCard
         case .drawFish,
              .compoundAbility,
              .bottomBonus,
@@ -5459,6 +5804,23 @@ final class GameEngineTests: XCTestCase {
                     lengthCm: 45
                 ),
                 Card(
+                    id: "sr.main.170",
+                    name: "Lollipop Catshark",
+                    abilityIds: [SharksAndReefsAbilityIDs.freePlaySmallWhenPlayed],
+                    abilityText: "[FreePlayFishFromHand][FishLengthSmall] only",
+                    printedPoints: 3,
+                    lengthCm: 29
+                ),
+                Card(
+                    id: "sr.main.200",
+                    name: "Swell Shark",
+                    abilityIds: [SharksAndReefsAbilityIDs.freePlayCamouflageWhenPlayed],
+                    abilityText: "[FreePlayFishFromHand][Camouflage] only",
+                    tags: [CardTag(kind: "camouflage", count: 1)],
+                    printedPoints: 4,
+                    lengthCm: 110
+                ),
+                Card(
                     id: "sr.main.171",
                     name: "Blue Coral Ability Fish",
                     abilityIds: [SharksAndReefsAbilityIDs.blueCoralIfActivated],
@@ -5480,6 +5842,85 @@ final class GameEngineTests: XCTestCase {
                     lengthCm: 30
                 )
             ]
+        )
+    }
+
+    private func playFishForFreeCatalog() -> TestCardCatalog {
+        TestCardCatalog(
+            fishCards: [
+                Card(id: "free.small", name: "Free Small", tags: [CardTag(kind: "camouflage", count: 1)], printedPoints: 1, lengthCm: 10),
+                Card(id: "free.medium", name: "Free Medium", printedPoints: 1, lengthCm: 80),
+                Card(
+                    id: "free.costly",
+                    name: "Free Costly",
+                    costs: [.discardCards(count: 1), .resource(kind: .egg, count: 1), .resource(kind: .young, count: 1)],
+                    printedPoints: 4,
+                    lengthCm: 30
+                ),
+                Card(id: "discard-candidate", name: "Discard Candidate", printedPoints: 1, lengthCm: 5),
+                Card(id: "free.sunlight", name: "Free Sunlight", allowedZones: [.sunlit], printedPoints: 2, lengthCm: 30),
+                Card(id: "free.green", name: "Free Green", requiredDiveSiteColor: .green, printedPoints: 2, lengthCm: 30),
+                Card(id: "free.cover", name: "Free Cover", costs: [.coverShorterFish(count: 1)], printedPoints: 5, lengthCm: 40),
+                Card(
+                    id: "free.reef",
+                    name: "Free Reef",
+                    requirements: [Requirement(coralRequirement: CoralRequirement(diveSite: .any, count: 2))],
+                    printedPoints: 5,
+                    lengthCm: 30
+                ),
+                Card(
+                    id: "free.withAbility",
+                    name: "Free With Ability",
+                    abilityIds: ["fixture.free.whenPlayed.draw"],
+                    printedPoints: 2,
+                    lengthCm: 20
+                )
+            ]
+        )
+    }
+
+    private func playFishForFreeResolver() -> AbilityResolver {
+        AbilityResolver(
+            provider: AbilityRegistry(
+                definitions: [
+                    AbilityDefinition(
+                        abilityId: "fixture.free.whenPlayed.draw",
+                        trigger: .whenPlayed,
+                        effects: [.drawFish(count: 1)],
+                        displayText: "打出时：抽 1 张鱼牌"
+                    )
+                ]
+            )
+        )
+    }
+
+    private func playFishForFreeIfActivatedCatalog() -> TestCardCatalog {
+        TestCardCatalog(
+            fishCards: playFishForFreeCatalog().fishCards + [
+                Card(
+                    id: "fixture.if.free",
+                    name: "If Activated Free Play Fixture",
+                    abilityIds: ["fixture.ifActivated.playFishForFree"],
+                    printedPoints: 1,
+                    lengthCm: 20
+                )
+            ]
+        )
+    }
+
+    private func playFishForFreeIfActivatedResolver() -> AbilityResolver {
+        AbilityResolver(
+            provider: AbilityRegistry(
+                definitions: [
+                    AbilityDefinition(
+                        abilityId: "fixture.ifActivated.playFishForFree",
+                        trigger: .ifActivated,
+                        effects: [.playFishForFree(filter: .any, count: 1)],
+                        isOptional: true,
+                        displayText: "发动时：免费打出手牌鱼"
+                    )
+                ]
+            )
         )
     }
 

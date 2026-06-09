@@ -82,6 +82,10 @@ enum SharksAndReefsAbilityIDs {
     nonisolated static let greenCoralScatterSchoolWhenPlayed: AbilityID = "unsupported.sr.whenPlayed.card_142"
     nonisolated static let consumeFishFromHandTwiceWhenPlayed: AbilityID = "unsupported.sr.whenPlayed.card_136"
     nonisolated static let consumeFishFromHandIfActivated: AbilityID = "unsupported.sr.ifActivated.card_152"
+    nonisolated static let freePlayBioluminescentWhenPlayed: AbilityID = "unsupported.sr.whenPlayed.card_150"
+    nonisolated static let freePlaySmallWhenPlayed: AbilityID = "unsupported.sr.whenPlayed.card_170"
+    nonisolated static let freePlayMediumWhenPlayed: AbilityID = "unsupported.sr.whenPlayed.card_192"
+    nonisolated static let freePlayCamouflageWhenPlayed: AbilityID = "unsupported.sr.whenPlayed.card_200"
 }
 
 enum SharksAndReefsAbilityDefinitions {
@@ -143,6 +147,34 @@ enum SharksAndReefsAbilityDefinitions {
             effects: [.consumeFishFromHand(count: 1)],
             isOptional: true,
             displayText: "发动时：海洋中的鱼吞噬 1 张更短手牌鱼"
+        ),
+        AbilityDefinition(
+            abilityId: SharksAndReefsAbilityIDs.freePlayBioluminescentWhenPlayed,
+            trigger: .whenPlayed,
+            effects: [.playFishForFree(filter: .tag("bioluminescent"), count: 1)],
+            isOptional: true,
+            displayText: "打出时：免费打出 1 张生物发光鱼"
+        ),
+        AbilityDefinition(
+            abilityId: SharksAndReefsAbilityIDs.freePlaySmallWhenPlayed,
+            trigger: .whenPlayed,
+            effects: [.playFishForFree(filter: .lengthBucket(.small), count: 1)],
+            isOptional: true,
+            displayText: "打出时：免费打出 1 张小型鱼"
+        ),
+        AbilityDefinition(
+            abilityId: SharksAndReefsAbilityIDs.freePlayMediumWhenPlayed,
+            trigger: .whenPlayed,
+            effects: [.playFishForFree(filter: .lengthBucket(.medium), count: 1)],
+            isOptional: true,
+            displayText: "打出时：免费打出 1 张中型鱼"
+        ),
+        AbilityDefinition(
+            abilityId: SharksAndReefsAbilityIDs.freePlayCamouflageWhenPlayed,
+            trigger: .whenPlayed,
+            effects: [.playFishForFree(filter: .tag("camouflage"), count: 1)],
+            isOptional: true,
+            displayText: "打出时：免费打出 1 张伪装鱼"
         )
     ]
 }

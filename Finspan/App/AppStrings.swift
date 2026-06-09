@@ -173,6 +173,11 @@ enum AppStrings {
         static let consumeFishNoConsumer = "没有可吞噬手牌鱼的海洋鱼"
         static let consumeFishNoHandCard = "没有可吞噬的手牌鱼"
         static let consumeFishMustBeShorter = "只能选择更短的鱼"
+        static let playFishForFree = "免费打出手牌鱼"
+        static let playFishForFreeHandCard = "选择要免费打出的鱼"
+        static let playFishForFreeTarget = "选择免费出牌位置"
+        static let playFishForFreeNoMatchingHandCard = "没有符合条件的手牌鱼"
+        static let playFishForFreeFilterMismatch = "这张鱼不符合能力限制"
         static let abilityUnsupported = "能力暂未接入"
         static let bottomBonus = "底部奖励"
         static let firstBottomBonus = "首次到底奖励"
@@ -481,6 +486,10 @@ enum AppStrings {
             "\(playerName) 的 \(consumerName) 吞噬了手牌中的 \(consumedName)"
         }
 
+        static func rewardPlayFishForFreeActionSummary(playerName: String, cardName: String) -> String {
+            "\(playerName) 免费打出了 \(cardName)"
+        }
+
         static func rewardGainCoralActionSummary(playerName: String, diveSiteName: String) -> String {
             "\(playerName) 在\(diveSiteName)获得 1 个珊瑚"
         }
@@ -600,6 +609,8 @@ enum AppStrings {
             return "打散鱼群"
         case .consumeFishFromHand:
             return "吞噬手牌鱼"
+        case .playFishForFree:
+            return "免费打出手牌鱼"
         case .compoundAbility:
             return "鱼牌能力"
         case .bottomBonus:

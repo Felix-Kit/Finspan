@@ -14,6 +14,7 @@ struct PendingChoice: Identifiable, Codable, Equatable, Sendable {
     var compoundAbilityProgress: CompoundAbilityProgress? = nil
     var scatterSchoolProgress: ScatterSchoolProgress? = nil
     var consumeFishFromHandProgress: ConsumeFishFromHandProgress? = nil
+    var playFishForFreeProgress: PlayFishForFreeProgress? = nil
     var selectedAbilityEffect: AbilityEffectUnit? = nil
     var createdAtSequence: EventID
 
@@ -39,6 +40,7 @@ enum PendingChoiceKind: String, Codable, Equatable, Sendable {
     case gainCoral
     case scatterSchool
     case consumeFishFromHand
+    case playFishForFree
     case compoundAbility
     case bottomBonus
     case placeholder
@@ -61,6 +63,8 @@ enum PendingChoiceExpectedInput: Codable, Equatable, Sendable {
     case scatterSchoolYoungTarget
     case consumeFishConsumer
     case consumeFishHandCard
+    case freePlayHandCard
+    case freePlayTargetSlot
     case abilityEffectSelection
     case count(Int)
 }
@@ -80,6 +84,8 @@ enum PendingChoiceResolution: Codable, Equatable, Sendable {
     case placeScatterSchoolYoung(OceanSlotAddress)
     case chooseConsumeFishConsumer(OceanSlotAddress)
     case consumeFishFromHand(CardID)
+    case chooseFreePlayFish(CardID)
+    case playFishForFree(cardId: CardID, targetSlot: OceanSlotAddress)
     case chooseOption(String)
     case chooseAbilityEffect(AbilityEffectUnit)
     case finishAbility
@@ -98,6 +104,7 @@ enum PendingChoiceAppliedEffect: Codable, Equatable, Sendable {
     case scatterSchoolSourceRemoved(playerId: PlayerID, source: OceanSlotAddress)
     case scatterSchoolYoungPlaced(playerId: PlayerID, target: OceanSlotAddress)
     case fishConsumedFromHand(playerId: PlayerID, consumerSlot: OceanSlotAddress, consumedCardId: CardID)
+    case fishPlayedForFree(playerId: PlayerID, cardId: CardID, targetSlot: OceanSlotAddress)
     case placeholder(String)
 }
 
@@ -139,5 +146,13 @@ struct ConsumeFishFromHandProgress: Codable, Equatable, Sendable {
 
     nonisolated init(consumerSlot: OceanSlotAddress? = nil) {
         self.consumerSlot = consumerSlot
+    }
+}
+
+struct PlayFishForFreeProgress: Codable, Equatable, Sendable {
+    var selectedCardId: CardID?
+
+    nonisolated init(selectedCardId: CardID? = nil) {
+        self.selectedCardId = selectedCardId
     }
 }

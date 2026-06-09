@@ -65,7 +65,21 @@ enum AbilityEffectUnit: Codable, Equatable, Sendable {
     case gainCoral(selector: CoralDiveSiteSelector, count: Int)
     case scatterSchool(count: Int)
     case consumeFishFromHand(count: Int)
+    case playFishForFree(filter: FreePlayFishFilter, count: Int)
     case unsupported
+}
+
+enum FreePlayFishFilter: Codable, Equatable, Sendable {
+    case any
+    case tag(String)
+    case lengthBucket(FishLengthBucket)
+    case unsupported(String)
+}
+
+enum FishLengthBucket: String, Codable, Equatable, Sendable {
+    case small
+    case medium
+    case large
 }
 
 enum CoralDiveSiteSelector: String, Codable, Equatable, Sendable {
