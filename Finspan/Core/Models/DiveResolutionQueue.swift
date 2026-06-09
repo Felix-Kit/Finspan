@@ -64,6 +64,7 @@ enum AbilityEffectUnit: Codable, Equatable, Sendable {
     case recoverFromDiscardOrDraw(count: Int)
     case gainCoral(selector: CoralDiveSiteSelector, count: Int)
     case scatterSchool(count: Int)
+    case consumeFishFromHand(count: Int)
     case unsupported
 }
 

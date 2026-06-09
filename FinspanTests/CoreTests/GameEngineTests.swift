@@ -2591,6 +2591,278 @@ final class GameEngineTests: XCTestCase {
         )
     }
 
+    func testConsumeFishFromHandAbilityIdsResolveFromRealSharksAndReefsCatalog() throws {
+        let catalog = try SharksAndReefsCardCatalog()
+        let whenPlayedCard = try XCTUnwrap(catalog.fishCards.first { $0.id == "sr.main.136" })
+        let ifActivatedCard = try XCTUnwrap(catalog.fishCards.first { $0.id == "sr.main.152" })
+
+        let whenPlayedAbilities = AbilityResolver().abilityDefinitions(for: whenPlayedCard)
+        let ifActivatedAbilities = AbilityResolver().abilityDefinitions(for: ifActivatedCard)
+
+        XCTAssertEqual(whenPlayedCard.name, "American Pocket Shark")
+        XCTAssertEqual(whenPlayedCard.abilityText, "[FishFromHandConsume][FishFromHandConsume]")
+        XCTAssertEqual(whenPlayedCard.abilityIds, [SharksAndReefsAbilityIDs.consumeFishFromHandTwiceWhenPlayed])
+        XCTAssertEqual(whenPlayedAbilities.first?.trigger, .whenPlayed)
+        XCTAssertEqual(
+            whenPlayedAbilities.first?.effects,
+            [.consumeFishFromHand(count: 1), .consumeFishFromHand(count: 1)]
+        )
+        XCTAssertEqual(ifActivatedCard.name, "Filetail Catshark")
+        XCTAssertEqual(ifActivatedCard.abilityText, "[FishFromHandConsume]")
+        XCTAssertEqual(ifActivatedCard.abilityIds, [SharksAndReefsAbilityIDs.consumeFishFromHandIfActivated])
+        XCTAssertEqual(ifActivatedAbilities.first?.trigger, .ifActivated)
+        XCTAssertEqual(ifActivatedAbilities.first?.effects, [.consumeFishFromHand(count: 1)])
+    }
+
+    func testWhenPlayedConsumeFishFromHandCreatesPendingChoice() throws {
+        let engine = GameEngine(cardCatalog: sharksAndReefsAbilityCatalog())
+        var state = playFishState()
+        state.playerGameStates["player-1"]?.hand.append("sr.main.136")
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: playFishCommand(commandId: "play-consume-fish", cardId: "sr.main.136", targetSlot: target),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        let compoundChoice = try XCTUnwrap(state.pendingChoices.values.first)
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(
+                commandId: "choose-consume-fish",
+                choiceId: compoundChoice.choiceId,
+                resolution: .chooseAbilityEffect(.consumeFishFromHand(count: 1))
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceCreated(consumeChoice) = drafts.last else {
+            return XCTFail("Expected consume fish from hand pending choice.")
+        }
+        XCTAssertEqual(consumeChoice.kind, .consumeFishFromHand)
+        XCTAssertEqual(consumeChoice.expectedInput, .consumeFishConsumer)
+        XCTAssertEqual(consumeChoice.selectedAbilityEffect, .consumeFishFromHand(count: 1))
+    }
+
+    func testIfActivatedConsumeFishFromHandCreatesDiveQueuePendingChoice() throws {
+        let engine = GameEngine(cardCatalog: sharksAndReefsAbilityCatalog())
+        var state = abilityDiveState(cardId: "sr.main.152")
+        state = applying(
+            try engine.makeEventDrafts(for: diveCommand(commandId: "dive-if-consume"), in: state),
+            to: state,
+            using: engine
+        )
+        let printedChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "skip-printed-before-consume", choiceId: printedChoice.choiceId, resolution: .skip),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        let consumeChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        XCTAssertEqual(consumeChoice.kind, .consumeFishFromHand)
+        XCTAssertEqual(consumeChoice.expectedInput, .consumeFishConsumer)
+        XCTAssertEqual(consumeChoice.abilityDefinition?.abilityId, SharksAndReefsAbilityIDs.consumeFishFromHandIfActivated)
+    }
+
+    func testConsumeFishFromHandRequiresVisibleFishCardConsumer() throws {
+        let engine = GameEngine(cardCatalog: consumeFishCatalog())
+        let consumer = consumeFishConsumerAddress()
+        let empty = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 0)
+        let forage = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 0)
+        var state = consumeFishState(hand: ["consume.short"])
+        setContent(
+            .forageFish(
+                ForageFish(
+                    forageFishId: "fixture-forage",
+                    name: "Fixture Forage",
+                    lengthCm: 5,
+                    diveSite: .green,
+                    rowIndex: 0
+                )
+            ),
+            at: forage,
+            in: &state
+        )
+        let choice = consumeFishPendingChoice()
+        state.pendingChoices[choice.choiceId] = choice
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "consume-empty", choiceId: choice.choiceId, resolution: .chooseConsumeFishConsumer(empty)),
+                in: state
+            )
+        )
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "consume-forage", choiceId: choice.choiceId, resolution: .chooseConsumeFishConsumer(forage)),
+                in: state
+            )
+        )
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(commandId: "consume-consumer", choiceId: choice.choiceId, resolution: .chooseConsumeFishConsumer(consumer)),
+            in: state
+        )
+        guard case let .pendingChoiceCreated(nextChoice) = drafts.last else {
+            return XCTFail("Expected hand-card pending choice.")
+        }
+        XCTAssertEqual(nextChoice.expectedInput, .consumeFishHandCard)
+        XCTAssertEqual(nextChoice.consumeFishFromHandProgress?.consumerSlot, consumer)
+    }
+
+    func testConsumeFishFromHandOnlyAllowsShorterHandFish() throws {
+        let engine = GameEngine(cardCatalog: consumeFishCatalog())
+        let consumer = consumeFishConsumerAddress()
+        var state = consumeFishState(hand: ["consume.short", "consume.same", "consume.long"])
+        let choice = consumeFishPendingChoice(
+            expectedInput: .consumeFishHandCard,
+            progress: ConsumeFishFromHandProgress(consumerSlot: consumer)
+        )
+        state.pendingChoices[choice.choiceId] = choice
+
+        for cardId in ["consume.same", "consume.long"] {
+            XCTAssertThrowsError(
+                try engine.makeEventDrafts(
+                    for: resolveCommand(
+                        commandId: "consume-invalid-\(cardId)",
+                        choiceId: choice.choiceId,
+                        resolution: .consumeFishFromHand(cardId)
+                    ),
+                    in: state
+                )
+            ) { error in
+                XCTAssertEqual(error as? CommandValidationError, .invalidPendingChoiceResolution(choice.choiceId))
+            }
+        }
+
+        XCTAssertNoThrow(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "consume-short",
+                    choiceId: choice.choiceId,
+                    resolution: .consumeFishFromHand("consume.short")
+                ),
+                in: state
+            )
+        )
+    }
+
+    func testConsumeFishFromHandRemovesHandCardAndAppendsConsumedFishWithoutDiscarding() throws {
+        let engine = GameEngine(cardCatalog: consumeFishCatalog())
+        let consumer = consumeFishConsumerAddress()
+        var state = consumeFishState(hand: ["consume.short", "consume.long"])
+        setConsumedFish([ConsumedFish(cardId: "already-consumed")], at: consumer, in: &state)
+        state.playerGameStates["player-1"]?.discardPile = ["discard-existing"]
+        let choice = consumeFishPendingChoice(
+            expectedInput: .consumeFishHandCard,
+            progress: ConsumeFishFromHandProgress(consumerSlot: consumer)
+        )
+        state.pendingChoices[choice.choiceId] = choice
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "consume-short-reducer",
+                    choiceId: choice.choiceId,
+                    resolution: .consumeFishFromHand("consume.short")
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        let playerState = try XCTUnwrap(state.playerGameStates["player-1"])
+        let slot = try XCTUnwrap(playerState.ocean.slots.first { $0.address == consumer })
+        XCTAssertEqual(playerState.hand, ["consume.long"])
+        XCTAssertEqual(playerState.discardPile, ["discard-existing"])
+        XCTAssertEqual(slot.consumedFish.first, ConsumedFish(cardId: "already-consumed"))
+        XCTAssertEqual(slot.consumedFish.last, ConsumedFish(cardId: "consume.short", lengthCm: 10))
+    }
+
+    func testSkippingConsumeFishFromHandDoesNotRemoveHandCardOrAppendConsumedFish() throws {
+        let engine = GameEngine(cardCatalog: consumeFishCatalog())
+        let consumer = consumeFishConsumerAddress()
+        var state = consumeFishState(hand: ["consume.short"])
+        setConsumedFish([ConsumedFish(cardId: "already-consumed")], at: consumer, in: &state)
+        let choice = consumeFishPendingChoice()
+        state.pendingChoices[choice.choiceId] = choice
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "skip-consume", choiceId: choice.choiceId, resolution: .skip),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        let playerState = try XCTUnwrap(state.playerGameStates["player-1"])
+        let slot = try XCTUnwrap(playerState.ocean.slots.first { $0.address == consumer })
+        XCTAssertEqual(playerState.hand, ["consume.short"])
+        XCTAssertEqual(slot.consumedFish, [ConsumedFish(cardId: "already-consumed")])
+    }
+
+    func testConsumeFishFromHandResolveContinuesDiveQueue() throws {
+        let engine = GameEngine(cardCatalog: sharksAndReefsAbilityCatalog())
+        let consumer = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        var state = abilityDiveState(cardId: "sr.main.152")
+        state.playerGameStates["player-1"]?.diveSitesReachedBottomThisWeek = []
+        state.playerGameStates["player-1"]?.hand.append("fish-1")
+        state = applying(
+            try engine.makeEventDrafts(for: diveCommand(commandId: "dive-consume-continues"), in: state),
+            to: state,
+            using: engine
+        )
+        let printedChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "skip-before-consume-continues", choiceId: printedChoice.choiceId, resolution: .skip),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        var consumeChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "choose-consumer-continues",
+                    choiceId: consumeChoice.choiceId,
+                    resolution: .chooseConsumeFishConsumer(consumer)
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        consumeChoice = try XCTUnwrap(state.pendingChoices.values.first)
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(
+                commandId: "resolve-consume-continues",
+                choiceId: consumeChoice.choiceId,
+                resolution: .consumeFishFromHand("fish-1")
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(resolved) = drafts.first,
+              case let .advanced(queue) = resolved.diveQueueUpdate,
+              case let .pendingChoiceCreated(nextChoice) = drafts.last
+        else {
+            return XCTFail("Expected consume fish from hand to advance to the next dive queue step.")
+        }
+        XCTAssertEqual(queue.currentStep?.source, .bottomBonus)
+        XCTAssertEqual(nextChoice.choiceId, queue.currentStep?.pendingChoice.choiceId)
+    }
+
     func testWhenPlayedScatterSchoolCreatesPendingChoice() throws {
         let engine = GameEngine(cardCatalog: sharksAndReefsAbilityCatalog())
         var state = playFishState()
@@ -4864,6 +5136,45 @@ final class GameEngineTests: XCTestCase {
         )
     }
 
+    private func consumeFishPendingChoice(
+        expectedInput: PendingChoiceExpectedInput = .consumeFishConsumer,
+        progress: ConsumeFishFromHandProgress? = nil
+    ) -> PendingChoice {
+        let ability = AbilityDefinition(
+            abilityId: "fixture-consume-fish-from-hand",
+            trigger: .whenPlayed,
+            effects: [.consumeFishFromHand(count: 1)],
+            isOptional: true,
+            displayText: "打出时：吞噬手牌鱼"
+        )
+        return PendingChoice(
+            choiceId: "choice-consume-fish-from-hand",
+            playerId: "player-1",
+            source: .fishAbility("consume.consumer"),
+            kind: .consumeFishFromHand,
+            options: [],
+            expectedInput: expectedInput,
+            isOptional: true,
+            abilityDefinition: ability,
+            consumeFishFromHandProgress: progress,
+            selectedAbilityEffect: .consumeFishFromHand(count: 1),
+            createdAtSequence: 10
+        )
+    }
+
+    private func consumeFishConsumerAddress() -> OceanSlotAddress {
+        OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+    }
+
+    private func consumeFishState(hand: [CardID]) -> GameState {
+        var state = playFishState()
+        clearOceanContent(for: "player-1", in: &state)
+        clearResources(for: "player-1", in: &state)
+        state.playerGameStates["player-1"]?.hand = hand
+        setContent(.fishCard("consume.consumer"), at: consumeFishConsumerAddress(), in: &state)
+        return state
+    }
+
     private func scatterSchoolTargets() -> [OceanSlotAddress] {
         [
             OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0),
@@ -5021,6 +5332,8 @@ final class GameEngineTests: XCTestCase {
             return .coralPayment
         case .scatterSchool:
             return .scatterSchoolSource
+        case .consumeFishFromHand:
+            return .consumeFishConsumer
         case .drawFish,
              .compoundAbility,
              .bottomBonus,
@@ -5122,12 +5435,28 @@ final class GameEngineTests: XCTestCase {
             starterFishCards: sample.starterFishCards,
             fishCards: sample.fishCards + [
                 Card(
+                    id: "sr.main.136",
+                    name: "American Pocket Shark",
+                    abilityIds: [SharksAndReefsAbilityIDs.consumeFishFromHandTwiceWhenPlayed],
+                    abilityText: "[FishFromHandConsume][FishFromHandConsume]",
+                    printedPoints: 4,
+                    lengthCm: 50
+                ),
+                Card(
                     id: "sr.main.142",
                     name: "Blacktip Shark",
                     abilityIds: [SharksAndReefsAbilityIDs.greenCoralScatterSchoolWhenPlayed],
                     abilityText: "[GreenCoral][UnSchoolFish]",
                     printedPoints: 4,
                     lengthCm: 170
+                ),
+                Card(
+                    id: "sr.main.152",
+                    name: "Filetail Catshark",
+                    abilityIds: [SharksAndReefsAbilityIDs.consumeFishFromHandIfActivated],
+                    abilityText: "[FishFromHandConsume]",
+                    printedPoints: 2,
+                    lengthCm: 45
                 ),
                 Card(
                     id: "sr.main.171",
@@ -5150,6 +5479,17 @@ final class GameEngineTests: XCTestCase {
                     printedPoints: 5,
                     lengthCm: 30
                 )
+            ]
+        )
+    }
+
+    private func consumeFishCatalog() -> TestCardCatalog {
+        TestCardCatalog(
+            fishCards: [
+                Card(id: "consume.consumer", name: "Consumer Fish", printedPoints: 5, lengthCm: 40),
+                Card(id: "consume.short", name: "Short Fish", printedPoints: 1, lengthCm: 10),
+                Card(id: "consume.same", name: "Same Fish", printedPoints: 1, lengthCm: 40),
+                Card(id: "consume.long", name: "Long Fish", printedPoints: 1, lengthCm: 60)
             ]
         )
     }

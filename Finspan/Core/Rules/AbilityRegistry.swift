@@ -80,6 +80,8 @@ enum SharksAndReefsAbilityIDs {
     nonisolated static let anyCoralIfActivated: AbilityID = "unsupported.sr.ifActivated.card_210"
     nonisolated static let bluePurpleCoralWhenPlayed: AbilityID = "unsupported.sr.whenPlayed.card_194"
     nonisolated static let greenCoralScatterSchoolWhenPlayed: AbilityID = "unsupported.sr.whenPlayed.card_142"
+    nonisolated static let consumeFishFromHandTwiceWhenPlayed: AbilityID = "unsupported.sr.whenPlayed.card_136"
+    nonisolated static let consumeFishFromHandIfActivated: AbilityID = "unsupported.sr.ifActivated.card_152"
 }
 
 enum SharksAndReefsAbilityDefinitions {
@@ -123,6 +125,24 @@ enum SharksAndReefsAbilityDefinitions {
             canResolveInAnyOrder: true,
             isOptional: true,
             displayText: "打出时：获得 1 个绿色珊瑚，打散鱼群"
+        ),
+        AbilityDefinition(
+            abilityId: SharksAndReefsAbilityIDs.consumeFishFromHandTwiceWhenPlayed,
+            trigger: .whenPlayed,
+            effects: [
+                .consumeFishFromHand(count: 1),
+                .consumeFishFromHand(count: 1)
+            ],
+            canResolveInAnyOrder: true,
+            isOptional: true,
+            displayText: "打出时：海洋中的鱼吞噬 2 张更短手牌鱼"
+        ),
+        AbilityDefinition(
+            abilityId: SharksAndReefsAbilityIDs.consumeFishFromHandIfActivated,
+            trigger: .ifActivated,
+            effects: [.consumeFishFromHand(count: 1)],
+            isOptional: true,
+            displayText: "发动时：海洋中的鱼吞噬 1 张更短手牌鱼"
         )
     ]
 }

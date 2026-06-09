@@ -729,6 +729,10 @@ struct GameEngine {
             try validateScatterSchoolSource(source, for: choice, in: state)
         case let .placeScatterSchoolYoung(target):
             try validateScatterSchoolYoungTarget(target, for: choice, in: state)
+        case let .chooseConsumeFishConsumer(consumerSlot):
+            try validateConsumeFishConsumer(consumerSlot, for: choice, in: state)
+        case let .consumeFishFromHand(cardId):
+            try validateConsumeFishFromHand(cardId, for: choice, in: state)
         case .chooseOption:
             throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
         case let .chooseAbilityEffect(effect):
@@ -772,6 +776,7 @@ struct GameEngine {
              .moveYoungOrSchool,
              .gainCoral,
              .scatterSchool,
+             .consumeFishFromHand,
              .compoundAbility,
              .bottomBonus,
              .placeholder,
@@ -842,6 +847,43 @@ struct GameEngine {
 
     private func playerHasSchool(_ playerState: PlayerGameState) -> Bool {
         playerState.ocean.slots.contains { resourceAmount(.school, in: $0) > 0 }
+    }
+
+    private func validateConsumeFishConsumer(
+        _ consumerSlot: OceanSlotAddress,
+        for choice: PendingChoice,
+        in state: GameState
+    ) throws {
+        guard choice.kind == .consumeFishFromHand,
+              choice.expectedInput == .consumeFishConsumer,
+              consumerSlot.playerId == choice.playerId,
+              let playerState = state.playerGameStates[choice.playerId],
+              let slot = playerState.ocean.slots.first(where: { $0.address == consumerSlot }),
+              case let .fishCard(cardId) = slot.content,
+              card(withId: cardId) != nil
+        else {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+    }
+
+    private func validateConsumeFishFromHand(
+        _ consumedCardId: CardID,
+        for choice: PendingChoice,
+        in state: GameState
+    ) throws {
+        guard choice.kind == .consumeFishFromHand,
+              choice.expectedInput == .consumeFishHandCard,
+              let consumerSlotAddress = choice.consumeFishFromHandProgress?.consumerSlot,
+              let playerState = state.playerGameStates[choice.playerId],
+              playerState.hand.contains(consumedCardId),
+              let consumerSlot = playerState.ocean.slots.first(where: { $0.address == consumerSlotAddress }),
+              case let .fishCard(consumerCardId) = consumerSlot.content,
+              let consumerCard = card(withId: consumerCardId),
+              let consumedCard = card(withId: consumedCardId),
+              consumedCard.lengthCm < consumerCard.lengthCm
+        else {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
     }
 
     private func validateCoralPayment(
@@ -1180,6 +1222,13 @@ struct GameEngine {
         ) {
             return scatterUpdate
         }
+        if let consumeUpdate = consumeFishFromHandDiveQueueProgressAfterResolving(
+            choice: choice,
+            resolution: payload.resolution,
+            queue: queue
+        ) {
+            return consumeUpdate
+        }
         if let compoundUpdate = compoundDiveQueueProgressAfterResolving(
             choice: choice,
             resolution: payload.resolution,
@@ -1289,6 +1338,21 @@ struct GameEngine {
             return [.scatterSchoolSourceRemoved(playerId: playerId, source: source)]
         case let .placeScatterSchoolYoung(target):
             return [.scatterSchoolYoungPlaced(playerId: playerId, target: target)]
+        case .chooseConsumeFishConsumer:
+            return [.none]
+        case let .consumeFishFromHand(cardId):
+            guard let choice = state.pendingChoices[payload.choiceId],
+                  let consumerSlot = choice.consumeFishFromHandProgress?.consumerSlot
+            else {
+                return [.none]
+            }
+            return [
+                .fishConsumedFromHand(
+                    playerId: playerId,
+                    consumerSlot: consumerSlot,
+                    consumedCardId: cardId
+                )
+            ]
         case let .chooseTarget(target):
             guard let choice = state.pendingChoices[payload.choiceId] else {
                 return [.none]
@@ -1303,6 +1367,7 @@ struct GameEngine {
                  .moveYoungOrSchool,
                  .gainCoral,
                  .scatterSchool,
+                 .consumeFishFromHand,
                  .compoundAbility,
                  .bottomBonus,
                  .placeholder,
@@ -1563,6 +1628,59 @@ struct GameEngine {
         return (.updated(updatedQueue), selectorChoice)
     }
 
+    private func consumeFishFromHandDiveQueueProgressAfterResolving(
+        choice: PendingChoice,
+        resolution: PendingChoiceResolution,
+        queue: DiveResolutionQueue
+    ) -> (update: DiveResolutionQueueUpdate?, nextChoice: PendingChoice?)? {
+        guard choice.kind == .consumeFishFromHand else {
+            return nil
+        }
+        if case .skip = resolution {
+            return advanceDiveQueue(queue)
+        }
+        guard let nextChoice = consumeFishFromHandChoiceAfterResolving(
+            choice: choice,
+            resolution: resolution
+        ) else {
+            if choice.compoundAbilityProgress != nil {
+                return compoundDiveQueueProgressAfterConsumeFishCompletion(choice: choice, queue: queue)
+            }
+            return advanceDiveQueue(queue)
+        }
+
+        var updatedQueue = queue
+        var updatedChoice = nextChoice
+        updatedChoice.diveStepId = choice.diveStepId
+        setCurrentStepPendingChoice(updatedChoice, in: &updatedQueue)
+        return (.updated(updatedQueue), updatedChoice)
+    }
+
+    private func compoundDiveQueueProgressAfterConsumeFishCompletion(
+        choice: PendingChoice,
+        queue: DiveResolutionQueue
+    ) -> (update: DiveResolutionQueueUpdate?, nextChoice: PendingChoice?) {
+        guard let progress = choice.compoundAbilityProgress,
+              let completedEffect = compoundEffectUnit(for: choice)
+        else {
+            return advanceDiveQueue(queue)
+        }
+
+        var updatedProgress = progress
+        updatedProgress.remainingEffects = decrement(completedEffect, from: progress.remainingEffects)
+        updatedProgress.completedEffects.append(completedEffect)
+
+        if abilityProgressIsComplete(updatedProgress) {
+            return advanceDiveQueue(queue)
+        }
+
+        var updatedQueue = queue
+        var selectorChoice = compoundSelectorChoice(from: choice, progress: updatedProgress)
+        selectorChoice.diveStepId = choice.diveStepId
+        setCurrentStepPendingChoice(selectorChoice, in: &updatedQueue)
+        return (.updated(updatedQueue), selectorChoice)
+    }
+
     private func advanceDiveQueue(
         _ queue: DiveResolutionQueue
     ) -> (update: DiveResolutionQueueUpdate?, nextChoice: PendingChoice?) {
@@ -1600,6 +1718,9 @@ struct GameEngine {
         if let scatterChoice = nonQueueScatterSchoolChoiceAfterResolving(payload, choice: choice, in: state) {
             return scatterChoice
         }
+        if let consumeChoice = nonQueueConsumeFishFromHandChoiceAfterResolving(payload, choice: choice) {
+            return consumeChoice
+        }
 
         guard let progress = choice.compoundAbilityProgress,
               let completedEffect = compoundEffectUnit(for: choice)
@@ -1636,6 +1757,38 @@ struct GameEngine {
             choice: choice,
             resolution: payload.resolution,
             in: state
+        ) {
+            return nextChoice
+        }
+        guard let progress = choice.compoundAbilityProgress,
+              let completedEffect = compoundEffectUnit(for: choice)
+        else {
+            return nil
+        }
+
+        var updatedProgress = progress
+        updatedProgress.remainingEffects = decrement(completedEffect, from: progress.remainingEffects)
+        updatedProgress.completedEffects.append(completedEffect)
+
+        guard !abilityProgressIsComplete(updatedProgress) else {
+            return nil
+        }
+        return compoundSelectorChoice(from: choice, progress: updatedProgress)
+    }
+
+    private func nonQueueConsumeFishFromHandChoiceAfterResolving(
+        _ payload: ResolvePendingChoiceCommand,
+        choice: PendingChoice
+    ) -> PendingChoice? {
+        guard choice.kind == .consumeFishFromHand else {
+            return nil
+        }
+        if case .skip = payload.resolution {
+            return nil
+        }
+        if let nextChoice = consumeFishFromHandChoiceAfterResolving(
+            choice: choice,
+            resolution: payload.resolution
         ) {
             return nextChoice
         }
@@ -1702,6 +1855,46 @@ struct GameEngine {
             abilityDefinition: choice.abilityDefinition,
             compoundAbilityProgress: choice.compoundAbilityProgress,
             scatterSchoolProgress: progress,
+            selectedAbilityEffect: choice.selectedAbilityEffect,
+            createdAtSequence: choice.createdAtSequence
+        )
+    }
+
+    private func consumeFishFromHandChoiceAfterResolving(
+        choice: PendingChoice,
+        resolution: PendingChoiceResolution
+    ) -> PendingChoice? {
+        guard choice.kind == .consumeFishFromHand else {
+            return nil
+        }
+
+        switch resolution {
+        case let .chooseConsumeFishConsumer(consumerSlot):
+            return consumeFishFromHandCardChoice(from: choice, consumerSlot: consumerSlot)
+        case .consumeFishFromHand:
+            return nil
+        default:
+            return nil
+        }
+    }
+
+    private func consumeFishFromHandCardChoice(
+        from choice: PendingChoice,
+        consumerSlot: OceanSlotAddress
+    ) -> PendingChoice {
+        PendingChoice(
+            choiceId: "\(choice.choiceId)-consume-hand",
+            playerId: choice.playerId,
+            source: choice.source,
+            diveQueueId: choice.diveQueueId,
+            diveStepId: choice.diveStepId,
+            kind: .consumeFishFromHand,
+            options: [],
+            expectedInput: .consumeFishHandCard,
+            isOptional: false,
+            abilityDefinition: choice.abilityDefinition,
+            compoundAbilityProgress: choice.compoundAbilityProgress,
+            consumeFishFromHandProgress: ConsumeFishFromHandProgress(consumerSlot: consumerSlot),
             selectedAbilityEffect: choice.selectedAbilityEffect,
             createdAtSequence: choice.createdAtSequence
         )
@@ -1804,7 +1997,8 @@ struct GameEngine {
              let .moveYoungOrSchool(count),
              let .recoverFromDiscardOrDraw(count),
              let .gainCoral(_, count),
-             let .scatterSchool(count):
+             let .scatterSchool(count),
+             let .consumeFishFromHand(count):
             return count
         case .unsupported:
             return 0
@@ -1827,6 +2021,8 @@ struct GameEngine {
             return .gainCoral(selector: selector, count: count)
         case .scatterSchool:
             return .scatterSchool(count: count)
+        case .consumeFishFromHand:
+            return .consumeFishFromHand(count: count)
         case .unsupported:
             return .unsupported
         }
@@ -1848,6 +2044,8 @@ struct GameEngine {
             return "gainCoral-\(selector.rawValue)"
         case .scatterSchool:
             return "scatterSchool"
+        case .consumeFishFromHand:
+            return "consumeFishFromHand"
         case .unsupported:
             return "unsupported"
         }
@@ -1869,6 +2067,8 @@ struct GameEngine {
             return .gainCoral
         case .scatterSchool:
             return .scatterSchool
+        case .consumeFishFromHand:
+            return .consumeFishFromHand
         case .unsupported:
             return .unsupported
         }
@@ -1889,6 +2089,8 @@ struct GameEngine {
             return .coralPlacement
         case .scatterSchool:
             return .scatterSchoolSource
+        case .consumeFishFromHand:
+            return .consumeFishConsumer
         case .unsupported:
             return .none
         }
@@ -1914,6 +2116,8 @@ struct GameEngine {
             return nil
         case .scatterSchool:
             return .scatterSchool(count: 1)
+        case .consumeFishFromHand:
+            return .consumeFishFromHand(count: 1)
         case .compoundAbility,
              .bottomBonus,
              .placeholder,
@@ -2144,8 +2348,36 @@ struct GameEngine {
             applyScatterSchoolSourceRemoval(playerId: playerId, source: source, to: &state)
         case let .scatterSchoolYoungPlaced(_, target):
             applyResourceChange(.young, amount: 1, at: target, to: &state)
+        case let .fishConsumedFromHand(playerId, consumerSlot, consumedCardId):
+            applyFishConsumedFromHand(
+                playerId: playerId,
+                consumerSlot: consumerSlot,
+                consumedCardId: consumedCardId,
+                to: &state
+            )
         }
     }
+    }
+
+    private func applyFishConsumedFromHand(
+        playerId: PlayerID,
+        consumerSlot: OceanSlotAddress,
+        consumedCardId: CardID,
+        to state: inout GameState
+    ) {
+        guard var playerState = state.playerGameStates[playerId],
+              let handIndex = playerState.hand.firstIndex(of: consumedCardId),
+              let slotIndex = playerState.ocean.slots.firstIndex(where: { $0.address == consumerSlot }),
+              case .fishCard = playerState.ocean.slots[slotIndex].content
+        else {
+            return
+        }
+
+        playerState.hand.remove(at: handIndex)
+        playerState.ocean.slots[slotIndex].consumedFish.append(
+            ConsumedFish(cardId: consumedCardId, lengthCm: card(withId: consumedCardId)?.lengthCm)
+        )
+        state.playerGameStates[playerId] = playerState
     }
 
     private func applyCoralGain(

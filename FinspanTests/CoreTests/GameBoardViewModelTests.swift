@@ -3099,6 +3099,59 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertTrue(oceanSlot(in: viewModel, address: Self.slotAddress).isHighlightedByRewardSelection)
     }
 
+    func testConsumeFishFromHandShowsConsumerRewardTokenAndHighlightsVisibleFishCard() throws {
+        let choice = consumeFishFromHandPendingChoice()
+        let service = makeService(hand: ["consume.short"], pendingChoices: [choice.choiceId: choice])
+        setContent(.fishCard("consume.consumer"), at: Self.slotAddress, in: service)
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalogProvider: { self.consumeFishCatalog() }
+        )
+        let token = try XCTUnwrap(viewModel.rewardPoolViewState.rewards.first)
+
+        XCTAssertEqual(token.kind, .consumeFish)
+        XCTAssertEqual(token.title, AppStrings.GameBoard.consumeFishFromHand)
+        viewModel.selectRewardToken(token.id)
+
+        XCTAssertEqual(viewModel.rewardPoolViewState.instructionText, AppStrings.GameBoard.consumeFishConsumer)
+        XCTAssertTrue(oceanSlot(in: viewModel, address: Self.slotAddress).isHighlightedByRewardSelection)
+        XCTAssertFalse(oceanSlot(in: viewModel, address: Self.forageTargetAddress).isHighlightedByRewardSelection)
+    }
+
+    func testConsumeFishFromHandHandStepOnlyAllowsShorterHandFishAndBuildsResolveCommand() throws {
+        let choice = consumeFishFromHandPendingChoice(
+            expectedInput: .consumeFishHandCard,
+            progress: ConsumeFishFromHandProgress(consumerSlot: Self.slotAddress)
+        )
+        let service = makeService(
+            hand: ["consume.short", "consume.same", "consume.long"],
+            pendingChoices: [choice.choiceId: choice]
+        )
+        setContent(.fishCard("consume.consumer"), at: Self.slotAddress, in: service)
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalogProvider: { self.consumeFishCatalog() }
+        )
+        let token = try XCTUnwrap(viewModel.rewardPoolViewState.rewards.first)
+
+        viewModel.selectRewardToken(token.id)
+        XCTAssertNil(viewModel.handViewState.cards.first { $0.cardId == "consume.short" }?.unavailableReasonText)
+        XCTAssertEqual(
+            viewModel.handViewState.cards.first { $0.cardId == "consume.same" }?.unavailableReasonText,
+            AppStrings.GameBoard.consumeFishMustBeShorter
+        )
+
+        viewModel.selectHandCard("consume.same")
+        XCTAssertTrue(service.submittedCommands.isEmpty)
+        viewModel.selectHandCard("consume.short")
+
+        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolvePendingChoice command.")
+        }
+        XCTAssertEqual(payload.choiceId, choice.choiceId)
+        XCTAssertEqual(payload.resolution, .consumeFishFromHand("consume.short"))
+    }
+
     func testCompoundAbilityPendingChoiceGeneratesRemainingRewardTokens() {
         let choice = compoundAbilityPendingChoice()
         let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
@@ -3711,6 +3764,32 @@ final class GameBoardViewModelTests: XCTestCase {
         )
     }
 
+    private func consumeFishFromHandPendingChoice(
+        expectedInput: PendingChoiceExpectedInput = .consumeFishConsumer,
+        progress: ConsumeFishFromHandProgress? = nil
+    ) -> PendingChoice {
+        let ability = AbilityDefinition(
+            abilityId: "fixture-consume-fish-from-hand",
+            trigger: .whenPlayed,
+            effects: [.consumeFishFromHand(count: 1)],
+            isOptional: true,
+            displayText: "打出时：吞噬手牌鱼"
+        )
+        return PendingChoice(
+            choiceId: "choice-consume-fish-from-hand",
+            playerId: "player-1",
+            source: .fishAbility("consume.consumer"),
+            kind: .consumeFishFromHand,
+            options: [],
+            expectedInput: expectedInput,
+            isOptional: true,
+            abilityDefinition: ability,
+            consumeFishFromHandProgress: progress,
+            selectedAbilityEffect: .consumeFishFromHand(count: 1),
+            createdAtSequence: 2
+        )
+    }
+
     private func compoundAbilityPendingChoice() -> PendingChoice {
         let sourceAddress = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
         let ability = AbilityDefinition(
@@ -3757,6 +3836,8 @@ final class GameBoardViewModelTests: XCTestCase {
             return .coralPayment
         case .scatterSchool:
             return .scatterSchoolSource
+        case .consumeFishFromHand:
+            return .consumeFishConsumer
         case .drawFish,
              .compoundAbility,
              .bottomBonus,
@@ -3910,6 +3991,17 @@ final class GameBoardViewModelTests: XCTestCase {
                     printedPoints: 4,
                     lengthCm: 20
                 )
+            ]
+        )
+    }
+
+    private func consumeFishCatalog() -> TestCardCatalog {
+        TestCardCatalog(
+            fishCards: [
+                Card(id: "consume.consumer", name: "Consumer Fish", printedPoints: 5, lengthCm: 40),
+                Card(id: "consume.short", name: "Short Fish", printedPoints: 1, lengthCm: 10),
+                Card(id: "consume.same", name: "Same Fish", printedPoints: 1, lengthCm: 40),
+                Card(id: "consume.long", name: "Long Fish", printedPoints: 1, lengthCm: 60)
             ]
         )
     }

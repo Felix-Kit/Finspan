@@ -167,6 +167,12 @@ enum AppStrings {
         static func scatterSchoolProgressText(completedCount: Int, totalCount: Int) -> String {
             "放置幼鱼 \(completedCount) / \(totalCount)"
         }
+        static let consumeFishFromHand = "吞噬手牌鱼"
+        static let consumeFishConsumer = "选择吞噬者"
+        static let consumeFishHandCard = "选择一张更短的手牌鱼"
+        static let consumeFishNoConsumer = "没有可吞噬手牌鱼的海洋鱼"
+        static let consumeFishNoHandCard = "没有可吞噬的手牌鱼"
+        static let consumeFishMustBeShorter = "只能选择更短的鱼"
         static let abilityUnsupported = "能力暂未接入"
         static let bottomBonus = "底部奖励"
         static let firstBottomBonus = "首次到底奖励"
@@ -467,6 +473,14 @@ enum AppStrings {
             "\(playerName) 放置了 1 个幼鱼"
         }
 
+        static func rewardConsumeFishFromHandActionSummary(
+            playerName: String,
+            consumerName: String,
+            consumedName: String
+        ) -> String {
+            "\(playerName) 的 \(consumerName) 吞噬了手牌中的 \(consumedName)"
+        }
+
         static func rewardGainCoralActionSummary(playerName: String, diveSiteName: String) -> String {
             "\(playerName) 在\(diveSiteName)获得 1 个珊瑚"
         }
@@ -584,6 +598,8 @@ enum AppStrings {
             return "获得珊瑚"
         case .scatterSchool:
             return "打散鱼群"
+        case .consumeFishFromHand:
+            return "吞噬手牌鱼"
         case .compoundAbility:
             return "鱼牌能力"
         case .bottomBonus:

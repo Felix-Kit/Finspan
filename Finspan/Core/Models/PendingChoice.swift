@@ -13,6 +13,7 @@ struct PendingChoice: Identifiable, Codable, Equatable, Sendable {
     var abilityDefinition: AbilityDefinition? = nil
     var compoundAbilityProgress: CompoundAbilityProgress? = nil
     var scatterSchoolProgress: ScatterSchoolProgress? = nil
+    var consumeFishFromHandProgress: ConsumeFishFromHandProgress? = nil
     var selectedAbilityEffect: AbilityEffectUnit? = nil
     var createdAtSequence: EventID
 
@@ -37,6 +38,7 @@ enum PendingChoiceKind: String, Codable, Equatable, Sendable {
     case moveYoungOrSchool
     case gainCoral
     case scatterSchool
+    case consumeFishFromHand
     case compoundAbility
     case bottomBonus
     case placeholder
@@ -57,6 +59,8 @@ enum PendingChoiceExpectedInput: Codable, Equatable, Sendable {
     case coralPlacement
     case scatterSchoolSource
     case scatterSchoolYoungTarget
+    case consumeFishConsumer
+    case consumeFishHandCard
     case abilityEffectSelection
     case count(Int)
 }
@@ -74,6 +78,8 @@ enum PendingChoiceResolution: Codable, Equatable, Sendable {
     case gainCoralFromAbility(diveSite: DiveSite)
     case chooseScatterSchoolSource(OceanSlotAddress)
     case placeScatterSchoolYoung(OceanSlotAddress)
+    case chooseConsumeFishConsumer(OceanSlotAddress)
+    case consumeFishFromHand(CardID)
     case chooseOption(String)
     case chooseAbilityEffect(AbilityEffectUnit)
     case finishAbility
@@ -91,6 +97,7 @@ enum PendingChoiceAppliedEffect: Codable, Equatable, Sendable {
     case skipCoral(playerId: PlayerID, diveSite: DiveSite)
     case scatterSchoolSourceRemoved(playerId: PlayerID, source: OceanSlotAddress)
     case scatterSchoolYoungPlaced(playerId: PlayerID, target: OceanSlotAddress)
+    case fishConsumedFromHand(playerId: PlayerID, consumerSlot: OceanSlotAddress, consumedCardId: CardID)
     case placeholder(String)
 }
 
@@ -124,5 +131,13 @@ struct ScatterSchoolProgress: Codable, Equatable, Sendable {
 
     var isComplete: Bool {
         completedTargetCount >= requiredTargetCount
+    }
+}
+
+struct ConsumeFishFromHandProgress: Codable, Equatable, Sendable {
+    var consumerSlot: OceanSlotAddress?
+
+    nonisolated init(consumerSlot: OceanSlotAddress? = nil) {
+        self.consumerSlot = consumerSlot
     }
 }
