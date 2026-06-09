@@ -99,6 +99,8 @@ struct AuthoritativeEventFactory {
             return .pendingChoiceCreated(payload)
         case let .pendingChoiceResolved(payload):
             return .pendingChoiceResolved(payload)
+        case let .gameEndAbilityActivated(payload):
+            return .gameEndAbilityActivated(payload)
         case let .abilityOptionChosen(payload):
             return .abilityOptionChosen(payload)
         case let .turnAdvanced(payload):

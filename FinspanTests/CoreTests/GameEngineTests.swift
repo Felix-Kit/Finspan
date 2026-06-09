@@ -662,13 +662,14 @@ final class GameEngineTests: XCTestCase {
         XCTAssertNil(event.nextWeek)
     }
 
-    func testFourthWeekEndAutomaticallyGeneratesGameEndedAndStoresFinalScore() throws {
+    func testFourthWeekEndEntersGameEndAbilityPhaseBeforeFinalScore() throws {
         let engine = GameEngine()
         var state = playFishState()
         state.currentWeek = 4
         state.firstPlayerId = "player-1"
         state.playerGameStates["player-1"]?.availableDivers = 1
         state.playerGameStates["player-2"]?.availableDivers = 0
+        state.playerGameStates["player-1"]?.diveSitesReachedBottomThisWeek = [.blue]
 
         let drafts = try engine.makeEventDrafts(
             for: PlayerCommand(
@@ -680,10 +681,19 @@ final class GameEngineTests: XCTestCase {
             in: state
         )
 
-        guard case let .weekEnded(weekEnded) = drafts[drafts.count - 2],
-              case let .gameEnded(gameEnded) = drafts.last
-        else {
-            return XCTFail("Expected weekEnded followed by gameEnded.")
+        XCTAssertFalse(drafts.contains { draft in
+            if case .gameEnded = draft {
+                return true
+            }
+            return false
+        })
+        guard case let .weekEnded(weekEnded) = drafts.first(where: { draft in
+            if case .weekEnded = draft {
+                return true
+            }
+            return false
+        }) else {
+            return XCTFail("Expected weekEnded event.")
         }
 
         let endGamePendingState = engine.reduce(
@@ -695,8 +705,27 @@ final class GameEngineTests: XCTestCase {
                 payload: .weekEnded(weekEnded)
             )
         )
+
+        XCTAssertEqual(endGamePendingState.phase, .endGamePending)
+        XCTAssertNil(endGamePendingState.finalScoreResult)
+    }
+
+    func testFinishGameEndAbilitiesStoresFinalScore() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        state.phase = .endGamePending
+        state.activePlayerId = nil
+
+        let drafts = try engine.makeEventDrafts(
+            for: finishGameEndAbilitiesCommand(commandId: "finish-game-end"),
+            in: state
+        )
+
+        guard case let .gameEnded(gameEnded) = drafts.first else {
+            return XCTFail("Expected gameEnded event.")
+        }
         let gameEndedState = engine.reduce(
-            state: endGamePendingState,
+            state: state,
             event: GameEvent(
                 sequenceNumber: 11,
                 roomId: roomId,
@@ -705,9 +734,119 @@ final class GameEngineTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(endGamePendingState.phase, .endGamePending)
         XCTAssertEqual(gameEndedState.phase, .gameEnded)
         XCTAssertEqual(gameEndedState.finalScoreResult, gameEnded.finalScoreResult)
+    }
+
+    func testGameEndAbilityActivationCreatesPendingChoice() throws {
+        let engine = GameEngine(cardCatalog: gameEndAbilityCatalog())
+        let state = gameEndAbilityState(cardIds: ["sr.gameEnd.anyCoral"])
+        let source = gameEndAbilitySource(cardId: "sr.gameEnd.anyCoral", abilityId: SharksAndReefsAbilityIDs.anyCoralTwiceGameEnd)
+
+        let drafts = try engine.makeEventDrafts(
+            for: activateGameEndAbilityCommand(commandId: "activate-game-end", source: source),
+            in: state
+        )
+
+        guard case let .pendingChoiceCreated(choice) = drafts.first else {
+            return XCTFail("Expected pendingChoiceCreated event.")
+        }
+        XCTAssertEqual(choice.playerId, "player-1")
+        XCTAssertEqual(choice.source, .endGameAbility(source.id))
+        XCTAssertEqual(choice.kind, .compoundAbility)
+        XCTAssertEqual(choice.expectedInput, .abilityEffectSelection)
+    }
+
+    func testResolvingGameEndAbilityMarksSourceActivatedAndPreventsRepeat() throws {
+        let engine = GameEngine(cardCatalog: gameEndAbilityCatalog())
+        var state = gameEndAbilityState(cardIds: ["sr.gameEnd.anyCoral"])
+        let source = gameEndAbilitySource(cardId: "sr.gameEnd.anyCoral", abilityId: SharksAndReefsAbilityIDs.anyCoralTwiceGameEnd)
+
+        state = try resolveAnyCoralGameEndAbility(source: source, in: state, using: engine)
+
+        XCTAssertEqual(coralCount(.green, in: state), 1)
+        XCTAssertEqual(coralCount(.blue, in: state), 1)
+        XCTAssertTrue(state.activatedGameEndAbilitySourceIds.contains(source.id))
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: activateGameEndAbilityCommand(commandId: "repeat-game-end", source: source),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .invalidPendingChoiceResolution(source.id))
+        }
+    }
+
+    func testGameEndAbilitiesCanBeActivatedInAnySourceOrder() throws {
+        let engine = GameEngine(cardCatalog: gameEndAbilityCatalog())
+        let state = gameEndAbilityState(cardIds: ["sr.gameEnd.anyCoral", "sr.gameEnd.greenCoral"])
+        let secondSource = gameEndAbilitySource(
+            cardId: "sr.gameEnd.greenCoral",
+            abilityId: SharksAndReefsAbilityIDs.greenCoralThreeGameEnd,
+            rowIndex: 1
+        )
+
+        let drafts = try engine.makeEventDrafts(
+            for: activateGameEndAbilityCommand(commandId: "activate-second-game-end", source: secondSource),
+            in: state
+        )
+
+        guard case let .pendingChoiceCreated(choice) = drafts.first else {
+            return XCTFail("Expected pending choice for the second source.")
+        }
+        XCTAssertEqual(choice.source, .endGameAbility(secondSource.id))
+    }
+
+    func testUnsupportedGameEndAbilityCannotActivateButDoesNotCrash() {
+        let engine = GameEngine(cardCatalog: gameEndAbilityCatalog())
+        let state = gameEndAbilityState(cardIds: ["gameEnd.unsupported"])
+        let source = gameEndAbilitySource(cardId: "gameEnd.unsupported", abilityId: "unsupported.test.gameEnd.card_999")
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: activateGameEndAbilityCommand(commandId: "activate-unsupported-game-end", source: source),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .invalidPendingChoiceResolution(source.id))
+        }
+    }
+
+    func testConsumedFishGameEndAbilityIsIgnored() {
+        let engine = GameEngine(cardCatalog: gameEndAbilityCatalog())
+        var state = gameEndAbilityState(cardIds: [])
+        let address = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        setConsumedFish([ConsumedFish(cardId: "sr.gameEnd.anyCoral")], at: address, in: &state)
+        let source = gameEndAbilitySource(cardId: "sr.gameEnd.anyCoral", abilityId: SharksAndReefsAbilityIDs.anyCoralTwiceGameEnd)
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: activateGameEndAbilityCommand(commandId: "activate-consumed-game-end", source: source),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .invalidPendingChoiceResolution(source.id))
+        }
+    }
+
+    func testGameEndAbilityEffectsAreIncludedInFinalScoreAfterFinish() throws {
+        let engine = GameEngine(cardCatalog: gameEndAbilityCatalog())
+        var state = gameEndAbilityState(cardIds: ["sr.gameEnd.anyCoral"])
+        let source = gameEndAbilitySource(cardId: "sr.gameEnd.anyCoral", abilityId: SharksAndReefsAbilityIDs.anyCoralTwiceGameEnd)
+        state = try resolveAnyCoralGameEndAbility(source: source, in: state, using: engine)
+
+        let drafts = try engine.makeEventDrafts(
+            for: finishGameEndAbilitiesCommand(commandId: "finish-scored-game-end"),
+            in: state
+        )
+
+        guard case let .gameEnded(gameEnded) = drafts.first,
+              let playerScore = gameEnded.finalScoreResult.results.first(where: { $0.playerId == "player-1" })
+        else {
+            return XCTFail("Expected final score.")
+        }
+        XCTAssertEqual(playerScore.coralPoints, 2)
+        XCTAssertEqual(gameEnded.finalScoreResult.results.first?.totalPoints, playerScore.totalPoints)
     }
 
     func testFinalScoreCalculatorScoresAllSupportedCategoriesAndExcludesForageFishPrintedPoints() {
@@ -5630,6 +5769,27 @@ final class GameEngineTests: XCTestCase {
         )
     }
 
+    private func activateGameEndAbilityCommand(
+        commandId: CommandID,
+        source: GameEndAbilitySource
+    ) -> PlayerCommand {
+        PlayerCommand(
+            commandId: commandId,
+            playerId: source.playerId,
+            roomId: roomId,
+            payload: .activateGameEndAbility(ActivateGameEndAbilityCommand(source: source))
+        )
+    }
+
+    private func finishGameEndAbilitiesCommand(commandId: CommandID) -> PlayerCommand {
+        PlayerCommand(
+            commandId: commandId,
+            playerId: "player-1",
+            roomId: roomId,
+            payload: .finishGameEndAbilities(FinishGameEndAbilitiesCommand())
+        )
+    }
+
     private func playFishCommand(
         commandId: CommandID,
         cardId: CardID,
@@ -5910,6 +6070,37 @@ final class GameEngineTests: XCTestCase {
         )
     }
 
+    private func gameEndAbilityCatalog() -> TestCardCatalog {
+        TestCardCatalog(
+            fishCards: [
+                Card(
+                    id: "sr.gameEnd.anyCoral",
+                    name: "Any Coral Game End Fish",
+                    abilityIds: [SharksAndReefsAbilityIDs.anyCoralTwiceGameEnd],
+                    abilityText: "游戏结束：获得 2 个任意珊瑚",
+                    printedPoints: 1,
+                    lengthCm: 20
+                ),
+                Card(
+                    id: "sr.gameEnd.greenCoral",
+                    name: "Green Coral Game End Fish",
+                    abilityIds: [SharksAndReefsAbilityIDs.greenCoralThreeGameEnd],
+                    abilityText: "游戏结束：获得 3 个绿色珊瑚",
+                    printedPoints: 1,
+                    lengthCm: 21
+                ),
+                Card(
+                    id: "gameEnd.unsupported",
+                    name: "Unsupported Game End Fish",
+                    abilityIds: ["unsupported.test.gameEnd.card_999"],
+                    abilityText: "游戏结束：未接入能力",
+                    printedPoints: 1,
+                    lengthCm: 22
+                )
+            ]
+        )
+    }
+
     private func playFishForFreeCatalog() -> TestCardCatalog {
         TestCardCatalog(
             fishCards: [
@@ -6062,6 +6253,103 @@ final class GameEngineTests: XCTestCase {
             playerState.ocean.slots[index].content = .empty
         }
         state.playerGameStates[playerId] = playerState
+    }
+
+    private func gameEndAbilityState(cardIds: [CardID]) -> GameState {
+        var state = playFishState()
+        state.phase = .endGamePending
+        state.activePlayerId = nil
+        state.pendingChoices = [:]
+        state.playerGameStates["player-1"]?.ocean.coralReefs = CoralReefState.sharksAndReefsInitial
+        clearOceanContent(for: "player-1", in: &state)
+        for (index, cardId) in cardIds.enumerated() {
+            setContent(
+                .fishCard(cardId),
+                at: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: index),
+                in: &state
+            )
+        }
+        return state
+    }
+
+    private func gameEndAbilitySource(
+        cardId: CardID,
+        abilityId: AbilityID,
+        rowIndex: Int = 0
+    ) -> GameEndAbilitySource {
+        GameEndAbilitySource(
+            playerId: "player-1",
+            slotAddress: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: rowIndex),
+            cardId: cardId,
+            abilityId: abilityId
+        )
+    }
+
+    private func resolveAnyCoralGameEndAbility(
+        source: GameEndAbilitySource,
+        in state: GameState,
+        using engine: GameEngine
+    ) throws -> GameState {
+        var state = applying(
+            try engine.makeEventDrafts(
+                for: activateGameEndAbilityCommand(commandId: "activate-\(source.cardId)", source: source),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        var choice = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "choose-first-\(source.cardId)",
+                    choiceId: choice.choiceId,
+                    resolution: .chooseAbilityEffect(.gainCoral(selector: .any, count: 1))
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        choice = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "resolve-first-\(source.cardId)",
+                    choiceId: choice.choiceId,
+                    resolution: .gainCoralFromAbility(diveSite: .green)
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        choice = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "choose-second-\(source.cardId)",
+                    choiceId: choice.choiceId,
+                    resolution: .chooseAbilityEffect(.gainCoral(selector: .any, count: 1))
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        choice = try XCTUnwrap(state.pendingChoices.values.first)
+        return applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "resolve-second-\(source.cardId)",
+                    choiceId: choice.choiceId,
+                    resolution: .gainCoralFromAbility(diveSite: .blue)
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
     }
 
     private func setContent(

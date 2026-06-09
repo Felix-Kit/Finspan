@@ -120,6 +120,13 @@ enum AppStrings {
         static let finalScoreConsumedFish = "被吞食鱼"
         static let finalScoreCoral = "珊瑚"
         static let finalScoreCompleteReefBonus = "完整珊瑚礁奖励"
+        static let gameEndAbilityPhaseTitle = "游戏结束能力"
+        static let gameEndAbilityPhaseSummary = "可以按任意顺序发动可用的游戏结束能力。"
+        static let gameEndAbilityPhaseEmpty = "没有可发动的游戏结束能力。"
+        static let gameEndAbilityAvailable = "可发动"
+        static let gameEndAbilityActivated = "已处理"
+        static let gameEndAbilityUnsupported = "能力暂未接入"
+        static let finishGameEndAbilities = "进入最终计分"
         static let playerColor = "玩家颜色"
         static let pendingChoicePlayer = "玩家"
         static let pendingChoiceSource = "来源"
@@ -656,7 +663,7 @@ enum AppStrings {
         case .weekScoring:
             return "周结算"
         case .endGamePending:
-            return "游戏结束待结算"
+            return "游戏结束能力"
         case .gameEnded:
             return "游戏结束"
         }

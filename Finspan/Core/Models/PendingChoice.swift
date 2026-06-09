@@ -25,7 +25,7 @@ enum PendingChoiceSource: Codable, Equatable, Sendable {
     case diveBonus(DiveActionSite)
     case coralReef(DiveSite)
     case fishAbility(CardID)
-    case endGameAbility
+    case endGameAbility(String)
     case allPlayers
     case expansion(String)
     case placeholder(String)

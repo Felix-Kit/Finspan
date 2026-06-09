@@ -26,6 +26,7 @@ struct GameState: Codable, Equatable, Sendable {
     var pendingChoices: [PendingChoiceID: PendingChoice] = [:]
     var activeDiveQueue: DiveResolutionQueue? = nil
     var weeklyAchievementResults: [WeeklyAchievementResult] = []
+    var activatedGameEndAbilitySourceIds: Set<String> = []
     var finalScoreResult: FinalScoreResult? = nil
 
     static let empty = GameState(
@@ -44,6 +45,24 @@ struct GameState: Codable, Equatable, Sendable {
         pendingChoices: [:],
         activeDiveQueue: nil,
         weeklyAchievementResults: [],
+        activatedGameEndAbilitySourceIds: [],
         finalScoreResult: nil
     )
+}
+
+struct GameEndAbilitySource: Identifiable, Codable, Equatable, Hashable, Sendable {
+    var playerId: PlayerID
+    var slotAddress: OceanSlotAddress
+    var cardId: CardID
+    var abilityId: AbilityID
+
+    var id: String {
+        [
+            playerId,
+            slotAddress.diveSite.rawValue,
+            "\(slotAddress.rowIndex)",
+            cardId,
+            abilityId
+        ].joined(separator: "|")
+    }
 }

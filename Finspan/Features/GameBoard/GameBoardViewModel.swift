@@ -381,6 +381,27 @@ struct RightActionPanelViewState: Equatable {
     let primaryPendingChoiceAction: PendingChoiceAction?
 }
 
+struct GameEndAbilityPhaseViewState: Equatable {
+    let title: String
+    let summaryText: String
+    let emptyText: String
+    let finishButtonTitle: String
+    let canFinish: Bool
+    let abilityRows: [GameEndAbilityRowViewState]
+}
+
+struct GameEndAbilityRowViewState: Identifiable, Equatable {
+    var id: String { source.id }
+
+    let source: GameEndAbilitySource
+    let fishName: String
+    let abilitySummary: String
+    let statusText: String
+    let isActivated: Bool
+    let isSupported: Bool
+    let canActivate: Bool
+}
+
 struct WeeklyGoalHudViewState: Equatable {
     let boxes: [WeeklyGoalBoxViewState]
     let selectedDetailWeek: Int?
@@ -1049,6 +1070,21 @@ final class GameBoardViewModel: ObservableObject {
             )
         }
 
+        if state.phase == .endGamePending {
+            return RightActionPanelViewState(
+                title: AppStrings.GameBoard.gameEndAbilityPhaseTitle,
+                summaryLines: [AppStrings.GameBoard.gameEndAbilityPhaseSummary],
+                primaryButtonTitle: AppStrings.GameBoard.finishGameEndAbilities,
+                isPrimaryButtonEnabled: state.pendingChoices.isEmpty,
+                secondaryButtonTitle: nil,
+                isSecondaryButtonVisible: false,
+                warningText: nil,
+                actionKind: .unsupported,
+                pendingChoiceId: nil,
+                primaryPendingChoiceAction: nil
+            )
+        }
+
         return RightActionPanelViewState(
             title: AppStrings.GameBoard.currentAction,
             summaryLines: [AppStrings.GameBoard.chooseMainAction],
@@ -1536,6 +1572,21 @@ final class GameBoardViewModel: ObservableObject {
                     actions: pendingChoiceActionButtons(for: choice)
                 )
             }
+    }
+
+    var gameEndAbilityPhaseViewState: GameEndAbilityPhaseViewState? {
+        guard state.phase == .endGamePending else {
+            return nil
+        }
+        let rows = gameEndAbilityRows()
+        return GameEndAbilityPhaseViewState(
+            title: AppStrings.GameBoard.gameEndAbilityPhaseTitle,
+            summaryText: AppStrings.GameBoard.gameEndAbilityPhaseSummary,
+            emptyText: AppStrings.GameBoard.gameEndAbilityPhaseEmpty,
+            finishButtonTitle: AppStrings.GameBoard.finishGameEndAbilities,
+            canFinish: state.pendingChoices.isEmpty,
+            abilityRows: rows
+        )
     }
 
     private var activeRewardChoice: PendingChoice? {
@@ -2485,8 +2536,7 @@ final class GameBoardViewModel: ObservableObject {
             submitPlayFish()
         case .pendingChoice,
              .rewardSelection,
-             .moveResource,
-             .unsupported:
+             .moveResource:
             guard let choiceId = viewState.pendingChoiceId,
                   let action = viewState.primaryPendingChoiceAction
             else {
@@ -2494,6 +2544,10 @@ final class GameBoardViewModel: ObservableObject {
                 return
             }
             performPendingChoiceAction(action, for: choiceId)
+        case .unsupported where state.phase == .endGamePending:
+            finishGameEndAbilities()
+        case .unsupported:
+            errorMessage = viewState.warningText ?? AppStrings.GameBoard.chooseRewardToken
         case .none:
             errorMessage = AppStrings.GameBoard.chooseMainAction
         }
@@ -2690,6 +2744,51 @@ final class GameBoardViewModel: ObservableObject {
         resolvePendingChoice(choiceId, resolution: .skip)
     }
 
+    func activateGameEndAbility(_ source: GameEndAbilitySource) {
+        guard let roomId = state.roomId ?? roomService.gameRoom?.roomId else {
+            errorMessage = AppStrings.GameBoard.noActiveRoom
+            return
+        }
+        do {
+            _ = try roomService.submit(
+                PlayerCommand(
+                    commandId: nextCommandId(),
+                    playerId: source.playerId,
+                    roomId: roomId,
+                    payload: .activateGameEndAbility(ActivateGameEndAbilityCommand(source: source))
+                )
+            )
+            errorMessage = nil
+            refresh()
+        } catch {
+            errorMessage = localizedErrorMessage(for: error)
+            refresh()
+        }
+    }
+
+    func finishGameEndAbilities() {
+        guard let roomId = state.roomId ?? roomService.gameRoom?.roomId else {
+            errorMessage = AppStrings.GameBoard.noActiveRoom
+            return
+        }
+        let playerId = players.first?.playerId ?? state.players.first?.id ?? state.playerGameStates.keys.sorted().first ?? ""
+        do {
+            _ = try roomService.submit(
+                PlayerCommand(
+                    commandId: nextCommandId(),
+                    playerId: playerId,
+                    roomId: roomId,
+                    payload: .finishGameEndAbilities(FinishGameEndAbilitiesCommand())
+                )
+            )
+            errorMessage = nil
+            refresh()
+        } catch {
+            errorMessage = localizedErrorMessage(for: error)
+            refresh()
+        }
+    }
+
     func performPendingChoiceAction(_ action: PendingChoiceAction, for choiceId: PendingChoiceID) {
         switch action {
         case .drawFish:
@@ -2810,6 +2909,8 @@ final class GameBoardViewModel: ObservableObject {
                 isGameEndTriggered: event.isGameEndTriggered,
                 achievementSummary: achievementSummary.isEmpty ? nil : achievementSummary
             )
+        case let .gameEndAbilityActivated(event):
+            payload = "游戏结束能力已处理：\(displayName(for: event.source.playerId)) \(cardTitle(event.source.cardId))"
         case let .gameEnded(event):
             payload = AppStrings.GameBoard.gameEndedEventText(
                 winnerNames: event.finalScoreResult.winnerPlayerIds.map(displayName)
@@ -5226,6 +5327,56 @@ final class GameBoardViewModel: ObservableObject {
         players.first(where: { $0.playerId == playerId })?.displayName
             ?? state.players.first(where: { $0.id == playerId })?.name
             ?? playerId
+    }
+
+    private func gameEndAbilityRows() -> [GameEndAbilityRowViewState] {
+        state.players.flatMap { player in
+            guard let playerState = state.playerGameStates[player.id] else {
+                return [] as [GameEndAbilityRowViewState]
+            }
+            return playerState.ocean.slots.flatMap { slot -> [GameEndAbilityRowViewState] in
+                guard case let .fishCard(cardId) = slot.content,
+                      let card = cardsById[cardId]
+                else {
+                    return []
+                }
+                return abilityResolver.abilityDefinitions(for: card, trigger: .gameEnd).map { ability in
+                    let source = GameEndAbilitySource(
+                        playerId: player.id,
+                        slotAddress: slot.address,
+                        cardId: cardId,
+                        abilityId: ability.abilityId
+                    )
+                    let isActivated = state.activatedGameEndAbilitySourceIds.contains(source.id)
+                    let isSupported = !ability.effects.contains(.unsupported)
+                    let canActivate = state.pendingChoices.isEmpty && isSupported && !isActivated
+                    let statusText: String
+                    if isActivated {
+                        statusText = AppStrings.GameBoard.gameEndAbilityActivated
+                    } else if isSupported {
+                        statusText = AppStrings.GameBoard.gameEndAbilityAvailable
+                    } else {
+                        statusText = AppStrings.GameBoard.gameEndAbilityUnsupported
+                    }
+                    return GameEndAbilityRowViewState(
+                        source: source,
+                        fishName: card.name,
+                        abilitySummary: gameEndAbilitySummary(for: ability, card: card),
+                        statusText: statusText,
+                        isActivated: isActivated,
+                        isSupported: isSupported,
+                        canActivate: canActivate
+                    )
+                }
+            }
+        }
+    }
+
+    private func gameEndAbilitySummary(for ability: AbilityDefinition, card: Card) -> String {
+        if !ability.displayText.isEmpty {
+            return ability.displayText
+        }
+        return card.abilityText ?? AppStrings.GameBoard.gameEndAbilityUnsupported
     }
 
     private func finalScoreLegendItems(shouldShowCoralScores: Bool) -> [ScoreLegendItemViewState] {

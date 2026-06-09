@@ -237,6 +237,8 @@ final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring 
              .playFish,
              .dive,
              .resolvePendingChoice,
+             .activateGameEndAbility,
+             .finishGameEndAbilities,
              .chooseAbilityOption:
             let room = try requireRoom(for: command)
             if !room.players.contains(where: { $0.playerId == command.playerId }) {
@@ -360,6 +362,7 @@ final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring 
              .diverMoved,
              .pendingChoiceCreated,
              .pendingChoiceResolved,
+             .gameEndAbilityActivated,
              .abilityOptionChosen,
              .weekEnded,
              .snapshotCreated:

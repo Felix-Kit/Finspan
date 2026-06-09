@@ -86,6 +86,9 @@ enum SharksAndReefsAbilityIDs {
     nonisolated static let freePlaySmallWhenPlayed: AbilityID = "unsupported.sr.whenPlayed.card_170"
     nonisolated static let freePlayMediumWhenPlayed: AbilityID = "unsupported.sr.whenPlayed.card_192"
     nonisolated static let freePlayCamouflageWhenPlayed: AbilityID = "unsupported.sr.whenPlayed.card_200"
+    nonisolated static let anyCoralTwiceGameEnd: AbilityID = "unsupported.sr.gameEnd.card_174"
+    nonisolated static let bluePurpleGreenCoralGameEnd: AbilityID = "unsupported.sr.gameEnd.card_181"
+    nonisolated static let greenCoralThreeGameEnd: AbilityID = "unsupported.sr.gameEnd.card_208"
 }
 
 enum SharksAndReefsAbilityDefinitions {
@@ -175,6 +178,41 @@ enum SharksAndReefsAbilityDefinitions {
             effects: [.playFishForFree(filter: .tag("camouflage"), count: 1)],
             isOptional: true,
             displayText: "打出时：免费打出 1 张伪装鱼"
+        ),
+        AbilityDefinition(
+            abilityId: SharksAndReefsAbilityIDs.anyCoralTwiceGameEnd,
+            trigger: .gameEnd,
+            effects: [
+                .gainCoral(selector: .any, count: 1),
+                .gainCoral(selector: .any, count: 1)
+            ],
+            canResolveInAnyOrder: false,
+            isOptional: true,
+            displayText: "游戏结束：获得 2 个任意珊瑚"
+        ),
+        AbilityDefinition(
+            abilityId: SharksAndReefsAbilityIDs.bluePurpleGreenCoralGameEnd,
+            trigger: .gameEnd,
+            effects: [
+                .gainCoral(selector: .blue, count: 1),
+                .gainCoral(selector: .purple, count: 1),
+                .gainCoral(selector: .green, count: 1)
+            ],
+            canResolveInAnyOrder: false,
+            isOptional: true,
+            displayText: "游戏结束：获得蓝色、紫色、绿色珊瑚各 1 个"
+        ),
+        AbilityDefinition(
+            abilityId: SharksAndReefsAbilityIDs.greenCoralThreeGameEnd,
+            trigger: .gameEnd,
+            effects: [
+                .gainCoral(selector: .green, count: 1),
+                .gainCoral(selector: .green, count: 1),
+                .gainCoral(selector: .green, count: 1)
+            ],
+            canResolveInAnyOrder: false,
+            isOptional: true,
+            displayText: "游戏结束：获得 3 个绿色珊瑚"
         )
     ]
 }
@@ -214,9 +252,17 @@ struct AbilityResolver: Sendable {
     }
 
     nonisolated private func unsupportedAbilityDefinition(abilityId: AbilityID) -> AbilityDefinition {
-        AbilityDefinition(
+        let trigger: AbilityTrigger
+        if abilityId.contains(".gameEnd.") {
+            trigger = .gameEnd
+        } else if abilityId.contains(".whenPlayed.") {
+            trigger = .whenPlayed
+        } else {
+            trigger = .ifActivated
+        }
+        return AbilityDefinition(
             abilityId: abilityId,
-            trigger: .ifActivated,
+            trigger: trigger,
             effects: [.unsupported],
             isOptional: true
         )

@@ -49,6 +49,10 @@ struct GameEngine {
             try validateDive(payload, playerId: command.playerId, in: state)
         case let .resolvePendingChoice(payload):
             try validateResolvePendingChoice(payload, playerId: command.playerId, in: state)
+        case let .activateGameEndAbility(payload):
+            try validateActivateGameEndAbility(payload, playerId: command.playerId, in: state)
+        case .finishGameEndAbilities:
+            try validateFinishGameEndAbilities(playerId: command.playerId, in: state)
         case .createRoom,
              .joinRoom,
              .leaveRoom,
@@ -143,6 +147,8 @@ struct GameEngine {
             applyPendingChoiceEffects(payload.appliedEffects, to: &nextState)
             nextState.pendingChoices.removeValue(forKey: payload.choiceId)
             applyDiveQueueUpdate(payload.diveQueueUpdate, to: &nextState)
+        case let .gameEndAbilityActivated(payload):
+            nextState.activatedGameEndAbilitySourceIds.insert(payload.source.id)
         case let .turnAdvanced(payload):
             applyTurnAdvanced(payload, to: &nextState)
         case .playerReadyChanged,
@@ -261,6 +267,7 @@ struct GameEngine {
         case let .resolvePendingChoice(payload):
             let queueProgress = diveQueueProgressAfterResolving(payload, in: state)
             let nonQueueNextChoice = nonQueueCompoundChoiceAfterResolving(payload, in: state)
+            let resolvedChoice = state.pendingChoices[payload.choiceId]
             var drafts: [DomainEventDraft] = [
                 .pendingChoiceResolved(
                     PendingChoiceResolvedEvent(
@@ -284,6 +291,9 @@ struct GameEngine {
                 drafts.append(.pendingChoiceCreated(nextChoice))
                 return drafts
             }
+            if let source = gameEndAbilitySource(for: resolvedChoice) {
+                drafts.append(.gameEndAbilityActivated(GameEndAbilityActivatedEvent(source: source)))
+            }
             if shouldAdvanceTurnAfterResolving(payload, playerId: command.playerId, in: state) {
                 drafts.append(
                     contentsOf: actionCompletionDrafts(
@@ -301,6 +311,26 @@ struct GameEngine {
                     optionId: payload.optionId
                 )
             )]
+        case let .activateGameEndAbility(payload):
+            guard let choice = gameEndAbilityPendingChoice(
+                source: payload.source,
+                commandId: command.commandId,
+                in: state
+            ) else {
+                return []
+            }
+            return [.pendingChoiceCreated(choice)]
+        case .finishGameEndAbilities:
+            return [
+                .gameEnded(
+                    GameEndedEvent(
+                        finalScoreResult: finalScoreCalculator.calculate(
+                            in: state,
+                            cardCatalog: cardCatalog
+                        )
+                    )
+                )
+            ]
         case .endTurn:
             return []
         }
@@ -350,18 +380,7 @@ struct GameEngine {
             return [weekEndedDraft]
         }
 
-        let endGamePendingState = stateAfterApplying([weekEndedDraft], to: projectedState)
-        return [
-            weekEndedDraft,
-            .gameEnded(
-                GameEndedEvent(
-                    finalScoreResult: finalScoreCalculator.calculate(
-                        in: endGamePendingState,
-                        cardCatalog: cardCatalog
-                    )
-                )
-            )
-        ]
+        return [weekEndedDraft]
     }
 
     private func stateAfterApplying(_ drafts: [DomainEventDraft], to state: GameState) -> GameState {
@@ -384,6 +403,8 @@ struct GameEngine {
             applyPendingChoiceEffects(payload.appliedEffects, to: &state)
             state.pendingChoices.removeValue(forKey: payload.choiceId)
             applyDiveQueueUpdate(payload.diveQueueUpdate, to: &state)
+        case let .gameEndAbilityActivated(payload):
+            state.activatedGameEndAbilitySourceIds.insert(payload.source.id)
         case let .turnAdvanced(payload):
             applyTurnAdvanced(payload, to: &state)
         case let .weekEnded(payload):
@@ -767,6 +788,44 @@ struct GameEngine {
             guard choice.kind == .compoundAbility, choice.isOptional else {
                 throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
             }
+        }
+    }
+
+    private func validateActivateGameEndAbility(
+        _ payload: ActivateGameEndAbilityCommand,
+        playerId: PlayerID,
+        in state: GameState
+    ) throws {
+        guard state.phase == .endGamePending else {
+            throw CommandValidationError.invalidPhase(state.phase)
+        }
+        guard payload.source.playerId == playerId else {
+            throw CommandValidationError.inactivePlayer(expected: payload.source.playerId, actual: playerId)
+        }
+        guard state.pendingChoices.isEmpty else {
+            throw CommandValidationError.unresolvedPendingChoices(playerId)
+        }
+        guard !state.activatedGameEndAbilitySourceIds.contains(payload.source.id),
+              let availableSource = gameEndAbilitySources(for: playerId, in: state)
+                .first(where: { $0.source == payload.source }),
+              availableSource.isSupported
+        else {
+            throw CommandValidationError.invalidPendingChoiceResolution(payload.source.id)
+        }
+    }
+
+    private func validateFinishGameEndAbilities(
+        playerId: PlayerID,
+        in state: GameState
+    ) throws {
+        guard state.phase == .endGamePending else {
+            throw CommandValidationError.invalidPhase(state.phase)
+        }
+        guard state.players.contains(where: { $0.id == playerId }) else {
+            throw CommandValidationError.missingPlayerState(playerId)
+        }
+        guard state.pendingChoices.isEmpty else {
+            throw CommandValidationError.unresolvedPendingChoices(playerId)
         }
     }
 
@@ -1503,7 +1562,35 @@ struct GameEngine {
         if case let .fishAbility(cardId) = choice.source {
             return cardId
         }
+        if case let .endGameAbility(sourceId) = choice.source {
+            return gameEndAbilitySource(from: sourceId)?.cardId
+        }
         return choice.compoundAbilityProgress?.sourceCardId
+    }
+
+    private func gameEndAbilitySource(for choice: PendingChoice?) -> GameEndAbilitySource? {
+        guard let choice,
+              case let .endGameAbility(sourceId) = choice.source
+        else {
+            return nil
+        }
+        return gameEndAbilitySource(from: sourceId)
+    }
+
+    private func gameEndAbilitySource(from sourceId: String) -> GameEndAbilitySource? {
+        let parts = sourceId.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
+        guard parts.count == 5,
+              let diveSite = DiveSite(rawValue: parts[1]),
+              let rowIndex = Int(parts[2])
+        else {
+            return nil
+        }
+        return GameEndAbilitySource(
+            playerId: parts[0],
+            slotAddress: OceanSlotAddress(playerId: parts[0], diveSite: diveSite, rowIndex: rowIndex),
+            cardId: parts[3],
+            abilityId: parts[4]
+        )
     }
 
     private func gainCoralSelector(for choice: PendingChoice) -> CoralDiveSiteSelector? {
@@ -1592,6 +1679,69 @@ struct GameEngine {
             diveQueueId: diveQueueId,
             diveStepId: diveStepId
         )
+    }
+
+    private struct GameEndAbilityCandidate: Equatable {
+        var source: GameEndAbilitySource
+        var card: Card
+        var ability: AbilityDefinition
+
+        var isSupported: Bool {
+            !ability.effects.contains(.unsupported)
+        }
+    }
+
+    private func gameEndAbilitySources(
+        for playerId: PlayerID,
+        in state: GameState
+    ) -> [GameEndAbilityCandidate] {
+        guard let playerState = state.playerGameStates[playerId] else {
+            return []
+        }
+
+        return playerState.ocean.slots.flatMap { slot -> [GameEndAbilityCandidate] in
+            guard case let .fishCard(cardId) = slot.content,
+                  let card = card(withId: cardId)
+            else {
+                return []
+            }
+            return abilityResolver.abilityDefinitions(for: card, trigger: .gameEnd).map { ability in
+                GameEndAbilityCandidate(
+                    source: GameEndAbilitySource(
+                        playerId: playerId,
+                        slotAddress: slot.address,
+                        cardId: cardId,
+                        abilityId: ability.abilityId
+                    ),
+                    card: card,
+                    ability: ability
+                )
+            }
+        }
+    }
+
+    private func gameEndAbilityPendingChoice(
+        source: GameEndAbilitySource,
+        commandId: CommandID,
+        in state: GameState
+    ) -> PendingChoice? {
+        guard let candidate = gameEndAbilitySources(for: source.playerId, in: state)
+            .first(where: { $0.source == source }),
+              candidate.isSupported
+        else {
+            return nil
+        }
+        var choice = abilityPendingChoice(
+            candidate.ability,
+            cardId: source.cardId,
+            sourceAddress: source.slotAddress,
+            choiceId: "\(commandId)-game-end-ability",
+            playerId: source.playerId,
+            diveQueueId: nil,
+            diveStepId: nil
+        )
+        choice.source = .endGameAbility(source.id)
+        return choice
     }
 
     private func abilityPendingChoice(

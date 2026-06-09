@@ -32,6 +32,7 @@ enum GameEventPayload: Codable, Equatable, Sendable {
     case diverMoved(DiverMovedEvent)
     case pendingChoiceCreated(PendingChoice)
     case pendingChoiceResolved(PendingChoiceResolvedEvent)
+    case gameEndAbilityActivated(GameEndAbilityActivatedEvent)
     case abilityOptionChosen(AbilityOptionChosenEvent)
     case turnAdvanced(TurnAdvancedEvent)
     case turnEnded(TurnEndedEvent)
@@ -102,6 +103,10 @@ struct PendingChoiceResolvedEvent: Codable, Equatable, Sendable {
     var resolution: PendingChoiceResolution
     var appliedEffects: [PendingChoiceAppliedEffect]
     var diveQueueUpdate: DiveResolutionQueueUpdate? = nil
+}
+
+struct GameEndAbilityActivatedEvent: Codable, Equatable, Sendable {
+    var source: GameEndAbilitySource
 }
 
 struct AbilityOptionChosenEvent: Codable, Equatable, Sendable {

@@ -2333,7 +2333,101 @@ final class GameBoardViewModelTests: XCTestCase {
         let viewModel = GameBoardViewModel(roomService: service)
 
         XCTAssertEqual(viewModel.currentWeekText, "4")
-        XCTAssertEqual(AppStrings.phaseName(viewModel.state.phase), "游戏结束待结算")
+        XCTAssertEqual(AppStrings.phaseName(viewModel.state.phase), "游戏结束能力")
+    }
+
+    func testGameEndAbilityPhaseViewStateShowsAbilityRowsAndStatuses() throws {
+        let catalog = gameEndAbilityCatalog()
+        let service = makeService(
+            hand: [],
+            phase: .endGamePending,
+            currentWeek: 4,
+            activePlayerId: nil
+        )
+        setContent(.fishCard("sr.gameEnd.anyCoral"), at: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0), in: service)
+        setContent(.fishCard("sr.gameEnd.greenCoral"), at: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 1), in: service)
+        setContent(.fishCard("gameEnd.unsupported"), at: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 2), in: service)
+        setContent(
+            .forageFish(
+                ForageFish(
+                    forageFishId: "forage-game-end",
+                    name: "测试饵鱼",
+                    lengthCm: 5,
+                    diveSite: .blue,
+                    rowIndex: 3
+                )
+            ),
+            at: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 3),
+            in: service
+        )
+        setConsumedFish(
+            [ConsumedFish(cardId: "sr.gameEnd.anyCoral")],
+            at: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 4),
+            in: service
+        )
+        let activatedSource = GameEndAbilitySource(
+            playerId: "player-1",
+            slotAddress: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0),
+            cardId: "sr.gameEnd.anyCoral",
+            abilityId: SharksAndReefsAbilityIDs.anyCoralTwiceGameEnd
+        )
+        setActivatedGameEndAbilitySources([activatedSource.id], in: service)
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalogProvider: { catalog }
+        )
+
+        let phase = try XCTUnwrap(viewModel.gameEndAbilityPhaseViewState)
+        XCTAssertEqual(phase.title, AppStrings.GameBoard.gameEndAbilityPhaseTitle)
+        XCTAssertEqual(phase.finishButtonTitle, AppStrings.GameBoard.finishGameEndAbilities)
+        XCTAssertTrue(phase.canFinish)
+        XCTAssertEqual(phase.abilityRows.map(\.fishName), [
+            "Any Coral Game End Fish",
+            "Green Coral Game End Fish",
+            "Unsupported Game End Fish"
+        ])
+
+        let activatedRow = try XCTUnwrap(phase.abilityRows.first { $0.fishName == "Any Coral Game End Fish" })
+        XCTAssertEqual(activatedRow.statusText, AppStrings.GameBoard.gameEndAbilityActivated)
+        XCTAssertFalse(activatedRow.canActivate)
+
+        let availableRow = try XCTUnwrap(phase.abilityRows.first { $0.fishName == "Green Coral Game End Fish" })
+        XCTAssertEqual(availableRow.statusText, AppStrings.GameBoard.gameEndAbilityAvailable)
+        XCTAssertTrue(availableRow.canActivate)
+
+        let unsupportedRow = try XCTUnwrap(phase.abilityRows.first { $0.fishName == "Unsupported Game End Fish" })
+        XCTAssertEqual(unsupportedRow.statusText, AppStrings.GameBoard.gameEndAbilityUnsupported)
+        XCTAssertFalse(unsupportedRow.isSupported)
+        XCTAssertFalse(unsupportedRow.canActivate)
+    }
+
+    func testGameEndAbilityPhaseActionsSubmitCommands() throws {
+        let catalog = gameEndAbilityCatalog()
+        let service = makeService(
+            hand: [],
+            phase: .endGamePending,
+            currentWeek: 4,
+            activePlayerId: nil
+        )
+        setContent(.fishCard("sr.gameEnd.greenCoral"), at: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0), in: service)
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalogProvider: { catalog }
+        )
+        let row = try XCTUnwrap(viewModel.gameEndAbilityPhaseViewState?.abilityRows.first)
+
+        viewModel.activateGameEndAbility(row.source)
+
+        guard case let .activateGameEndAbility(activation) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected activateGameEndAbility command.")
+        }
+        XCTAssertEqual(activation.source, row.source)
+
+        viewModel.finishGameEndAbilities()
+
+        guard case .finishGameEndAbilities = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected finishGameEndAbilities command.")
+        }
     }
 
     func testWeekEndedEventSummaryShowsNextWeek() {
@@ -4156,6 +4250,71 @@ final class GameBoardViewModelTests: XCTestCase {
             players: service.snapshot.players,
             state: service.gameState,
             events: service.snapshot.events
+        )
+    }
+
+    private func setConsumedFish(
+        _ consumedFish: [ConsumedFish],
+        at address: OceanSlotAddress,
+        in service: CapturingRoomService
+    ) {
+        guard var playerState = service.gameState.playerGameStates[address.playerId],
+              let slotIndex = playerState.ocean.slots.firstIndex(where: { $0.address == address })
+        else {
+            return
+        }
+
+        playerState.ocean.slots[slotIndex].consumedFish = consumedFish
+        service.gameState.playerGameStates[address.playerId] = playerState
+        service.snapshot = RoomSnapshot(
+            id: service.snapshot.id,
+            players: service.snapshot.players,
+            state: service.gameState,
+            events: service.snapshot.events
+        )
+    }
+
+    private func setActivatedGameEndAbilitySources(
+        _ sourceIds: Set<String>,
+        in service: CapturingRoomService
+    ) {
+        service.gameState.activatedGameEndAbilitySourceIds = sourceIds
+        service.snapshot = RoomSnapshot(
+            id: service.snapshot.id,
+            players: service.snapshot.players,
+            state: service.gameState,
+            events: service.snapshot.events
+        )
+    }
+
+    private func gameEndAbilityCatalog() -> TestCardCatalog {
+        TestCardCatalog(
+            fishCards: [
+                Card(
+                    id: "sr.gameEnd.anyCoral",
+                    name: "Any Coral Game End Fish",
+                    abilityIds: [SharksAndReefsAbilityIDs.anyCoralTwiceGameEnd],
+                    abilityText: "游戏结束：获得 2 个任意珊瑚",
+                    printedPoints: 1,
+                    lengthCm: 20
+                ),
+                Card(
+                    id: "sr.gameEnd.greenCoral",
+                    name: "Green Coral Game End Fish",
+                    abilityIds: [SharksAndReefsAbilityIDs.greenCoralThreeGameEnd],
+                    abilityText: "游戏结束：获得 3 个绿色珊瑚",
+                    printedPoints: 1,
+                    lengthCm: 21
+                ),
+                Card(
+                    id: "gameEnd.unsupported",
+                    name: "Unsupported Game End Fish",
+                    abilityIds: ["unsupported.test.gameEnd.card_999"],
+                    abilityText: "游戏结束：未接入能力",
+                    printedPoints: 1,
+                    lengthCm: 22
+                )
+            ]
         )
     }
 

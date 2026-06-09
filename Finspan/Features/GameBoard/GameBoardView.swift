@@ -395,9 +395,70 @@ struct GameBoardView: View {
                 .frame(maxHeight: 300, alignment: .topLeading)
             Divider()
             rightActionPanel
+            if let gameEndAbilityPhase = viewModel.gameEndAbilityPhaseViewState {
+                Divider()
+                gameEndAbilityPanel(gameEndAbilityPhase)
+            }
             Divider()
             sidePlayerInfoPanel
         }
+    }
+
+    private func gameEndAbilityPanel(_ viewState: GameEndAbilityPhaseViewState) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(viewState.title)
+                .font(.title3.weight(.semibold))
+            Text(viewState.summaryText)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+
+            if viewState.abilityRows.isEmpty {
+                Text(viewState.emptyText)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                LazyVStack(alignment: .leading, spacing: 8) {
+                    ForEach(viewState.abilityRows) { row in
+                        Button {
+                            viewModel.activateGameEndAbility(row.source)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack(alignment: .firstTextBaseline) {
+                                    Text(row.fishName)
+                                        .font(.headline)
+                                    Spacer()
+                                    Text(row.statusText)
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(row.canActivate ? .green : .secondary)
+                                }
+                                Text(row.abilitySummary)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!row.canActivate)
+                    }
+                }
+            }
+
+            Button {
+                viewModel.finishGameEndAbilities()
+            } label: {
+                Text(viewState.finishButtonTitle)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(!viewState.canFinish)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(.secondarySystemBackground))
+        )
     }
 
     private func discardPileEntry(_ viewState: DiscardPileViewState) -> some View {
