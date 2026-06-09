@@ -3000,6 +3000,105 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(payload.resolution, .gainCoralByDiscard(cardId: "fish-2"))
     }
 
+    func testScatterSchoolPendingChoiceShowsSourceRewardTokenAndHighlightsSchoolSource() throws {
+        let choice = scatterSchoolPendingChoice()
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let token = try XCTUnwrap(viewModel.rewardPoolViewState.rewards.first)
+
+        XCTAssertEqual(viewModel.rewardPoolViewState.rewards.map(\.kind), [.scatterSchool])
+        XCTAssertEqual(token.title, AppStrings.GameBoard.scatterSchool)
+        viewModel.selectRewardToken(token.id)
+
+        XCTAssertEqual(viewModel.rewardPoolViewState.instructionText, AppStrings.GameBoard.scatterSchoolSource)
+        XCTAssertTrue(viewModel.oceanSlots.contains {
+            $0.address == Self.resourceSourceAddress
+                && $0.isHighlightedByRewardSelection
+                && $0.rewardSelectionReasonText == AppStrings.GameBoard.scatterSchoolSource
+        })
+        XCTAssertTrue(service.submittedCommands.isEmpty)
+    }
+
+    func testSelectingScatterSchoolSourceBuildsResolveCommand() throws {
+        let choice = scatterSchoolPendingChoice()
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let token = try XCTUnwrap(viewModel.rewardPoolViewState.rewards.first)
+
+        viewModel.selectRewardToken(token.id)
+        viewModel.selectTargetSlot(Self.resourceSourceAddress)
+
+        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolvePendingChoice command.")
+        }
+        XCTAssertEqual(payload.choiceId, choice.choiceId)
+        XCTAssertEqual(payload.resolution, .chooseScatterSchoolSource(Self.resourceSourceAddress))
+    }
+
+    func testScatterSchoolYoungProgressShowsTargetRewardAndRejectsUsedTargetHighlight() throws {
+        let choice = scatterSchoolPendingChoice(
+            expectedInput: .scatterSchoolYoungTarget,
+            progress: ScatterSchoolProgress(
+                sourceSlot: Self.resourceSourceAddress,
+                targetSlots: [Self.slotAddress],
+                requiredTargetCount: 4,
+                requiresSchoolSource: true
+            )
+        )
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let token = try XCTUnwrap(viewModel.rewardPoolViewState.rewards.first)
+
+        XCTAssertEqual(token.title, AppStrings.GameBoard.scatterSchoolYoungTarget)
+        XCTAssertEqual(token.subtitle, AppStrings.GameBoard.scatterSchoolProgressText(completedCount: 1, totalCount: 4))
+        viewModel.selectRewardToken(token.id)
+
+        XCTAssertFalse(oceanSlot(in: viewModel, address: Self.slotAddress).isHighlightedByRewardSelection)
+        XCTAssertTrue(oceanSlot(in: viewModel, address: Self.forageTargetAddress).isHighlightedByRewardSelection)
+    }
+
+    func testSelectingScatterSchoolYoungTargetBuildsResolveCommand() throws {
+        let choice = scatterSchoolPendingChoice(
+            expectedInput: .scatterSchoolYoungTarget,
+            progress: ScatterSchoolProgress(
+                sourceSlot: Self.resourceSourceAddress,
+                targetSlots: [],
+                requiredTargetCount: 4,
+                requiresSchoolSource: true
+            )
+        )
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let token = try XCTUnwrap(viewModel.rewardPoolViewState.rewards.first)
+
+        viewModel.selectRewardToken(token.id)
+        viewModel.selectTargetSlot(Self.forageTargetAddress)
+
+        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolvePendingChoice command.")
+        }
+        XCTAssertEqual(payload.choiceId, choice.choiceId)
+        XCTAssertEqual(payload.resolution, .placeScatterSchoolYoung(Self.forageTargetAddress))
+    }
+
+    func testScatterSchoolWithoutSchoolShowsSingleYoungTargetReward() throws {
+        let choice = scatterSchoolPendingChoice()
+        let service = makeService(
+            hand: ["fish-2"],
+            pendingChoices: [choice.choiceId: choice],
+            clearAllSlotResources: true
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        let token = try XCTUnwrap(viewModel.rewardPoolViewState.rewards.first)
+
+        XCTAssertEqual(token.title, AppStrings.GameBoard.scatterSchoolNoSchool)
+        XCTAssertEqual(token.subtitle, AppStrings.GameBoard.scatterSchoolProgressText(completedCount: 0, totalCount: 1))
+        viewModel.selectRewardToken(token.id)
+
+        XCTAssertEqual(viewModel.rewardPoolViewState.instructionText, AppStrings.GameBoard.scatterSchoolYoungTarget)
+        XCTAssertTrue(oceanSlot(in: viewModel, address: Self.slotAddress).isHighlightedByRewardSelection)
+    }
+
     func testCompoundAbilityPendingChoiceGeneratesRemainingRewardTokens() {
         let choice = compoundAbilityPendingChoice()
         let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
@@ -3587,6 +3686,31 @@ final class GameBoardViewModelTests: XCTestCase {
         )
     }
 
+    private func scatterSchoolPendingChoice(
+        expectedInput: PendingChoiceExpectedInput = .scatterSchoolSource,
+        progress: ScatterSchoolProgress? = nil
+    ) -> PendingChoice {
+        let ability = AbilityDefinition(
+            abilityId: "fixture-scatter-school",
+            trigger: .whenPlayed,
+            effects: [.scatterSchool(count: 1)],
+            displayText: "打出时：打散鱼群"
+        )
+        return PendingChoice(
+            choiceId: "choice-scatter-school",
+            playerId: "player-1",
+            source: .fishAbility("fixture.scatter"),
+            kind: .scatterSchool,
+            options: [],
+            expectedInput: expectedInput,
+            isOptional: true,
+            abilityDefinition: ability,
+            scatterSchoolProgress: progress,
+            selectedAbilityEffect: .scatterSchool(count: 1),
+            createdAtSequence: 2
+        )
+    }
+
     private func compoundAbilityPendingChoice() -> PendingChoice {
         let sourceAddress = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
         let ability = AbilityDefinition(
@@ -3631,6 +3755,8 @@ final class GameBoardViewModelTests: XCTestCase {
             return .sourceAndTargetSlots
         case .gainCoral:
             return .coralPayment
+        case .scatterSchool:
+            return .scatterSchoolSource
         case .drawFish,
              .compoundAbility,
              .bottomBonus,

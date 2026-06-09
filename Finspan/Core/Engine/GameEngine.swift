@@ -725,6 +725,10 @@ struct GameEngine {
             )
         case let .gainCoralFromAbility(diveSite):
             try validateAbilityCoralGain(diveSite: diveSite, for: choice, in: state)
+        case let .chooseScatterSchoolSource(source):
+            try validateScatterSchoolSource(source, for: choice, in: state)
+        case let .placeScatterSchoolYoung(target):
+            try validateScatterSchoolYoungTarget(target, for: choice, in: state)
         case .chooseOption:
             throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
         case let .chooseAbilityEffect(effect):
@@ -767,12 +771,77 @@ struct GameEngine {
              .recoverFromDiscardOrDraw,
              .moveYoungOrSchool,
              .gainCoral,
+             .scatterSchool,
              .compoundAbility,
              .bottomBonus,
              .placeholder,
              .unsupported:
             throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
         }
+    }
+
+    private func validateScatterSchoolSource(
+        _ source: OceanSlotAddress,
+        for choice: PendingChoice,
+        in state: GameState
+    ) throws {
+        guard choice.kind == .scatterSchool,
+              choice.expectedInput == .scatterSchoolSource,
+              source.playerId == choice.playerId,
+              let playerState = state.playerGameStates[choice.playerId],
+              let sourceSlot = playerState.ocean.slots.first(where: { $0.address == source }),
+              resourceAmount(.school, in: sourceSlot) > 0
+        else {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+    }
+
+    private func validateScatterSchoolYoungTarget(
+        _ target: OceanSlotAddress,
+        for choice: PendingChoice,
+        in state: GameState
+    ) throws {
+        guard choice.kind == .scatterSchool,
+              choice.expectedInput == .scatterSchoolYoungTarget || choice.expectedInput == .scatterSchoolSource,
+              target.playerId == choice.playerId,
+              let playerState = state.playerGameStates[choice.playerId],
+              playerState.ocean.slots.contains(where: { $0.address == target })
+        else {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+
+        let progress = scatterSchoolProgress(for: choice, playerState: playerState)
+        guard progress.targetSlots.contains(target) == false,
+              progress.completedTargetCount < progress.requiredTargetCount
+        else {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+
+        if progress.requiresSchoolSource {
+            guard progress.sourceSlot != nil else {
+                throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+            }
+        } else if playerHasSchool(playerState) {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+    }
+
+    private func scatterSchoolProgress(
+        for choice: PendingChoice,
+        playerState: PlayerGameState
+    ) -> ScatterSchoolProgress {
+        if let progress = choice.scatterSchoolProgress {
+            return progress
+        }
+        let hasSchool = playerHasSchool(playerState)
+        return ScatterSchoolProgress(
+            requiredTargetCount: hasSchool ? 4 : 1,
+            requiresSchoolSource: hasSchool
+        )
+    }
+
+    private func playerHasSchool(_ playerState: PlayerGameState) -> Bool {
+        playerState.ocean.slots.contains { resourceAmount(.school, in: $0) > 0 }
     }
 
     private func validateCoralPayment(
@@ -1103,6 +1172,14 @@ struct GameEngine {
             return (nil, nil)
         }
 
+        if let scatterUpdate = scatterSchoolDiveQueueProgressAfterResolving(
+            choice: choice,
+            resolution: payload.resolution,
+            queue: queue,
+            in: state
+        ) {
+            return scatterUpdate
+        }
         if let compoundUpdate = compoundDiveQueueProgressAfterResolving(
             choice: choice,
             resolution: payload.resolution,
@@ -1208,6 +1285,10 @@ struct GameEngine {
                 return [.none]
             }
             return [.gainCoralFromAbility(playerId: playerId, diveSite: diveSite, sourceCardId: sourceCardId)]
+        case let .chooseScatterSchoolSource(source):
+            return [.scatterSchoolSourceRemoved(playerId: playerId, source: source)]
+        case let .placeScatterSchoolYoung(target):
+            return [.scatterSchoolYoungPlaced(playerId: playerId, target: target)]
         case let .chooseTarget(target):
             guard let choice = state.pendingChoices[payload.choiceId] else {
                 return [.none]
@@ -1221,6 +1302,7 @@ struct GameEngine {
                  .recoverFromDiscardOrDraw,
                  .moveYoungOrSchool,
                  .gainCoral,
+                 .scatterSchool,
                  .compoundAbility,
                  .bottomBonus,
                  .placeholder,
@@ -1426,6 +1508,61 @@ struct GameEngine {
         return (.updated(updatedQueue), selectorChoice)
     }
 
+    private func scatterSchoolDiveQueueProgressAfterResolving(
+        choice: PendingChoice,
+        resolution: PendingChoiceResolution,
+        queue: DiveResolutionQueue,
+        in state: GameState
+    ) -> (update: DiveResolutionQueueUpdate?, nextChoice: PendingChoice?)? {
+        guard choice.kind == .scatterSchool else {
+            return nil
+        }
+        if case .skip = resolution {
+            return advanceDiveQueue(queue)
+        }
+        guard let nextChoice = scatterSchoolChoiceAfterResolving(
+            choice: choice,
+            resolution: resolution,
+            in: state
+        ) else {
+            if choice.compoundAbilityProgress != nil {
+                return compoundDiveQueueProgressAfterScatterSchoolCompletion(choice: choice, queue: queue)
+            }
+            return advanceDiveQueue(queue)
+        }
+
+        var updatedQueue = queue
+        var updatedChoice = nextChoice
+        updatedChoice.diveStepId = choice.diveStepId
+        setCurrentStepPendingChoice(updatedChoice, in: &updatedQueue)
+        return (.updated(updatedQueue), updatedChoice)
+    }
+
+    private func compoundDiveQueueProgressAfterScatterSchoolCompletion(
+        choice: PendingChoice,
+        queue: DiveResolutionQueue
+    ) -> (update: DiveResolutionQueueUpdate?, nextChoice: PendingChoice?) {
+        guard let progress = choice.compoundAbilityProgress,
+              let completedEffect = compoundEffectUnit(for: choice)
+        else {
+            return advanceDiveQueue(queue)
+        }
+
+        var updatedProgress = progress
+        updatedProgress.remainingEffects = decrement(completedEffect, from: progress.remainingEffects)
+        updatedProgress.completedEffects.append(completedEffect)
+
+        if abilityProgressIsComplete(updatedProgress) {
+            return advanceDiveQueue(queue)
+        }
+
+        var updatedQueue = queue
+        var selectorChoice = compoundSelectorChoice(from: choice, progress: updatedProgress)
+        selectorChoice.diveStepId = choice.diveStepId
+        setCurrentStepPendingChoice(selectorChoice, in: &updatedQueue)
+        return (.updated(updatedQueue), selectorChoice)
+    }
+
     private func advanceDiveQueue(
         _ queue: DiveResolutionQueue
     ) -> (update: DiveResolutionQueueUpdate?, nextChoice: PendingChoice?) {
@@ -1460,6 +1597,10 @@ struct GameEngine {
             )
         }
 
+        if let scatterChoice = nonQueueScatterSchoolChoiceAfterResolving(payload, choice: choice, in: state) {
+            return scatterChoice
+        }
+
         guard let progress = choice.compoundAbilityProgress,
               let completedEffect = compoundEffectUnit(for: choice)
         else {
@@ -1477,6 +1618,92 @@ struct GameEngine {
         return compoundSelectorChoice(
             from: choice,
             progress: updatedProgress
+        )
+    }
+
+    private func nonQueueScatterSchoolChoiceAfterResolving(
+        _ payload: ResolvePendingChoiceCommand,
+        choice: PendingChoice,
+        in state: GameState
+    ) -> PendingChoice? {
+        guard choice.kind == .scatterSchool else {
+            return nil
+        }
+        if case .skip = payload.resolution {
+            return nil
+        }
+        if let nextChoice = scatterSchoolChoiceAfterResolving(
+            choice: choice,
+            resolution: payload.resolution,
+            in: state
+        ) {
+            return nextChoice
+        }
+        guard let progress = choice.compoundAbilityProgress,
+              let completedEffect = compoundEffectUnit(for: choice)
+        else {
+            return nil
+        }
+
+        var updatedProgress = progress
+        updatedProgress.remainingEffects = decrement(completedEffect, from: progress.remainingEffects)
+        updatedProgress.completedEffects.append(completedEffect)
+
+        guard !abilityProgressIsComplete(updatedProgress) else {
+            return nil
+        }
+        return compoundSelectorChoice(from: choice, progress: updatedProgress)
+    }
+
+    private func scatterSchoolChoiceAfterResolving(
+        choice: PendingChoice,
+        resolution: PendingChoiceResolution,
+        in state: GameState
+    ) -> PendingChoice? {
+        guard choice.kind == .scatterSchool,
+              let playerState = state.playerGameStates[choice.playerId]
+        else {
+            return nil
+        }
+
+        var progress = scatterSchoolProgress(for: choice, playerState: playerState)
+        switch resolution {
+        case let .chooseScatterSchoolSource(source):
+            progress.sourceSlot = source
+            progress.targetSlots = []
+            progress.requiredTargetCount = 4
+            progress.requiresSchoolSource = true
+            return scatterSchoolTargetChoice(from: choice, progress: progress)
+        case let .placeScatterSchoolYoung(target):
+            progress.targetSlots.append(target)
+            guard !progress.isComplete else {
+                return nil
+            }
+            return scatterSchoolTargetChoice(from: choice, progress: progress)
+        default:
+            return nil
+        }
+    }
+
+    private func scatterSchoolTargetChoice(
+        from choice: PendingChoice,
+        progress: ScatterSchoolProgress
+    ) -> PendingChoice {
+        PendingChoice(
+            choiceId: "\(choice.choiceId)-scatter-young-\(progress.completedTargetCount)",
+            playerId: choice.playerId,
+            source: choice.source,
+            diveQueueId: choice.diveQueueId,
+            diveStepId: choice.diveStepId,
+            kind: .scatterSchool,
+            options: [],
+            expectedInput: .scatterSchoolYoungTarget,
+            isOptional: false,
+            abilityDefinition: choice.abilityDefinition,
+            compoundAbilityProgress: choice.compoundAbilityProgress,
+            scatterSchoolProgress: progress,
+            selectedAbilityEffect: choice.selectedAbilityEffect,
+            createdAtSequence: choice.createdAtSequence
         )
     }
 
@@ -1573,10 +1800,11 @@ struct GameEngine {
         switch effect {
         case let .drawFish(count),
             let .placeEgg(count),
-            let .hatchEgg(count),
-            let .moveYoungOrSchool(count),
+             let .hatchEgg(count),
+             let .moveYoungOrSchool(count),
              let .recoverFromDiscardOrDraw(count),
-             let .gainCoral(_, count):
+             let .gainCoral(_, count),
+             let .scatterSchool(count):
             return count
         case .unsupported:
             return 0
@@ -1597,6 +1825,8 @@ struct GameEngine {
             return .recoverFromDiscardOrDraw(count: count)
         case let .gainCoral(selector, _):
             return .gainCoral(selector: selector, count: count)
+        case .scatterSchool:
+            return .scatterSchool(count: count)
         case .unsupported:
             return .unsupported
         }
@@ -1616,6 +1846,8 @@ struct GameEngine {
             return "recoverFromDiscardOrDraw"
         case let .gainCoral(selector, _):
             return "gainCoral-\(selector.rawValue)"
+        case .scatterSchool:
+            return "scatterSchool"
         case .unsupported:
             return "unsupported"
         }
@@ -1635,6 +1867,8 @@ struct GameEngine {
             return .recoverFromDiscardOrDraw
         case .gainCoral:
             return .gainCoral
+        case .scatterSchool:
+            return .scatterSchool
         case .unsupported:
             return .unsupported
         }
@@ -1653,6 +1887,8 @@ struct GameEngine {
             return .cardSelection
         case .gainCoral:
             return .coralPlacement
+        case .scatterSchool:
+            return .scatterSchoolSource
         case .unsupported:
             return .none
         }
@@ -1676,6 +1912,8 @@ struct GameEngine {
             return .recoverFromDiscardOrDraw(count: 1)
         case .gainCoral:
             return nil
+        case .scatterSchool:
+            return .scatterSchool(count: 1)
         case .compoundAbility,
              .bottomBonus,
              .placeholder,
@@ -1898,12 +2136,16 @@ struct GameEngine {
                 applyResourceChange(kind, amount: amount, at: target, to: &state)
             case let .gainCoral(playerId, diveSite, payment):
                 applyCoralGain(playerId: playerId, diveSite: diveSite, payment: payment, to: &state)
-            case let .gainCoralFromAbility(playerId, diveSite, _):
-                applyCoralGainFromAbility(playerId: playerId, diveSite: diveSite, to: &state)
-            case .skipCoral:
-                break
-            }
+        case let .gainCoralFromAbility(playerId, diveSite, _):
+            applyCoralGainFromAbility(playerId: playerId, diveSite: diveSite, to: &state)
+        case .skipCoral:
+            break
+        case let .scatterSchoolSourceRemoved(playerId, source):
+            applyScatterSchoolSourceRemoval(playerId: playerId, source: source, to: &state)
+        case let .scatterSchoolYoungPlaced(_, target):
+            applyResourceChange(.young, amount: 1, at: target, to: &state)
         }
+    }
     }
 
     private func applyCoralGain(
@@ -1955,6 +2197,18 @@ struct GameEngine {
             playerState.ocean.coralReefs[reefIndex].coralCount + 1,
             maxCoral
         )
+        state.playerGameStates[playerId] = playerState
+    }
+
+    private func applyScatterSchoolSourceRemoval(
+        playerId: PlayerID,
+        source: OceanSlotAddress,
+        to state: inout GameState
+    ) {
+        guard var playerState = state.playerGameStates[playerId] else {
+            return
+        }
+        removeResource(.school, from: source, in: &playerState)
         state.playerGameStates[playerId] = playerState
     }
 

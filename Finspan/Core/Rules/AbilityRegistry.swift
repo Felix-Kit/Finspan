@@ -79,6 +79,7 @@ enum SharksAndReefsAbilityIDs {
     nonisolated static let purpleCoralIfActivated: AbilityID = "unsupported.sr.ifActivated.card_154"
     nonisolated static let anyCoralIfActivated: AbilityID = "unsupported.sr.ifActivated.card_210"
     nonisolated static let bluePurpleCoralWhenPlayed: AbilityID = "unsupported.sr.whenPlayed.card_194"
+    nonisolated static let greenCoralScatterSchoolWhenPlayed: AbilityID = "unsupported.sr.whenPlayed.card_142"
 }
 
 enum SharksAndReefsAbilityDefinitions {
@@ -111,6 +112,17 @@ enum SharksAndReefsAbilityDefinitions {
             canResolveInAnyOrder: true,
             isOptional: true,
             displayText: "打出时：获得 1 个蓝色珊瑚和 1 个紫色珊瑚"
+        ),
+        AbilityDefinition(
+            abilityId: SharksAndReefsAbilityIDs.greenCoralScatterSchoolWhenPlayed,
+            trigger: .whenPlayed,
+            effects: [
+                .gainCoral(selector: .green, count: 1),
+                .scatterSchool(count: 1)
+            ],
+            canResolveInAnyOrder: true,
+            isOptional: true,
+            displayText: "打出时：获得 1 个绿色珊瑚，打散鱼群"
         )
     ]
 }

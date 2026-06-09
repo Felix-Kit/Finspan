@@ -12,6 +12,7 @@ struct PendingChoice: Identifiable, Codable, Equatable, Sendable {
     var isOptional: Bool
     var abilityDefinition: AbilityDefinition? = nil
     var compoundAbilityProgress: CompoundAbilityProgress? = nil
+    var scatterSchoolProgress: ScatterSchoolProgress? = nil
     var selectedAbilityEffect: AbilityEffectUnit? = nil
     var createdAtSequence: EventID
 
@@ -35,6 +36,7 @@ enum PendingChoiceKind: String, Codable, Equatable, Sendable {
     case recoverFromDiscardOrDraw
     case moveYoungOrSchool
     case gainCoral
+    case scatterSchool
     case compoundAbility
     case bottomBonus
     case placeholder
@@ -53,6 +55,8 @@ enum PendingChoiceExpectedInput: Codable, Equatable, Sendable {
     case sourceAndTargetSlots
     case coralPayment
     case coralPlacement
+    case scatterSchoolSource
+    case scatterSchoolYoungTarget
     case abilityEffectSelection
     case count(Int)
 }
@@ -68,6 +72,8 @@ enum PendingChoiceResolution: Codable, Equatable, Sendable {
     case gainCoralWithYoung(source: OceanSlotAddress)
     case gainCoralByDiscard(cardId: CardID)
     case gainCoralFromAbility(diveSite: DiveSite)
+    case chooseScatterSchoolSource(OceanSlotAddress)
+    case placeScatterSchoolYoung(OceanSlotAddress)
     case chooseOption(String)
     case chooseAbilityEffect(AbilityEffectUnit)
     case finishAbility
@@ -83,6 +89,8 @@ enum PendingChoiceAppliedEffect: Codable, Equatable, Sendable {
     case gainCoral(playerId: PlayerID, diveSite: DiveSite, payment: CoralPayment)
     case gainCoralFromAbility(playerId: PlayerID, diveSite: DiveSite, sourceCardId: CardID)
     case skipCoral(playerId: PlayerID, diveSite: DiveSite)
+    case scatterSchoolSourceRemoved(playerId: PlayerID, source: OceanSlotAddress)
+    case scatterSchoolYoungPlaced(playerId: PlayerID, target: OceanSlotAddress)
     case placeholder(String)
 }
 
@@ -90,4 +98,31 @@ enum CoralPayment: Codable, Equatable, Sendable {
     case egg(source: OceanSlotAddress)
     case young(source: OceanSlotAddress)
     case discard(cardId: CardID)
+}
+
+struct ScatterSchoolProgress: Codable, Equatable, Sendable {
+    var sourceSlot: OceanSlotAddress?
+    var targetSlots: [OceanSlotAddress]
+    var requiredTargetCount: Int
+    var requiresSchoolSource: Bool
+
+    nonisolated init(
+        sourceSlot: OceanSlotAddress? = nil,
+        targetSlots: [OceanSlotAddress] = [],
+        requiredTargetCount: Int,
+        requiresSchoolSource: Bool
+    ) {
+        self.sourceSlot = sourceSlot
+        self.targetSlots = targetSlots
+        self.requiredTargetCount = requiredTargetCount
+        self.requiresSchoolSource = requiresSchoolSource
+    }
+
+    var completedTargetCount: Int {
+        targetSlots.count
+    }
+
+    var isComplete: Bool {
+        completedTargetCount >= requiredTargetCount
+    }
 }

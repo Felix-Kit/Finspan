@@ -2572,6 +2572,284 @@ final class GameEngineTests: XCTestCase {
         }
     }
 
+    func testScatterSchoolAbilityIdResolvesFromRealSharksAndReefsCatalog() throws {
+        let catalog = try SharksAndReefsCardCatalog()
+        let card = try XCTUnwrap(catalog.fishCards.first { $0.id == "sr.main.142" })
+
+        let abilities = AbilityResolver().abilityDefinitions(for: card)
+
+        XCTAssertEqual(card.name, "Blacktip Shark")
+        XCTAssertEqual(card.abilityText, "[GreenCoral][UnSchoolFish]")
+        XCTAssertEqual(card.abilityIds, [SharksAndReefsAbilityIDs.greenCoralScatterSchoolWhenPlayed])
+        XCTAssertEqual(abilities.first?.trigger, .whenPlayed)
+        XCTAssertEqual(
+            abilities.first?.effects,
+            [
+                .gainCoral(selector: .green, count: 1),
+                .scatterSchool(count: 1)
+            ]
+        )
+    }
+
+    func testWhenPlayedScatterSchoolCreatesPendingChoice() throws {
+        let engine = GameEngine(cardCatalog: sharksAndReefsAbilityCatalog())
+        var state = playFishState()
+        state.playerGameStates["player-1"]?.hand.append("sr.main.142")
+        state.playerGameStates["player-1"]?.ocean.coralReefs = CoralReefState.sharksAndReefsInitial
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: playFishCommand(commandId: "play-scatter-school", cardId: "sr.main.142", targetSlot: target),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        let compoundChoice = try XCTUnwrap(state.pendingChoices.values.first)
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(
+                commandId: "choose-scatter-school",
+                choiceId: compoundChoice.choiceId,
+                resolution: .chooseAbilityEffect(.scatterSchool(count: 1))
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceCreated(scatterChoice) = drafts.last else {
+            return XCTFail("Expected scatter school pending choice.")
+        }
+        XCTAssertEqual(scatterChoice.kind, .scatterSchool)
+        XCTAssertEqual(scatterChoice.expectedInput, .scatterSchoolSource)
+        XCTAssertEqual(scatterChoice.selectedAbilityEffect, .scatterSchool(count: 1))
+    }
+
+    func testIfActivatedScatterSchoolCreatesDiveQueuePendingChoice() throws {
+        let engine = GameEngine(cardCatalog: scatterSchoolIfActivatedCatalog(), abilityResolver: scatterSchoolIfActivatedResolver())
+        var state = abilityDiveState(cardId: "fixture.if.scatter")
+        state = applying(
+            try engine.makeEventDrafts(for: diveCommand(commandId: "dive-if-scatter"), in: state),
+            to: state,
+            using: engine
+        )
+        let printedChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "skip-printed-before-scatter", choiceId: printedChoice.choiceId, resolution: .skip),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        let scatterChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        XCTAssertEqual(scatterChoice.kind, .scatterSchool)
+        XCTAssertEqual(scatterChoice.abilityDefinition?.effects, [.scatterSchool(count: 1)])
+    }
+
+    func testScatterSchoolWithSchoolRequiresSchoolSourceAndRemovesIt() throws {
+        let engine = GameEngine()
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 2)
+        var state = playFishState()
+        setResources([ResourceQuantity(kind: .school, amount: 1)], at: source, in: &state)
+        let choice = scatterSchoolPendingChoice()
+        state.pendingChoices[choice.choiceId] = choice
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(commandId: "scatter-source", choiceId: choice.choiceId, resolution: .chooseScatterSchoolSource(source)),
+            in: state
+        )
+        state = applying(drafts, to: state, using: engine)
+
+        XCTAssertEqual(resourceAmount(.school, at: source, in: state), 0)
+        let nextChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        XCTAssertEqual(nextChoice.expectedInput, .scatterSchoolYoungTarget)
+        XCTAssertEqual(nextChoice.scatterSchoolProgress?.requiredTargetCount, 4)
+        XCTAssertEqual(nextChoice.scatterSchoolProgress?.completedTargetCount, 0)
+    }
+
+    func testScatterSchoolWithSchoolPlacesYoungInFourDifferentSlotsAndCompletes() throws {
+        let engine = GameEngine()
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 2)
+        let targets = scatterSchoolTargets()
+        var state = playFishState()
+        setResources([ResourceQuantity(kind: .school, amount: 1)], at: source, in: &state)
+        let choice = scatterSchoolPendingChoice()
+        state.pendingChoices[choice.choiceId] = choice
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "scatter-source-four", choiceId: choice.choiceId, resolution: .chooseScatterSchoolSource(source)),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        for (index, target) in targets.enumerated() {
+            let activeChoice = try XCTUnwrap(state.pendingChoices.values.first)
+            state = applying(
+                try engine.makeEventDrafts(
+                    for: resolveCommand(
+                        commandId: "scatter-young-\(index)",
+                        choiceId: activeChoice.choiceId,
+                        resolution: .placeScatterSchoolYoung(target)
+                    ),
+                    in: state
+                ),
+                to: state,
+                using: engine
+            )
+        }
+
+        for target in targets {
+            XCTAssertEqual(resourceAmount(.young, at: target, in: state), 1)
+        }
+        XCTAssertTrue(state.pendingChoices.isEmpty)
+    }
+
+    func testScatterSchoolRejectsDuplicateYoungTarget() throws {
+        let engine = GameEngine()
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 2)
+        let target = scatterSchoolTargets()[0]
+        var state = playFishState()
+        setResources([ResourceQuantity(kind: .school, amount: 1)], at: source, in: &state)
+        let choice = scatterSchoolPendingChoice()
+        state.pendingChoices[choice.choiceId] = choice
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "scatter-source-duplicate", choiceId: choice.choiceId, resolution: .chooseScatterSchoolSource(source)),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        var activeChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "scatter-first-target", choiceId: activeChoice.choiceId, resolution: .placeScatterSchoolYoung(target)),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        activeChoice = try XCTUnwrap(state.pendingChoices.values.first)
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "scatter-duplicate-target", choiceId: activeChoice.choiceId, resolution: .placeScatterSchoolYoung(target)),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .invalidPendingChoiceResolution(activeChoice.choiceId))
+        }
+    }
+
+    func testScatterSchoolWithoutSchoolPlacesOneYoung() throws {
+        let engine = GameEngine()
+        let target = scatterSchoolTargets()[0]
+        var state = playFishState()
+        clearResources(for: "player-1", in: &state)
+        let choice = scatterSchoolPendingChoice()
+        state.pendingChoices[choice.choiceId] = choice
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "scatter-no-school", choiceId: choice.choiceId, resolution: .placeScatterSchoolYoung(target)),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        XCTAssertEqual(resourceAmount(.young, at: target, in: state), 1)
+        XCTAssertTrue(state.pendingChoices.isEmpty)
+    }
+
+    func testSkippingScatterSchoolDoesNotRemoveSchoolOrPlaceYoung() throws {
+        let engine = GameEngine()
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 2)
+        var state = playFishState()
+        clearResources(for: "player-1", in: &state)
+        setResources([ResourceQuantity(kind: .school, amount: 1)], at: source, in: &state)
+        let choice = scatterSchoolPendingChoice()
+        state.pendingChoices[choice.choiceId] = choice
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "skip-scatter", choiceId: choice.choiceId, resolution: .skip),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        XCTAssertEqual(resourceAmount(.school, at: source, in: state), 1)
+        XCTAssertEqual(totalResourceAmount(.young, in: state), 0)
+    }
+
+    func testScatterSchoolYoungPlacementStillFormsSchoolAtThreeYoung() throws {
+        let engine = GameEngine()
+        let target = scatterSchoolTargets()[0]
+        var state = playFishState()
+        clearResources(for: "player-1", in: &state)
+        setResources([ResourceQuantity(kind: .young, amount: 2)], at: target, in: &state)
+        let choice = scatterSchoolPendingChoice()
+        state.pendingChoices[choice.choiceId] = choice
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "scatter-form-school", choiceId: choice.choiceId, resolution: .placeScatterSchoolYoung(target)),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        XCTAssertEqual(resourceAmount(.young, at: target, in: state), 0)
+        XCTAssertEqual(resourceAmount(.school, at: target, in: state), 1)
+    }
+
+    func testScatterSchoolResolveContinuesDiveQueue() throws {
+        let engine = GameEngine(cardCatalog: scatterSchoolIfActivatedCatalog(), abilityResolver: scatterSchoolIfActivatedResolver())
+        var state = abilityDiveState(cardId: "fixture.if.scatter")
+        state.playerGameStates["player-1"]?.diveSitesReachedBottomThisWeek = []
+        clearResources(for: "player-1", in: &state)
+        state = applying(
+            try engine.makeEventDrafts(for: diveCommand(commandId: "dive-scatter-continues"), in: state),
+            to: state,
+            using: engine
+        )
+        let printedChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "skip-before-scatter-continues", choiceId: printedChoice.choiceId, resolution: .skip),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        let scatterChoice = try XCTUnwrap(state.pendingChoices.values.first)
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(
+                commandId: "resolve-scatter-continues",
+                choiceId: scatterChoice.choiceId,
+                resolution: .placeScatterSchoolYoung(scatterSchoolTargets()[0])
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(resolved) = drafts.first,
+              case let .advanced(queue) = resolved.diveQueueUpdate,
+              case let .pendingChoiceCreated(nextChoice) = drafts.last
+        else {
+            return XCTFail("Expected scatter school to advance to the next dive queue step.")
+        }
+        XCTAssertEqual(queue.currentStep?.source, .bottomBonus)
+        XCTAssertEqual(nextChoice.choiceId, queue.currentStep?.pendingChoice.choiceId)
+    }
+
     func testActiveDiveQueuePreventsPlayFishAndDive() throws {
         let engine = GameEngine()
         let initialState = blueDiveQueueState()
@@ -4565,6 +4843,36 @@ final class GameEngineTests: XCTestCase {
         )
     }
 
+    private func scatterSchoolPendingChoice() -> PendingChoice {
+        let ability = AbilityDefinition(
+            abilityId: "fixture-scatter-school",
+            trigger: .whenPlayed,
+            effects: [.scatterSchool(count: 1)],
+            displayText: "打出时：打散鱼群"
+        )
+        return PendingChoice(
+            choiceId: "choice-scatter-school",
+            playerId: "player-1",
+            source: .fishAbility("fixture.scatter"),
+            kind: .scatterSchool,
+            options: [],
+            expectedInput: .scatterSchoolSource,
+            isOptional: true,
+            abilityDefinition: ability,
+            selectedAbilityEffect: .scatterSchool(count: 1),
+            createdAtSequence: 10
+        )
+    }
+
+    private func scatterSchoolTargets() -> [OceanSlotAddress] {
+        [
+            OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0),
+            OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 1),
+            OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 0),
+            OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 0)
+        ]
+    }
+
     private func fishBCompoundSelectorState(
         engine: GameEngine,
         addSecondFish: Bool = false
@@ -4711,6 +5019,8 @@ final class GameEngineTests: XCTestCase {
             return .sourceAndTargetSlots
         case .gainCoral:
             return .coralPayment
+        case .scatterSchool:
+            return .scatterSchoolSource
         case .drawFish,
              .compoundAbility,
              .bottomBonus,
@@ -4732,6 +5042,16 @@ final class GameEngineTests: XCTestCase {
             .resources
             .first(where: { $0.kind == kind })?
             .amount ?? 0
+    }
+
+    private func totalResourceAmount(_ kind: ResourceKind, in state: GameState) -> Int {
+        state.playerGameStates["player-1"]?
+            .ocean
+            .slots
+            .map { slot in
+                slot.resources.first(where: { $0.kind == kind })?.amount ?? 0
+            }
+            .reduce(0, +) ?? 0
     }
 
     private func coverShorterFishState(keepForageFish: Bool = false) -> GameState {
@@ -4802,6 +5122,14 @@ final class GameEngineTests: XCTestCase {
             starterFishCards: sample.starterFishCards,
             fishCards: sample.fishCards + [
                 Card(
+                    id: "sr.main.142",
+                    name: "Blacktip Shark",
+                    abilityIds: [SharksAndReefsAbilityIDs.greenCoralScatterSchoolWhenPlayed],
+                    abilityText: "[GreenCoral][UnSchoolFish]",
+                    printedPoints: 4,
+                    lengthCm: 170
+                ),
+                Card(
                     id: "sr.main.171",
                     name: "Blue Coral Ability Fish",
                     abilityIds: [SharksAndReefsAbilityIDs.blueCoralIfActivated],
@@ -4823,6 +5151,35 @@ final class GameEngineTests: XCTestCase {
                     lengthCm: 30
                 )
             ]
+        )
+    }
+
+    private func scatterSchoolIfActivatedCatalog() -> TestCardCatalog {
+        TestCardCatalog(
+            fishCards: [
+                Card(
+                    id: "fixture.if.scatter",
+                    name: "If Activated Scatter Fixture",
+                    abilityIds: ["fixture.ifActivated.scatterSchool"],
+                    printedPoints: 1,
+                    lengthCm: 10
+                )
+            ]
+        )
+    }
+
+    private func scatterSchoolIfActivatedResolver() -> AbilityResolver {
+        AbilityResolver(
+            provider: AbilityRegistry(
+                definitions: [
+                    AbilityDefinition(
+                        abilityId: "fixture.ifActivated.scatterSchool",
+                        trigger: .ifActivated,
+                        effects: [.scatterSchool(count: 1)],
+                        displayText: "发动时：打散鱼群"
+                    )
+                ]
+            )
         )
     }
 

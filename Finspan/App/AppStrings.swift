@@ -159,6 +159,14 @@ enum AppStrings {
         static let noCoralPaymentHandCard = "没有可弃掉的手牌"
         static let coralReefFull = "珊瑚礁已满"
         static let scatterSchool = "打散鱼群"
+        static let scatterSchoolSource = "选择要打散的鱼群"
+        static let scatterSchoolYoungTarget = "选择放置幼鱼的格子"
+        static let scatterSchoolNoSchool = "无鱼群：放置 1 个幼鱼"
+        static let scatterSchoolNoSource = "没有可打散的鱼群"
+        static let scatterSchoolTargetAlreadyUsed = "已选择过这个格子"
+        static func scatterSchoolProgressText(completedCount: Int, totalCount: Int) -> String {
+            "放置幼鱼 \(completedCount) / \(totalCount)"
+        }
         static let abilityUnsupported = "能力暂未接入"
         static let bottomBonus = "底部奖励"
         static let firstBottomBonus = "首次到底奖励"
@@ -451,6 +459,14 @@ enum AppStrings {
             "\(playerName) 移动幼鱼 / 鱼群"
         }
 
+        static func rewardScatterSchoolActionSummary(playerName: String) -> String {
+            "\(playerName) 打散了一个鱼群"
+        }
+
+        static func rewardScatterSchoolYoungActionSummary(playerName: String) -> String {
+            "\(playerName) 放置了 1 个幼鱼"
+        }
+
         static func rewardGainCoralActionSummary(playerName: String, diveSiteName: String) -> String {
             "\(playerName) 在\(diveSiteName)获得 1 个珊瑚"
         }
@@ -566,6 +582,8 @@ enum AppStrings {
             return "移动幼鱼或鱼群"
         case .gainCoral:
             return "获得珊瑚"
+        case .scatterSchool:
+            return "打散鱼群"
         case .compoundAbility:
             return "鱼牌能力"
         case .bottomBonus:

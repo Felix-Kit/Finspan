@@ -828,6 +828,8 @@ private enum RewardTokenAction: Equatable {
     case chooseMoveSource(choiceId: PendingChoiceID)
     case chooseCoralResource(choiceId: PendingChoiceID, tokenId: String, kind: ResourceKind)
     case chooseCoralHandCard(choiceId: PendingChoiceID, tokenId: String)
+    case chooseScatterSchoolSource(choiceId: PendingChoiceID, tokenId: String)
+    case chooseScatterSchoolYoungTarget(choiceId: PendingChoiceID, tokenId: String)
     case unsupported
 }
 
@@ -837,6 +839,8 @@ private enum RewardSelectionMode: Equatable {
     case moveTarget(choiceId: PendingChoiceID, tokenId: String, source: OceanSlotAddress, kind: ResourceKind)
     case coralResource(choiceId: PendingChoiceID, tokenId: String, kind: ResourceKind)
     case coralHandCard(choiceId: PendingChoiceID, tokenId: String)
+    case scatterSchoolSource(choiceId: PendingChoiceID, tokenId: String)
+    case scatterSchoolYoungTarget(choiceId: PendingChoiceID, tokenId: String)
 }
 
 enum PendingChoiceAction: String, Equatable {
@@ -1244,7 +1248,11 @@ final class GameBoardViewModel: ObservableObject {
             switch rewardSelectionMode {
             case .moveSource, .moveTarget:
                 return .moveResource
-            case .target, .coralResource, .coralHandCard:
+            case .target,
+                 .coralResource,
+                 .coralHandCard,
+                 .scatterSchoolSource,
+                 .scatterSchoolYoungTarget:
                 return .rewardSelection
             case nil:
                 break
@@ -1313,6 +1321,10 @@ final class GameBoardViewModel: ObservableObject {
             return AppStrings.GameBoard.rewardResolvedActionSummary(playerName: playerName)
         case .moveResource:
             return AppStrings.GameBoard.rewardMoveResourceActionSummary(playerName: playerName)
+        case .chooseScatterSchoolSource:
+            return AppStrings.GameBoard.rewardScatterSchoolActionSummary(playerName: playerName)
+        case .placeScatterSchoolYoung:
+            return AppStrings.GameBoard.rewardScatterSchoolYoungActionSummary(playerName: playerName)
         case .gainCoralWithEgg,
              .gainCoralWithYoung,
              .gainCoralByDiscard,
@@ -2176,6 +2188,12 @@ final class GameBoardViewModel: ObservableObject {
         case let .chooseCoralHandCard(choiceId, tokenId):
             rewardSelectionMode = .coralHandCard(choiceId: choiceId, tokenId: tokenId)
             errorMessage = AppStrings.GameBoard.chooseCoralDiscardCard
+        case let .chooseScatterSchoolSource(choiceId, tokenId):
+            rewardSelectionMode = .scatterSchoolSource(choiceId: choiceId, tokenId: tokenId)
+            errorMessage = AppStrings.GameBoard.scatterSchoolSource
+        case let .chooseScatterSchoolYoungTarget(choiceId, tokenId):
+            rewardSelectionMode = .scatterSchoolYoungTarget(choiceId: choiceId, tokenId: tokenId)
+            errorMessage = AppStrings.GameBoard.scatterSchoolYoungTarget
         case .unsupported:
             rewardSelectionMode = nil
             errorMessage = AppStrings.GameBoard.abilityUnsupported
@@ -2253,6 +2271,29 @@ final class GameBoardViewModel: ObservableObject {
             return true
         case .coralHandCard:
             errorMessage = AppStrings.GameBoard.chooseCoralDiscardCard
+            return true
+        case let .scatterSchoolSource(choiceId, _):
+            guard let choice = state.pendingChoices[choiceId],
+                  let playerState = state.playerGameStates[choice.playerId],
+                  let source = playerState.ocean.slots.first(where: { $0.address == address }),
+                  source.address.playerId == choice.playerId,
+                  resourceAmount(.school, in: source) > 0
+            else {
+                errorMessage = AppStrings.GameBoard.scatterSchoolSource
+                return true
+            }
+            resolvePendingChoice(choiceId, resolution: .chooseScatterSchoolSource(address))
+            return true
+        case let .scatterSchoolYoungTarget(choiceId, _):
+            guard let choice = state.pendingChoices[choiceId],
+                  let playerState = state.playerGameStates[choice.playerId],
+                  let target = playerState.ocean.slots.first(where: { $0.address == address }),
+                  scatterSchoolYoungTargetIsLegal(target, for: choice, playerState: playerState)
+            else {
+                errorMessage = AppStrings.GameBoard.scatterSchoolYoungTarget
+                return true
+            }
+            resolvePendingChoice(choiceId, resolution: .placeScatterSchoolYoung(address))
             return true
         }
     }
@@ -3431,6 +3472,11 @@ final class GameBoardViewModel: ObservableObject {
                 title: AppStrings.GameBoard.hatchEggAbilityAction,
                 kind: .hatchEgg(count: 1),
                 progress: progress
+            ),
+            abilityProgressLine(
+                title: AppStrings.GameBoard.scatterSchool,
+                kind: .scatterSchool(count: 1),
+                progress: progress
             )
         ].compactMap { $0 }
     }
@@ -3467,7 +3513,8 @@ final class GameBoardViewModel: ObservableObject {
              let .hatchEgg(count),
              let .moveYoungOrSchool(count),
              let .recoverFromDiscardOrDraw(count),
-             let .gainCoral(_, count):
+             let .gainCoral(_, count),
+             let .scatterSchool(count):
             return count
         case .unsupported:
             return 0
@@ -3488,6 +3535,8 @@ final class GameBoardViewModel: ObservableObject {
             return "recoverFromDiscardOrDraw"
         case let .gainCoral(selector, _):
             return "gainCoral-\(selector.rawValue)"
+        case .scatterSchool:
+            return "scatterSchool"
         case .unsupported:
             return "unsupported"
         }
@@ -3534,7 +3583,8 @@ final class GameBoardViewModel: ObservableObject {
         case .placeEgg,
              .hatchEgg,
              .moveYoungOrSchool,
-             .gainCoral:
+             .gainCoral,
+             .scatterSchool:
             break
         case .compoundAbility:
             if let progress = choice.compoundAbilityProgress {
@@ -3761,6 +3811,8 @@ final class GameBoardViewModel: ObservableObject {
                     .direct(choiceId: choice.choiceId, resolution: .skip)
                 )
             ]
+        case .scatterSchool:
+            return scatterSchoolRewardEntries(for: choice)
         case .compoundAbility:
             var entries: [(token: RewardTokenViewState, action: RewardTokenAction)] = []
             if let progress = choice.compoundAbilityProgress {
@@ -3823,6 +3875,23 @@ final class GameBoardViewModel: ObservableObject {
                             )
                         ))
                     }
+                }
+                let remainingScatterSchools = abilityEffectCount(.scatterSchool(count: 1), in: progress.remainingEffects)
+                for index in 0..<remainingScatterSchools {
+                    let tokenId = "\(choice.choiceId)-compoundScatterSchool-\(index)"
+                    entries.append((
+                        rewardToken(
+                            id: tokenId,
+                            kind: .scatterSchool,
+                            title: AppStrings.GameBoard.scatterSchool,
+                            subtitle: AppStrings.GameBoard.scatterSchoolSource,
+                            iconText: "散",
+                            symbolName: "circle.grid.cross",
+                            countText: "\(index + 1)/\(remainingScatterSchools)",
+                            isSelectable: canResolve
+                        ),
+                        .direct(choiceId: choice.choiceId, resolution: .chooseAbilityEffect(.scatterSchool(count: 1)))
+                    ))
                 }
             }
             let tokenId = "\(choice.choiceId)-finishAbility"
@@ -3926,6 +3995,53 @@ final class GameBoardViewModel: ObservableObject {
                 .direct(choiceId: choice.choiceId, resolution: .gainCoralFromAbility(diveSite: diveSite))
             )
         }
+    }
+
+    private func scatterSchoolRewardEntries(
+        for choice: PendingChoice
+    ) -> [(token: RewardTokenViewState, action: RewardTokenAction)] {
+        guard let playerState = state.playerGameStates[choice.playerId] else {
+            return []
+        }
+        let canResolve = canResolvePendingChoice(choice)
+        let progress = scatterSchoolProgress(for: choice, playerState: playerState)
+        if choice.expectedInput == .scatterSchoolYoungTarget || !progress.requiresSchoolSource {
+            let tokenId = "\(choice.choiceId)-scatter-young-target"
+            let title = progress.requiresSchoolSource
+                ? AppStrings.GameBoard.scatterSchoolYoungTarget
+                : AppStrings.GameBoard.scatterSchoolNoSchool
+            return [(
+                rewardToken(
+                    id: tokenId,
+                    kind: .scatterSchool,
+                    title: title,
+                    subtitle: AppStrings.GameBoard.scatterSchoolProgressText(
+                        completedCount: progress.completedTargetCount,
+                        totalCount: progress.requiredTargetCount
+                    ),
+                    iconText: "幼",
+                    symbolName: "circle.dotted",
+                    isSelectable: canResolve
+                ),
+                .chooseScatterSchoolYoungTarget(choiceId: choice.choiceId, tokenId: tokenId)
+            )]
+        }
+
+        let hasSchool = playerHasSchool(playerState)
+        let tokenId = "\(choice.choiceId)-scatter-source"
+        return [(
+            rewardToken(
+                id: tokenId,
+                kind: .scatterSchool,
+                title: AppStrings.GameBoard.scatterSchool,
+                subtitle: AppStrings.GameBoard.scatterSchoolSource,
+                iconText: "散",
+                symbolName: "circle.grid.cross",
+                isSelectable: canResolve && hasSchool,
+                unavailableReasonText: hasSchool ? nil : AppStrings.GameBoard.scatterSchoolNoSource
+            ),
+            .chooseScatterSchoolSource(choiceId: choice.choiceId, tokenId: tokenId)
+        )]
     }
 
     func pendingChoiceTargets(for choice: PendingChoice) -> [PendingChoiceTargetViewData] {
@@ -4037,6 +4153,7 @@ final class GameBoardViewModel: ObservableObject {
              .recoverFromDiscardOrDraw,
              .moveYoungOrSchool,
              .gainCoral,
+             .scatterSchool,
              .compoundAbility,
              .bottomBonus,
              .placeholder,
@@ -4059,6 +4176,10 @@ final class GameBoardViewModel: ObservableObject {
             return AppStrings.GameBoard.moveYoungOrSchool
         case .gainCoral:
             return AppStrings.GameBoard.chooseCoralPayment
+        case .scatterSchool:
+            return choice.expectedInput == .scatterSchoolYoungTarget
+                ? AppStrings.GameBoard.scatterSchoolYoungTarget
+                : AppStrings.GameBoard.scatterSchoolSource
         case .drawFish,
              .compoundAbility,
              .bottomBonus,
@@ -4074,6 +4195,9 @@ final class GameBoardViewModel: ObservableObject {
         }
         if choice.kind == .moveYoungOrSchool {
             return pendingChoiceMoveTargets(for: choice).isEmpty ? AppStrings.GameBoard.noMovableYoungOrSchool : nil
+        }
+        if choice.kind == .scatterSchool {
+            return nil
         }
         if choice.kind == .recoverFromDiscardOrDraw {
             return nil
@@ -4116,6 +4240,10 @@ final class GameBoardViewModel: ObservableObject {
                 return AppStrings.GameBoard.chooseCoralResourceSource
             case .coralHandCard:
                 return AppStrings.GameBoard.chooseCoralDiscardCard
+            case .scatterSchoolSource:
+                return AppStrings.GameBoard.scatterSchoolSource
+            case .scatterSchoolYoungTarget:
+                return AppStrings.GameBoard.scatterSchoolYoungTarget
             }
         }
 
@@ -4133,6 +4261,10 @@ final class GameBoardViewModel: ObservableObject {
             return choice.expectedInput == .coralPayment
                 ? AppStrings.GameBoard.chooseCoralPayment
                 : AppStrings.GameBoard.chooseCoralDiveSite
+        case .scatterSchool:
+            return choice.expectedInput == .scatterSchoolYoungTarget
+                ? AppStrings.GameBoard.scatterSchoolYoungTarget
+                : AppStrings.GameBoard.scatterSchoolSource
         case .bottomBonus,
              .placeholder,
              .unsupported:
@@ -4172,6 +4304,10 @@ final class GameBoardViewModel: ObservableObject {
             return AppStrings.GameBoard.discardOneHandCard
         case .gainCoralFromAbility:
             return AppStrings.GameBoard.gainOneCoral
+        case .chooseScatterSchoolSource:
+            return AppStrings.GameBoard.scatterSchool
+        case .placeScatterSchoolYoung:
+            return AppStrings.GameBoard.scatterSchoolYoungTarget
         case .chooseOption:
             return AppStrings.GameBoard.chooseOption
         case .chooseAbilityEffect:
@@ -4266,6 +4402,41 @@ final class GameBoardViewModel: ObservableObject {
         return selector
     }
 
+    private func scatterSchoolProgress(
+        for choice: PendingChoice,
+        playerState: PlayerGameState
+    ) -> ScatterSchoolProgress {
+        if let progress = choice.scatterSchoolProgress {
+            return progress
+        }
+        let hasSchool = playerHasSchool(playerState)
+        return ScatterSchoolProgress(
+            requiredTargetCount: hasSchool ? 4 : 1,
+            requiresSchoolSource: hasSchool
+        )
+    }
+
+    private func playerHasSchool(_ playerState: PlayerGameState) -> Bool {
+        playerState.ocean.slots.contains { resourceAmount(.school, in: $0) > 0 }
+    }
+
+    private func scatterSchoolYoungTargetIsLegal(
+        _ target: OceanSlot,
+        for choice: PendingChoice,
+        playerState: PlayerGameState
+    ) -> Bool {
+        guard target.address.playerId == choice.playerId else {
+            return false
+        }
+        let progress = scatterSchoolProgress(for: choice, playerState: playerState)
+        guard progress.targetSlots.contains(target.address) == false,
+              progress.completedTargetCount < progress.requiredTargetCount
+        else {
+            return false
+        }
+        return !progress.requiresSchoolSource || progress.sourceSlot != nil
+    }
+
     private func rewardSelectionHighlightText(for slot: OceanSlot) -> String? {
         guard let rewardSelectionMode else {
             return nil
@@ -4306,6 +4477,22 @@ final class GameBoardViewModel: ObservableObject {
             return AppStrings.GameBoard.chooseCoralResourceSource
         case .coralHandCard:
             return nil
+        case let .scatterSchoolSource(choiceId, _):
+            guard let choice = state.pendingChoices[choiceId],
+                  slot.address.playerId == choice.playerId,
+                  resourceAmount(.school, in: slot) > 0
+            else {
+                return nil
+            }
+            return AppStrings.GameBoard.scatterSchoolSource
+        case let .scatterSchoolYoungTarget(choiceId, _):
+            guard let choice = state.pendingChoices[choiceId],
+                  let playerState = state.playerGameStates[choice.playerId],
+                  scatterSchoolYoungTargetIsLegal(slot, for: choice, playerState: playerState)
+            else {
+                return nil
+            }
+            return AppStrings.GameBoard.scatterSchoolYoungTarget
         }
     }
 
