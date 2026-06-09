@@ -159,6 +159,10 @@ struct FinalScoreView: View {
             return .green
         case .consumedFish:
             return .gray
+        case .coral:
+            return .pink
+        case .completeReefBonus:
+            return .orange
         }
     }
 }

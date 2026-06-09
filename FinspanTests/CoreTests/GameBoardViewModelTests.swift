@@ -2560,6 +2560,126 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(higherRow.totalWidthRatioRelativeToMaxTotal, 1, accuracy: 0.0001)
     }
 
+    func testFinalScoreViewStateShowsSharksAndReefsCoralScoreSegmentsAndLegend() {
+        let score = FinalScoreBreakdown(
+            playerId: "player-1",
+            weeklyAchievementPoints: 0,
+            fishPrintedPoints: 0,
+            gameEndAbilityPoints: 0,
+            eggPoints: 0,
+            youngPoints: 0,
+            schoolPoints: 0,
+            consumedFishPoints: 0,
+            coralPoints: 7,
+            completeReefBonusPoints: 11,
+            totalPoints: 18
+        )
+        let service = makeService(
+            hand: [],
+            phase: .gameEnded,
+            activePlayerId: nil,
+            finalScoreResult: FinalScoreResult(
+                results: [score],
+                winnerPlayerIds: ["player-1"],
+                isTie: false
+            ),
+            enabledExpansions: [.sharksAndReefs],
+            coralReefs: [
+                CoralReefState(diveSite: .blue, coralCount: 6, maxCoral: 6, completionBonus: 6),
+                CoralReefState(diveSite: .purple, coralCount: 5, maxCoral: 6, completionBonus: 8),
+                CoralReefState(diveSite: .green, coralCount: 6, maxCoral: 6, completionBonus: 5)
+            ]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        guard let row = viewModel.finalScoreViewState?.playerRows.first else {
+            return XCTFail("Expected final score row.")
+        }
+
+        XCTAssertEqual(row.segments.map(\.category), [
+            .weeklyAchievements,
+            .fishPrintedPoints,
+            .gameEndAbilityPoints,
+            .eggsAndYoung,
+            .schools,
+            .consumedFish,
+            .coral,
+            .completeReefBonus
+        ])
+        XCTAssertEqual(row.segments.first { $0.category == .coral }?.title, "珊瑚")
+        XCTAssertEqual(row.segments.first { $0.category == .coral }?.points, 7)
+        XCTAssertEqual(row.segments.first { $0.category == .completeReefBonus }?.title, "完整珊瑚礁奖励")
+        XCTAssertEqual(row.segments.first { $0.category == .completeReefBonus }?.points, 11)
+        XCTAssertEqual(
+            Array(viewModel.finalScoreViewState?.legendItems.map(\.title).suffix(2) ?? []),
+            ["珊瑚", "完整珊瑚礁奖励"]
+        )
+    }
+
+    func testSampleModeFinalScoreWithoutCoralReefsDoesNotShowSharksAndReefsScoreSegments() {
+        let score = FinalScoreBreakdown(
+            playerId: "player-1",
+            weeklyAchievementPoints: 0,
+            fishPrintedPoints: 1,
+            gameEndAbilityPoints: 0,
+            eggPoints: 0,
+            youngPoints: 0,
+            schoolPoints: 0,
+            consumedFishPoints: 0,
+            totalPoints: 1
+        )
+        let service = makeService(
+            hand: [],
+            phase: .gameEnded,
+            activePlayerId: nil,
+            finalScoreResult: FinalScoreResult(
+                results: [score],
+                winnerPlayerIds: ["player-1"],
+                isTie: false
+            ),
+            enabledExpansions: [.sharksAndReefs],
+            coralReefs: []
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.finalScoreViewState?.playerRows.first?.segments.count, 6)
+        XCTAssertFalse(viewModel.finalScoreViewState?.legendItems.map(\.title).contains("珊瑚") ?? true)
+    }
+
+    func testFinalScoreViewStateDoesNotShowCoralScoresWhenSharksAndReefsIsDisabled() {
+        let score = FinalScoreBreakdown(
+            playerId: "player-1",
+            weeklyAchievementPoints: 0,
+            fishPrintedPoints: 0,
+            gameEndAbilityPoints: 0,
+            eggPoints: 0,
+            youngPoints: 0,
+            schoolPoints: 0,
+            consumedFishPoints: 0,
+            coralPoints: 6,
+            completeReefBonusPoints: 6,
+            totalPoints: 12
+        )
+        let service = makeService(
+            hand: [],
+            phase: .gameEnded,
+            activePlayerId: nil,
+            finalScoreResult: FinalScoreResult(
+                results: [score],
+                winnerPlayerIds: ["player-1"],
+                isTie: false
+            ),
+            enabledExpansions: [],
+            coralReefs: [
+                CoralReefState(diveSite: .blue, coralCount: 6, maxCoral: 6, completionBonus: 6)
+            ]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.finalScoreViewState?.playerRows.first?.segments.count, 6)
+        XCTAssertFalse(viewModel.finalScoreViewState?.legendItems.map(\.title).contains("珊瑚") ?? true)
+    }
+
     func testFinalScoreZeroCategoriesDoNotBreakProportionCalculation() {
         let service = makeService(
             hand: [],

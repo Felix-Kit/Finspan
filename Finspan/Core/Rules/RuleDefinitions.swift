@@ -109,6 +109,9 @@ struct ScoreCategory: RawRepresentable, Codable, Equatable, Hashable, Sendable {
     init(rawValue: String) {
         self.rawValue = rawValue
     }
+
+    static let coral = ScoreCategory(rawValue: "coral")
+    static let completeReefBonus = ScoreCategory(rawValue: "completeReefBonus")
 }
 
 struct ScoreBreakdown: Codable, Equatable, Sendable {

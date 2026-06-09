@@ -776,7 +776,72 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(playerResult?.youngPoints, 3)
         XCTAssertEqual(playerResult?.schoolPoints, 12)
         XCTAssertEqual(playerResult?.consumedFishPoints, 2)
+        XCTAssertEqual(playerResult?.coralPoints, 0)
+        XCTAssertEqual(playerResult?.completeReefBonusPoints, 0)
         XCTAssertEqual(playerResult?.totalPoints, 32)
+    }
+
+    func testFinalScoreCalculatorScoresOnePointPerCoralToken() {
+        let calculator = FinalScoreCalculator()
+        var state = playFishState()
+        clearResources(for: "player-1", in: &state)
+        clearOceanContent(for: "player-1", in: &state)
+        state.weeklyAchievementResults = []
+        state.playerGameStates["player-1"]?.ocean.coralReefs = [
+            CoralReefState(diveSite: .blue, coralCount: 2, maxCoral: 6, completionBonus: 6),
+            CoralReefState(diveSite: .purple, coralCount: 4, maxCoral: 6, completionBonus: 8),
+            CoralReefState(diveSite: .green, coralCount: 1, maxCoral: 6, completionBonus: 5)
+        ]
+
+        let result = calculator.calculate(in: state, cardCatalog: TestCardCatalog())
+        let playerResult = result.results.first { $0.playerId == "player-1" }
+
+        XCTAssertEqual(playerResult?.coralPoints, 7)
+        XCTAssertEqual(playerResult?.completeReefBonusPoints, 0)
+        XCTAssertEqual(playerResult?.totalPoints, 7)
+    }
+
+    func testFinalScoreCalculatorOnlyAwardsCompleteReefBonusWhenReefIsFull() {
+        let calculator = FinalScoreCalculator()
+        var state = playFishState()
+        clearResources(for: "player-1", in: &state)
+        clearOceanContent(for: "player-1", in: &state)
+        state.weeklyAchievementResults = []
+        state.playerGameStates["player-1"]?.ocean.coralReefs = [
+            CoralReefState(diveSite: .blue, coralCount: 6, maxCoral: 6, completionBonus: 60),
+            CoralReefState(diveSite: .purple, coralCount: 5, maxCoral: 6, completionBonus: 80),
+            CoralReefState(diveSite: .green, coralCount: 6, maxCoral: 6, completionBonus: 50)
+        ]
+
+        let result = calculator.calculate(in: state, cardCatalog: TestCardCatalog())
+        let playerResult = result.results.first { $0.playerId == "player-1" }
+
+        XCTAssertEqual(playerResult?.coralPoints, 17)
+        XCTAssertEqual(playerResult?.completeReefBonusPoints, 110)
+        XCTAssertEqual(playerResult?.totalPoints, 127)
+    }
+
+    func testFinalScoreCalculatorAwardsCompleteReefBonusAtOrAboveMaxCoral() {
+        let calculator = FinalScoreCalculator()
+        var state = playFishState()
+        clearResources(for: "player-1", in: &state)
+        clearOceanContent(for: "player-1", in: &state)
+        state.weeklyAchievementResults = []
+        state.playerGameStates["player-1"]?.ocean.coralReefs = [
+            CoralReefState(diveSite: .blue, coralCount: 7, maxCoral: 6, completionBonus: 6)
+        ]
+
+        let result = calculator.calculate(in: state, cardCatalog: TestCardCatalog())
+        let playerResult = result.results.first { $0.playerId == "player-1" }
+
+        XCTAssertEqual(playerResult?.coralPoints, 7)
+        XCTAssertEqual(playerResult?.completeReefBonusPoints, 6)
+        XCTAssertEqual(playerResult?.totalPoints, 13)
+    }
+
+    func testScoreCategoryIncludesSharksAndReefsFinalScoreCategories() {
+        XCTAssertEqual(ScoreCategory.coral.rawValue, "coral")
+        XCTAssertEqual(ScoreCategory.completeReefBonus.rawValue, "completeReefBonus")
     }
 
     func testFinalScoreCalculatorDeterminesWinnerAndTie() {

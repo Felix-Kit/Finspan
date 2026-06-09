@@ -9,7 +9,64 @@ struct FinalScoreBreakdown: Codable, Equatable, Sendable {
     var youngPoints: Int
     var schoolPoints: Int
     var consumedFishPoints: Int
+    var coralPoints: Int
+    var completeReefBonusPoints: Int
     var totalPoints: Int
+
+    init(
+        playerId: PlayerID,
+        weeklyAchievementPoints: Int,
+        fishPrintedPoints: Int,
+        gameEndAbilityPoints: Int,
+        eggPoints: Int,
+        youngPoints: Int,
+        schoolPoints: Int,
+        consumedFishPoints: Int,
+        coralPoints: Int = 0,
+        completeReefBonusPoints: Int = 0,
+        totalPoints: Int
+    ) {
+        self.playerId = playerId
+        self.weeklyAchievementPoints = weeklyAchievementPoints
+        self.fishPrintedPoints = fishPrintedPoints
+        self.gameEndAbilityPoints = gameEndAbilityPoints
+        self.eggPoints = eggPoints
+        self.youngPoints = youngPoints
+        self.schoolPoints = schoolPoints
+        self.consumedFishPoints = consumedFishPoints
+        self.coralPoints = coralPoints
+        self.completeReefBonusPoints = completeReefBonusPoints
+        self.totalPoints = totalPoints
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case playerId
+        case weeklyAchievementPoints
+        case fishPrintedPoints
+        case gameEndAbilityPoints
+        case eggPoints
+        case youngPoints
+        case schoolPoints
+        case consumedFishPoints
+        case coralPoints
+        case completeReefBonusPoints
+        case totalPoints
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        playerId = try container.decode(PlayerID.self, forKey: .playerId)
+        weeklyAchievementPoints = try container.decode(Int.self, forKey: .weeklyAchievementPoints)
+        fishPrintedPoints = try container.decode(Int.self, forKey: .fishPrintedPoints)
+        gameEndAbilityPoints = try container.decode(Int.self, forKey: .gameEndAbilityPoints)
+        eggPoints = try container.decode(Int.self, forKey: .eggPoints)
+        youngPoints = try container.decode(Int.self, forKey: .youngPoints)
+        schoolPoints = try container.decode(Int.self, forKey: .schoolPoints)
+        consumedFishPoints = try container.decode(Int.self, forKey: .consumedFishPoints)
+        coralPoints = try container.decodeIfPresent(Int.self, forKey: .coralPoints) ?? 0
+        completeReefBonusPoints = try container.decodeIfPresent(Int.self, forKey: .completeReefBonusPoints) ?? 0
+        totalPoints = try container.decode(Int.self, forKey: .totalPoints)
+    }
 }
 
 struct FinalScoreResult: Codable, Equatable, Sendable {
@@ -65,6 +122,15 @@ struct FinalScoreCalculator: Sendable {
         let consumedFishPoints = playerState.ocean.slots.reduce(0) { total, slot in
             total + slot.consumedFish.count
         }
+        let coralPoints = playerState.ocean.coralReefs.reduce(0) { total, reef in
+            total + reef.coralCount
+        }
+        let completeReefBonusPoints = playerState.ocean.coralReefs.reduce(0) { total, reef in
+            guard reef.coralCount >= reef.maxCoral else {
+                return total
+            }
+            return total + reef.completionBonus
+        }
         // TODO: Insert the GAME END ability pending choice flow before final scoring.
         let gameEndAbilityPoints = 0
         let totalPoints = weeklyAchievementPoints
@@ -74,6 +140,8 @@ struct FinalScoreCalculator: Sendable {
             + youngPoints
             + schoolPoints
             + consumedFishPoints
+            + coralPoints
+            + completeReefBonusPoints
 
         return FinalScoreBreakdown(
             playerId: playerState.playerId,
@@ -84,6 +152,8 @@ struct FinalScoreCalculator: Sendable {
             youngPoints: youngPoints,
             schoolPoints: schoolPoints,
             consumedFishPoints: consumedFishPoints,
+            coralPoints: coralPoints,
+            completeReefBonusPoints: completeReefBonusPoints,
             totalPoints: totalPoints
         )
     }

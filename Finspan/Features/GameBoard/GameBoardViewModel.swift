@@ -729,6 +729,8 @@ enum ScoreBarCategory: String, Codable, Equatable, Sendable {
     case eggsAndYoung
     case schools
     case consumedFish
+    case coral
+    case completeReefBonus
 }
 
 enum ScoreBarColorStyle: String, Codable, Equatable, Sendable {
@@ -738,6 +740,8 @@ enum ScoreBarColorStyle: String, Codable, Equatable, Sendable {
     case eggsAndYoung
     case schools
     case consumedFish
+    case coral
+    case completeReefBonus
 }
 
 struct ScoreBarSegmentViewState: Identifiable, Codable, Equatable, Sendable {
@@ -1579,6 +1583,7 @@ final class GameBoardViewModel: ObservableObject {
         let maxTotalPoints = max(finalScoreResult.results.map(\.totalPoints).max() ?? 0, 0)
         let ratioDivisor = max(maxTotalPoints, 1)
         let winnerNames = finalScoreResult.winnerPlayerIds.map(displayName)
+        let shouldShowCoralScores = shouldShowCoralScoreSegments(for: finalScoreResult)
         let playerRows = finalScoreResult.results.map { result in
             let playerName = displayName(for: result.playerId)
             let playerColor = players.first(where: { $0.playerId == result.playerId })?.color
@@ -1596,7 +1601,11 @@ final class GameBoardViewModel: ObservableObject {
                     maximumTotal: ratioDivisor
                 ),
                 isWinner: finalScoreResult.winnerPlayerIds.contains(result.playerId),
-                segments: finalScoreSegments(for: result, maximumTotal: ratioDivisor)
+                segments: finalScoreSegments(
+                    for: result,
+                    maximumTotal: ratioDivisor,
+                    shouldShowCoralScores: shouldShowCoralScores
+                )
             )
         }
 
@@ -1608,7 +1617,7 @@ final class GameBoardViewModel: ObservableObject {
             ),
             maxTotalPoints: maxTotalPoints,
             playerRows: playerRows,
-            legendItems: finalScoreLegendItems
+            legendItems: finalScoreLegendItems(shouldShowCoralScores: shouldShowCoralScores)
         )
     }
 
@@ -5219,8 +5228,8 @@ final class GameBoardViewModel: ObservableObject {
             ?? playerId
     }
 
-    private var finalScoreLegendItems: [ScoreLegendItemViewState] {
-        [
+    private func finalScoreLegendItems(shouldShowCoralScores: Bool) -> [ScoreLegendItemViewState] {
+        var items = [
             ScoreLegendItemViewState(
                 title: AppStrings.GameBoard.finalScoreWeeklyAchievements,
                 displayColorKey: .weeklyAchievements
@@ -5246,13 +5255,29 @@ final class GameBoardViewModel: ObservableObject {
                 displayColorKey: .consumedFish
             )
         ]
+        if shouldShowCoralScores {
+            items.append(
+                ScoreLegendItemViewState(
+                    title: AppStrings.GameBoard.finalScoreCoral,
+                    displayColorKey: .coral
+                )
+            )
+            items.append(
+                ScoreLegendItemViewState(
+                    title: AppStrings.GameBoard.finalScoreCompleteReefBonus,
+                    displayColorKey: .completeReefBonus
+                )
+            )
+        }
+        return items
     }
 
     private func finalScoreSegments(
         for result: FinalScoreBreakdown,
-        maximumTotal: Int
+        maximumTotal: Int,
+        shouldShowCoralScores: Bool
     ) -> [ScoreBarSegmentViewState] {
-        let segmentValues: [(ScoreBarCategory, String, Int, ScoreBarColorStyle)] = [
+        var segmentValues: [(ScoreBarCategory, String, Int, ScoreBarColorStyle)] = [
             (
                 .weeklyAchievements,
                 AppStrings.GameBoard.finalScoreWeeklyAchievements,
@@ -5290,6 +5315,24 @@ final class GameBoardViewModel: ObservableObject {
                 .consumedFish
             )
         ]
+        if shouldShowCoralScores {
+            segmentValues.append(
+                (
+                    .coral,
+                    AppStrings.GameBoard.finalScoreCoral,
+                    result.coralPoints,
+                    .coral
+                )
+            )
+            segmentValues.append(
+                (
+                    .completeReefBonus,
+                    AppStrings.GameBoard.finalScoreCompleteReefBonus,
+                    result.completeReefBonusPoints,
+                    .completeReefBonus
+                )
+            )
+        }
 
         return segmentValues.map { category, title, points, colorStyle in
             ScoreBarSegmentViewState(
@@ -5303,6 +5346,17 @@ final class GameBoardViewModel: ObservableObject {
                 displayColorKey: colorStyle
             )
         }
+    }
+
+    private func shouldShowCoralScoreSegments(for result: FinalScoreResult) -> Bool {
+        let isSharksAndReefsEnabled = roomService.gameRoom?.gameConfig.enabledExpansions.contains(.sharksAndReefs) ?? false
+        let hasScoredCoral = result.results.contains {
+            $0.coralPoints > 0 || $0.completeReefBonusPoints > 0
+        }
+        let hasCoralReefs = state.playerGameStates.values.contains {
+            !$0.ocean.coralReefs.isEmpty
+        }
+        return isSharksAndReefsEnabled && (hasScoredCoral || hasCoralReefs)
     }
 
     private func scoreBarWidthRatio(points: Int, maximumTotal: Int) -> Double {

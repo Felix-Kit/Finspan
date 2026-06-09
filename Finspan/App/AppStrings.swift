@@ -118,6 +118,8 @@ enum AppStrings {
         static let finalScoreEggsAndYoung = "鱼卵 / 幼鱼"
         static let finalScoreSchools = "鱼群"
         static let finalScoreConsumedFish = "被吞食鱼"
+        static let finalScoreCoral = "珊瑚"
+        static let finalScoreCompleteReefBonus = "完整珊瑚礁奖励"
         static let playerColor = "玩家颜色"
         static let pendingChoicePlayer = "玩家"
         static let pendingChoiceSource = "来源"
