@@ -132,8 +132,20 @@ final class LobbyViewModel: ObservableObject {
         )
     }
 
+    var activeRoomSummary: JoinableRoomViewData? {
+        guard let room = roomService.gameRoom,
+              room.status != .finished
+        else {
+            return nil
+        }
+        return joinableRoomViewData(room)
+    }
+
     var discoveredRooms: [JoinableRoomViewData] {
-        []
+        guard let activeRoomSummary else {
+            return []
+        }
+        return [activeRoomSummary]
     }
 
     init(
@@ -155,6 +167,36 @@ final class LobbyViewModel: ObservableObject {
 
     func showMainMenu() {
         screen = .mainMenu
+    }
+
+    func returnToMainMenuKeepingRoom() {
+        screen = .mainMenu
+        errorMessage = nil
+    }
+
+    func enterActiveRoom() {
+        guard roomService.gameRoom != nil else {
+            errorMessage = AppStrings.Lobby.noRoom
+            return
+        }
+        refresh()
+        screen = .roomLobby
+    }
+
+    func enterRoom(_ roomId: RoomID) {
+        guard roomService.gameRoom?.roomId == roomId else {
+            errorMessage = AppStrings.Lobby.noRoom
+            return
+        }
+        refresh()
+        screen = .roomLobby
+    }
+
+    func dissolveCurrentRoom() {
+        roomService.resetLocalRoomSession()
+        screen = .mainMenu
+        errorMessage = nil
+        refresh()
     }
 
     func showCreateRoom() {
@@ -316,9 +358,6 @@ final class LobbyViewModel: ObservableObject {
         if selectedPlayerId == nil || !room.players.contains(where: { $0.playerId == selectedPlayerId }) {
             selectedPlayerId = room.players.first?.playerId
         }
-        if room.status == .waiting || room.status == .configuring {
-            screen = .roomLobby
-        }
     }
 
     func setNautomaExpansionEnabled(_ isEnabled: Bool) {
@@ -462,6 +501,20 @@ final class LobbyViewModel: ObservableObject {
             isReady: player.isReady
         )
     }
+
+    private func joinableRoomViewData(_ room: GameRoom) -> JoinableRoomViewData {
+        let host = room.players.first(where: { $0.playerId == room.hostPlayerId })
+        return JoinableRoomViewData(
+            id: room.roomId,
+            roomName: room.gameConfig.roomName.isEmpty ? AppStrings.Lobby.unnamedRoom : room.gameConfig.roomName,
+            hostName: host?.displayName ?? room.hostPlayerId,
+            hostAvatarSymbol: host?.avatarSymbol ?? PlayerProfile.defaultAvatarSymbol,
+            playerCountText: "\(room.players.filter { $0.role != .spectator }.count) / \(room.gameConfig.playerCount)",
+            expansionText: expansionSummary(for: room.gameConfig.enabledExpansions),
+            weeklyGoalSummary: weeklyGoalSetupSummary(room.gameConfig.weeklyGoalSetup),
+            isHostedByLocalPlayer: room.hostPlayerId == localPlayerId
+        )
+    }
 }
 
 struct WeeklyGoalOptionViewData: Identifiable, Equatable {
@@ -498,4 +551,5 @@ struct JoinableRoomViewData: Identifiable, Equatable {
     let playerCountText: String
     let expansionText: String
     let weeklyGoalSummary: String
+    let isHostedByLocalPlayer: Bool
 }

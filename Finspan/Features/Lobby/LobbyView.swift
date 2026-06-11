@@ -180,6 +180,34 @@ private struct MainMenuView: View {
         VStack(spacing: 24) {
             Spacer(minLength: 20)
 
+            if let room = viewModel.activeRoomSummary {
+                Button {
+                    viewModel.enterActiveRoom()
+                } label: {
+                    HStack(spacing: 16) {
+                        AvatarCircle(symbol: room.hostAvatarSymbol, size: 44)
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(AppStrings.Lobby.continueRoomEntry)
+                                .font(.title3.weight(.bold))
+                            Text(room.roomName)
+                                .font(.headline)
+                            Text("\(room.playerCountText) · \(room.expansionText) · \(room.weeklyGoalSummary)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: 820, alignment: .leading)
+                    .padding(18)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(Color(.secondarySystemBackground)))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.accentColor.opacity(0.35), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+            }
+
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 18)], spacing: 18) {
                 menuCard(
                     title: AppStrings.Lobby.createRoomEntry,
@@ -511,6 +539,7 @@ private struct WeeklyGoalTileContent: View {
 
 private struct RoomLobbyView: View {
     @ObservedObject var viewModel: LobbyViewModel
+    @State private var isConfirmingDissolve = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -528,11 +557,23 @@ private struct RoomLobbyView: View {
                         }
                     }
                     Spacer()
-                    Button(AppStrings.Lobby.startGame) {
-                        viewModel.startGameAsHost()
+                    HStack(spacing: 10) {
+                        Button(AppStrings.Lobby.returnToMainMenu) {
+                            viewModel.returnToMainMenuKeepingRoom()
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button(AppStrings.Lobby.dissolveRoom, role: .destructive) {
+                            isConfirmingDissolve = true
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button(AppStrings.Lobby.startGame) {
+                            viewModel.startGameAsHost()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!viewModel.canStartGame)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!viewModel.canStartGame)
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -580,6 +621,18 @@ private struct RoomLobbyView: View {
             Spacer()
         }
         .padding(24)
+        .confirmationDialog(
+            AppStrings.Lobby.dissolveRoomConfirmTitle,
+            isPresented: $isConfirmingDissolve,
+            titleVisibility: .visible
+        ) {
+            Button(AppStrings.Lobby.dissolveRoom, role: .destructive) {
+                viewModel.dissolveCurrentRoom()
+            }
+            Button(AppStrings.GameBoard.cancel, role: .cancel) {}
+        } message: {
+            Text(AppStrings.Lobby.dissolveRoomConfirmMessage)
+        }
     }
 }
 
@@ -594,7 +647,12 @@ private struct JoinGameBrowserView: View {
                 }
                 .buttonStyle(.bordered)
                 Spacer()
-                Button(AppStrings.Lobby.refreshRooms) {}
+                Text(AppStrings.Lobby.localRoomListNote)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button(AppStrings.Lobby.refreshRooms) {
+                    viewModel.refresh()
+                }
                     .buttonStyle(.bordered)
             }
 
@@ -609,22 +667,38 @@ private struct JoinGameBrowserView: View {
                 ScrollView {
                     LazyVStack(spacing: 12) {
                         ForEach(viewModel.discoveredRooms) { room in
-                            HStack(spacing: 12) {
-                                AvatarCircle(symbol: room.hostAvatarSymbol, size: 42)
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(room.roomName)
-                                        .font(.headline)
-                                    Text(room.hostName)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                    Text("\(room.playerCountText) · \(room.expansionText) · \(room.weeklyGoalSummary)")
-                                        .font(.caption)
+                            Button {
+                                viewModel.enterRoom(room.id)
+                            } label: {
+                                HStack(spacing: 12) {
+                                    AvatarCircle(symbol: room.hostAvatarSymbol, size: 42)
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        HStack(spacing: 8) {
+                                            Text(room.roomName)
+                                                .font(.headline)
+                                            if room.isHostedByLocalPlayer {
+                                                Text(AppStrings.Lobby.hostedByMeBadge)
+                                                    .font(.caption2.weight(.bold))
+                                                    .padding(.horizontal, 8)
+                                                    .padding(.vertical, 4)
+                                                    .background(Capsule().fill(Color.cyan.opacity(0.16)))
+                                            }
+                                        }
+                                        Text(room.hostName)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        Text("\(room.playerCountText) · \(room.expansionText) · \(room.weeklyGoalSummary)")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
                                         .foregroundStyle(.secondary)
                                 }
-                                Spacer()
+                                .padding()
+                                .background(RoundedRectangle(cornerRadius: 8).fill(Color(.secondarySystemBackground)))
                             }
-                            .padding()
-                            .background(RoundedRectangle(cornerRadius: 8).fill(Color(.secondarySystemBackground)))
+                            .buttonStyle(.plain)
                         }
                     }
                 }

@@ -218,6 +218,17 @@ final class LobbyViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.roomLobbySummary?.weeklyGoalDetails, [])
     }
 
+    func testSideBRandomRoomListDoesNotRevealConcreteGoals() {
+        let viewModel = makeProfiledViewModel()
+
+        viewModel.selectedGameDataMode = .baseGame
+        viewModel.weeklyGoalBoardSide = .sideB
+        viewModel.weeklyGoalSelectionMode = .random
+        viewModel.createLocalRoom()
+
+        XCTAssertEqual(viewModel.discoveredRooms.first?.weeklyGoalSummary, AppStrings.Lobby.weeklyGoalSideBRandomSummary)
+    }
+
     func testCreateLocalRoomStoresWeeklyGoalSetupInGameConfig() {
         let service = LocalAuthoritativeRoomService()
         let viewModel = makeProfiledViewModel(roomService: service)
@@ -236,6 +247,24 @@ final class LobbyViewModelTests: XCTestCase {
         XCTAssertEqual(service.gameRoom?.gameConfig.weeklyGoalSetup.boardSide, .sideB)
         XCTAssertEqual(service.gameRoom?.gameConfig.weeklyGoalSetup.selectionMode, .custom)
         XCTAssertEqual(service.gameRoom?.gameConfig.weeklyGoalSetup.selectedGoalIdsByWeek[3], "base.sideA.week3.schools")
+    }
+
+    func testSideBCustomRoomLobbyAndRoomListShowCustomSummary() {
+        let viewModel = makeProfiledViewModel()
+
+        viewModel.selectedGameDataMode = .baseGame
+        viewModel.weeklyGoalBoardSide = .sideB
+        viewModel.weeklyGoalSelectionMode = .custom
+        viewModel.selectedWeeklyGoalIdsByWeek = [
+            1: "base.sideA.week1.eggsAndYoung",
+            2: "base.sideA.week2.rowsOfFish",
+            3: "base.sideA.week3.schools"
+        ]
+        viewModel.createLocalRoom()
+
+        XCTAssertEqual(viewModel.roomLobbySummary?.weeklyGoalSummary, AppStrings.Lobby.weeklyGoalSideBCustomSummary)
+        XCTAssertEqual(viewModel.roomLobbySummary?.weeklyGoalDetails.count, 3)
+        XCTAssertEqual(viewModel.discoveredRooms.first?.weeklyGoalSummary, AppStrings.Lobby.weeklyGoalSideBCustomSummary)
     }
 
     func testSideAIsIndependentFromSharksAndReefsToggle() {
@@ -263,6 +292,85 @@ final class LobbyViewModelTests: XCTestCase {
         XCTAssertEqual(service.gameState.phase, .lobby)
     }
 
+    func testReturningToMainMenuKeepsActiveRoom() {
+        let service = LocalAuthoritativeRoomService()
+        let viewModel = makeProfiledViewModel(roomService: service)
+
+        viewModel.roomNameDraft = "海马观察站"
+        viewModel.createLocalRoom()
+        let originalRoomId = service.gameRoom?.roomId
+        viewModel.returnToMainMenuKeepingRoom()
+
+        XCTAssertEqual(viewModel.screen, .mainMenu)
+        XCTAssertEqual(service.gameRoom?.roomId, originalRoomId)
+        XCTAssertEqual(service.gameRoom?.gameConfig.roomName, "海马观察站")
+        XCTAssertNotNil(viewModel.activeRoomSummary)
+    }
+
+    func testMainMenuContinueRoomEntryReentersRoomLobby() {
+        let viewModel = makeProfiledViewModel()
+
+        viewModel.createLocalRoom()
+        viewModel.returnToMainMenuKeepingRoom()
+        viewModel.enterActiveRoom()
+
+        XCTAssertEqual(viewModel.screen, .roomLobby)
+        XCTAssertNotNil(viewModel.roomLobbySummary)
+    }
+
+    func testJoinGameBrowserShowsLocalActiveRoomAfterTemporaryExit() {
+        let service = LocalAuthoritativeRoomService()
+        let viewModel = makeProfiledViewModel(roomService: service)
+
+        viewModel.roomNameDraft = "翻车鱼潜点"
+        viewModel.createLocalRoom()
+        viewModel.returnToMainMenuKeepingRoom()
+        viewModel.showJoinGame()
+
+        XCTAssertEqual(viewModel.screen, .joinGame)
+        XCTAssertEqual(viewModel.discoveredRooms.map(\.id), [service.gameRoom?.roomId].compactMap { $0 })
+        XCTAssertEqual(viewModel.discoveredRooms.first?.roomName, "翻车鱼潜点")
+        XCTAssertTrue(viewModel.discoveredRooms.first?.isHostedByLocalPlayer ?? false)
+    }
+
+    func testSelectingLocalRoomFromJoinBrowserReentersRoomLobby() {
+        let service = LocalAuthoritativeRoomService()
+        let viewModel = makeProfiledViewModel(roomService: service)
+
+        viewModel.createLocalRoom()
+        let roomId = service.gameRoom!.roomId
+        viewModel.returnToMainMenuKeepingRoom()
+        viewModel.showJoinGame()
+        viewModel.enterRoom(roomId)
+
+        XCTAssertEqual(viewModel.screen, .roomLobby)
+        XCTAssertEqual(viewModel.roomLobbySummary?.roomName, service.gameRoom?.gameConfig.roomName)
+    }
+
+    func testDissolvingRoomReturnsToMainMenuAndRemovesActiveRoom() {
+        let service = LocalAuthoritativeRoomService()
+        let viewModel = makeProfiledViewModel(roomService: service)
+
+        viewModel.createLocalRoom()
+        viewModel.dissolveCurrentRoom()
+
+        XCTAssertEqual(viewModel.screen, .mainMenu)
+        XCTAssertNil(service.gameRoom)
+        XCTAssertNil(viewModel.activeRoomSummary)
+        XCTAssertTrue(viewModel.discoveredRooms.isEmpty)
+    }
+
+    func testDissolvedRoomDoesNotAppearInJoinBrowser() {
+        let viewModel = makeProfiledViewModel()
+
+        viewModel.createLocalRoom()
+        viewModel.dissolveCurrentRoom()
+        viewModel.showJoinGame()
+
+        XCTAssertEqual(viewModel.screen, .joinGame)
+        XCTAssertTrue(viewModel.discoveredRooms.isEmpty)
+    }
+
     func testRoomLobbyShowsHostProfileAndRoomSummary() {
         let viewModel = makeProfiledViewModel(nickname: "房主", avatarSymbol: "moon.stars.fill")
 
@@ -285,6 +393,35 @@ final class LobbyViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.screen, .joinGame)
         XCTAssertTrue(viewModel.discoveredRooms.isEmpty)
         XCTAssertNil(service.gameRoom)
+    }
+
+    func testHostStartGameMovesRoomIntoInProgressGameState() {
+        let service = LocalAuthoritativeRoomService(randomSeedProvider: { 42 })
+        let viewModel = makeProfiledViewModel(roomService: service)
+
+        viewModel.createLocalRoom()
+        viewModel.startGameAsHost()
+
+        XCTAssertEqual(service.gameRoom?.status, .inProgress)
+        XCTAssertNotEqual(service.gameState.phase, .lobby)
+    }
+
+    func testSideBRandomGoalsResolveOnlyAfterStartGame() {
+        let service = LocalAuthoritativeRoomService(randomSeedProvider: { 42 })
+        let viewModel = makeProfiledViewModel(roomService: service)
+
+        viewModel.selectedGameDataMode = .baseGame
+        viewModel.weeklyGoalBoardSide = .sideB
+        viewModel.weeklyGoalSelectionMode = .random
+        viewModel.createLocalRoom()
+
+        XCTAssertNil(service.gameState.weeklyGoals)
+        XCTAssertEqual(viewModel.roomLobbySummary?.weeklyGoalDetails, [])
+        XCTAssertEqual(viewModel.discoveredRooms.first?.weeklyGoalSummary, AppStrings.Lobby.weeklyGoalSideBRandomSummary)
+
+        viewModel.startGameAsHost()
+
+        XCTAssertEqual(service.gameState.weeklyGoals?.map(\.week), [1, 2, 3])
     }
 
     func testAutomaEntryIsPlaceholderAndDoesNotEnableNautoma() {
