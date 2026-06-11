@@ -190,6 +190,17 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.lastActionSummaryText, "游戏结束，进入结算")
     }
 
+    func testHudToastShowsGameStartedSummaryAndAutoDismisses() async throws {
+        let service = makeService(hand: [])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.hudToastViewState?.text, AppStrings.GameBoard.gameStartedSummary)
+
+        try await Task.sleep(nanoseconds: 2_000_000_000)
+
+        XCTAssertNil(viewModel.hudToastViewState)
+    }
+
     func testSelectingOpponentAvatarOnlyRecordsPreviewState() {
         let service = makeService(
             hand: [],
@@ -227,7 +238,6 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(info.eggCount, 2)
         XCTAssertEqual(info.youngCount, 1)
         XCTAssertEqual(info.schoolCount, 3)
-        XCTAssertEqual(info.handCount, 2)
     }
 
     func testRightActionPanelShowsPlayFishConfirmationWhenTargetSelected() {
@@ -964,7 +974,7 @@ final class GameBoardViewModelTests: XCTestCase {
         let cards = Dictionary(uniqueKeysWithValues: viewModel.handViewState.cards.map { ($0.cardId, $0) })
         XCTAssertEqual(viewModel.handViewState.pulledOutCardId, "fish-3")
         XCTAssertFalse(cards["fish-2"]?.isPulledOutFromStack ?? true)
-        XCTAssertEqual(cards["fish-2"]?.stackOffsetY, 72)
+        XCTAssertEqual(cards["fish-2"]?.stackOffsetY, 46)
         XCTAssertTrue(cards["fish-3"]?.isPulledOutFromStack ?? false)
         XCTAssertEqual(cards["fish-3"]?.stackOffsetY, -18)
     }
@@ -979,7 +989,7 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.handViewState.pulledOutCardId)
         XCTAssertNil(viewModel.handViewState.selectedCard)
         XCTAssertTrue(viewModel.handViewState.cards.allSatisfy { !$0.isPulledOutFromStack })
-        XCTAssertEqual(viewModel.handViewState.cards.map(\.stackOffsetY), [72, 72])
+        XCTAssertEqual(viewModel.handViewState.cards.map(\.stackOffsetY), [46, 46])
     }
 
     func testBeginDraggingHandCardSelectsCardAndClearsTargetAndPaymentSelection() {
@@ -3331,6 +3341,10 @@ final class GameBoardViewModelTests: XCTestCase {
         let service = makeService(
             hand: ["fish-2"],
             pendingChoices: [choice.choiceId: choice],
+            resourceSourceResources: [
+                ResourceQuantity(kind: .egg, amount: 1),
+                ResourceQuantity(kind: .young, amount: 1)
+            ],
             clearAllSlotResources: true
         )
         let viewModel = GameBoardViewModel(roomService: service)

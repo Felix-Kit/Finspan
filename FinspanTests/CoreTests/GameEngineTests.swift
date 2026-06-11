@@ -812,6 +812,40 @@ final class GameEngineTests: XCTestCase {
         }
     }
 
+    func testSkippingGameEndAbilityMarksSourceHandledAndPreventsRepeatActivation() throws {
+        let engine = GameEngine(cardCatalog: gameEndAbilityCatalog())
+        var state = gameEndAbilityState(cardIds: ["sr.gameEnd.anyCoral"])
+        let source = gameEndAbilitySource(cardId: "sr.gameEnd.anyCoral", abilityId: SharksAndReefsAbilityIDs.anyCoralTwiceGameEnd)
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: activateGameEndAbilityCommand(commandId: "activate-skip-game-end", source: source),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        let choice = try XCTUnwrap(state.pendingChoices.values.first)
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "skip-game-end", choiceId: choice.choiceId, resolution: .skip),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        XCTAssertTrue(state.pendingChoices.isEmpty)
+        XCTAssertTrue(state.activatedGameEndAbilitySourceIds.contains(source.id))
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: activateGameEndAbilityCommand(commandId: "activate-skip-game-end-repeat", source: source),
+                in: state
+            )
+        )
+    }
+
     func testConsumedFishGameEndAbilityIsIgnored() {
         let engine = GameEngine(cardCatalog: gameEndAbilityCatalog())
         var state = gameEndAbilityState(cardIds: [])
@@ -858,7 +892,7 @@ final class GameEngineTests: XCTestCase {
         let cases: [(AbilityID, AbilityEffectUnit)] = [
             (BaseGameAbilityIDs.binocularFishGameEnd, .placeEggOnMatchingFish(filter: .lengthBucket(.small), mode: .onEachEligibleFish)),
             (BaseGameAbilityIDs.chineseTrumpetfishGameEnd, .placeEggOnMatchingFish(filter: .lengthBucket(.medium), mode: .onEachEligibleFish)),
-            (BaseGameAbilityIDs.europeanAnchovyGameEnd, .placeEggOnMatchingFish(filter: .topRow, mode: .chooseOneEligibleFish)),
+            (BaseGameAbilityIDs.europeanAnchovyGameEnd, .placeEggOnMatchingFish(filter: .topRow, mode: .onEachEligibleFish)),
             (BaseGameAbilityIDs.largetoothFlounderGameEnd, .placeEggOnMatchingFish(filter: .diveSite(.green), mode: .chooseOneEligibleFish)),
             (BaseGameAbilityIDs.marianaSnailfishGameEnd, .placeEggOnMatchingFish(filter: .bottomRow, mode: .onEachEligibleFish)),
             (BaseGameAbilityIDs.oceanSunfishGameEnd, .placeEggOnMatchingFish(filter: .lengthBucket(.large), mode: .onEachEligibleFish)),
@@ -985,6 +1019,111 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(resourceAmount(.egg, at: mediumAddress, in: state), 0)
         XCTAssertEqual(resourceAmount(.egg, at: alreadyHasEggAddress, in: state), 1)
         XCTAssertTrue(state.activatedGameEndAbilitySourceIds.contains(source.id))
+    }
+
+    func testOceanSunfishGameEndPlacesEggOnEveryLargeFish() throws {
+        let engine = GameEngine(cardCatalog: TestCardCatalog(fishCards: [
+            Card(
+                id: "gameEnd.oceanSunfish",
+                name: "Ocean Sunfish",
+                abilityIds: [BaseGameAbilityIDs.oceanSunfishGameEnd],
+                printedPoints: 1,
+                lengthCm: 160
+            ),
+            Card(id: "large.one", name: "Large One", printedPoints: 1, lengthCm: 170),
+            Card(id: "large.two", name: "Large Two", printedPoints: 1, lengthCm: 180),
+            Card(id: "small.one", name: "Small One", printedPoints: 1, lengthCm: 10)
+        ]))
+        var state = gameEndAbilityState(cardIds: ["gameEnd.oceanSunfish", "large.one", "large.two", "small.one"])
+        let source = gameEndAbilitySource(cardId: "gameEnd.oceanSunfish", abilityId: BaseGameAbilityIDs.oceanSunfishGameEnd)
+        let largeOne = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 1)
+        let largeTwo = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 2)
+        let smallOne = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 3)
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: activateGameEndAbilityCommand(commandId: "activate-ocean-sunfish", source: source),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        let choice = try XCTUnwrap(state.pendingChoices.values.first)
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "finish-ocean-sunfish", choiceId: choice.choiceId, resolution: .finishAbility),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        XCTAssertEqual(resourceAmount(.egg, at: source.slotAddress, in: state), 1)
+        XCTAssertEqual(resourceAmount(.egg, at: largeOne, in: state), 1)
+        XCTAssertEqual(resourceAmount(.egg, at: largeTwo, in: state), 1)
+        XCTAssertEqual(resourceAmount(.egg, at: smallOne, in: state), 0)
+    }
+
+    func testEuropeanAnchovyGameEndPlacesEggOnEachTopRowFish() throws {
+        let engine = GameEngine(cardCatalog: TestCardCatalog(fishCards: [
+            Card(
+                id: "gameEnd.anchovy",
+                name: "European Anchovy",
+                abilityIds: [BaseGameAbilityIDs.europeanAnchovyGameEnd],
+                printedPoints: 1,
+                lengthCm: 10
+            ),
+            Card(id: "top.one", name: "Top One", printedPoints: 1, lengthCm: 12),
+            Card(id: "top.two", name: "Top Two", printedPoints: 1, lengthCm: 14),
+            Card(id: "mid.one", name: "Mid One", printedPoints: 1, lengthCm: 20)
+        ]))
+        var state = gameEndAbilityState(cardIds: [])
+        let source = gameEndAbilitySource(cardId: "gameEnd.anchovy", abilityId: BaseGameAbilityIDs.europeanAnchovyGameEnd)
+        let sourceAddress = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        let topOne = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 0)
+        let topTwo = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 0)
+        let midOne = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 1)
+        let alreadyHasEggAddress = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 1)
+        setContent(.fishCard("gameEnd.anchovy"), at: sourceAddress, in: &state)
+        setContent(.fishCard("top.one"), at: topOne, in: &state)
+        setContent(.fishCard("top.two"), at: topTwo, in: &state)
+        setContent(.fishCard("mid.one"), at: midOne, in: &state)
+        setContent(.fishCard("top.hasEgg"), at: alreadyHasEggAddress, in: &state)
+        setResources([ResourceQuantity(kind: .egg, amount: 1)], at: alreadyHasEggAddress, in: &state)
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: activateGameEndAbilityCommand(commandId: "activate-anchovy", source: source),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        let choice = try XCTUnwrap(state.pendingChoices.values.first)
+        XCTAssertEqual(choice.expectedInput, Optional(PendingChoiceExpectedInput.none))
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "finish-anchovy", choiceId: choice.choiceId, resolution: .finishAbility),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        XCTAssertEqual(resourceAmount(.egg, at: sourceAddress, in: state), 1)
+        XCTAssertEqual(resourceAmount(.egg, at: topOne, in: state), 1)
+        XCTAssertEqual(resourceAmount(.egg, at: topTwo, in: state), 1)
+        XCTAssertEqual(resourceAmount(.egg, at: midOne, in: state), 0)
+        XCTAssertEqual(resourceAmount(.egg, at: alreadyHasEggAddress, in: state), 1)
+        XCTAssertTrue(state.activatedGameEndAbilitySourceIds.contains(source.id))
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: activateGameEndAbilityCommand(commandId: "activate-anchovy-repeat", source: source),
+                in: state
+            )
+        )
     }
 
     func testGameEndPaidPlayFishFromHandRequiresPaymentAndPlacesFish() throws {

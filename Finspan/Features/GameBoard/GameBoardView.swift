@@ -33,8 +33,13 @@ struct GameBoardView: View {
                             boardStatusStrip
 
                             HStack(alignment: .top, spacing: 12) {
-                                playFishPanel
-                                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                                ZStack(alignment: .bottom) {
+                                    playFishPanel
+                                        .frame(maxWidth: .infinity, alignment: .topLeading)
+
+                                    bottomCardDock
+                                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                                }
 
                                 Divider()
 
@@ -46,8 +51,13 @@ struct GameBoardView: View {
                         .padding(.top, 12)
                         .padding(.bottom, 20)
 
-                        bottomCardDock
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                        if let toast = viewModel.hudToastViewState {
+                            hudToastBanner(toast)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                                .padding(.top, 10)
+                                .padding(.horizontal, 18)
+                                .allowsHitTesting(false)
+                        }
                     }
                     .toolbar(.hidden, for: .navigationBar)
                     .ignoresSafeArea(.container, edges: [.top, .bottom])
@@ -179,19 +189,6 @@ struct GameBoardView: View {
 
             VStack(spacing: 5) {
                 playerHud(hud.playerHud)
-                if let summary = hud.playerHud.lastActionSummaryText {
-                    Text(summary)
-                        .font(.callout.weight(.semibold))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 5)
-                        .background(
-                            Capsule()
-                                .fill(Color(.secondarySystemBackground))
-                                .shadow(color: .black.opacity(0.1), radius: 5, y: 2)
-                        )
-                }
             }
             .frame(maxWidth: .infinity)
 
@@ -437,16 +434,6 @@ struct GameBoardView: View {
 
     private var bottomCardDock: some View {
         ZStack(alignment: .bottom) {
-            Rectangle()
-                .fill(Color(.systemBackground).opacity(0.94))
-                .frame(maxWidth: .infinity, minHeight: 286, maxHeight: 286)
-                .overlay(alignment: .top) {
-                    Rectangle()
-                        .fill(Color.secondary.opacity(0.14))
-                        .frame(height: 1)
-                }
-                .ignoresSafeArea(.container, edges: .bottom)
-
             FloatingHandView(
                 viewState: viewModel.handViewState,
                 onSelectCard: { cardId in
@@ -469,39 +456,49 @@ struct GameBoardView: View {
                     viewModel.cancelPlayFishSelection()
                 }
             )
-            .padding(.bottom, 6)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.horizontal, 18)
+            .padding(.bottom, 4)
 
-            HStack {
-                Spacer(minLength: 0)
-                discardPileEntry(viewModel.discardPileViewState)
+            if !viewModel.discardPileViewState.isEmpty {
+                HStack {
+                    Spacer(minLength: 0)
+                    discardPileEntry(viewModel.discardPileViewState)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                .padding(.trailing, 24)
+                .padding(.bottom, 16)
             }
-            .padding(.trailing, 38)
-            .padding(.bottom, 20)
-            .allowsHitTesting(true)
         }
     }
 
     private func discardPileEntry(_ viewState: DiscardPileViewState) -> some View {
-        Button {
-            viewModel.showDiscardPile()
-        } label: {
-            VStack(alignment: .center, spacing: 6) {
-                discardPileStack(viewState)
+        Group {
+            if viewState.isEmpty {
+                EmptyView()
+            } else {
+                Button {
+                    viewModel.showDiscardPile()
+                } label: {
+                    VStack(alignment: .center, spacing: 6) {
+                        discardPileStack(viewState)
 
-                Text(viewState.countText)
-                    .font(.caption.weight(.black))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-                    .background(Capsule().fill(viewState.isEmpty ? Color.secondary : Color.accentColor))
+                        Text(viewState.countText)
+                            .font(.caption.weight(.black))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                            .background(Capsule().fill(Color.accentColor))
+                    }
+                    .padding(.vertical, 4)
+                    .padding(.horizontal, 6)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(viewState.title)，\(viewState.countText)")
             }
-            .padding(.vertical, 4)
-            .padding(.horizontal, 6)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(viewState.title)，\(viewState.countText)")
     }
 
     private func discardPileStack(_ viewState: DiscardPileViewState) -> some View {
@@ -531,8 +528,8 @@ struct GameBoardView: View {
                 ForEach(Array(viewState.topCards.enumerated()), id: \.offset) { index, card in
                     FishCardFaceView(viewState: card)
                         .frame(width: width, height: height)
-                        .rotationEffect(.degrees(Double(index - 1) * 1.2))
-                        .offset(x: CGFloat(index) * 4, y: CGFloat(index) * -3)
+                        .rotationEffect(.degrees(Double(index - 1) * 0.8))
+                        .offset(x: CGFloat(index) * 3, y: CGFloat(index) * -2)
                         .shadow(color: .black.opacity(0.16), radius: 5, y: 3)
                         .zIndex(Double(index))
                 }
@@ -909,7 +906,7 @@ struct GameBoardView: View {
                     .background(Circle().fill(Color.accentColor))
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(AppStrings.GameBoard.activePlayerInfo)
+                    Text(AppStrings.GameBoard.currentPlayer)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Text(info.playerName)
@@ -918,15 +915,11 @@ struct GameBoardView: View {
                 }
             }
 
-            infoMetric(title: AppStrings.GameBoard.divePanel, value: info.diverSummaryText)
-            HStack(spacing: 8) {
-                resourceMetric(title: AppStrings.GameBoard.placeEggAbilityAction, value: info.eggCount)
-                resourceMetric(title: AppStrings.GameBoard.moveYoung, value: info.youngCount)
-                resourceMetric(title: AppStrings.GameBoard.moveSchool, value: info.schoolCount)
-            }
-            HStack(spacing: 8) {
-                resourceMetric(title: AppStrings.GameBoard.handCount, value: info.handCount)
-                resourceMetric(title: AppStrings.GameBoard.consumedFishCount, value: info.consumedFishCount)
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                compactMetric(title: AppStrings.GameBoard.remainingDivers, value: info.diverSummaryText)
+                compactMetric(title: AppStrings.GameBoard.eggTotal, value: "\(info.eggCount)")
+                compactMetric(title: AppStrings.GameBoard.youngTotal, value: "\(info.youngCount)")
+                compactMetric(title: AppStrings.GameBoard.schoolTotal, value: "\(info.schoolCount)")
             }
         }
         .padding(12)
@@ -937,26 +930,30 @@ struct GameBoardView: View {
         )
     }
 
-    private func infoMetric(title: String, value: String) -> some View {
+    private func compactMetric(title: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
-                .font(.caption2)
+                .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
             Text(value)
-                .font(.callout.weight(.semibold))
-        }
-    }
-
-    private func resourceMetric(title: String, value: Int) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-            Text("\(value)")
-                .font(.title3.weight(.bold))
+                .font(.callout.weight(.bold))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func hudToastBanner(_ viewState: GameBoardToastViewState) -> some View {
+        Text(viewState.text)
+            .font(.callout.weight(.semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(
+                Capsule()
+                    .fill(Color(.systemBackground).opacity(0.92))
+                    .shadow(color: .black.opacity(0.18), radius: 8, y: 3)
+            )
+            .frame(maxWidth: 280, alignment: .center)
     }
 
     private func weeklyGoalDetailPanel(_ detail: WeeklyGoalDetailViewState) -> some View {
@@ -1297,7 +1294,11 @@ struct GameBoardView: View {
 
     private func slotPanel(_ slot: OceanSlotViewData) -> some View {
         ZStack(alignment: .topLeading) {
-            FishCardFaceView(viewState: slot.cardFace)
+            if slot.cardFace.kind == .empty {
+                emptySlotPlaceholder(slot)
+            } else {
+                FishCardFaceView(viewState: slot.cardFace)
+            }
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 5) {
@@ -1461,6 +1462,25 @@ struct GameBoardView: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(token.isSelectedForPayment ? Color.red.opacity(0.65) : Color.secondary.opacity(0.18), lineWidth: 1)
         )
+    }
+
+    private func emptySlotPlaceholder(_ slot: OceanSlotViewData) -> some View {
+        RoundedRectangle(cornerRadius: 8)
+            .fill(slotBackgroundColor(slot).opacity(0.72))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(slotBorderColor(slot).opacity(0.8), style: StrokeStyle(lineWidth: 1.2, dash: [5, 4]))
+            )
+            .overlay(
+                VStack(spacing: 6) {
+                    Image(systemName: "square.dashed")
+                        .font(.headline.weight(.semibold))
+                    Text(AppStrings.GameBoard.empty)
+                        .font(.caption.weight(.semibold))
+                }
+                .foregroundStyle(.secondary)
+            )
+            .aspectRatio(slot.cardFace.aspectRatio, contentMode: .fit)
     }
 
     private func bottomAreaPanel(_ bottomArea: DiveSiteBottomAreaViewState) -> some View {

@@ -160,8 +160,8 @@ enum BaseGameAbilityDefinitions {
         placeEgg(
             BaseGameAbilityIDs.europeanAnchovyGameEnd,
             filter: .topRow,
-            mode: .chooseOneEligibleFish,
-            displayText: "游戏结束：选择河口中 1 条鱼放置 1 个鱼卵"
+            mode: .onEachEligibleFish,
+            displayText: "游戏结束：在河口中每条鱼上放置 1 个鱼卵"
         ),
         playFishFromHand(
             BaseGameAbilityIDs.facelessCuskGameEnd,

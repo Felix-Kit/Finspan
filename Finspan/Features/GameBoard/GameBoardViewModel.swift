@@ -328,6 +328,11 @@ struct GameBoardSettingsMenuViewState: Equatable {
     let cancelText: String
 }
 
+struct GameBoardToastViewState: Identifiable, Equatable {
+    let id: EventID
+    let text: String
+}
+
 struct TopPlayerHudViewState: Equatable {
     let players: [PlayerAvatarViewState]
     let activePlayerId: PlayerID?
@@ -355,8 +360,6 @@ struct SidePlayerInfoViewState: Equatable {
     let eggCount: Int
     let youngCount: Int
     let schoolCount: Int
-    let handCount: Int
-    let consumedFishCount: Int
 }
 
 enum RightActionPanelActionKind: String, Equatable {
@@ -913,11 +916,15 @@ final class GameBoardViewModel: ObservableObject {
     @Published private(set) var selectedWeeklyGoalDetailWeek: Int?
     @Published private(set) var isEventLogPresented = false
     @Published private(set) var isDiscardPileDetailPresented = false
+    @Published private(set) var hudToastViewState: GameBoardToastViewState?
 
     private let roomService: any RoomService
     private let cardCatalogProvider: () -> any CardCatalog
     private let abilityResolver: AbilityResolver
     private var commandCounter = 0
+    private var hudToastDismissWorkItem: DispatchWorkItem?
+    private var lastShownHudToastSequence: EventID?
+    private var didShowInitialHudToast = false
     private var cardCatalog: any CardCatalog {
         cardCatalogProvider()
     }
@@ -1026,9 +1033,6 @@ final class GameBoardViewModel: ObservableObject {
 
     var sidePlayerInfoViewState: SidePlayerInfoViewState {
         let totals = activePlayerResourceTotals
-        let consumedFishCount = activePlayerState?.ocean.slots.reduce(0) { total, slot in
-            total + slot.consumedFish.count
-        } ?? 0
         return SidePlayerInfoViewState(
             playerName: activePlayerName,
             avatarText: avatarText(for: state.activePlayerId),
@@ -1038,9 +1042,7 @@ final class GameBoardViewModel: ObservableObject {
             ),
             eggCount: totals.eggs,
             youngCount: totals.young,
-            schoolCount: totals.schools,
-            handCount: activePlayerState?.hand.count ?? 0,
-            consumedFishCount: consumedFishCount
+            schoolCount: totals.schools
         )
     }
 
@@ -1337,6 +1339,40 @@ final class GameBoardViewModel: ObservableObject {
         default:
             return false
         }
+    }
+
+    private func updateHudToast() {
+        if let event = eventLog.reversed().first(where: isImportantActionEvent) {
+            guard lastShownHudToastSequence != event.sequenceNumber else {
+                return
+            }
+            showHudToast(text: actionSummary(for: event), sequence: event.sequenceNumber)
+            didShowInitialHudToast = true
+            return
+        }
+
+        guard !didShowInitialHudToast else {
+            return
+        }
+        showHudToast(text: AppStrings.GameBoard.gameStartedSummary, sequence: 0)
+        didShowInitialHudToast = true
+    }
+
+    private func showHudToast(text: String, sequence: EventID) {
+        hudToastDismissWorkItem?.cancel()
+        lastShownHudToastSequence = sequence
+        hudToastViewState = GameBoardToastViewState(id: sequence, text: text)
+
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self,
+                  self.lastShownHudToastSequence == sequence
+            else {
+                return
+            }
+            self.hudToastViewState = nil
+        }
+        hudToastDismissWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.8, execute: workItem)
     }
 
     private func actionSummary(for event: GameEvent) -> String {
@@ -2210,6 +2246,7 @@ final class GameBoardViewModel: ObservableObject {
         players = roomService.gameRoom?.players ?? []
         eventLog = roomService.eventLog
         removeInvalidSelections()
+        updateHudToast()
     }
 
     func selectHandCard(_ cardId: CardID) {
