@@ -19,7 +19,8 @@ struct ContentView: View {
         _lobbyViewModel = StateObject(
             wrappedValue: LobbyViewModel(
                 roomService: environment.roomService,
-                gameDataController: environment.gameDataController
+                gameDataController: environment.gameDataController,
+                profileStore: environment.playerProfileStore
             )
         )
         _gameBoardViewModel = StateObject(

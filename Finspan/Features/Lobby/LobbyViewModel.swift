@@ -1,6 +1,14 @@
 import Combine
 import Foundation
 
+enum LobbyScreen: Equatable {
+    case mainMenu
+    case createRoom
+    case roomLobby
+    case joinGame
+    case automa
+}
+
 @MainActor
 final class LobbyViewModel: ObservableObject {
     @Published private(set) var roomCode = "-"
@@ -19,16 +27,23 @@ final class LobbyViewModel: ObservableObject {
     @Published var weeklyGoalBoardSide: AchievementBoardSide = .sideA
     @Published var weeklyGoalSelectionMode: WeeklyGoalSelectionMode = .random
     @Published var selectedWeeklyGoalIdsByWeek: [Int: WeeklyGoalID] = [:]
+    @Published var screen: LobbyScreen = .mainMenu
+    @Published var isProfileEditorPresented = false
+    @Published var profileNicknameDraft = ""
+    @Published var profileAvatarDraft = PlayerProfile.defaultAvatarSymbol
+    @Published var roomNameDraft = ""
+    @Published var playerCount = 4
     @Published private(set) var errorMessage: String?
+    @Published private(set) var localPlayerProfile: PlayerProfile?
 
     private let roomService: any RoomService
     private let gameDataController: GameDataController?
-    private let hostPlayerId: PlayerID = "host-player"
-    private let hostDisplayName = AppStrings.Lobby.hostName
+    private let profileStore: PlayerProfileStore
     private let roomId: RoomID = "local-room"
     private let roomCodeValue = "LOCAL"
     private var commandCounter = 0
     private var simulatedPlayerCounter = 0
+    private var roomNameCounter = 0
 
     var canCreateRoom: Bool {
         roomService.gameRoom == nil && weeklyGoalSetupValidationError == nil
@@ -45,7 +60,7 @@ final class LobbyViewModel: ObservableObject {
         guard let room = roomService.gameRoom else {
             return false
         }
-        return room.hostPlayerId == hostPlayerId && room.status != .inProgress
+        return room.hostPlayerId == localPlayerId && room.status != .inProgress
     }
 
     var canSelectExpansions: Bool {
@@ -72,20 +87,117 @@ final class LobbyViewModel: ObservableObject {
         return nil
     }
 
+    var requiresProfileSetup: Bool {
+        localPlayerProfile == nil
+    }
+
+    var profileDisplayName: String {
+        localPlayerProfile?.nickname ?? PlayerProfile.defaultNickname
+    }
+
+    var profileAvatarSymbol: String {
+        localPlayerProfile?.avatarSymbol ?? PlayerProfile.defaultAvatarSymbol
+    }
+
+    var effectiveRoomName: String {
+        let trimmed = roomNameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return AppStrings.Lobby.defaultRoomName(ownerName: profileDisplayName)
+        }
+        return trimmed
+    }
+
+    var createRoomValidationMessage: String? {
+        weeklyGoalSetupValidationError
+    }
+
+    var canSubmitCreateRoom: Bool {
+        canCreateRoom && !requiresProfileSetup && createRoomValidationMessage == nil
+    }
+
+    var roomLobbySummary: RoomLobbyViewData? {
+        guard let room = roomService.gameRoom else {
+            return nil
+        }
+        let host = room.players.first(where: { $0.playerId == room.hostPlayerId })
+        return RoomLobbyViewData(
+            roomName: room.gameConfig.roomName.isEmpty ? AppStrings.Lobby.unnamedRoom : room.gameConfig.roomName,
+            hostName: host?.displayName ?? room.hostPlayerId,
+            hostAvatarSymbol: host?.avatarSymbol ?? PlayerProfile.defaultAvatarSymbol,
+            playerCountText: "\(room.players.filter { $0.role != .spectator }.count) / \(room.gameConfig.playerCount)",
+            expansionText: expansionSummary(for: room.gameConfig.enabledExpansions),
+            weeklyGoalSummary: weeklyGoalSetupSummary(room.gameConfig.weeklyGoalSetup),
+            weeklyGoalDetails: weeklyGoalDetails(for: room.gameConfig.weeklyGoalSetup),
+            players: room.players.map(roomPlayerViewData)
+        )
+    }
+
+    var discoveredRooms: [JoinableRoomViewData] {
+        []
+    }
+
     init(
         roomService: any RoomService,
-        gameDataController: GameDataController? = nil
+        gameDataController: GameDataController? = nil,
+        profileStore: PlayerProfileStore? = nil
     ) {
         self.roomService = roomService
         self.gameDataController = gameDataController
+        let resolvedProfileStore = profileStore ?? PlayerProfileStore()
+        self.profileStore = resolvedProfileStore
         selectedGameDataMode = gameDataController?.mode
             ?? (roomService as? GameDataModeConfiguring)?.gameDataMode
             ?? .sample
+        localPlayerProfile = resolvedProfileStore.profile
+        resetProfileDraft()
         refresh()
+    }
+
+    func showMainMenu() {
+        screen = .mainMenu
+    }
+
+    func showCreateRoom() {
+        roomNameDraft = ""
+        screen = .createRoom
+    }
+
+    func showJoinGame() {
+        screen = .joinGame
+    }
+
+    func showAutoma() {
+        screen = .automa
+    }
+
+    func beginProfileEditing() {
+        resetProfileDraft()
+        isProfileEditorPresented = true
+    }
+
+    func saveProfileDraft() {
+        let trimmed = profileNicknameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            errorMessage = AppStrings.Lobby.profileNicknameRequired
+            return
+        }
+        profileStore.save(nickname: trimmed, avatarSymbol: profileAvatarDraft)
+        localPlayerProfile = profileStore.profile
+        isProfileEditorPresented = false
+        errorMessage = nil
+    }
+
+    func randomizeRoomName() {
+        roomNameDraft = RoomNameGenerator.name(at: roomNameCounter)
+        roomNameCounter += 1
     }
 
     func createLocalRoom() {
         guard configureGameDataMode(selectedGameDataMode) else {
+            return
+        }
+        guard !requiresProfileSetup else {
+            errorMessage = AppStrings.Lobby.profileRequiredBeforeRoom
             return
         }
         if let validationError = weeklyGoalSetupValidationError {
@@ -95,19 +207,24 @@ final class LobbyViewModel: ObservableObject {
         submit(
             PlayerCommand.createRoom(
                 commandId: nextCommandId(),
-                playerId: hostPlayerId,
+                playerId: localPlayerId,
                 roomId: roomId,
                 roomCode: roomCodeValue,
-                displayName: hostDisplayName,
+                displayName: profileDisplayName,
+                avatarSymbol: profileAvatarSymbol,
                 gameConfig: GameConfig(
-                    playerCount: 4,
+                    playerCount: playerCount,
                     enabledExpansions: selectedEnabledExpansions,
                     randomSeed: 0,
                     gameDataMode: selectedGameDataMode,
-                    weeklyGoalSetup: weeklyGoalSetupConfig
+                    weeklyGoalSetup: weeklyGoalSetupConfig,
+                    roomName: effectiveRoomName
                 )
             )
         )
+        if roomService.gameRoom != nil {
+            screen = .roomLobby
+        }
     }
 
     func joinSimulatedPlayer() {
@@ -119,7 +236,10 @@ final class LobbyViewModel: ObservableObject {
                 playerId: playerId,
                 roomId: roomId,
                 payload: .joinRoom(
-                    JoinRoomCommand(displayName: "\(AppStrings.Lobby.simulatedPlayerPrefix) \(simulatedPlayerCounter)")
+                    JoinRoomCommand(
+                        displayName: "\(AppStrings.Lobby.simulatedPlayerPrefix) \(simulatedPlayerCounter)",
+                        avatarSymbol: PlayerProfile.defaultAvatarSymbol
+                    )
                 )
             )
         )
@@ -171,7 +291,7 @@ final class LobbyViewModel: ObservableObject {
         submit(
             PlayerCommand(
                 commandId: nextCommandId(),
-                playerId: hostPlayerId,
+                playerId: localPlayerId,
                 roomId: roomId,
                 payload: .startGame(StartGameCommand())
             )
@@ -195,6 +315,9 @@ final class LobbyViewModel: ObservableObject {
 
         if selectedPlayerId == nil || !room.players.contains(where: { $0.playerId == selectedPlayerId }) {
             selectedPlayerId = room.players.first?.playerId
+        }
+        if room.status == .waiting || room.status == .configuring {
+            screen = .roomLobby
         }
     }
 
@@ -246,6 +369,10 @@ final class LobbyViewModel: ObservableObject {
         return "lobby-command-\(commandCounter)"
     }
 
+    private var localPlayerId: PlayerID {
+        localPlayerProfile?.playerId ?? "local-player"
+    }
+
     private var selectedEnabledExpansions: [Expansion] {
         var expansions: [Expansion] = []
         if isSharksAndReefsExpansionEnabled {
@@ -271,6 +398,70 @@ final class LobbyViewModel: ObservableObject {
             selectedGoalIdsByWeek: selectedWeeklyGoalIdsByWeek
         )
     }
+
+    private func resetProfileDraft() {
+        profileNicknameDraft = localPlayerProfile?.nickname ?? ""
+        profileAvatarDraft = localPlayerProfile?.avatarSymbol ?? PlayerProfile.defaultAvatarSymbol
+    }
+
+    private func expansionSummary(for expansions: [Expansion]) -> String {
+        if expansions.isEmpty {
+            return AppStrings.Lobby.noExpansionEnabled
+        }
+        return expansions.map(expansionName).joined(separator: " · ")
+    }
+
+    private func expansionName(_ expansion: Expansion) -> String {
+        switch expansion {
+        case .sharksAndReefs:
+            return AppStrings.Lobby.sharksAndReefsExpansion
+        case .nautoma:
+            return AppStrings.Lobby.nautomaExpansion
+        }
+    }
+
+    private func weeklyGoalSetupSummary(_ setup: WeeklyGoalSetupConfig) -> String {
+        switch setup.boardSide {
+        case .sideA:
+            return AppStrings.Lobby.weeklyGoalSideA
+        case .sideB:
+            switch setup.selectionMode {
+            case .random:
+                return AppStrings.Lobby.weeklyGoalSideBRandomSummary
+            case .custom:
+                return AppStrings.Lobby.weeklyGoalSideBCustomSummary
+            }
+        }
+    }
+
+    private func weeklyGoalDetails(for setup: WeeklyGoalSetupConfig) -> [String] {
+        guard setup.boardSide == .sideB,
+              setup.selectionMode == .custom
+        else {
+            return []
+        }
+        return WeeklyGoalCatalog.supportedWeeks.compactMap { week in
+            guard let goalId = setup.selectedGoalIdsByWeek[week],
+                  let goal = WeeklyGoalCatalog.availableGoals(
+                    for: week,
+                    enabledExpansions: selectedEnabledExpansionsForWeeklyGoals
+                  ).first(where: { $0.id == goalId })
+            else {
+                return nil
+            }
+            return "\(AppStrings.Lobby.weeklyGoalWeekTitle(week))：\(goal.title)"
+        }
+    }
+
+    private func roomPlayerViewData(_ player: RoomPlayer) -> RoomPlayerViewData {
+        RoomPlayerViewData(
+            id: player.playerId,
+            name: player.displayName,
+            avatarSymbol: player.avatarSymbol,
+            isHost: player.role == .host,
+            isReady: player.isReady
+        )
+    }
 }
 
 struct WeeklyGoalOptionViewData: Identifiable, Equatable {
@@ -278,4 +469,33 @@ struct WeeklyGoalOptionViewData: Identifiable, Equatable {
     let title: String
     let week: Int
     let sourceExpansion: Expansion?
+}
+
+struct RoomLobbyViewData: Equatable {
+    let roomName: String
+    let hostName: String
+    let hostAvatarSymbol: String
+    let playerCountText: String
+    let expansionText: String
+    let weeklyGoalSummary: String
+    let weeklyGoalDetails: [String]
+    let players: [RoomPlayerViewData]
+}
+
+struct RoomPlayerViewData: Identifiable, Equatable {
+    let id: PlayerID
+    let name: String
+    let avatarSymbol: String
+    let isHost: Bool
+    let isReady: Bool
+}
+
+struct JoinableRoomViewData: Identifiable, Equatable {
+    let id: RoomID
+    let roomName: String
+    let hostName: String
+    let hostAvatarSymbol: String
+    let playerCountText: String
+    let expansionText: String
+    let weeklyGoalSummary: String
 }

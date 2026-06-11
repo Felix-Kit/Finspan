@@ -45,7 +45,22 @@ struct RoomCreatedEvent: Codable, Equatable, Sendable {
     var roomCode: String
     var hostPlayerId: PlayerID
     var hostDisplayName: String
+    var hostAvatarSymbol: String
     var gameConfig: GameConfig
+
+    init(
+        roomCode: String,
+        hostPlayerId: PlayerID,
+        hostDisplayName: String,
+        hostAvatarSymbol: String = PlayerProfile.defaultAvatarSymbol,
+        gameConfig: GameConfig
+    ) {
+        self.roomCode = roomCode
+        self.hostPlayerId = hostPlayerId
+        self.hostDisplayName = hostDisplayName
+        self.hostAvatarSymbol = hostAvatarSymbol
+        self.gameConfig = gameConfig
+    }
 }
 
 struct PlayerJoinedEvent: Codable, Equatable, Sendable {

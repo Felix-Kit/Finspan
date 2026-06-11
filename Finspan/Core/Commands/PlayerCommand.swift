@@ -39,11 +39,33 @@ enum PlayerCommandPayload: Codable, Equatable, Sendable {
 struct CreateRoomCommand: Codable, Equatable, Sendable {
     var roomCode: String
     var displayName: String
+    var avatarSymbol: String
     var gameConfig: GameConfig
+
+    init(
+        roomCode: String,
+        displayName: String,
+        avatarSymbol: String = PlayerProfile.defaultAvatarSymbol,
+        gameConfig: GameConfig
+    ) {
+        self.roomCode = roomCode
+        self.displayName = displayName
+        self.avatarSymbol = avatarSymbol
+        self.gameConfig = gameConfig
+    }
 }
 
 struct JoinRoomCommand: Codable, Equatable, Sendable {
     var displayName: String
+    var avatarSymbol: String
+
+    init(
+        displayName: String,
+        avatarSymbol: String = PlayerProfile.defaultAvatarSymbol
+    ) {
+        self.displayName = displayName
+        self.avatarSymbol = avatarSymbol
+    }
 }
 
 struct LeaveRoomCommand: Codable, Equatable, Sendable {}
@@ -108,6 +130,7 @@ extension PlayerCommand {
         roomId: RoomID,
         roomCode: String,
         displayName: String,
+        avatarSymbol: String = PlayerProfile.defaultAvatarSymbol,
         gameConfig: GameConfig
     ) -> PlayerCommand {
         PlayerCommand(
@@ -118,6 +141,7 @@ extension PlayerCommand {
                 CreateRoomCommand(
                     roomCode: roomCode,
                     displayName: displayName,
+                    avatarSymbol: avatarSymbol,
                     gameConfig: gameConfig
                 )
             )

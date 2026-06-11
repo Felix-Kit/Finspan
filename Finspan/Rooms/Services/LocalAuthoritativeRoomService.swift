@@ -302,6 +302,7 @@ final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring 
             let host = RoomPlayer(
                 playerId: payload.hostPlayerId,
                 displayName: payload.hostDisplayName,
+                avatarSymbol: payload.hostAvatarSymbol,
                 role: .host
             )
             gameRoom = GameRoom(

@@ -7,6 +7,7 @@ struct GameConfig: Codable, Equatable, Sendable {
     var randomSeed: Int
     var gameDataMode: GameDataMode
     var weeklyGoalSetup: WeeklyGoalSetupConfig
+    var roomName: String
 
     init(
         playerCount: Int,
@@ -14,7 +15,8 @@ struct GameConfig: Codable, Equatable, Sendable {
         rulesetVersion: RulesetVersion = .baseGameV1,
         randomSeed: Int,
         gameDataMode: GameDataMode = .sample,
-        weeklyGoalSetup: WeeklyGoalSetupConfig = WeeklyGoalSetupConfig()
+        weeklyGoalSetup: WeeklyGoalSetupConfig = WeeklyGoalSetupConfig(),
+        roomName: String = ""
     ) {
         self.playerCount = playerCount
         self.enabledExpansions = enabledExpansions
@@ -22,6 +24,7 @@ struct GameConfig: Codable, Equatable, Sendable {
         self.randomSeed = randomSeed
         self.gameDataMode = gameDataMode
         self.weeklyGoalSetup = weeklyGoalSetup
+        self.roomName = roomName
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -31,6 +34,7 @@ struct GameConfig: Codable, Equatable, Sendable {
         case randomSeed
         case gameDataMode
         case weeklyGoalSetup
+        case roomName
     }
 
     init(from decoder: Decoder) throws {
@@ -42,5 +46,6 @@ struct GameConfig: Codable, Equatable, Sendable {
         gameDataMode = try container.decodeIfPresent(GameDataMode.self, forKey: .gameDataMode) ?? .sample
         weeklyGoalSetup = try container.decodeIfPresent(WeeklyGoalSetupConfig.self, forKey: .weeklyGoalSetup)
             ?? WeeklyGoalSetupConfig()
+        roomName = try container.decodeIfPresent(String.self, forKey: .roomName) ?? ""
     }
 }

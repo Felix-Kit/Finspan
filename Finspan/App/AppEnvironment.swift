@@ -1,14 +1,18 @@
 import Foundation
 
+@MainActor
 struct AppEnvironment {
     let roomService: any RoomService
     let gameDataController: GameDataController
+    let playerProfileStore: PlayerProfileStore
 
     init(
-        roomService: any RoomService = LocalAuthoritativeRoomService(),
-        gameDataController: GameDataController = GameDataController()
+        roomService: (any RoomService)? = nil,
+        gameDataController: GameDataController? = nil,
+        playerProfileStore: PlayerProfileStore? = nil
     ) {
-        self.roomService = roomService
-        self.gameDataController = gameDataController
+        self.roomService = roomService ?? LocalAuthoritativeRoomService()
+        self.gameDataController = gameDataController ?? GameDataController()
+        self.playerProfileStore = playerProfileStore ?? PlayerProfileStore()
     }
 }

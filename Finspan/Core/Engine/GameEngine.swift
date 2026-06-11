@@ -171,6 +171,7 @@ struct GameEngine {
                     roomCode: payload.roomCode,
                     hostPlayerId: command.playerId,
                     hostDisplayName: payload.displayName,
+                    hostAvatarSymbol: payload.avatarSymbol,
                     gameConfig: payload.gameConfig
                 )
             )]
@@ -179,7 +180,8 @@ struct GameEngine {
                 PlayerJoinedEvent(
                     player: RoomPlayer(
                         playerId: command.playerId,
-                        displayName: payload.displayName
+                        displayName: payload.displayName,
+                        avatarSymbol: payload.avatarSymbol
                     )
                 )
             )]

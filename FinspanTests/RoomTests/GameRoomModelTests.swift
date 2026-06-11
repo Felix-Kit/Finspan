@@ -132,6 +132,36 @@ final class GameRoomModelTests: XCTestCase {
         XCTAssertEqual(config.weeklyGoalSetup, WeeklyGoalSetupConfig())
     }
 
+    func testGameConfigDecodesMissingRoomNameAsEmptyDisplayName() throws {
+        let data = """
+        {
+          "playerCount": 2,
+          "enabledExpansions": [],
+          "randomSeed": 42,
+          "gameDataMode": "baseGame"
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(GameConfig.self, from: data)
+
+        XCTAssertEqual(config.roomName, "")
+    }
+
+    func testRoomPlayerDecodesMissingAvatarAsDefaultSymbol() throws {
+        let data = """
+        {
+          "playerId": "player-1",
+          "displayName": "玩家",
+          "color": "blue",
+          "role": "host"
+        }
+        """.data(using: .utf8)!
+
+        let player = try JSONDecoder().decode(RoomPlayer.self, from: data)
+
+        XCTAssertEqual(player.avatarSymbol, PlayerProfile.defaultAvatarSymbol)
+    }
+
     func testOceanStateDecodesMissingCoralReefsAsEmpty() throws {
         let data = """
         {
