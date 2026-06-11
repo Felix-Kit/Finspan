@@ -106,6 +106,8 @@ struct LobbyView: View {
             }
             .toggleStyle(.switch)
 
+            weeklyGoalSetupControls
+
             Button {
                 viewModel.createLocalRoom()
             } label: {
@@ -172,6 +174,72 @@ struct LobbyView: View {
 
             Spacer(minLength: 0)
         }
+    }
+
+    private var weeklyGoalSetupControls: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(AppStrings.Lobby.weeklyGoalSetup)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Picker(AppStrings.Lobby.weeklyGoalSetup, selection: $viewModel.weeklyGoalBoardSide) {
+                Text(AppStrings.Lobby.weeklyGoalSideA).tag(AchievementBoardSide.sideA)
+                Text(AppStrings.Lobby.weeklyGoalSideB).tag(AchievementBoardSide.sideB)
+            }
+            .pickerStyle(.segmented)
+            .disabled(!viewModel.canSelectExpansions)
+
+            if viewModel.weeklyGoalBoardSide == .sideB {
+                Picker(AppStrings.Lobby.weeklyGoalSelectionMode, selection: $viewModel.weeklyGoalSelectionMode) {
+                    Text(AppStrings.Lobby.weeklyGoalRandom).tag(WeeklyGoalSelectionMode.random)
+                    Text(AppStrings.Lobby.weeklyGoalCustom).tag(WeeklyGoalSelectionMode.custom)
+                }
+                .pickerStyle(.segmented)
+                .disabled(!viewModel.canSelectExpansions)
+
+                if viewModel.weeklyGoalSelectionMode == .custom {
+                    ForEach(WeeklyGoalCatalog.supportedWeeks, id: \.self) { week in
+                        Picker(
+                            AppStrings.Lobby.weeklyGoalWeekTitle(week),
+                            selection: weeklyGoalSelectionBinding(for: week)
+                        ) {
+                            Text(AppStrings.Lobby.none).tag("")
+                            ForEach(viewModel.availableWeeklyGoalOptions(for: week)) { option in
+                                Text(weeklyGoalOptionTitle(option)).tag(option.id)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
+                }
+
+                if let validationError = viewModel.weeklyGoalSetupValidationError {
+                    Text(validationError)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    private func weeklyGoalSelectionBinding(for week: Int) -> Binding<String> {
+        Binding(
+            get: { viewModel.selectedWeeklyGoalIdsByWeek[week] ?? "" },
+            set: { selectedGoalId in
+                if selectedGoalId.isEmpty {
+                    viewModel.selectedWeeklyGoalIdsByWeek.removeValue(forKey: week)
+                } else {
+                    viewModel.selectedWeeklyGoalIdsByWeek[week] = selectedGoalId
+                }
+            }
+        )
+    }
+
+    private func weeklyGoalOptionTitle(_ option: WeeklyGoalOptionViewData) -> String {
+        guard option.sourceExpansion == .sharksAndReefs else {
+            return option.title
+        }
+        return "\(option.title) · S&R"
     }
 
     private func infoRow(_ label: String, _ value: String) -> some View {

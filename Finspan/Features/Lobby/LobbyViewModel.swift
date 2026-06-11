@@ -16,6 +16,9 @@ final class LobbyViewModel: ObservableObject {
     }
     @Published var isSharksAndReefsExpansionEnabled = false
     @Published private(set) var isNautomaExpansionEnabled = false
+    @Published var weeklyGoalBoardSide: AchievementBoardSide = .sideA
+    @Published var weeklyGoalSelectionMode: WeeklyGoalSelectionMode = .random
+    @Published var selectedWeeklyGoalIdsByWeek: [Int: WeeklyGoalID] = [:]
     @Published private(set) var errorMessage: String?
 
     private let roomService: any RoomService
@@ -28,7 +31,7 @@ final class LobbyViewModel: ObservableObject {
     private var simulatedPlayerCounter = 0
 
     var canCreateRoom: Bool {
-        roomService.gameRoom == nil
+        roomService.gameRoom == nil && weeklyGoalSetupValidationError == nil
     }
 
     var canJoinPlayer: Bool {
@@ -46,11 +49,27 @@ final class LobbyViewModel: ObservableObject {
     }
 
     var canSelectExpansions: Bool {
-        canCreateRoom
+        roomService.gameRoom == nil
     }
 
     var canSelectNautomaExpansion: Bool {
         false
+    }
+
+    var weeklyGoalSetupValidationError: String? {
+        guard weeklyGoalBoardSide == .sideB,
+              weeklyGoalSelectionMode == .custom
+        else {
+            return nil
+        }
+        for week in WeeklyGoalCatalog.supportedWeeks {
+            guard let selectedGoalId = selectedWeeklyGoalIdsByWeek[week],
+                  availableWeeklyGoalOptions(for: week).contains(where: { $0.id == selectedGoalId })
+            else {
+                return AppStrings.Lobby.weeklyGoalMissingSelection
+            }
+        }
+        return nil
     }
 
     init(
@@ -69,6 +88,10 @@ final class LobbyViewModel: ObservableObject {
         guard configureGameDataMode(selectedGameDataMode) else {
             return
         }
+        if let validationError = weeklyGoalSetupValidationError {
+            errorMessage = validationError
+            return
+        }
         submit(
             PlayerCommand.createRoom(
                 commandId: nextCommandId(),
@@ -80,7 +103,8 @@ final class LobbyViewModel: ObservableObject {
                     playerCount: 4,
                     enabledExpansions: selectedEnabledExpansions,
                     randomSeed: 0,
-                    gameDataMode: selectedGameDataMode
+                    gameDataMode: selectedGameDataMode,
+                    weeklyGoalSetup: weeklyGoalSetupConfig
                 )
             )
         )
@@ -178,6 +202,21 @@ final class LobbyViewModel: ObservableObject {
         isNautomaExpansionEnabled = false
     }
 
+    func availableWeeklyGoalOptions(for week: Int) -> [WeeklyGoalOptionViewData] {
+        WeeklyGoalCatalog.availableGoals(
+            for: week,
+            enabledExpansions: selectedEnabledExpansionsForWeeklyGoals
+        )
+        .map { goal in
+            WeeklyGoalOptionViewData(
+                id: goal.id,
+                title: goal.title,
+                week: goal.week,
+                sourceExpansion: goal.sourceExpansion
+            )
+        }
+    }
+
     private func submit(_ command: PlayerCommand) {
         do {
             _ = try roomService.submit(command)
@@ -217,4 +256,26 @@ final class LobbyViewModel: ObservableObject {
         }
         return expansions
     }
+
+    private var selectedEnabledExpansionsForWeeklyGoals: [Expansion] {
+        guard selectedGameDataMode == .baseGame else {
+            return []
+        }
+        return selectedEnabledExpansions
+    }
+
+    private var weeklyGoalSetupConfig: WeeklyGoalSetupConfig {
+        WeeklyGoalSetupConfig(
+            boardSide: weeklyGoalBoardSide,
+            selectionMode: weeklyGoalSelectionMode,
+            selectedGoalIdsByWeek: selectedWeeklyGoalIdsByWeek
+        )
+    }
+}
+
+struct WeeklyGoalOptionViewData: Identifiable, Equatable {
+    let id: WeeklyGoalID
+    let title: String
+    let week: Int
+    let sourceExpansion: Expansion?
 }

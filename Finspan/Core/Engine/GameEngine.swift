@@ -123,6 +123,7 @@ struct GameEngine {
                 uniqueKeysWithValues: setup.playerStates.map { ($0.playerId, $0) }
             )
             nextState.deckState = setup.deckState
+            nextState.weeklyGoals = setup.weeklyGoals
         case let .turnEnded(payload):
             let fallbackNextIndex = nextTurnIndex(after: nextState.currentTurnIndex, playerCount: nextState.players.count)
             let nextIndex = payload.nextPlayerId
@@ -465,7 +466,8 @@ struct GameEngine {
             ? []
             : weeklyAchievementScorer.score(
                 week: state.currentWeek,
-                playerStates: orderedPlayerStates
+                playerStates: orderedPlayerStates,
+                weeklyGoals: state.weeklyGoals
             )
         return WeekEndedEvent(
             endedWeek: state.currentWeek,

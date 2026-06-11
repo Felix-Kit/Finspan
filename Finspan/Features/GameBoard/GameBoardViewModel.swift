@@ -1203,28 +1203,96 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     private func weeklyGoalIconText(_ index: Int) -> String {
-        switch index {
-        case 1:
+        guard let kind = weeklyGoalDefinition(for: index)?.kind else {
+            return index == 4 ? "★" : "?"
+        }
+        switch kind {
+        case .eggsAndYoung:
             return "🥚"
-        case 2:
+        case .rowsOfFish:
             return "▦"
-        case 3:
+        case .schools:
             return "●"
-        default:
-            return "★"
+        case .coralCount:
+            return "◌"
+        case .discardPileCards:
+            return "▤"
+        case .sunlitFish:
+            return "☀"
         }
     }
 
     private func weeklyGoalDescription(_ index: Int) -> String {
-        switch index {
-        case 1:
-            return AppStrings.GameBoard.weekOneGoalDescription
-        case 2:
-            return AppStrings.GameBoard.weekTwoGoalDescription
-        case 3:
-            return AppStrings.GameBoard.weekThreeGoalDescription
-        default:
+        if let goal = weeklyGoalDefinition(for: index) {
+            return weeklyGoalDescription(for: goal.kind)
+        }
+        if index == 4 {
             return AppStrings.GameBoard.gameEndGoalShortDescription
+        }
+        return "?"
+    }
+
+    private func weeklyGoalDescription(for kind: AchievementKind) -> String {
+        switch kind {
+        case .eggsAndYoung:
+            return AppStrings.GameBoard.weekOneGoalDescription
+        case .rowsOfFish:
+            return AppStrings.GameBoard.weekTwoGoalDescription
+        case .schools:
+            return AppStrings.GameBoard.weekThreeGoalDescription
+        case .coralCount:
+            return AppStrings.GameBoard.coralCountGoalDescription
+        case .discardPileCards:
+            return AppStrings.GameBoard.discardPileCardsGoalDescription
+        case .sunlitFish:
+            return AppStrings.GameBoard.sunlitFishGoalDescription
+        }
+    }
+
+    private func weeklyGoalDefinition(for week: Int) -> WeeklyGoalDefinition? {
+        let goals = state.weeklyGoals ?? WeeklyGoalCatalog.sideAGoals
+        return goals.first { $0.week == week }
+    }
+
+    private func weeklyGoalQuantity(week: Int, playerState: PlayerGameState) -> Int {
+        guard let kind = weeklyGoalDefinition(for: week)?.kind else {
+            return 0
+        }
+        return weeklyGoalQuantity(kind: kind, playerState: playerState)
+    }
+
+    private func weeklyGoalQuantity(kind: AchievementKind, playerState: PlayerGameState) -> Int {
+        switch kind {
+        case .eggsAndYoung:
+            return playerState.ocean.slots.reduce(0) { total, slot in
+                total
+                    + (slot.resources.first(where: { $0.kind == .egg })?.amount ?? 0)
+                    + (slot.resources.first(where: { $0.kind == .young })?.amount ?? 0)
+            }
+        case .rowsOfFish:
+            return SampleOceanLayout.rowIndices.filter { rowIndex in
+                DiveSite.allCases.allSatisfy { diveSite in
+                    playerState.ocean.slots.contains {
+                        $0.address.diveSite == diveSite
+                            && $0.address.rowIndex == rowIndex
+                            && $0.content.hasFish
+                    }
+                }
+            }.count
+        case .schools:
+            return playerState.ocean.slots.reduce(0) { total, slot in
+                total + (slot.resources.first(where: { $0.kind == .school })?.amount ?? 0)
+            }
+        case .coralCount:
+            return playerState.ocean.coralReefs.reduce(0) { total, reef in
+                total + reef.coralCount
+            }
+        case .discardPileCards:
+            return playerState.discardPile.count
+        case .sunlitFish:
+            return playerState.ocean.slots.filter { slot in
+                slot.address.zone == .sunlit && slot.content.hasFish
+            }.count
         }
     }
 
@@ -1252,32 +1320,6 @@ final class GameBoardViewModel: ObservableObject {
         )
     }
 
-    private func weeklyGoalQuantity(week: Int, playerState: PlayerGameState) -> Int {
-        switch week {
-        case 1:
-            return playerState.ocean.slots.reduce(0) { total, slot in
-                total
-                    + (slot.resources.first(where: { $0.kind == .egg })?.amount ?? 0)
-                    + (slot.resources.first(where: { $0.kind == .young })?.amount ?? 0)
-            }
-        case 2:
-            return SampleOceanLayout.rowIndices.filter { rowIndex in
-                DiveSite.allCases.allSatisfy { diveSite in
-                    playerState.ocean.slots.contains {
-                        $0.address.diveSite == diveSite
-                            && $0.address.rowIndex == rowIndex
-                            && $0.content.hasFish
-                    }
-                }
-            }.count
-        case 3:
-            return playerState.ocean.slots.reduce(0) { total, slot in
-                total + (slot.resources.first(where: { $0.kind == .school })?.amount ?? 0)
-            }
-        default:
-            return 0
-        }
-    }
 
     private func playFishActionSummaryLines(_ payment: PlayFishPaymentViewState) -> [String] {
         var lines = [

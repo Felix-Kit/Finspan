@@ -286,7 +286,8 @@ final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring 
 
         let setup = try setupBuilder.makeSetup(
             players: room.players,
-            randomSeed: randomSeed
+            randomSeed: randomSeed,
+            weeklyGoalSetup: room.gameConfig.weeklyGoalSetup
         )
 
         return [

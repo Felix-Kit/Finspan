@@ -4,6 +4,9 @@ enum AchievementKind: String, Codable, Equatable, Sendable {
     case eggsAndYoung
     case rowsOfFish
     case schools
+    case coralCount
+    case discardPileCards
+    case sunlitFish
 }
 
 struct WeeklyAchievementResult: Codable, Equatable, Sendable {
@@ -15,34 +18,33 @@ struct WeeklyAchievementResult: Codable, Equatable, Sendable {
 }
 
 struct SideAWeeklyAchievementScorer: Sendable {
-    func score(week: Int, playerStates: [PlayerGameState]) -> [WeeklyAchievementResult] {
-        guard let kind = achievementKind(for: week) else {
+    func score(
+        week: Int,
+        playerStates: [PlayerGameState],
+        weeklyGoals: [WeeklyGoalDefinition]? = nil
+    ) -> [WeeklyAchievementResult] {
+        guard let goal = weeklyGoal(for: week, weeklyGoals: weeklyGoals) else {
             return []
         }
 
         return playerStates.map { playerState in
-            let quantity = quantity(for: kind, playerState: playerState)
+            let quantity = quantity(for: goal.kind, playerState: playerState)
             return WeeklyAchievementResult(
                 week: week,
-                kind: kind,
+                kind: goal.kind,
                 playerId: playerState.playerId,
                 quantity: quantity,
-                points: quantity * pointsPerUnit(for: kind)
+                points: quantity * goal.pointsPerUnit
             )
         }
     }
 
-    private func achievementKind(for week: Int) -> AchievementKind? {
-        switch week {
-        case 1:
-            return .eggsAndYoung
-        case 2:
-            return .rowsOfFish
-        case 3:
-            return .schools
-        default:
-            return nil
-        }
+    private func weeklyGoal(
+        for week: Int,
+        weeklyGoals: [WeeklyGoalDefinition]?
+    ) -> WeeklyGoalDefinition? {
+        let goals = weeklyGoals ?? WeeklyGoalCatalog.sideAGoals
+        return goals.first { $0.week == week }
     }
 
     private func quantity(
@@ -68,16 +70,16 @@ struct SideAWeeklyAchievementScorer: Sendable {
             return playerState.ocean.slots.reduce(0) { total, slot in
                 total + resourceAmount(.school, in: slot)
             }
-        }
-    }
-
-    private func pointsPerUnit(for kind: AchievementKind) -> Int {
-        switch kind {
-        case .eggsAndYoung:
-            return 1
-        case .rowsOfFish,
-             .schools:
-            return 2
+        case .coralCount:
+            return playerState.ocean.coralReefs.reduce(0) { total, reef in
+                total + reef.coralCount
+            }
+        case .discardPileCards:
+            return playerState.discardPile.count
+        case .sunlitFish:
+            return playerState.ocean.slots.filter { slot in
+                slot.address.zone == .sunlit && slot.content.hasFish
+            }.count
         }
     }
 

@@ -260,4 +260,5 @@ struct GameSetup: Codable, Equatable, Sendable {
     var startingPlayerId: PlayerID
     var playerStates: [PlayerGameState]
     var deckState: DeckState
+    var weeklyGoals: [WeeklyGoalDefinition]? = nil
 }

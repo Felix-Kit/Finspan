@@ -117,6 +117,21 @@ final class GameRoomModelTests: XCTestCase {
         XCTAssertEqual(config.gameDataMode, .baseGame)
     }
 
+    func testGameConfigDecodesMissingWeeklyGoalSetupAsSideA() throws {
+        let data = """
+        {
+          "playerCount": 2,
+          "enabledExpansions": [],
+          "randomSeed": 42,
+          "gameDataMode": "baseGame"
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(GameConfig.self, from: data)
+
+        XCTAssertEqual(config.weeklyGoalSetup, WeeklyGoalSetupConfig())
+    }
+
     func testOceanStateDecodesMissingCoralReefsAsEmpty() throws {
         let data = """
         {

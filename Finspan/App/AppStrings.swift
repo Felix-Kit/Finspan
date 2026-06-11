@@ -17,6 +17,14 @@ enum AppStrings {
         static let expansions = "扩展"
         static let sharksAndReefsExpansion = "Sharks & Reefs"
         static let nautomaExpansion = "Nautoma（暂未实现）"
+        static let weeklyGoalSetup = "周目标面板"
+        static let weeklyGoalSideA = "A 面"
+        static let weeklyGoalSideB = "B 面"
+        static let weeklyGoalSelectionMode = "B 面目标"
+        static let weeklyGoalRandom = "随机三周目标"
+        static let weeklyGoalCustom = "房主自选周目标"
+        static func weeklyGoalWeekTitle(_ week: Int) -> String { "第 \(week) 周" }
+        static let weeklyGoalMissingSelection = "请为 B 面自选目标选择第 1、2、3 周目标。"
         static let createLocalRoom = "创建本地房间"
         static let joinSimulatedPlayer = "加入模拟玩家"
         static let activePlayer = "当前选择玩家"
@@ -71,6 +79,9 @@ enum AppStrings {
         static let weekOneGoalDescription = "鱼卵和幼鱼"
         static let weekTwoGoalDescription = "整排的鱼"
         static let weekThreeGoalDescription = "鱼群"
+        static let coralCountGoalDescription = "珊瑚数量"
+        static let discardPileCardsGoalDescription = "弃牌堆鱼牌"
+        static let sunlitFishGoalDescription = "阳光带鱼牌"
         static let gameEndGoalTitle = "终局能力"
         static let gameEndGoalShortDescription = "发动游戏结束能力，随后计分"
         static let gameEndGoalDescription = "第 4 周结束后，以任意顺序发动自己海洋中任意多个“游戏结束”能力，随后进行最终计分。"
@@ -534,13 +545,22 @@ enum AppStrings {
             return "鱼的行"
         case .schools:
             return "鱼群"
+        case .coralCount:
+            return "珊瑚"
+        case .discardPileCards:
+            return "弃牌"
+        case .sunlitFish:
+            return "阳光带鱼牌"
         }
     }
 
     static func achievementQuantityUnit(_ kind: AchievementKind) -> String {
         switch kind {
         case .eggsAndYoung,
-             .schools:
+             .schools,
+             .coralCount,
+             .discardPileCards,
+             .sunlitFish:
             return "个"
         case .rowsOfFish:
             return "行"

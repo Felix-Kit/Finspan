@@ -12,7 +12,11 @@ struct DeterministicSetupBuilder {
         self.enabledExpansions = enabledExpansions
     }
 
-    func makeSetup(players: [RoomPlayer], randomSeed: Int) throws -> GameSetup {
+    func makeSetup(
+        players: [RoomPlayer],
+        randomSeed: Int,
+        weeklyGoalSetup: WeeklyGoalSetupConfig = WeeklyGoalSetupConfig()
+    ) throws -> GameSetup {
         let activePlayers = players.filter { $0.role != .spectator }
         guard !activePlayers.isEmpty else {
             throw GameEngineError.invalidCommand("Setup requires at least one active player.")
@@ -36,6 +40,11 @@ struct DeterministicSetupBuilder {
         var startingPlayerRandom = SeededRandom(seed: randomSeed)
         let startingPlayerIndex = startingPlayerRandom.nextInt(upperBound: activePlayers.count)
         let startingPlayerId = activePlayers[startingPlayerIndex].playerId
+        let weeklyGoals = try WeeklyGoalCatalog.resolveGoals(
+            setupConfig: weeklyGoalSetup,
+            enabledExpansions: enabledExpansions,
+            randomSeed: randomSeed
+        )
 
         var playerStates: [PlayerGameState] = []
         var starterOffset = 0
@@ -66,7 +75,8 @@ struct DeterministicSetupBuilder {
                 starterFishDrawPile: Array(starterDeck.dropFirst(starterOffset)),
                 fishDrawPile: Array(fishDeck.dropFirst(fishOffset)),
                 discardPile: []
-            )
+            ),
+            weeklyGoals: weeklyGoals
         )
     }
 

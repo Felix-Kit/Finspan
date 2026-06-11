@@ -25,6 +25,7 @@ struct GameState: Codable, Equatable, Sendable {
     var deckState: DeckState
     var pendingChoices: [PendingChoiceID: PendingChoice] = [:]
     var activeDiveQueue: DiveResolutionQueue? = nil
+    var weeklyGoals: [WeeklyGoalDefinition]? = nil
     var weeklyAchievementResults: [WeeklyAchievementResult] = []
     var activatedGameEndAbilitySourceIds: Set<String> = []
     var finalScoreResult: FinalScoreResult? = nil
@@ -44,6 +45,7 @@ struct GameState: Codable, Equatable, Sendable {
         deckState: .empty,
         pendingChoices: [:],
         activeDiveQueue: nil,
+        weeklyGoals: nil,
         weeklyAchievementResults: [],
         activatedGameEndAbilitySourceIds: [],
         finalScoreResult: nil
