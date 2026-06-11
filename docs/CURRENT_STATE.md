@@ -1,6 +1,6 @@
 # 当前状态
 
-本文档反映当前 `main` 分支的真实进度。当前项目已经从“最小可玩基础循环”进入 UI 与真实数据增强阶段。
+本文档反映当前 `main` 分支的真实进度。项目已经从基础可玩循环进入 Sharks & Reefs 部分接入、GAME END 扫尾和 UI 细化阶段。
 
 ## 已完成
 
@@ -17,6 +17,69 @@
 - 已支持 `coverShorterFish` cost。
 - 已支持 reward pool，用于显示和选择当前 pending choice / 奖励解析可用收益。
 
+### Sharks & Reefs 基础接入
+
+- Lobby 已可勾选 Sharks & Reefs。
+- `GameConfig.enabledExpansions` 已接入。
+- base + S&R 合并牌库已接入。
+- S&R main / starter JSON 已进入 runtime `Finspan/Resources/Cards/`。
+- S&R 单独 catalog 和 base+S&R catalog 数量已验证。
+
+### Coral reef 系统
+
+- `OceanState.coralReefs` 已接入。
+- 启用 S&R 时每位玩家初始化 blue / purple / green reef。
+- `coralCount` / `maxCoral` / `completionBonus` 已建模。
+- GameBoard 已显示 coral reef。
+- Twilight printed bonus 后可选择支付 egg / young / hand card 获得 coral。
+- coral 不超过 `maxCoral`。
+
+### S&R 出牌规则
+
+- reef fish 的 coral requirement 已从 `coralRequirementOrCost` 转换为 `Requirement`。
+- coral requirement 校验已接入 `playFish` validation。
+- coral requirement preview / UI 提示已接入。
+
+### S&R 能力
+
+- `gainCoral` ability 已接入。
+- `scatterSchool` / 打散鱼群已接入。
+- `consume fish from hand` 已接入。
+- `play fish for free` 已接入。
+- Blue Lanternfish draw 4 已接入。
+- GAME END S&R coral executable abilities 已接入。
+
+### GAME END 阶段
+
+- 第 4 周结束后进入 `GamePhase.endGamePending`。
+- `activateGameEndAbility` / `finishGameEndAbilities` 已接入。
+- GAME END ability discovery 基于 visible fish 动态扫描。
+- `activatedGameEndAbilitySourceIds` 已用于防止重复发动。
+- resolve / skip 都会标记 source handled。
+- `finishGameEndAbilities` 后进入 final scoring。
+- GAME END phase / ViewModel / final scoring focused tests 曾通过。
+
+### GAME END ability sweep
+
+- 39 条 GAME END abilities 中已实现 33 条。
+- scoring-only 10 条已实现。
+- executable 23 条已实现。
+- 仍 unsupported / future work 6 条：
+  - Honeycomb Scaly Dragonfish
+  - Speckled Butterflyfish
+  - Tripodfish
+  - Blackmouth Angler
+  - Sixgill Sawshark
+  - Yokozuna Slickhead
+
+### S&R / GAME END scoring
+
+- coral 每个 1 分。
+- complete reef bonus 使用 `CoralReefState.completionBonus`。
+- GAME END scoring-only abilities 计入 `ScoreCategory.gameEnd`。
+- GAME END points 不计入 printed fish points。
+- 未启用 S&R 时 final score UI 不显示 coral / completeReefBonus。
+
 ### 交互与棋盘 UI
 
 - 已支持拖拽出牌。
@@ -27,7 +90,7 @@
 - 日志已改为折叠 / 弹出查看。
 - 已支持强制结束当前对局并返回主页。
 - 已支持弃牌堆只读查看。
-- 手牌继续保持底部浮动堆叠显示，不再使用大型白色手牌底座。
+- 底部手牌 / 弃牌堆 dock 已在优化中。
 
 ### 数据与卡牌
 
@@ -41,39 +104,47 @@
 
 - `AbilityRegistry` / `AbilityResolver` 已落地。
 - Fish A / Fish B / Fish C sample ability 已迁移到 registry / resolver 模型。
-- 当前真实鱼牌能力仍不是全量映射；未接入能力应保持可表示、可跳过，不能导致崩溃。
+- 真实鱼牌能力已部分映射，但尚未全量覆盖。
+- 未接入能力仍保持可表示、可跳过，不会导致崩溃。
 
 ### 卡牌素材与牌面渲染
 
 - 已添加 finsearch 卡牌素材离线下载脚本：`tools/scripts/download_finsearch_assets.py`。
-- 本地素材已导入 `Finspan/Resources/CardAssets/`：
-  - fish image: 215
-  - icons: 57
-  - backgrounds / bands: 13
+- 本地素材已导入 `Finspan/Resources/CardAssets/`。
 - `tools/generated/cards/` 已包含拆分后的 card JSON 生成结果。
 - `tools/generated/assets/asset_download_summary.json` 已记录素材下载结果和本地资源计数。
 - `CardRenderMetrics` 已落地，使用本地 finsearch 背景素材推导出的统一卡牌比例。
 - `FishCardFaceView` 已落地。
-- 手牌、弃牌堆和 ocean slot 已使用同一最小鱼牌牌面显示。
-- 当前牌面是最小近似渲染，不是完整 finsearch 复刻。
+- 手牌、弃牌堆和 ocean slot 当前仍共用同一完整卡牌牌面。
+- 当前牌面仍是近似渲染，不是完整 finsearch 复刻。
 
-## 未做 / 待做
+## 当前仍需修复 / 待做
 
-- 真实全量鱼牌能力映射。
-- `recoverFromDiscardOrDraw` 与弃牌堆选择面板联动；当前弃牌堆详情主要是只读查看。
-- 更完整的 `FishCardFaceView` 细节 / detail 模式。
-- `FishCardFaceView` 的 compact / normal / detail 三种展示密度。
+### UI bug 修复
+
+- 去掉底部白色背景条。
+- 让手牌真正居中。
+- 弃牌堆空时完全隐藏。
+- empty slot 不显示 unknown fish card。
+- 右侧行动玩家面板需要继续精简。
+- 顶部行动摘要应改成自动消失的 toast。
+
+### 规则与功能
+
+- `recoverFromDiscardOrDraw` 与弃牌堆选择模式联动。
+- 复查 GAME END ability sweep 的 33 条已实现能力，补代表性端到端测试。
+- S&R achievements。
+- Side B weekly bonus +3。
+- 真实 board 背景和 slot 对齐系统。
+- BoardLayout / SVG marker / JSON layout pipeline。
 - 点击对手头像查看对手 board。
-- 真实房间恢复 / reconnect / 房间列表。
-- Sharks & Reefs 规则。
-- Nautoma。
-- 服务器 / 联机同步。
-- PDF 解析。
-- 完整 finsearch 级别卡牌拼装算法。
+- 真实全量 ability 覆盖继续扫尾。
+- Nautoma 后置。
+- 联机 / reconnect / 房间恢复后置。
 
 ## 当前建议下一步
 
-1. 优先做 `recoverFromDiscardOrDraw` 与弃牌堆选择模式联动。
-2. 然后做 `FishCardFaceView` 的 compact / normal / detail 三种展示密度。
-3. 再逐步映射真实鱼牌能力。
-4. S&R / Nautoma / 联机后置。
+1. 先修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。
+2. 然后复查 GAME END sweep 的已实现 / unsupported 列表并补代表性测试。
+3. 再推进 `recoverFromDiscardOrDraw` 与弃牌堆选择模式联动。
+4. 之后再做 BoardLayout 资产管线和剩余 S&R / 联机工作。

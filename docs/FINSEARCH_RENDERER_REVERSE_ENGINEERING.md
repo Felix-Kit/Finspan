@@ -2,8 +2,8 @@
 
 This document records what can be confirmed from the locally saved finsearch
 webpage at `/Users/work/Finspan/references/webpage/`. It is analysis only; the
-saved webpage files should remain reference material and should not be moved into
-app runtime resources.
+saved webpage files should remain reference material and should not be moved
+into app runtime resources.
 
 ## Source Files Inspected
 
@@ -16,9 +16,9 @@ app runtime resources.
 - `tools/generated/assets/asset_download_summary.json`
 - Generated analysis summary: `tools/generated/assets/card_renderer_analysis.json`
 
-The saved webpage does not include `.map` files. Both JS and CSS reference source
-maps (`main.3f6711eb.js.map`, `main.f74b3868.css.map`), but those files are not
-present in the saved reference directory.
+The saved webpage does not include `.map` files. Both JS and CSS reference
+source maps (`main.3f6711eb.js.map`, `main.f74b3868.css.map`), but those files
+are not present in the saved reference directory.
 
 ## HTML / JS / CSS Paths
 
@@ -138,8 +138,8 @@ const x = card => {
 }
 ```
 
-This means `base`, `blue`, `purple`, and `green` are not overlaid color bands in
-the DOM. They are full-card background images selected by `card.band`, with
+This means `base`, `blue`, `purple`, and `green` are not overlaid color bands
+in the DOM. They are full-card background images selected by `card.band`, with
 `base` as the fallback.
 
 ## Fish Image Mapping
@@ -372,75 +372,40 @@ There is no separate `requiredDiveSiteColor` overlay in the finsearch DOM. The
 color is represented by choosing the full-card background with `card.band`
 (`blue`, `purple`, `green`) or falling back to `base`.
 
-## Source-Confirmed Facts
+## Current SwiftUI Parity
 
-- Cards are React DOM compositions.
-- The card component is `.card` with child DOM elements, not a complete preview
-  image.
-- Full-card background is selected by `card.band || "base"`.
-- Fish image maps by card `id` to `./<id>.webp`.
-- Cost, zone, tag, and ability icons are semantic SVG names resolved through
-  webpack require contexts.
-- Ability text bracket tokens are parsed into image elements.
-- CSS uses `cqw` container query units for card-local coordinates.
-- CSS card aspect ratio is `61/40`.
-- Local full-card background asset dimensions are `4394 x 2976`.
+- 已使用 CSS card aspect ratio `61/40`。
+- 已使用本地 full-card background `base` / `blue` / `purple` / `green`。
+- 已按 sourceId 映射 fish image。
+- 已有 cost / zone / tag / length / ability token resolver 的近似实现。
+- 已有 `IfActivated` / `GameEnd` strip 背景。
+- hand / slot / discard 使用同一 `FishCardFaceView`。
 
-## Inferred From Assets
+## Remaining Gaps
 
-- The background image pixel ratio probably reflects source art dimensions, but
-  the webpage does not use that pixel ratio as CSS aspect ratio.
-- The app's existing `4394 / 2976` ratio is asset-derived; finsearch display
-  ratio should use `61 / 40` if visual parity with the webpage is the goal.
-- Since no crop metadata was found, fish image placement appears to rely on
-  pre-cropped silhouette assets plus CSS max constraints.
-
-## Still Unknown
-
-- Original unminified React component names.
-- Original source comments and design intent.
-- Exact source-map mappings, because `.map` files are absent.
-- Original font files were referenced by CSS but were not present in the saved
-  browser cache directory.
-- Whether source images were manually cropped before bundling.
-- Any card-specific layout overrides beyond data fields visible in the bundle.
-
-## Gap vs Current SwiftUI `FishCardFaceView`
-
-Current SwiftUI rendering is a minimal approximation. Main gaps:
-
-- It does not use the finsearch full-card background assets as the actual card
-  background.
-- It uses the asset-derived aspect ratio, while finsearch CSS uses `61/40`.
-- It does not use `cqw`-equivalent region coordinates.
-- It does not render title-adjacent tag icons.
-- It does not render cost / zone / length / point icons with the same mappings
-  and sizes.
-- It does not parse ability bracket tokens into icon runs.
-- It does not use `IfActivated` / `GameEnd` strip backgrounds for ability rows.
-- It models `requiredDiveSiteColor` as a right accent strip, while finsearch uses
-  a selected full-card background band.
-- It does not include description text, starter corner overlays, or S&R logo.
-- It uses system fonts rather than Panforte Pro, Dolce, and Lexus Roman Optical.
+- 字体仍不是 finsearch 原字体。
+- title-adjacent tag 精确测量仍是近似。
+- fish silhouette crop / anchor 仍是近似。
+- ability icon group 精确布局仍是近似。
+- description text / starter corner / expansion logo 仍未完全复刻。
+- 没有 source maps / font files。
+- 没有完整 visual QA。
 
 ## Recommended SwiftUI Refactor
 
-1. Add a renderer view model that preserves renderer fields separate from rule
-   logic: `id`, `band`, `group`, `name`, `latin`, costs, zones, points, length,
-   tags, `abilityType`, tokenized ability, description, and expansion.
-2. Change `CardRenderMetrics` to support both ratios:
-   - source asset ratio `4394 / 2976`
-   - finsearch display ratio `61 / 40`
-3. Build a reusable layout model using normalized card-width coordinates derived
-   from CSS `cqw` values.
-4. Replace the current ad hoc background with local full-card background images.
-5. Resolve fish image by card id / source id prefix, preserving current offline
-   local asset lookup.
-6. Add semantic icon resolver for cost, zone, tag, length, and ability token
-   icons.
+1. Keep renderer-facing card data separate from rules data: `id`, `band`,
+   `group`, `name`, `latin`, costs, zones, points, length, tags, `abilityType`,
+   tokenized ability, description, and expansion.
+2. Keep `CardRenderMetrics` anchored to the CSS ratio `61/40` while retaining
+   the asset-derived ratio for reference.
+3. Use normalized card-width coordinates derived from CSS `cqw` values.
+4. Keep the local full-card background assets as the canonical background
+   source.
+5. Resolve fish images by card id / source id prefix and remain fully offline.
+6. Continue mapping semantic icon names to local assets.
 7. Tokenize ability strings into text, point rows, icons, and icon groups before
    rendering.
-8. Implement compact / normal / detail modes by choosing which confirmed regions
-   are visible, not by changing rules data.
+8. Add compact / normal / detail modes later by choosing which confirmed
+   regions are visible, not by changing rules data.
 9. Keep all of this in presentation code and view-state construction. No rule
    validation or ability behavior should move into SwiftUI.
