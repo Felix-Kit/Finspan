@@ -4094,7 +4094,7 @@ final class GameBoardViewModel: ObservableObject {
             ),
             abilityProgressLine(
                 title: AppStrings.GameBoard.playFishForFree,
-                kind: .playFishForFree(filter: .any, count: 1),
+                kind: .playFishForFree(filter: .any, placement: .any, sourceCondition: .none, count: 1),
                 progress: progress
             )
         ].compactMap { $0 }
@@ -4136,7 +4136,7 @@ final class GameBoardViewModel: ObservableObject {
              let .gainCoral(_, count),
              let .scatterSchool(count),
              let .consumeFishFromHand(count),
-             let .playFishForFree(_, count):
+             let .playFishForFree(_, _, _, count):
             return count
         case .gameEndScore,
              .placeEggOnMatchingFish,
@@ -4147,11 +4147,18 @@ final class GameBoardViewModel: ObservableObject {
         }
     }
 
-    private func selectableCompoundEffects(_ progress: CompoundAbilityProgress) -> [AbilityEffectUnit] {
-        guard !progress.canResolveInAnyOrder else {
-            return progress.remainingEffects
+    private func selectableCompoundEffects(for choice: PendingChoice) -> [AbilityEffectUnit] {
+        guard let progress = choice.compoundAbilityProgress else {
+            return []
         }
-        return progress.remainingEffects.first(where: { abilityEffectCount($0) > 0 }).map { [normalizedSingleEffect($0)] } ?? []
+        let legalEffects = progress.remainingEffects
+            .map(normalizedSingleEffect)
+            .filter { compoundEffectIsCurrentlySelectable($0, choice: choice, progress: progress) }
+
+        guard !progress.canResolveInAnyOrder else {
+            return legalEffects
+        }
+        return legalEffects.first.map { [$0] } ?? []
     }
 
     private func normalizedSingleEffect(_ effect: AbilityEffectUnit) -> AbilityEffectUnit {
@@ -4180,8 +4187,13 @@ final class GameBoardViewModel: ObservableObject {
             return .scatterSchool(count: 1)
         case .consumeFishFromHand:
             return .consumeFishFromHand(count: 1)
-        case let .playFishForFree(filter, _):
-            return .playFishForFree(filter: filter, count: 1)
+        case let .playFishForFree(filter, placement, sourceCondition, _):
+            return .playFishForFree(
+                filter: filter,
+                placement: placement,
+                sourceCondition: sourceCondition,
+                count: 1
+            )
         case .unsupported:
             return .unsupported
         }
@@ -4213,10 +4225,92 @@ final class GameBoardViewModel: ObservableObject {
             return "scatterSchool"
         case .consumeFishFromHand:
             return "consumeFishFromHand"
-        case .playFishForFree:
-            return "playFishForFree"
+        case let .playFishForFree(filter, placement, sourceCondition, _):
+            return "playFishForFree-\(freePlayFilterKey(filter))-\(placementConstraintKey(placement))-\(freePlaySourceConditionKey(sourceCondition))"
         case .unsupported:
             return "unsupported"
+        }
+    }
+
+    private func freePlayFilterKey(_ filter: FreePlayFishFilter) -> String {
+        switch filter {
+        case .any:
+            return "any"
+        case let .tag(kind):
+            return "tag-\(kind)"
+        case let .lengthBucket(bucket):
+            return "length-\(bucket.rawValue)"
+        case let .unsupported(value):
+            return "unsupported-\(value)"
+        }
+    }
+
+    private func placementConstraintKey(_ placement: FishPlacementConstraint) -> String {
+        switch placement {
+        case .any:
+            return "any"
+        case .topRow:
+            return "topRow"
+        case .bottomRow:
+            return "bottomRow"
+        case .sunlight:
+            return "sunlight"
+        case let .diveSite(diveSite):
+            return "diveSite-\(diveSite.rawValue)"
+        case let .diveSiteWithCoralAtLeast(count):
+            return "diveSiteCoralAtLeast-\(count)"
+        case .sameDiveSiteAsSource:
+            return "sameDiveSiteAsSource"
+        }
+    }
+
+    private func freePlaySourceConditionKey(_ condition: FreePlaySourceCondition) -> String {
+        switch condition {
+        case .none:
+            return "none"
+        case .sourceDiveSiteHasNoCoral:
+            return "sourceDiveSiteHasNoCoral"
+        }
+    }
+
+    private func compoundEffectIsCurrentlySelectable(
+        _ effect: AbilityEffectUnit,
+        choice: PendingChoice,
+        progress: CompoundAbilityProgress
+    ) -> Bool {
+        guard let playerState = state.playerGameStates[progress.playerId] else {
+            return false
+        }
+
+        switch effect {
+        case .drawFish:
+            return !state.deckState.fishDrawPile.isEmpty
+        case .recoverFromDiscardOrDraw:
+            return !playerState.discardPile.isEmpty || !state.deckState.fishDrawPile.isEmpty
+        case .placeEgg:
+            return playerState.ocean.slots.contains { $0.content.hasFish && resourceAmount(.egg, in: $0) == 0 }
+        case .placeYoung:
+            return !playerState.ocean.slots.isEmpty
+        case .hatchEgg:
+            return playerState.ocean.slots.contains { resourceAmount(.egg, in: $0) > 0 }
+        case .moveYoungOrSchool:
+            return hasAnyLegalMoveYoungOrSchool(playerState: playerState)
+        case let .gainCoral(selector, _):
+            return hasAnyLegalCoralGain(selector: selector, playerState: playerState)
+        case .scatterSchool:
+            return !playerState.ocean.slots.isEmpty
+        case .consumeFishFromHand:
+            return hasAnyLegalConsumeFishFromHand(playerState: playerState)
+        case .playFishFromHand:
+            return false
+        case .placeEggOnMatchingFish:
+            return false
+        case .gameEndScore:
+            return false
+        case let .playFishForFree(_, _, _, _):
+            return hasAnyLegalPlayFishForFree(choice: choice, playerState: playerState)
+        case .unsupported:
+            return false
         }
     }
 
@@ -4272,7 +4366,7 @@ final class GameBoardViewModel: ObservableObject {
             break
         case .compoundAbility:
             if let progress = choice.compoundAbilityProgress {
-                let selectableEffects = selectableCompoundEffects(progress)
+                let selectableEffects = selectableCompoundEffects(for: choice)
                 if abilityEffectCount(.placeEgg(count: 1), in: selectableEffects) > 0 {
                     actions.append(
                         PendingChoiceActionViewData(
@@ -4533,7 +4627,7 @@ final class GameBoardViewModel: ObservableObject {
         case .compoundAbility:
             var entries: [(token: RewardTokenViewState, action: RewardTokenAction)] = []
             if let progress = choice.compoundAbilityProgress {
-                let selectableEffects = selectableCompoundEffects(progress)
+                let selectableEffects = selectableCompoundEffects(for: choice)
                 let remainingDraws = abilityEffectCount(.drawFish(count: 1), in: selectableEffects)
                 for index in 0..<remainingDraws {
                     let tokenId = "\(choice.choiceId)-compoundDrawFish-\(index)"
@@ -4684,7 +4778,7 @@ final class GameBoardViewModel: ObservableObject {
                     ))
                 }
                 for effect in selectableEffects {
-                    guard case let .playFishForFree(filter, count) = effect else {
+                    guard case let .playFishForFree(filter, placement, sourceCondition, count) = effect else {
                         continue
                     }
                     for index in 0..<count {
@@ -4702,7 +4796,14 @@ final class GameBoardViewModel: ObservableObject {
                             ),
                             .direct(
                                 choiceId: choice.choiceId,
-                                resolution: .chooseAbilityEffect(.playFishForFree(filter: filter, count: 1))
+                                resolution: .chooseAbilityEffect(
+                                    .playFishForFree(
+                                        filter: filter,
+                                        placement: placement,
+                                        sourceCondition: sourceCondition,
+                                        count: 1
+                                    )
+                                )
                             )
                         ))
                     }
@@ -5547,6 +5648,7 @@ final class GameBoardViewModel: ObservableObject {
     private func freePlayHandCardIsLegal(_ cardId: CardID, for choice: PendingChoice) -> Bool {
         guard choice.kind == .playFishForFree,
               choice.expectedInput == .freePlayHandCard,
+              freePlaySourceConditionSatisfied(for: choice),
               state.playerGameStates[choice.playerId]?.hand.contains(cardId) == true,
               let card = cardsById[cardId],
               let filter = freePlayFilter(for: choice)
@@ -5558,10 +5660,26 @@ final class GameBoardViewModel: ObservableObject {
 
     private func freePlayFilter(for choice: PendingChoice) -> FreePlayFishFilter? {
         let effect = choice.selectedAbilityEffect ?? choice.abilityDefinition?.effects.first
-        guard case let .playFishForFree(filter, _) = effect else {
+        guard case let .playFishForFree(filter, _, _, _) = effect else {
             return nil
         }
         return filter
+    }
+
+    private func freePlayPlacementConstraint(for choice: PendingChoice) -> FishPlacementConstraint? {
+        let effect = choice.selectedAbilityEffect ?? choice.abilityDefinition?.effects.first
+        guard case let .playFishForFree(_, placement, _, _) = effect else {
+            return nil
+        }
+        return placement
+    }
+
+    private func freePlaySourceCondition(for choice: PendingChoice) -> FreePlaySourceCondition? {
+        let effect = choice.selectedAbilityEffect ?? choice.abilityDefinition?.effects.first
+        guard case let .playFishForFree(_, _, sourceCondition, _) = effect else {
+            return nil
+        }
+        return sourceCondition
     }
 
     private func freePlayFilterMatches(_ card: Card, filter: FreePlayFishFilter) -> Bool {
@@ -5605,6 +5723,160 @@ final class GameBoardViewModel: ObservableObject {
         case .unsupported:
             return AppStrings.GameBoard.abilityUnsupported
         }
+    }
+
+    private func freePlayTargetIsLegal(_ address: OceanSlotAddress, for choice: PendingChoice) -> Bool {
+        guard choice.kind == .playFishForFree,
+              choice.expectedInput == .freePlayTargetSlot,
+              let playerState = state.playerGameStates[choice.playerId],
+              freePlaySourceConditionSatisfied(for: choice),
+              let selectedCardId = choice.playFishForFreeProgress?.selectedCardId,
+              state.playerGameStates[choice.playerId]?.hand.contains(selectedCardId) == true,
+              let card = cardsById[selectedCardId],
+              let slot = playerState.ocean.slots.first(where: { $0.address == address }),
+              freePlayPlacementConstraintMatches(address, for: choice, playerState: playerState)
+        else {
+            return false
+        }
+        return playFishSlotPreview(for: slot, card: card).isSelectable
+    }
+
+    private func freePlayPlacementConstraintMatches(
+        _ address: OceanSlotAddress,
+        for choice: PendingChoice,
+        playerState: PlayerGameState
+    ) -> Bool {
+        switch freePlayPlacementConstraint(for: choice) ?? .any {
+        case .any:
+            return true
+        case .topRow:
+            return address.rowIndex == 0
+        case .bottomRow:
+            return address.rowIndex == 5
+        case .sunlight:
+            return address.zone == .sunlit
+        case let .diveSite(diveSite):
+            return address.diveSite == diveSite
+        case let .diveSiteWithCoralAtLeast(requiredCoral):
+            guard let reef = playerState.ocean.coralReefs.first(where: { $0.diveSite == address.diveSite }) else {
+                return false
+            }
+            return reef.coralCount >= requiredCoral
+        case .sameDiveSiteAsSource:
+            return address.diveSite == sourceAddress(for: choice)?.diveSite
+        }
+    }
+
+    private func freePlaySourceConditionSatisfied(for choice: PendingChoice) -> Bool {
+        guard let playerState = state.playerGameStates[choice.playerId] else {
+            return false
+        }
+        switch freePlaySourceCondition(for: choice) ?? .none {
+        case .none:
+            return true
+        case .sourceDiveSiteHasNoCoral:
+            guard let sourceAddress = sourceAddress(for: choice),
+                  let sourceSlot = playerState.ocean.slots.first(where: { $0.address == sourceAddress }),
+                  case let .fishCard(visibleCardId) = sourceSlot.content,
+                  visibleCardId == sourceCardId(for: choice),
+                  let reef = playerState.ocean.coralReefs.first(where: { $0.diveSite == sourceAddress.diveSite })
+            else {
+                return false
+            }
+            return reef.coralCount == 0
+        }
+    }
+
+    private func sourceAddress(for choice: PendingChoice) -> OceanSlotAddress? {
+        choice.compoundAbilityProgress?.sourceAddress
+    }
+
+    private func sourceCardId(for choice: PendingChoice) -> CardID? {
+        choice.compoundAbilityProgress?.sourceCardId
+    }
+
+    private func diveSiteSortIndex(_ diveSite: DiveSite) -> Int {
+        switch diveSite {
+        case .blue:
+            return 0
+        case .purple:
+            return 1
+        case .green:
+            return 2
+        }
+    }
+
+    private func hasAnyLegalMoveYoungOrSchool(playerState: PlayerGameState) -> Bool {
+        for sourceSlot in playerState.ocean.slots {
+            for kind in [ResourceKind.young, .school] where resourceAmount(kind, in: sourceSlot) > 0 {
+                for targetSlot in playerState.ocean.slots where targetSlot.address != sourceSlot.address {
+                    if moveDistance(from: sourceSlot.address, to: targetSlot.address) == 1 {
+                        if kind == .school, resourceAmount(.school, in: targetSlot) > 0 {
+                            continue
+                        }
+                        return true
+                    }
+                }
+            }
+        }
+        return false
+    }
+
+    private func hasAnyLegalCoralGain(
+        selector: CoralDiveSiteSelector,
+        playerState: PlayerGameState
+    ) -> Bool {
+        if let fixedDiveSite = selector.fixedDiveSite {
+            guard let reef = playerState.ocean.coralReefs.first(where: { $0.diveSite == fixedDiveSite }) else {
+                return false
+            }
+            return reef.coralCount < reef.maxCoral
+        }
+        return playerState.ocean.coralReefs.contains { $0.coralCount < $0.maxCoral }
+    }
+
+    private func hasAnyLegalConsumeFishFromHand(playerState: PlayerGameState) -> Bool {
+        let handCards = playerState.hand.compactMap { cardsById[$0] }
+        guard !handCards.isEmpty else {
+            return false
+        }
+
+        for slot in playerState.ocean.slots {
+            guard case let .fishCard(consumerCardId) = slot.content,
+                  let consumerCard = cardsById[consumerCardId]
+            else {
+                continue
+            }
+            if handCards.contains(where: { $0.lengthCm < consumerCard.lengthCm }) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func hasAnyLegalPlayFishForFree(
+        choice: PendingChoice,
+        playerState: PlayerGameState
+    ) -> Bool {
+        guard freePlaySourceConditionSatisfied(for: choice) else {
+            return false
+        }
+
+        for cardId in playerState.hand {
+            guard let card = cardsById[cardId],
+                  let filter = freePlayFilter(for: choice),
+                  freePlayFilterMatches(card, filter: filter)
+            else {
+                continue
+            }
+            if playerState.ocean.slots.contains(where: { slot in
+                freePlayPlacementConstraintMatches(slot.address, for: choice, playerState: playerState)
+                    && playFishSlotPreview(for: slot, card: card).isSelectable
+            }) {
+                return true
+            }
+        }
+        return false
     }
 
     private func playFishFromHandCardIsLegal(_ cardId: CardID, for choice: PendingChoice) -> Bool {
@@ -5680,6 +5952,8 @@ final class GameBoardViewModel: ObservableObject {
             return false
         }
         switch placement {
+        case .any:
+            return true
         case .topRow:
             return address.rowIndex == 0
         case .bottomRow:
@@ -5693,6 +5967,8 @@ final class GameBoardViewModel: ObservableObject {
                 return false
             }
             return reef.coralCount >= requiredCoral
+        case .sameDiveSiteAsSource:
+            return sourceAddress(for: choice)?.diveSite == address.diveSite
         }
     }
 
@@ -6087,17 +6363,6 @@ final class GameBoardViewModel: ObservableObject {
 
     private func zoneName(_ zone: OceanZone) -> String {
         AppStrings.oceanZoneName(zone)
-    }
-
-    private func diveSiteSortIndex(_ diveSite: DiveSite) -> Int {
-        switch diveSite {
-        case .blue:
-            return 0
-        case .purple:
-            return 1
-        case .green:
-            return 2
-        }
     }
 
     private func playerSortIndex(_ playerId: PlayerID) -> Int {

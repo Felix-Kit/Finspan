@@ -69,7 +69,12 @@ enum AbilityEffectUnit: Codable, Equatable, Sendable {
     case gainCoral(selector: CoralDiveSiteSelector, count: Int)
     case scatterSchool(count: Int)
     case consumeFishFromHand(count: Int)
-    case playFishForFree(filter: FreePlayFishFilter, count: Int)
+    case playFishForFree(
+        filter: FreePlayFishFilter,
+        placement: FishPlacementConstraint,
+        sourceCondition: FreePlaySourceCondition,
+        count: Int
+    )
     case unsupported
 }
 
@@ -105,15 +110,22 @@ enum HandFishFilter: Codable, Equatable, Sendable {
 }
 
 enum FishPlacementConstraint: Codable, Equatable, Sendable {
+    case any
     case topRow
     case bottomRow
     case sunlight
     case diveSite(DiveSite)
     case diveSiteWithCoralAtLeast(Int)
+    case sameDiveSiteAsSource
 }
 
 enum PlayFishCostMode: Codable, Equatable, Sendable {
     case payCost
+}
+
+enum FreePlaySourceCondition: Codable, Equatable, Sendable {
+    case none
+    case sourceDiveSiteHasNoCoral
 }
 
 enum FreePlayFishFilter: Codable, Equatable, Sendable {

@@ -121,6 +121,8 @@ def free_play_filter(pattern: str) -> str | None:
     prefix = "[FreePlayFishFromHand]"
     if not pattern.startswith(prefix):
         return None
+    if pattern == "[FreePlayFishFromHand]ifno[AnyCoral]inthisfish'sdivesite":
+        return None
     remainder = pattern[len(prefix):].replace("only", "")
     mapping = {
         "": "any",
@@ -166,15 +168,44 @@ def ordered_card_gain_compound(pattern: str) -> bool:
     return len(effects) > 1 and ("recover" in effects or ("draw" in effects and "egg" in effects))
 
 
+def mixed_compound_effects(pattern: str) -> list[str] | None:
+    if pattern == "[FreePlayFishFromHand]ifno[AnyCoral]inthisfish'sdivesite":
+        return ["free-play-source-site-no-coral"]
+
+    remaining = pattern
+    effects: list[str] = []
+    token_map = (
+        ("[DrawCard]", "draw"),
+        ("[Discard]", "recover"),
+        ("[FishEgg]", "egg"),
+        ("[FishHatch]", "hatch"),
+        ("[YoungFish]", "young"),
+        ("[SchoolFeederMove]", "move"),
+        ("[FishFromHandConsume]", "consume"),
+    )
+    while remaining:
+        for token, label in token_map:
+            if remaining.startswith(token):
+                effects.append(label)
+                remaining = remaining[len(token):]
+                break
+        else:
+            return None
+
+    if len(effects) <= 1 or len(set(effects)) <= 1:
+        return None
+    return effects
+
+
 def pattern_parser_maps(text: str) -> bool:
     pattern = normalize_pattern(text)
-    if not pattern or "[AllPlayers]" in pattern or ";" in pattern:
+    if not pattern or "[AllPlayers]" in pattern or ";" in pattern or "/" in pattern:
         return False
     if pure_repeated_token_count(pattern, "[DrawCard]", max_count=5) is not None:
         return True
     if pure_repeated_token_count(pattern, "[Discard]", max_count=5) is not None:
         return True
-    if ordered_card_gain_compound(pattern):
+    if mixed_compound_effects(pattern) is not None:
         return True
     if pure_repeated_token_count(pattern, "[FishHatch]") is not None:
         return True
@@ -201,8 +232,22 @@ def pattern_for(text: str) -> str:
         return "draw fish"
     if pure_repeated_token_count(pattern, "[Discard]", max_count=5) is not None:
         return "recover from discard or draw"
-    if ordered_card_gain_compound(pattern):
-        return "compound card gain"
+    mixed_effects = mixed_compound_effects(pattern)
+    if mixed_effects is not None:
+        if mixed_effects == ["free-play-source-site-no-coral"]:
+            return "free play from source dive site with no coral"
+        effect_set = set(mixed_effects)
+        if effect_set == {"young", "consume"}:
+            return "mixed young + consume"
+        if effect_set == {"young", "move"}:
+            return "mixed young + move"
+        if effect_set == {"hatch", "move"}:
+            return "mixed hatch + move"
+        if effect_set == {"move", "draw"}:
+            return "mixed move + draw"
+        if effect_set == {"egg", "hatch"}:
+            return "mixed egg + hatch"
+        return "mixed compound effect pool"
     if pure_repeated_token_count(pattern, "[FishHatch]") is not None:
         return "hatch egg"
     if pure_repeated_token_count(pattern, "[FishEgg]") is not None:

@@ -804,7 +804,7 @@ struct GameEngine {
             throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
         case let .chooseAbilityEffect(effect):
             guard choice.kind == .compoundAbility,
-                  abilityProgressCanChoose(effect, in: choice.compoundAbilityProgress)
+                  abilityProgressCanChoose(effect, in: choice, state: state)
             else {
                 throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
             }
@@ -1017,6 +1017,7 @@ struct GameEngine {
         guard choice.kind == .playFishForFree,
               choice.expectedInput == .freePlayHandCard,
               let playerState = state.playerGameStates[choice.playerId],
+              freePlaySourceConditionSatisfied(for: choice, playerState: playerState),
               playerState.hand.contains(cardId),
               let card = card(withId: cardId),
               freePlayFilterMatches(card, for: choice)
@@ -1041,6 +1042,11 @@ struct GameEngine {
               let card = card(withId: cardId),
               freePlayFilterMatches(card, for: choice),
               let slot = playerState.ocean.slots.first(where: { $0.address == targetSlot })
+        else {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+        guard freePlaySourceConditionSatisfied(for: choice, playerState: playerState),
+              freePlayPlacementConstraintMatches(targetSlot, for: choice, playerState: playerState)
         else {
             throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
         }
@@ -1152,9 +1158,12 @@ struct GameEngine {
     private func placementConstraintMatches(
         _ address: OceanSlotAddress,
         placement: FishPlacementConstraint,
-        playerState: PlayerGameState? = nil
+        playerState: PlayerGameState? = nil,
+        sourceAddress: OceanSlotAddress? = nil
     ) -> Bool {
         switch placement {
+        case .any:
+            return true
         case .topRow:
             return address.rowIndex == 0
         case .bottomRow:
@@ -1168,6 +1177,8 @@ struct GameEngine {
                 return false
             }
             return reef.coralCount >= requiredCoral
+        case .sameDiveSiteAsSource:
+            return sourceAddress?.diveSite == address.diveSite
         }
     }
 
@@ -1238,10 +1249,26 @@ struct GameEngine {
 
     private func freePlayFilter(for choice: PendingChoice) -> FreePlayFishFilter? {
         let effect = choice.selectedAbilityEffect ?? choice.abilityDefinition?.effects.first
-        guard case let .playFishForFree(filter, _) = effect else {
+        guard case let .playFishForFree(filter, _, _, _) = effect else {
             return nil
         }
         return filter
+    }
+
+    private func freePlayPlacementConstraint(for choice: PendingChoice) -> FishPlacementConstraint? {
+        let effect = choice.selectedAbilityEffect ?? choice.abilityDefinition?.effects.first
+        guard case let .playFishForFree(_, placement, _, _) = effect else {
+            return nil
+        }
+        return placement
+    }
+
+    private func freePlaySourceCondition(for choice: PendingChoice) -> FreePlaySourceCondition? {
+        let effect = choice.selectedAbilityEffect ?? choice.abilityDefinition?.effects.first
+        guard case let .playFishForFree(_, _, sourceCondition, _) = effect else {
+            return nil
+        }
+        return sourceCondition
     }
 
     private func freePlayFilterMatches(_ card: Card, filter: FreePlayFishFilter) -> Bool {
@@ -1255,6 +1282,165 @@ struct GameEngine {
         case .unsupported:
             return false
         }
+    }
+
+    private func freePlayPlacementConstraintMatches(
+        _ address: OceanSlotAddress,
+        for choice: PendingChoice,
+        playerState: PlayerGameState
+    ) -> Bool {
+        let placement = freePlayPlacementConstraint(for: choice) ?? .any
+        return placementConstraintMatches(
+            address,
+            placement: placement,
+            playerState: playerState,
+            sourceAddress: sourceAddress(for: choice)
+        )
+    }
+
+    private func freePlaySourceConditionSatisfied(
+        for choice: PendingChoice,
+        playerState: PlayerGameState
+    ) -> Bool {
+        switch freePlaySourceCondition(for: choice) ?? .none {
+        case .none:
+            return true
+        case .sourceDiveSiteHasNoCoral:
+            guard let sourceAddress = sourceAddress(for: choice),
+                  let sourceSlot = playerState.ocean.slots.first(where: { $0.address == sourceAddress }),
+                  case let .fishCard(visibleCardId) = sourceSlot.content,
+                  visibleCardId == abilitySourceCardId(for: choice),
+                  let reef = playerState.ocean.coralReefs.first(where: { $0.diveSite == sourceAddress.diveSite })
+            else {
+                return false
+            }
+            return reef.coralCount == 0
+        }
+    }
+
+    private func hasAnyLegalMoveYoungOrSchool(
+        for choice: PendingChoice,
+        playerState: PlayerGameState
+    ) -> Bool {
+        for sourceSlot in playerState.ocean.slots {
+            for kind in [ResourceKind.young, .school] where resourceAmount(kind, in: sourceSlot) > 0 {
+                for targetSlot in playerState.ocean.slots where targetSlot.address != sourceSlot.address {
+                    if canMoveResource(
+                        source: sourceSlot,
+                        target: targetSlot,
+                        kind: kind,
+                        choice: choice
+                    ) {
+                        return true
+                    }
+                }
+            }
+        }
+        return false
+    }
+
+    private func canMoveResource(
+        source: OceanSlot,
+        target: OceanSlot,
+        kind: ResourceKind,
+        choice: PendingChoice
+    ) -> Bool {
+        guard resourceAmount(kind, in: source) > 0,
+              moveDistance(from: source.address, to: target.address) == 1
+        else {
+            return false
+        }
+        if kind == .school, resourceAmount(.school, in: target) > 0 {
+            return false
+        }
+        return source.address.playerId == choice.playerId && target.address.playerId == choice.playerId
+    }
+
+    private func hasAnyLegalCoralGain(
+        selector: CoralDiveSiteSelector,
+        playerState: PlayerGameState
+    ) -> Bool {
+        if let fixedDiveSite = selector.fixedDiveSite {
+            guard let reef = playerState.ocean.coralReefs.first(where: { $0.diveSite == fixedDiveSite }) else {
+                return false
+            }
+            return reef.coralCount < reef.maxCoral
+        }
+        return playerState.ocean.coralReefs.contains { $0.coralCount < $0.maxCoral }
+    }
+
+    private func hasAnyLegalConsumeFishFromHand(playerState: PlayerGameState) -> Bool {
+        let handCards = playerState.hand.compactMap { card(withId: $0) }
+        guard !handCards.isEmpty else {
+            return false
+        }
+
+        for slot in playerState.ocean.slots {
+            guard case let .fishCard(consumerCardId) = slot.content,
+                  let consumerCard = card(withId: consumerCardId)
+            else {
+                continue
+            }
+            if handCards.contains(where: { $0.lengthCm < consumerCard.lengthCm }) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func hasAnyLegalPlayFishForFree(
+        for choice: PendingChoice,
+        playerState: PlayerGameState
+    ) -> Bool {
+        guard freePlaySourceConditionSatisfied(for: choice, playerState: playerState) else {
+            return false
+        }
+
+        for cardId in playerState.hand {
+            guard let card = card(withId: cardId),
+                  freePlayFilterMatches(card, for: choice)
+            else {
+                continue
+            }
+            if hasAnyLegalPlacement(for: card, playerState: playerState, additionalConstraint: { address in
+                freePlayPlacementConstraintMatches(address, for: choice, playerState: playerState)
+            }) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func hasAnyLegalPaidPlayFishFromHand(
+        for choice: PendingChoice,
+        playerState: PlayerGameState
+    ) -> Bool {
+        for cardId in playerState.hand {
+            guard let card = card(withId: cardId),
+                  handFishFilterMatches(card, for: choice)
+            else {
+                continue
+            }
+            if hasAnyLegalPlacement(for: card, playerState: playerState, additionalConstraint: { address in
+                placementConstraintMatches(address, for: choice, playerState: playerState)
+            }) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func hasAnyLegalPlacement(
+        for card: Card,
+        playerState: PlayerGameState,
+        additionalConstraint: (OceanSlotAddress) -> Bool
+    ) -> Bool {
+        for slot in playerState.ocean.slots where additionalConstraint(slot.address) {
+            if (try? validateFishPlacement(card, targetSlot: slot, playerState: playerState)) != nil {
+                return true
+            }
+        }
+        return false
     }
 
     private func lengthBucket(for lengthCm: Int) -> FishLengthBucket {
@@ -1806,6 +1992,16 @@ struct GameEngine {
             return nil
         }
         return diveSite
+    }
+
+    private func sourceAddress(for choice: PendingChoice) -> OceanSlotAddress? {
+        if let sourceAddress = choice.compoundAbilityProgress?.sourceAddress {
+            return sourceAddress
+        }
+        if case let .endGameAbility(sourceId) = choice.source {
+            return gameEndAbilitySource(from: sourceId)?.slotAddress
+        }
+        return nil
     }
 
     private func abilitySourceCardId(for choice: PendingChoice) -> CardID? {
@@ -2785,15 +2981,25 @@ struct GameEngine {
 
     private func abilityProgressCanChoose(
         _ effect: AbilityEffectUnit,
-        in progress: CompoundAbilityProgress?
+        in choice: PendingChoice,
+        state: GameState
     ) -> Bool {
-        guard let progress else {
+        guard let progress = choice.compoundAbilityProgress else {
             return false
         }
+        let normalizedEffect = normalizedSingleEffect(effect)
         if !progress.canResolveInAnyOrder {
-            return nextOrderedEffect(in: progress).map { abilityEffectKey($0) == abilityEffectKey(effect) } ?? false
+            guard let nextEffect = nextOrderedEffect(in: progress),
+                  abilityEffectKey(nextEffect) == abilityEffectKey(normalizedEffect)
+            else {
+                return false
+            }
+            return compoundEffectIsCurrentlySelectable(normalizedEffect, for: choice, state: state)
         }
-        return effectCount(for: effect, in: progress.remainingEffects) > 0
+        guard effectCount(for: normalizedEffect, in: progress.remainingEffects) > 0 else {
+            return false
+        }
+        return compoundEffectIsCurrentlySelectable(normalizedEffect, for: choice, state: state)
     }
 
     private func nextOrderedEffect(in progress: CompoundAbilityProgress) -> AbilityEffectUnit? {
@@ -2803,6 +3009,47 @@ struct GameEngine {
 
     private func abilityProgressIsComplete(_ progress: CompoundAbilityProgress) -> Bool {
         progress.remainingEffects.allSatisfy { effectCount($0) <= 0 }
+    }
+
+    private func compoundEffectIsCurrentlySelectable(
+        _ effect: AbilityEffectUnit,
+        for choice: PendingChoice,
+        state: GameState
+    ) -> Bool {
+        guard let playerState = state.playerGameStates[choice.playerId] else {
+            return false
+        }
+
+        switch effect {
+        case .drawFish:
+            return !state.deckState.fishDrawPile.isEmpty
+        case .recoverFromDiscardOrDraw:
+            return !playerState.discardPile.isEmpty || !state.deckState.fishDrawPile.isEmpty
+        case .placeEgg:
+            return playerState.ocean.slots.contains { $0.content.hasFish && resourceAmount(.egg, in: $0) == 0 }
+        case .placeYoung:
+            return !playerState.ocean.slots.isEmpty
+        case .hatchEgg:
+            return playerState.ocean.slots.contains { resourceAmount(.egg, in: $0) > 0 }
+        case .moveYoungOrSchool:
+            return hasAnyLegalMoveYoungOrSchool(for: choice, playerState: playerState)
+        case let .gainCoral(selector, _):
+            return hasAnyLegalCoralGain(selector: selector, playerState: playerState)
+        case .scatterSchool:
+            return !playerState.ocean.slots.isEmpty
+        case .consumeFishFromHand:
+            return hasAnyLegalConsumeFishFromHand(playerState: playerState)
+        case .playFishFromHand:
+            return hasAnyLegalPaidPlayFishFromHand(for: choice, playerState: playerState)
+        case .placeEggOnMatchingFish:
+            return !eggPlacementTargets(for: choice, in: state).isEmpty
+        case .gameEndScore:
+            return false
+        case let .playFishForFree(_, _, _, _):
+            return hasAnyLegalPlayFishForFree(for: choice, playerState: playerState)
+        case .unsupported:
+            return false
+        }
     }
 
     private func decrement(
@@ -2842,7 +3089,7 @@ struct GameEngine {
              let .gainCoral(_, count),
              let .scatterSchool(count),
              let .consumeFishFromHand(count),
-             let .playFishForFree(_, count):
+             let .playFishForFree(_, _, _, count):
             return count
         case .gameEndScore,
              .placeEggOnMatchingFish,
@@ -2879,8 +3126,13 @@ struct GameEngine {
             return .scatterSchool(count: count)
         case .consumeFishFromHand:
             return .consumeFishFromHand(count: count)
-        case let .playFishForFree(filter, _):
-            return .playFishForFree(filter: filter, count: count)
+        case let .playFishForFree(filter, placement, sourceCondition, _):
+            return .playFishForFree(
+                filter: filter,
+                placement: placement,
+                sourceCondition: sourceCondition,
+                count: count
+            )
         case .unsupported:
             return .unsupported
         }
@@ -2912,8 +3164,8 @@ struct GameEngine {
             return "scatterSchool"
         case .consumeFishFromHand:
             return "consumeFishFromHand"
-        case let .playFishForFree(filter, _):
-            return "playFishForFree-\(freePlayFilterKey(filter))"
+        case let .playFishForFree(filter, placement, sourceCondition, _):
+            return "playFishForFree-\(freePlayFilterKey(filter))-\(placementConstraintKey(placement))-\(freePlaySourceConditionKey(sourceCondition))"
         case .unsupported:
             return "unsupported"
         }
@@ -2929,6 +3181,15 @@ struct GameEngine {
             return "length-\(bucket.rawValue)"
         case let .unsupported(value):
             return "unsupported-\(value)"
+        }
+    }
+
+    private func freePlaySourceConditionKey(_ condition: FreePlaySourceCondition) -> String {
+        switch condition {
+        case .none:
+            return "none"
+        case .sourceDiveSiteHasNoCoral:
+            return "sourceDiveSiteHasNoCoral"
         }
     }
 
@@ -2983,6 +3244,8 @@ struct GameEngine {
 
     private func placementConstraintKey(_ placement: FishPlacementConstraint) -> String {
         switch placement {
+        case .any:
+            return "any"
         case .topRow:
             return "topRow"
         case .bottomRow:
@@ -2993,6 +3256,8 @@ struct GameEngine {
             return "diveSite-\(diveSite.rawValue)"
         case let .diveSiteWithCoralAtLeast(count):
             return "diveSiteCoralAtLeast-\(count)"
+        case .sameDiveSiteAsSource:
+            return "sameDiveSiteAsSource"
         }
     }
 

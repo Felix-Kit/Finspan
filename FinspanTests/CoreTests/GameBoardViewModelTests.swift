@@ -4164,7 +4164,7 @@ final class GameBoardViewModelTests: XCTestCase {
         let ability = AbilityDefinition(
             abilityId: "fixture-play-fish-for-free",
             trigger: .whenPlayed,
-            effects: [.playFishForFree(filter: filter, count: 1)],
+            effects: [.playFishForFree(filter: filter, placement: .any, sourceCondition: .none, count: 1)],
             isOptional: true,
             displayText: "打出时：免费打出手牌鱼"
         )
@@ -4178,7 +4178,7 @@ final class GameBoardViewModelTests: XCTestCase {
             isOptional: true,
             abilityDefinition: ability,
             playFishForFreeProgress: progress,
-            selectedAbilityEffect: .playFishForFree(filter: filter, count: 1),
+            selectedAbilityEffect: .playFishForFree(filter: filter, placement: .any, sourceCondition: .none, count: 1),
             createdAtSequence: 2
         )
     }

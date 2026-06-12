@@ -360,28 +360,28 @@ enum SharksAndReefsAbilityDefinitions {
         AbilityDefinition(
             abilityId: SharksAndReefsAbilityIDs.freePlayBioluminescentWhenPlayed,
             trigger: .whenPlayed,
-            effects: [.playFishForFree(filter: .tag("bioluminescent"), count: 1)],
+            effects: [.playFishForFree(filter: .tag("bioluminescent"), placement: .any, sourceCondition: .none, count: 1)],
             isOptional: true,
             displayText: "打出时：免费打出 1 张生物发光鱼"
         ),
         AbilityDefinition(
             abilityId: SharksAndReefsAbilityIDs.freePlaySmallWhenPlayed,
             trigger: .whenPlayed,
-            effects: [.playFishForFree(filter: .lengthBucket(.small), count: 1)],
+            effects: [.playFishForFree(filter: .lengthBucket(.small), placement: .any, sourceCondition: .none, count: 1)],
             isOptional: true,
             displayText: "打出时：免费打出 1 张小型鱼"
         ),
         AbilityDefinition(
             abilityId: SharksAndReefsAbilityIDs.freePlayMediumWhenPlayed,
             trigger: .whenPlayed,
-            effects: [.playFishForFree(filter: .lengthBucket(.medium), count: 1)],
+            effects: [.playFishForFree(filter: .lengthBucket(.medium), placement: .any, sourceCondition: .none, count: 1)],
             isOptional: true,
             displayText: "打出时：免费打出 1 张中型鱼"
         ),
         AbilityDefinition(
             abilityId: SharksAndReefsAbilityIDs.freePlayCamouflageWhenPlayed,
             trigger: .whenPlayed,
-            effects: [.playFishForFree(filter: .tag("camouflage"), count: 1)],
+            effects: [.playFishForFree(filter: .tag("camouflage"), placement: .any, sourceCondition: .none, count: 1)],
             isOptional: true,
             displayText: "打出时：免费打出 1 张伪装鱼"
         ),
@@ -411,7 +411,7 @@ enum SharksAndReefsAbilityDefinitions {
         AbilityDefinition(
             abilityId: SharksAndReefsAbilityIDs.freePlayMediumDuskySharkGameEnd,
             trigger: .gameEnd,
-            effects: [.playFishForFree(filter: .lengthBucket(.medium), count: 1)],
+            effects: [.playFishForFree(filter: .lengthBucket(.medium), placement: .any, sourceCondition: .none, count: 1)],
             isOptional: true,
             displayText: "游戏结束：免费打出 1 张中型鱼"
         ),
@@ -430,7 +430,7 @@ enum SharksAndReefsAbilityDefinitions {
         AbilityDefinition(
             abilityId: SharksAndReefsAbilityIDs.freePlayMediumFrilledSharkGameEnd,
             trigger: .gameEnd,
-            effects: [.playFishForFree(filter: .lengthBucket(.medium), count: 1)],
+            effects: [.playFishForFree(filter: .lengthBucket(.medium), placement: .any, sourceCondition: .none, count: 1)],
             isOptional: true,
             displayText: "游戏结束：免费打出 1 张中型鱼"
         ),
@@ -523,14 +523,14 @@ enum AbilityPatternParser {
             )
         }
 
-        if let compoundEffects = orderedCardGainCompoundEffects(from: pattern) {
+        if let compoundEffects = mixedCompoundEffects(from: pattern) {
             return AbilityDefinition(
                 abilityId: abilityId,
                 trigger: trigger,
                 effects: compoundEffects,
-                canResolveInAnyOrder: false,
+                canResolveInAnyOrder: true,
                 isOptional: true,
-                displayText: triggerText(trigger, action: "按顺序获得鱼牌和鱼卵")
+                displayText: triggerText(trigger, action: "任选顺序结算多个收益")
             )
         }
 
@@ -598,7 +598,14 @@ enum AbilityPatternParser {
             return AbilityDefinition(
                 abilityId: abilityId,
                 trigger: trigger,
-                effects: [.playFishForFree(filter: filter, count: 1)],
+                effects: [
+                    .playFishForFree(
+                        filter: filter,
+                        placement: .any,
+                        sourceCondition: .none,
+                        count: 1
+                    )
+                ],
                 isOptional: true,
                 displayText: triggerText(trigger, action: "免费从手牌打出 1 张鱼")
             )
@@ -628,7 +635,18 @@ enum AbilityPatternParser {
         return nil
     }
 
-    nonisolated private static func orderedCardGainCompoundEffects(from pattern: String) -> [AbilityEffectUnit]? {
+    nonisolated private static func mixedCompoundEffects(from pattern: String) -> [AbilityEffectUnit]? {
+        if pattern == "[FreePlayFishFromHand]ifno[AnyCoral]inthisfish'sdivesite" {
+            return [
+                .playFishForFree(
+                    filter: .any,
+                    placement: .sameDiveSiteAsSource,
+                    sourceCondition: .sourceDiveSiteHasNoCoral,
+                    count: 1
+                )
+            ]
+        }
+
         var remaining = pattern
         var effects: [AbilityEffectUnit] = []
         while !remaining.isEmpty {
@@ -641,33 +659,32 @@ enum AbilityPatternParser {
             } else if remaining.hasPrefix("[FishEgg]") {
                 effects.append(.placeEgg(count: 1))
                 remaining.removeFirst("[FishEgg]".count)
+            } else if remaining.hasPrefix("[FishHatch]") {
+                effects.append(.hatchEgg(count: 1))
+                remaining.removeFirst("[FishHatch]".count)
+            } else if remaining.hasPrefix("[YoungFish]") {
+                effects.append(.placeYoung(count: 1))
+                remaining.removeFirst("[YoungFish]".count)
+            } else if remaining.hasPrefix("[SchoolFeederMove]") {
+                effects.append(.moveYoungOrSchool(count: 1))
+                remaining.removeFirst("[SchoolFeederMove]".count)
+            } else if remaining.hasPrefix("[FishFromHandConsume]") {
+                effects.append(.consumeFishFromHand(count: 1))
+                remaining.removeFirst("[FishFromHandConsume]".count)
             } else {
                 return nil
             }
         }
-        let includesDraw = effects.contains {
-            if case .drawFish = $0 {
-                return true
-            }
-            return false
-        }
-        let includesRecover = effects.contains {
-            if case .recoverFromDiscardOrDraw = $0 {
-                return true
-            }
-            return false
-        }
-        let includesEgg = effects.contains {
-            if case .placeEgg = $0 {
-                return true
-            }
-            return false
-        }
-        guard effects.count > 1,
-              (includesRecover || (includesDraw && includesEgg))
-        else {
+
+        guard effects.count > 1 else {
             return nil
         }
+
+        let distinctKeys = Set(effects.map(abilityEffectKey))
+        guard distinctKeys.count > 1 else {
+            return nil
+        }
+
         return effects
     }
 
@@ -770,6 +787,9 @@ enum AbilityPatternParser {
     }
 
     nonisolated private static func freePlayFilter(from pattern: String) -> FreePlayFishFilter? {
+        if pattern == "[FreePlayFishFromHand]ifno[AnyCoral]inthisfish'sdivesite" {
+            return nil
+        }
         guard pattern.hasPrefix("[FreePlayFishFromHand]") else {
             return nil
         }
@@ -825,6 +845,39 @@ enum AbilityPatternParser {
             return "发动时：\(action)"
         case .gameEnd:
             return "游戏结束：\(action)"
+        }
+    }
+
+    nonisolated private static func abilityEffectKey(_ effect: AbilityEffectUnit) -> String {
+        switch effect {
+        case .drawFish:
+            return "drawFish"
+        case .placeEgg:
+            return "placeEgg"
+        case .hatchEgg:
+            return "hatchEgg"
+        case .placeYoung:
+            return "placeYoung"
+        case .moveYoungOrSchool:
+            return "moveYoungOrSchool"
+        case .recoverFromDiscardOrDraw:
+            return "recoverFromDiscardOrDraw"
+        case .consumeFishFromHand:
+            return "consumeFishFromHand"
+        case .playFishForFree:
+            return "playFishForFree"
+        case .gameEndScore:
+            return "gameEndScore"
+        case .placeEggOnMatchingFish:
+            return "placeEggOnMatchingFish"
+        case .playFishFromHand:
+            return "playFishFromHand"
+        case .gainCoral:
+            return "gainCoral"
+        case .scatterSchool:
+            return "scatterSchool"
+        case .unsupported:
+            return "unsupported"
         }
     }
 }
