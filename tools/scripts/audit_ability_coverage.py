@@ -150,7 +150,7 @@ def pattern_parser_maps(text: str) -> bool:
     pattern = normalize_pattern(text)
     if not pattern or "[AllPlayers]" in pattern or ";" in pattern:
         return False
-    if pure_repeated_token_count(pattern, "[DrawCard]") is not None:
+    if pure_repeated_token_count(pattern, "[DrawCard]", max_count=5) is not None:
         return True
     if pure_repeated_token_count(pattern, "[FishHatch]") is not None:
         return True
@@ -171,7 +171,7 @@ def pattern_parser_maps(text: str) -> bool:
 
 def pattern_for(text: str) -> str:
     pattern = normalize_pattern(text)
-    if pure_repeated_token_count(pattern, "[DrawCard]") is not None:
+    if pure_repeated_token_count(pattern, "[DrawCard]", max_count=5) is not None:
         return "draw fish"
     if pure_repeated_token_count(pattern, "[FishHatch]") is not None:
         return "hatch egg"

@@ -14,19 +14,33 @@ The script reads `AbilityRegistry.swift` to distinguish ability ids that still h
 
 - Total real cards scanned: 215.
 - Cards with ability data: 215.
-- Currently mapped ability cards: 103.
+- Currently mapped ability cards: 104.
 - Mixed ability cards: 0.
-- Unsupported ability cards: 112.
+- Unsupported ability cards: 111.
 - Unmapped ability cards: 0.
 
 Ability Coverage Pass 1 raised mapped real-card ability coverage from 45 to 88 cards. Unsupported cards dropped from 170 to 127.
 Ability Coverage Pass 2A raised mapped real-card ability coverage from 88 to 103 cards. Unsupported cards dropped from 127 to 112.
+Pass 2B Preflight only made one low-risk parser fix: pure repeated `[DrawCard]` now covers 5 cards as well, raising mapped coverage from 103 to 104 cards and lowering unsupported cards from 112 to 111.
 
 ## By Trigger
 
 - `whenPlayed`: 90.
 - `ifActivated`: 86.
 - `gameEnd`: 39.
+
+## Pass 2B Preflight
+
+Pass 2B Preflight did not open a new implementation sweep. It produced a rule-confirmation checklist for the remaining deferred groups:
+
+- [ABILITY_RULE_CONFIRMATION_QUESTIONS.md](/Users/work/Projects/Finspan/docs/ABILITY_RULE_CONFIRMATION_QUESTIONS.md)
+
+The current recommendation is:
+
+1. Confirm coral-gated play-from-hand and related conditional coral checks.
+2. Confirm `[ConsumeFish1]` semantics before implementing consume-count cards.
+3. Confirm mixed `SchoolFeederMove` sequencing and branch-choice cards.
+4. Confirm `AllPlayers` ordering only after the single-player / local-authoritative semantics are explicit.
 
 ## GAME END Coverage
 
@@ -91,6 +105,15 @@ Pass 2A now maps these additional low-ambiguity generic patterns through `Abilit
   - bioluminescent fish
   - camouflage fish
 
+`FreePlayFishFromHand` remains intentionally strict:
+
+- it waives cost only
+- it does not waive legality
+- free play still enforces allowed zones, required dive site, slot legality, cover-shorter-fish legality, and coral requirement
+- the played fish still triggers its `WHEN PLAYED` ability on success
+
+Pass 2B Preflight also extended the already-supported repeated draw parser from 4 cards to 5 cards, which maps Megamouth Shark without introducing new rule semantics.
+
 Patterns still deferred for rule confirmation:
 
 - `AllPlayers` effects, because local authoritative multiplayer semantics need explicit event ordering.
@@ -122,6 +145,7 @@ Patterns still deferred for rule confirmation:
 - Snaggletooth, `base.main.107`, IF ACTIVATED, `[SchoolFeederMove][SchoolFeederMove]`, mapped by generic parser to two sequential move young / school steps.
 - Abyssal Halosaur, `base.main.002`, WHEN PLAYED, `[FishFromHand][ArrowDown][PlayFishBottomRow]`, mapped by generic parser to paid play fish from hand into bottom row.
 - Red Lionfish, `base.main.095`, IF ACTIVATED, `[FishFromHand][ArrowDown][Sun]`, mapped by generic parser to paid play fish from hand into sunlight row.
+- Megamouth Shark, `sr.main.173`, WHEN PLAYED, `[DrawCard][DrawCard][DrawCard][DrawCard][DrawCard]`, mapped by generic parser to draw 5.
 - Lollipop Catshark, `sr.main.170`, IF ACTIVATED, `[FreePlayFishFromHand]`, mapped by generic parser to free play any fish from hand.
 - Shortnose Demon Catshark, `sr.main.192`, IF ACTIVATED, `[FreePlayFishFromHand][FishLengthSmall] only`, mapped by generic parser to free play a small fish.
 - Dwarf Lanternshark, `sr.main.150`, IF ACTIVATED, `[FreePlayFishFromHand][Bioluminescent] only`, mapped by generic parser to free play a bioluminescent fish.
@@ -133,8 +157,8 @@ Patterns still deferred for rule confirmation:
 
 - Giant Hatchetfish, `base.main.050`, IF ACTIVATED, `(all players) [DrawCard][AllPlayers]`, deferred for multiplayer sequencing.
 - Spookfish, `base.main.111`, IF ACTIVATED, `(all players) [FishEgg][AllPlayers]`, deferred for multiplayer target ordering.
-- Deepwater Cardinalfish, `base.main.039`, IF ACTIVATED, `[SchoolFeederMove][FishHatch]`, deferred as mixed movement plus hatch sequencing.
-- Scalloped Hammerhead Shark, `sr.main.189`, IF ACTIVATED, `[SchoolFeederMove][DrawCard]`, deferred as mixed movement plus draw sequencing.
+- Giant Hawkfish, `base.main.051`, WHEN PLAYED, `[FishHatch][SchoolFeederMove]`, deferred as mixed movement plus hatch sequencing.
+- Shortspine African Angler, `base.main.101`, WHEN PLAYED, `[SchoolFeederMove][DrawCard][DrawCard]`, deferred as mixed movement plus draw sequencing.
 - Rope Fish, `base.main.096`, WHEN PLAYED, `[SchoolFeederMove][SchoolFeederMove][SchoolFeederMove] / [DrawCard]`, deferred as branch-choice movement / draw sequencing.
 - Tripodfish, `base.main.117`, GAME END, `[ConsumeFish1][ConsumeFish1]`, deferred for consume-count semantics.
 - Blackmouth Angler, `sr.main.141`, GAME END, `[FreePlayFishFromHand] if no [AnyCoral] in this fish's dive site`, deferred for coral-site condition modeling.
@@ -146,10 +170,10 @@ Patterns still deferred for rule confirmation:
 
 The next pass should avoid card-face visual work and focus on rule semantics that need confirmation:
 
-1. Confirm `AllPlayers` ordering and whether each player may independently skip or must resolve in turn order.
-2. Confirm mixed `[SchoolFeederMove]` sequences, especially whether movement plus hatch/draw/discard is ordered, branch-based, or any-order.
-3. Confirm consume-count cards such as Tripodfish before implementing repeated consume effects.
-4. Confirm coral-gated play-from-hand abilities before mapping `[FishFromHand][ArrowDown][AnyCoral]` patterns.
+1. Use [ABILITY_RULE_CONFIRMATION_QUESTIONS.md](/Users/work/Projects/Finspan/docs/ABILITY_RULE_CONFIRMATION_QUESTIONS.md) to confirm coral-gated play-from-hand and conditional coral checks.
+2. Confirm consume-count cards such as Tripodfish before implementing repeated consume effects.
+3. Confirm mixed `[SchoolFeederMove]` sequences, especially whether movement plus hatch/draw/discard is ordered, branch-based, or any-order.
+4. Confirm `AllPlayers` ordering and whether each player may independently skip or must resolve in turn order.
 
 ## Notes
 

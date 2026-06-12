@@ -504,7 +504,7 @@ enum AbilityPatternParser {
             return nil
         }
 
-        if let count = pureRepeatedTokenCount("[DrawCard]", in: pattern, maxCount: 4) {
+        if let count = pureRepeatedTokenCount("[DrawCard]", in: pattern, maxCount: 5) {
             return AbilityDefinition(
                 abilityId: abilityId,
                 trigger: trigger,

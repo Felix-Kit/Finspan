@@ -5790,6 +5790,31 @@ final class GameEngineTests: XCTestCase {
             resolver.abilityDefinitions(for: redLionfish).first?.effects,
             [.playFishFromHand(filter: .any, placement: .sunlight, costMode: .payCost)]
         )
+
+    }
+
+    func testAbilityPatternParserMapsPass2ARealSharksAndReefsPatterns() throws {
+        let catalog = try SharksAndReefsCardCatalog()
+        let cards = catalog.starterFishCards + catalog.fishCards
+        let resolver = AbilityResolver()
+
+        let megamouth = try XCTUnwrap(cards.first { $0.id == "sr.main.173" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: megamouth).first?.effects,
+            [.drawFish(count: 5)]
+        )
+
+        let lollipop = try XCTUnwrap(cards.first { $0.id == "sr.main.170" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: lollipop).first?.effects,
+            [.playFishForFree(filter: .lengthBucket(.small), count: 1)]
+        )
+
+        let shortnose = try XCTUnwrap(cards.first { $0.id == "sr.main.192" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: shortnose).first?.effects,
+            [.playFishForFree(filter: .lengthBucket(.medium), count: 1)]
+        )
     }
 
     func testAbilityPatternParserKeepsConditionalCoralPlayFishUnsupported() throws {
@@ -5802,6 +5827,34 @@ final class GameEngineTests: XCTestCase {
 
         let yokozuna = try XCTUnwrap(cards.first { $0.id == "sr.main.209" })
         XCTAssertEqual(resolver.abilityDefinitions(for: yokozuna).first?.effects, [.unsupported])
+    }
+
+    func testDeferredAbilityPatternsRemainUnsupportedUntilRuleConfirmation() throws {
+        let baseCatalog = try BaseGameCardCatalog()
+        let srCatalog = try SharksAndReefsCardCatalog()
+        let resolver = AbilityResolver()
+        let cards = baseCatalog.fishCards + baseCatalog.starterFishCards + srCatalog.fishCards + srCatalog.starterFishCards
+
+        let deferredIds = [
+            "base.main.050", // Giant Hatchetfish
+            "base.main.111", // Spookfish
+            "base.main.051", // Giant Hawkfish
+            "base.main.101", // Shortspine African Angler
+            "base.main.117", // Tripodfish
+            "sr.main.182",   // Reef Triggerfish
+            "sr.main.141",   // Blackmouth Angler
+            "sr.main.209",   // Yokozuna Slickhead
+            "sr.main.193"    // Sixgill Sawshark
+        ]
+
+        for cardId in deferredIds {
+            let card = try XCTUnwrap(cards.first { $0.id == cardId })
+            XCTAssertEqual(
+                resolver.abilityDefinitions(for: card).first?.effects,
+                [.unsupported],
+                "Expected \(cardId) to remain unsupported until rules are confirmed."
+            )
+        }
     }
 
     func testBlueLanternfishWhenPlayedCreatesDrawFourPendingChoice() throws {
