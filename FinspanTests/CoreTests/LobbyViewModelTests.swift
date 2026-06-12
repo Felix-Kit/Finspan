@@ -427,6 +427,36 @@ final class LobbyViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.hasInProgressActiveRoom)
     }
 
+    func testTemporarilyExitingInProgressGameKeepsRoomAndResumeReturnsToGameBoard() {
+        let service = LocalAuthoritativeRoomService(randomSeedProvider: { 42 })
+        let viewModel = makeProfiledViewModel(roomService: service)
+
+        viewModel.createLocalRoom()
+        viewModel.startGameAsHost()
+        let roomId = service.gameRoom?.roomId
+        viewModel.returnToMainMenuKeepingRoom()
+
+        XCTAssertEqual(viewModel.screen, .mainMenu)
+        XCTAssertEqual(service.gameRoom?.roomId, roomId)
+        XCTAssertTrue(viewModel.hasInProgressActiveRoom)
+        XCTAssertNotNil(viewModel.activeRoomSummary)
+    }
+
+    func testDissolvingInProgressGameClearsRoomAndStaysOnMainMenu() {
+        let service = LocalAuthoritativeRoomService(randomSeedProvider: { 42 })
+        let viewModel = makeProfiledViewModel(roomService: service)
+
+        viewModel.createLocalRoom()
+        viewModel.startGameAsHost()
+        viewModel.dissolveCurrentRoom()
+
+        XCTAssertEqual(viewModel.screen, .mainMenu)
+        XCTAssertNil(service.gameRoom)
+        XCTAssertNil(viewModel.activeRoomSummary)
+        XCTAssertFalse(viewModel.hasInProgressActiveRoom)
+        XCTAssertTrue(viewModel.discoveredRooms.isEmpty)
+    }
+
     func testSideBRandomGoalsResolveOnlyAfterStartGame() {
         let service = LocalAuthoritativeRoomService(randomSeedProvider: { 42 })
         let viewModel = makeProfiledViewModel(roomService: service)

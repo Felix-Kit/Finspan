@@ -88,7 +88,7 @@ struct ContentView: View {
     }
 
     private func dissolveCurrentGameAndReturnToLobby() {
-        environment.roomService.resetLocalRoomSession()
+        lobbyViewModel.dissolveCurrentRoom()
         isShowingLobbyOverride = false
         syncViewModels()
     }

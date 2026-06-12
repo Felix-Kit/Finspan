@@ -14,12 +14,13 @@ The script reads `AbilityRegistry.swift` to distinguish ability ids that still h
 
 - Total real cards scanned: 215.
 - Cards with ability data: 215.
-- Currently mapped ability cards: 88.
+- Currently mapped ability cards: 103.
 - Mixed ability cards: 0.
-- Unsupported ability cards: 127.
+- Unsupported ability cards: 112.
 - Unmapped ability cards: 0.
 
 Ability Coverage Pass 1 raised mapped real-card ability coverage from 45 to 88 cards. Unsupported cards dropped from 170 to 127.
+Ability Coverage Pass 2A raised mapped real-card ability coverage from 88 to 103 cards. Unsupported cards dropped from 127 to 112.
 
 ## By Trigger
 
@@ -76,13 +77,27 @@ Pass 1 now maps these low-ambiguity generic patterns through `AbilityPatternPars
   - predator fish
 - Simple repeated coral token strings using `[BlueCoral]`, `[PurpleCoral]`, `[GreenCoral]`, and `[AnyCoral]` to coral gain effects.
 
+Pass 2A now maps these additional low-ambiguity generic patterns through `AbilityPatternParser`:
+
+- Pure repeated `[SchoolFeederMove]` tokens to repeated `moveYoungOrSchool` effect units.
+- Low-ambiguity paid play-from-hand placement patterns to `playFishFromHand(costMode: .payCost)`:
+  - top row / estuary
+  - bottom row / deepwater
+  - sunlight row
+  - blue / purple / green dive site
+- Low-ambiguity free play-from-hand patterns to `playFishForFree`:
+  - any fish
+  - small / medium / large fish
+  - bioluminescent fish
+  - camouflage fish
+
 Patterns still deferred for rule confirmation:
 
 - `AllPlayers` effects, because local authoritative multiplayer semantics need explicit event ordering.
 - Compound draw/discard/hatch/move sequences, because they need partial resolution and skip semantics.
 - Consume fish count patterns such as `[ConsumeFish1]` and `[ConsumeFish1][ConsumeFish1]`.
-- Move young / school patterns using `[SchoolFeederMove]`, including distance, blocking, and destination constraints.
-- Complex play-fish-from-hand or free-play filters beyond the already implemented GAME END subset.
+- Mixed move young / school patterns where `[SchoolFeederMove]` is combined with hatch, draw, discard, or other effects.
+- Complex play-fish-from-hand or free-play filters beyond the low-ambiguity generic parser set.
 - Conditional coral requirements inside an ability, such as Blackmouth Angler and Yokozuna Slickhead.
 - Mixed young plus consume / move patterns such as Sixgill Sawshark.
 - Recover-from-discard-or-draw remains supported by the engine for known mapped abilities, but the current JSON audit did not expose a broad raw token pattern that can be safely auto-mapped in this pass.
@@ -103,6 +118,14 @@ Patterns still deferred for rule confirmation:
 - European Anchovy, `base.main.041`, GAME END, `[FishEgg][ArrowDown][Estuary]`, mapped to top row on-each egg placement.
 - Ocean Sunfish, `base.main.081`, GAME END, `[FishEgg][ArrowDown][FishLengthLarge] on each`, mapped to on-each large fish egg placement.
 - Faceless Cusk, `base.main.044`, GAME END, `[FishFromHand][ArrowDown][PlayFishBottomRow]`, mapped to paid play fish from hand into bottom row.
+- Footballfish, `base.main.048`, IF ACTIVATED, `[SchoolFeederMove]`, mapped by generic parser to one move young / school step.
+- Snaggletooth, `base.main.107`, IF ACTIVATED, `[SchoolFeederMove][SchoolFeederMove]`, mapped by generic parser to two sequential move young / school steps.
+- Abyssal Halosaur, `base.main.002`, WHEN PLAYED, `[FishFromHand][ArrowDown][PlayFishBottomRow]`, mapped by generic parser to paid play fish from hand into bottom row.
+- Red Lionfish, `base.main.095`, IF ACTIVATED, `[FishFromHand][ArrowDown][Sun]`, mapped by generic parser to paid play fish from hand into sunlight row.
+- Lollipop Catshark, `sr.main.170`, IF ACTIVATED, `[FreePlayFishFromHand]`, mapped by generic parser to free play any fish from hand.
+- Shortnose Demon Catshark, `sr.main.192`, IF ACTIVATED, `[FreePlayFishFromHand][FishLengthSmall] only`, mapped by generic parser to free play a small fish.
+- Dwarf Lanternshark, `sr.main.150`, IF ACTIVATED, `[FreePlayFishFromHand][Bioluminescent] only`, mapped by generic parser to free play a bioluminescent fish.
+- Swell Shark, `sr.main.200`, IF ACTIVATED, `[FreePlayFishFromHand][Camouflage] only`, mapped by generic parser to free play a camouflage fish.
 - Common Bluestripe Snapper, `sr.main.147`, GAME END, `[BlueCoral][BlueCoral][BlueCoral]`, mapped to gain 3 blue coral.
 - Tasseled Scorpionfish, `sr.main.202`, GAME END scoring-only, mapped to game end score condition.
 
@@ -110,12 +133,23 @@ Patterns still deferred for rule confirmation:
 
 - Giant Hatchetfish, `base.main.050`, IF ACTIVATED, `(all players) [DrawCard][AllPlayers]`, deferred for multiplayer sequencing.
 - Spookfish, `base.main.111`, IF ACTIVATED, `(all players) [FishEgg][AllPlayers]`, deferred for multiplayer target ordering.
-- Footballfish, `base.main.048`, IF ACTIVATED, `[SchoolFeederMove]`, deferred for movement constraints.
-- Snaggletooth, `base.main.107`, IF ACTIVATED, `[SchoolFeederMove][SchoolFeederMove]`, deferred for repeated movement semantics.
+- Deepwater Cardinalfish, `base.main.039`, IF ACTIVATED, `[SchoolFeederMove][FishHatch]`, deferred as mixed movement plus hatch sequencing.
+- Scalloped Hammerhead Shark, `sr.main.189`, IF ACTIVATED, `[SchoolFeederMove][DrawCard]`, deferred as mixed movement plus draw sequencing.
+- Rope Fish, `base.main.096`, WHEN PLAYED, `[SchoolFeederMove][SchoolFeederMove][SchoolFeederMove] / [DrawCard]`, deferred as branch-choice movement / draw sequencing.
 - Tripodfish, `base.main.117`, GAME END, `[ConsumeFish1][ConsumeFish1]`, deferred for consume-count semantics.
 - Blackmouth Angler, `sr.main.141`, GAME END, `[FreePlayFishFromHand] if no [AnyCoral] in this fish's dive site`, deferred for coral-site condition modeling.
+- Reef Triggerfish, `sr.main.182`, WHEN PLAYED, `[FishFromHand][ArrowDown][AnyCoral] if no [AnyCoral] in target fish's dive site`, deferred for coral-gated placement.
 - Yokozuna Slickhead, `sr.main.209`, GAME END, `[FishFromHand][ArrowDown][AnyCoral]...`, deferred for coral-gated placement.
 - Sixgill Sawshark, `sr.main.193`, GAME END, `[YoungFish][FishFromHandConsume]`, deferred as a mixed young plus consume ability.
+
+## Recommended Next Ability Pass
+
+The next pass should avoid card-face visual work and focus on rule semantics that need confirmation:
+
+1. Confirm `AllPlayers` ordering and whether each player may independently skip or must resolve in turn order.
+2. Confirm mixed `[SchoolFeederMove]` sequences, especially whether movement plus hatch/draw/discard is ordered, branch-based, or any-order.
+3. Confirm consume-count cards such as Tripodfish before implementing repeated consume effects.
+4. Confirm coral-gated play-from-hand abilities before mapping `[FishFromHand][ArrowDown][AnyCoral]` patterns.
 
 ## Notes
 

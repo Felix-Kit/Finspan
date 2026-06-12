@@ -185,6 +185,8 @@ private struct MainMenuView: View {
     @ObservedObject var viewModel: LobbyViewModel
     var onResumeActiveGame: (() -> Void)?
 
+    private let entryIconSize: CGFloat = 26
+
     var body: some View {
         VStack(spacing: 24) {
             Spacer(minLength: 20)
@@ -267,7 +269,7 @@ private struct MainMenuView: View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 16) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 34, weight: .semibold))
+                    .font(.system(size: entryIconSize, weight: .semibold))
                     .foregroundStyle(.cyan)
                 Text(title)
                     .font(.title2.weight(.bold))

@@ -97,6 +97,40 @@ def egg_placement_filter(pattern: str) -> str | None:
     return mapping.get(remainder)
 
 
+def paid_play_placement(pattern: str) -> str | None:
+    prefix = "[FishFromHand][ArrowDown]"
+    if not pattern.startswith(prefix):
+        return None
+    remainder = pattern[len(prefix):]
+    mapping = {
+        "[Estuary]": "topRow",
+        "[PlayFishTopRow]": "topRow",
+        "[PlayFishBottomRow]": "bottomRow",
+        "[Deepwater]": "bottomRow",
+        "[Sun]": "sunlight",
+        "[FlipperBlue]": "blue",
+        "[FlipperPurple]": "purple",
+        "[FlipperGreen]": "green",
+    }
+    return mapping.get(remainder)
+
+
+def free_play_filter(pattern: str) -> str | None:
+    prefix = "[FreePlayFishFromHand]"
+    if not pattern.startswith(prefix):
+        return None
+    remainder = pattern[len(prefix):].replace("only", "")
+    mapping = {
+        "": "any",
+        "[FishLengthSmall]": "small",
+        "[FishLengthMedium]": "medium",
+        "[FishLengthLarge]": "large",
+        "[Bioluminescent]": "bioluminescent",
+        "[Camouflage]": "camouflage",
+    }
+    return mapping.get(remainder)
+
+
 def pure_coral_gain(pattern: str) -> bool:
     remaining = pattern
     tokens = ("[BlueCoral]", "[PurpleCoral]", "[GreenCoral]", "[AnyCoral]")
@@ -124,6 +158,12 @@ def pattern_parser_maps(text: str) -> bool:
         return True
     if pure_repeated_token_count(pattern, "[YoungFish]") is not None:
         return True
+    if pure_repeated_token_count(pattern, "[SchoolFeederMove]") is not None:
+        return True
+    if paid_play_placement(pattern) is not None:
+        return True
+    if free_play_filter(pattern) is not None:
+        return True
     if egg_placement_filter(pattern) is not None:
         return True
     return pure_coral_gain(pattern)
@@ -139,6 +179,12 @@ def pattern_for(text: str) -> str:
         return "place egg single target"
     if pure_repeated_token_count(pattern, "[YoungFish]") is not None:
         return "place young"
+    if pure_repeated_token_count(pattern, "[SchoolFeederMove]") is not None:
+        return "move young/school"
+    if paid_play_placement(pattern) is not None:
+        return "play fish paying cost"
+    if free_play_filter(pattern) is not None:
+        return "play fish for free"
     if egg_placement_filter(pattern) is not None:
         return "place egg on each matching fish"
     if pure_coral_gain(pattern):

@@ -2848,6 +2848,28 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(coralCount(.blue, in: state), 1)
     }
 
+    func testCoralReefOfferAlwaysAddsCoralToCurrentDiveSite() throws {
+        let cases: [(DiveActionSite, DiveSite, OceanSlotAddress)] = [
+            (.blue, .blue, OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 3)),
+            (.purple, .purple, OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 3)),
+            (.green, .green, OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 3))
+        ]
+
+        for (diveActionSite, expectedReef, paymentSource) in cases {
+            let state = try resolveCoralOffer(
+                diveActionSite: diveActionSite,
+                resolution: .gainCoralWithEgg(source: paymentSource),
+                source: paymentSource,
+                sourceResources: [ResourceQuantity(kind: .egg, amount: 1)]
+            )
+
+            XCTAssertEqual(coralCount(expectedReef, in: state), 1)
+            for reef in DiveSite.allCases where reef != expectedReef {
+                XCTAssertEqual(coralCount(reef, in: state), 0)
+            }
+        }
+    }
+
     func testPayingYoungForCoralReefOfferRemovesYoungAndIncreasesCoral() throws {
         let source = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 3)
         let state = try resolveFirstCoralOffer(
@@ -4383,6 +4405,42 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(resourceAmount(.school, at: target, in: nextState), 1)
     }
 
+    func testFootballfishSchoolFeederMoveCreatesMovePendingChoice() throws {
+        let catalog = try BaseGameCardCatalog()
+        let engine = GameEngine(cardCatalog: catalog)
+        var state = abilityDiveState(cardId: "base.main.048")
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 0)
+        setResources([ResourceQuantity(kind: .young, amount: 1)], at: source, in: &state)
+        setResources([], at: target, in: &state)
+
+        let diveDrafts = try engine.makeEventDrafts(
+            for: diveCommand(commandId: "dive-footballfish-move"),
+            in: state
+        )
+        state = applying(diveDrafts, to: state, using: engine)
+
+        let printedBonusChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        XCTAssertEqual(printedBonusChoice.kind, .drawFish)
+
+        let skipDrafts = try engine.makeEventDrafts(
+            for: resolveCommand(
+                commandId: "skip-footballfish-printed-bonus",
+                choiceId: printedBonusChoice.choiceId,
+                resolution: .skip
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceCreated(choice) = skipDrafts.last else {
+            return XCTFail("Expected Footballfish move pending choice.")
+        }
+        XCTAssertEqual(choice.kind, .moveYoungOrSchool)
+        XCTAssertEqual(choice.expectedInput, .sourceAndTargetSlots)
+        XCTAssertEqual(choice.abilityDefinition?.abilityId, "unsupported.base.ifActivated.card_048")
+        XCTAssertEqual(choice.abilityDefinition?.effects, [.moveYoungOrSchool(count: 1)])
+    }
+
     func testPendingChoiceCreatedReducerAddsChoiceToGameState() {
         let engine = GameEngine()
         var state = playFishState()
@@ -5704,6 +5762,48 @@ final class GameEngineTests: XCTestCase {
         )
     }
 
+    func testAbilityPatternParserMapsPass2ARealBaseGamePatterns() throws {
+        let catalog = try BaseGameCardCatalog()
+        let cards = catalog.starterFishCards + catalog.fishCards
+        let resolver = AbilityResolver()
+
+        let footballfish = try XCTUnwrap(cards.first { $0.id == "base.main.048" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: footballfish).first?.effects,
+            [.moveYoungOrSchool(count: 1)]
+        )
+
+        let snaggletooth = try XCTUnwrap(cards.first { $0.id == "base.main.107" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: snaggletooth).first?.effects,
+            [.moveYoungOrSchool(count: 1), .moveYoungOrSchool(count: 1)]
+        )
+
+        let abyssalHalosaur = try XCTUnwrap(cards.first { $0.id == "base.main.002" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: abyssalHalosaur).first?.effects,
+            [.playFishFromHand(filter: .any, placement: .bottomRow, costMode: .payCost)]
+        )
+
+        let redLionfish = try XCTUnwrap(cards.first { $0.id == "base.main.095" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: redLionfish).first?.effects,
+            [.playFishFromHand(filter: .any, placement: .sunlight, costMode: .payCost)]
+        )
+    }
+
+    func testAbilityPatternParserKeepsConditionalCoralPlayFishUnsupported() throws {
+        let catalog = try SharksAndReefsCardCatalog()
+        let cards = catalog.starterFishCards + catalog.fishCards
+        let resolver = AbilityResolver()
+
+        let reefTriggerfish = try XCTUnwrap(cards.first { $0.id == "sr.main.182" })
+        XCTAssertEqual(resolver.abilityDefinitions(for: reefTriggerfish).first?.effects, [.unsupported])
+
+        let yokozuna = try XCTUnwrap(cards.first { $0.id == "sr.main.209" })
+        XCTAssertEqual(resolver.abilityDefinitions(for: yokozuna).first?.effects, [.unsupported])
+    }
+
     func testBlueLanternfishWhenPlayedCreatesDrawFourPendingChoice() throws {
         let catalog = try BaseGameCardCatalog()
         let engine = GameEngine(cardCatalog: catalog)
@@ -6053,6 +6153,37 @@ final class GameEngineTests: XCTestCase {
         let choice = try XCTUnwrap(state.pendingChoices.values.first)
         let drafts = try engine.makeEventDrafts(
             for: resolveCommand(commandId: "resolve-coral-pay", choiceId: choice.choiceId, resolution: resolution),
+            in: state
+        )
+        state = applying(drafts, to: state, using: engine)
+        return state
+    }
+
+    private func resolveCoralOffer(
+        diveActionSite: DiveActionSite,
+        resolution: PendingChoiceResolution,
+        source: OceanSlotAddress,
+        sourceResources: [ResourceQuantity]
+    ) throws -> GameState {
+        let engine = GameEngine()
+        var initialState = coralDiveState()
+        setResources(sourceResources, at: source, in: &initialState)
+        var state = applying(
+            try engine.makeEventDrafts(
+                for: diveCommand(commandId: "dive-coral-\(diveActionSite.rawValue)", diveSite: diveActionSite),
+                in: initialState
+            ),
+            to: initialState,
+            using: engine
+        )
+        let choice = try XCTUnwrap(state.pendingChoices.values.first)
+        XCTAssertEqual(choice.source, .coralReef(DiveSite(rawValue: diveActionSite.rawValue)!))
+        let drafts = try engine.makeEventDrafts(
+            for: resolveCommand(
+                commandId: "resolve-coral-\(diveActionSite.rawValue)",
+                choiceId: choice.choiceId,
+                resolution: resolution
+            ),
             in: state
         )
         state = applying(drafts, to: state, using: engine)

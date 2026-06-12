@@ -543,6 +543,36 @@ enum AbilityPatternParser {
             )
         }
 
+        if let count = pureRepeatedTokenCount("[SchoolFeederMove]", in: pattern, maxCount: 4) {
+            return repeatedChoiceDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effect: .moveYoungOrSchool(count: 1),
+                count: count,
+                action: "移动 \(count) 次幼鱼或鱼群"
+            )
+        }
+
+        if let placement = paidPlayPlacement(from: pattern) {
+            return AbilityDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effects: [.playFishFromHand(filter: .any, placement: placement, costMode: .payCost)],
+                isOptional: true,
+                displayText: triggerText(trigger, action: "从手牌打出 1 张鱼并支付费用")
+            )
+        }
+
+        if let filter = freePlayFilter(from: pattern) {
+            return AbilityDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effects: [.playFishForFree(filter: filter, count: 1)],
+                isOptional: true,
+                displayText: triggerText(trigger, action: "免费从手牌打出 1 张鱼")
+            )
+        }
+
         if let filter = eggPlacementFilter(from: pattern) {
             return AbilityDefinition(
                 abilityId: abilityId,
@@ -631,6 +661,56 @@ enum AbilityPatternParser {
             return .diveSite(.purple)
         case "[FlipperGreen]":
             return .diveSite(.green)
+        default:
+            return nil
+        }
+    }
+
+    nonisolated private static func paidPlayPlacement(from pattern: String) -> FishPlacementConstraint? {
+        guard pattern.hasPrefix("[FishFromHand][ArrowDown]") else {
+            return nil
+        }
+        let remainder = String(pattern.dropFirst("[FishFromHand][ArrowDown]".count))
+        switch remainder {
+        case "[Estuary]",
+             "[PlayFishTopRow]":
+            return .topRow
+        case "[PlayFishBottomRow]",
+             "[Deepwater]":
+            return .bottomRow
+        case "[Sun]":
+            return .sunlight
+        case "[FlipperBlue]":
+            return .diveSite(.blue)
+        case "[FlipperPurple]":
+            return .diveSite(.purple)
+        case "[FlipperGreen]":
+            return .diveSite(.green)
+        default:
+            return nil
+        }
+    }
+
+    nonisolated private static func freePlayFilter(from pattern: String) -> FreePlayFishFilter? {
+        guard pattern.hasPrefix("[FreePlayFishFromHand]") else {
+            return nil
+        }
+        let remainder = String(pattern.dropFirst("[FreePlayFishFromHand]".count))
+            .replacingOccurrences(of: "only", with: "")
+        if remainder.isEmpty {
+            return .any
+        }
+        switch remainder {
+        case "[FishLengthSmall]":
+            return .lengthBucket(.small)
+        case "[FishLengthMedium]":
+            return .lengthBucket(.medium)
+        case "[FishLengthLarge]":
+            return .lengthBucket(.large)
+        case "[Bioluminescent]":
+            return .tag("bioluminescent")
+        case "[Camouflage]":
+            return .tag("camouflage")
         default:
             return nil
         }
