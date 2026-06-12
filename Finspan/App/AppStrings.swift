@@ -15,9 +15,11 @@ enum AppStrings {
         static let createRoomEntry = "创建房间"
         static let createRoomEntryDescription = "设置房间、扩展和周目标。"
         static let continueRoomEntry = "继续房间"
-        static let continueRoomEntryDescription = "返回本机仍在等待的房间。"
+        static let continueRoomEntryDescription = "返回本机仍在进行或等待的房间。"
         static let joinGameEntry = "加入游戏"
         static let joinGameEntryDescription = "浏览本地可加入的房间。"
+        static let cardLibraryEntry = "牌库"
+        static let cardLibraryEntryDescription = "查看已抓到和全部真实鱼牌。"
         static let automaEntry = "自动鱼"
         static let automaEntryDescription = "单人模式后续接入。"
         static let profileSetupTitle = "设置玩家资料"
@@ -88,6 +90,17 @@ enum AppStrings {
         static let ready = "已准备"
         static let notReady = "未准备"
 
+        enum CardLibrary {
+            static let title = "牌库"
+            static let discoveredMode = "已抓到过"
+            static let allMode = "所有牌"
+            static let locked = "未抓到"
+            static let baseBadge = "Base"
+            static let sharksAndReefsBadge = "S&R"
+            static let unknownExpansionBadge = "未知"
+            static let empty = "暂无鱼牌"
+        }
+
         static func defaultRoomName(ownerName: String) -> String {
             "\(ownerName)的房间"
         }
@@ -114,7 +127,10 @@ enum AppStrings {
         static let title = "游戏面板"
         static let turn = "回合"
         static let settings = "设置"
-        static let endCurrentGameAndReturnHome = "结束当前对局并返回主页"
+        static let temporarilyExitGameAndReturnHome = "暂时退出并返回大厅"
+        static let dissolveCurrentGameAndReturnHome = "解散当前对局"
+        static let dissolveCurrentGameConfirmTitle = "确定要解散当前对局吗？"
+        static let dissolveCurrentGameConfirmMessage = "解散后，本机房间列表中将不再显示这个房间。"
         static let cancel = "取消"
         static let currentAction = "当前行动"
         static let activePlayerInfo = "行动玩家"
@@ -162,6 +178,8 @@ enum AppStrings {
         static let pendingChoicePanel = "待处理选择"
         static let noPendingChoices = "暂无待处理选择。"
         static let currentRewards = "当前收益"
+        static let compactRightPanelTitle = "行动"
+        static let compactRightPanelEmpty = "暂无待处理"
         static let noCurrentRewards = "当前没有待领取收益"
         static let triggering = "正在触发"
         static let activating = "正在发动"

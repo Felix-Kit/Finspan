@@ -11,6 +11,7 @@ struct ContentView: View {
     let environment: AppEnvironment
     @StateObject private var lobbyViewModel: LobbyViewModel
     @StateObject private var gameBoardViewModel: GameBoardViewModel
+    @StateObject private var cardLibraryViewModel: CardLibraryViewModel
     @State private var phase: GamePhase
     @State private var isShowingLobbyOverride = false
 
@@ -29,6 +30,9 @@ struct ContentView: View {
                 cardCatalogProvider: environment.gameDataController.currentCatalog
             )
         )
+        _cardLibraryViewModel = StateObject(
+            wrappedValue: CardLibraryViewModel()
+        )
         _phase = State(initialValue: environment.roomService.gameState.phase)
     }
 
@@ -38,12 +42,21 @@ struct ContentView: View {
                phase == .playing || phase == .awaitingChoice || phase == .weekScoring || phase == .endGamePending || phase == .gameEnded {
                 GameBoardView(
                     viewModel: gameBoardViewModel,
-                    onEndCurrentGameAndReturnHome: {
-                        endCurrentGameAndReturnToLobby()
+                    onTemporarilyExitGameAndReturnHome: {
+                        temporarilyExitGameAndReturnToLobby()
+                    },
+                    onDissolveCurrentGameAndReturnHome: {
+                        dissolveCurrentGameAndReturnToLobby()
                     }
                 )
             } else {
-                LobbyView(viewModel: lobbyViewModel)
+                LobbyView(
+                    viewModel: lobbyViewModel,
+                    cardLibraryViewModel: cardLibraryViewModel,
+                    onResumeActiveGame: {
+                        resumeActiveGameFromLobby()
+                    }
+                )
             }
         }
         .task {
@@ -63,7 +76,18 @@ struct ContentView: View {
         gameBoardViewModel.refresh()
     }
 
-    private func endCurrentGameAndReturnToLobby() {
+    private func temporarilyExitGameAndReturnToLobby() {
+        lobbyViewModel.returnToMainMenuKeepingRoom()
+        isShowingLobbyOverride = true
+        syncViewModels()
+    }
+
+    private func resumeActiveGameFromLobby() {
+        isShowingLobbyOverride = false
+        syncViewModels()
+    }
+
+    private func dissolveCurrentGameAndReturnToLobby() {
         environment.roomService.resetLocalRoomSession()
         isShowingLobbyOverride = false
         syncViewModels()

@@ -2,7 +2,9 @@ import SwiftUI
 
 struct LobbyView: View {
     @StateObject var viewModel: LobbyViewModel
+    @StateObject var cardLibraryViewModel: CardLibraryViewModel
     @State private var selectingWeeklyGoalWeek: Int?
+    var onResumeActiveGame: (() -> Void)?
 
     var body: some View {
         NavigationStack {
@@ -50,7 +52,7 @@ struct LobbyView: View {
     private var screenContent: some View {
         switch viewModel.screen {
         case .mainMenu:
-            MainMenuView(viewModel: viewModel)
+            MainMenuView(viewModel: viewModel, onResumeActiveGame: onResumeActiveGame)
         case .createRoom:
             CreateRoomSetupView(
                 viewModel: viewModel,
@@ -59,7 +61,11 @@ struct LobbyView: View {
         case .roomLobby:
             RoomLobbyView(viewModel: viewModel)
         case .joinGame:
-            JoinGameBrowserView(viewModel: viewModel)
+            JoinGameBrowserView(viewModel: viewModel, onResumeActiveGame: onResumeActiveGame)
+        case .cardLibrary:
+            CardLibraryView(viewModel: cardLibraryViewModel) {
+                viewModel.showMainMenu()
+            }
         case .automa:
             AutomaPlaceholderView(viewModel: viewModel)
         }
@@ -75,6 +81,8 @@ struct LobbyView: View {
             return AppStrings.Lobby.roomLobbyTitle
         case .joinGame:
             return AppStrings.Lobby.joinGameTitle
+        case .cardLibrary:
+            return AppStrings.Lobby.CardLibrary.title
         case .automa:
             return AppStrings.Lobby.automaTitle
         }
@@ -175,6 +183,7 @@ private struct PlayerProfileButton: View {
 
 private struct MainMenuView: View {
     @ObservedObject var viewModel: LobbyViewModel
+    var onResumeActiveGame: (() -> Void)?
 
     var body: some View {
         VStack(spacing: 24) {
@@ -183,6 +192,7 @@ private struct MainMenuView: View {
             if let room = viewModel.activeRoomSummary {
                 Button {
                     viewModel.enterActiveRoom()
+                    onResumeActiveGame?()
                 } label: {
                     HStack(spacing: 16) {
                         AvatarCircle(symbol: room.hostAvatarSymbol, size: 44)
@@ -223,6 +233,14 @@ private struct MainMenuView: View {
                     systemImage: "person.2.fill"
                 ) {
                     viewModel.showJoinGame()
+                }
+
+                menuCard(
+                    title: AppStrings.Lobby.cardLibraryEntry,
+                    subtitle: AppStrings.Lobby.cardLibraryEntryDescription,
+                    systemImage: "rectangle.stack.fill"
+                ) {
+                    viewModel.showCardLibrary()
                 }
 
                 menuCard(
@@ -638,6 +656,7 @@ private struct RoomLobbyView: View {
 
 private struct JoinGameBrowserView: View {
     @ObservedObject var viewModel: LobbyViewModel
+    var onResumeActiveGame: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -669,6 +688,7 @@ private struct JoinGameBrowserView: View {
                         ForEach(viewModel.discoveredRooms) { room in
                             Button {
                                 viewModel.enterRoom(room.id)
+                                onResumeActiveGame?()
                             } label: {
                                 HStack(spacing: 12) {
                                     AvatarCircle(symbol: room.hostAvatarSymbol, size: 42)

@@ -253,6 +253,17 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertTrue(action.isPrimaryButtonEnabled)
         XCTAssertEqual(action.secondaryButtonTitle, AppStrings.GameBoard.cancelPlayFish)
         XCTAssertTrue(action.isSecondaryButtonVisible)
+        XCTAssertEqual(viewModel.rightSidePanelViewState.presentation, .expanded)
+    }
+
+    func testRightSidePanelIsCompactWhenThereIsNoPendingActionOrReward() {
+        let service = makeService(hand: [])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.rightActionPanelViewState.actionKind, .none)
+        XCTAssertFalse(viewModel.rewardPoolViewState.isActive)
+        XCTAssertEqual(viewModel.rightSidePanelViewState.presentation, .compact)
+        XCTAssertEqual(viewModel.rightSidePanelViewState.compactSubtitle, AppStrings.GameBoard.compactRightPanelEmpty)
     }
 
     func testRightActionPanelDisablesPlayFishConfirmationUntilPaymentComplete() {
@@ -281,6 +292,7 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(action.pendingChoiceId, choice.choiceId)
         XCTAssertEqual(action.primaryButtonTitle, AppStrings.GameBoard.skipChoice)
         XCTAssertTrue(action.isPrimaryButtonEnabled)
+        XCTAssertEqual(viewModel.rightSidePanelViewState.presentation, .expanded)
     }
 
     func testRewardTokenSelectionUpdatesRightActionPanelSummary() {
@@ -369,15 +381,23 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.gameHudViewState.weeklyGoalHud.boxes.count, 4)
     }
 
-    func testSettingsMenuViewStateShowsEndCurrentGameAction() {
+    func testSettingsMenuViewStateShowsTemporaryExitAndDissolveActions() {
         let service = makeService(hand: [])
         let viewModel = GameBoardViewModel(roomService: service)
         let settings = viewModel.settingsMenuViewState
 
         XCTAssertEqual(settings.title, AppStrings.GameBoard.settings)
         XCTAssertEqual(
-            settings.endCurrentGameAndReturnHomeText,
-            AppStrings.GameBoard.endCurrentGameAndReturnHome
+            settings.temporarilyExitGameAndReturnHomeText,
+            AppStrings.GameBoard.temporarilyExitGameAndReturnHome
+        )
+        XCTAssertEqual(
+            settings.dissolveCurrentGameAndReturnHomeText,
+            AppStrings.GameBoard.dissolveCurrentGameAndReturnHome
+        )
+        XCTAssertEqual(
+            settings.dissolveConfirmationTitle,
+            AppStrings.GameBoard.dissolveCurrentGameConfirmTitle
         )
         XCTAssertEqual(settings.cancelText, AppStrings.GameBoard.cancel)
     }
@@ -802,6 +822,9 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.discardPileViewState.count, 0)
         XCTAssertEqual(viewModel.discardPileViewState.emptyText, AppStrings.GameBoard.discardPileEmpty)
         XCTAssertEqual(viewModel.discardPileViewState.countText, "弃牌 0")
+        XCTAssertEqual(viewModel.discardPileViewState.badgeText, "0")
+        XCTAssertTrue(viewModel.discardPileViewState.usesCardStackPreview)
+        XCTAssertTrue(viewModel.discardPileViewState.usesOverlayBadge)
         XCTAssertTrue(viewModel.discardPileViewState.topCards.isEmpty)
     }
 
@@ -815,6 +838,8 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.discardPileViewState.isEmpty)
         XCTAssertEqual(viewModel.discardPileViewState.count, 3)
         XCTAssertEqual(viewModel.discardPileViewState.countText, "弃牌 3")
+        XCTAssertEqual(viewModel.discardPileViewState.badgeText, "3")
+        XCTAssertTrue(viewModel.discardPileViewState.usesOverlayBadge)
     }
 
     func testDiscardPileTopCardsShowsAtMostThreeMostRecentDiscards() {
@@ -848,6 +873,8 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.discardPileDetailViewState?.cards.map(\.cardId), ["fish-5", "fish-4", "fish-3", "fish-2", "fish-1"])
         XCTAssertEqual(viewModel.discardPileDetailViewState?.maxCardsPerRow, 4)
         XCTAssertEqual(viewModel.discardPileDetailViewState?.countText, "共 5 张")
+        XCTAssertEqual(viewModel.discardPileDetailViewState?.presentationStyle, .fullScreenOverlay)
+        XCTAssertEqual(viewModel.discardPileDetailViewState?.isReadOnly, true)
     }
 
     func testHidingDiscardPileDismissesDetail() {

@@ -324,7 +324,10 @@ struct GameHudViewState: Equatable {
 
 struct GameBoardSettingsMenuViewState: Equatable {
     let title: String
-    let endCurrentGameAndReturnHomeText: String
+    let temporarilyExitGameAndReturnHomeText: String
+    let dissolveCurrentGameAndReturnHomeText: String
+    let dissolveConfirmationTitle: String
+    let dissolveConfirmationMessage: String
     let cancelText: String
 }
 
@@ -382,6 +385,17 @@ struct RightActionPanelViewState: Equatable {
     let actionKind: RightActionPanelActionKind
     let pendingChoiceId: PendingChoiceID?
     let primaryPendingChoiceAction: PendingChoiceAction?
+}
+
+enum RightSidePanelPresentation: String, Equatable {
+    case compact
+    case expanded
+}
+
+struct RightSidePanelViewState: Equatable {
+    let presentation: RightSidePanelPresentation
+    let compactTitle: String
+    let compactSubtitle: String
 }
 
 struct GameEndAbilityPhaseViewState: Equatable {
@@ -478,6 +492,9 @@ struct DiscardPileViewState: Equatable {
     let playerId: PlayerID?
     let title: String
     let countText: String
+    let badgeText: String
+    let usesCardStackPreview: Bool
+    let usesOverlayBadge: Bool
     let count: Int
     let topCards: [FishCardFaceViewState]
     let isEmpty: Bool
@@ -491,6 +508,12 @@ struct DiscardPileDetailViewState: Equatable {
     let cards: [FishCardFaceViewState]
     let emptyText: String
     let maxCardsPerRow: Int
+    let presentationStyle: DiscardPileDetailPresentationStyle
+    let isReadOnly: Bool
+}
+
+enum DiscardPileDetailPresentationStyle: String, Equatable {
+    case fullScreenOverlay
 }
 
 struct OceanSlotViewData: Identifiable, Equatable {
@@ -991,7 +1014,10 @@ final class GameBoardViewModel: ObservableObject {
     var settingsMenuViewState: GameBoardSettingsMenuViewState {
         GameBoardSettingsMenuViewState(
             title: AppStrings.GameBoard.settings,
-            endCurrentGameAndReturnHomeText: AppStrings.GameBoard.endCurrentGameAndReturnHome,
+            temporarilyExitGameAndReturnHomeText: AppStrings.GameBoard.temporarilyExitGameAndReturnHome,
+            dissolveCurrentGameAndReturnHomeText: AppStrings.GameBoard.dissolveCurrentGameAndReturnHome,
+            dissolveConfirmationTitle: AppStrings.GameBoard.dissolveCurrentGameConfirmTitle,
+            dissolveConfirmationMessage: AppStrings.GameBoard.dissolveCurrentGameConfirmMessage,
             cancelText: AppStrings.GameBoard.cancel
         )
     }
@@ -1105,6 +1131,24 @@ final class GameBoardViewModel: ObservableObject {
             actionKind: .none,
             pendingChoiceId: nil,
             primaryPendingChoiceAction: nil
+        )
+    }
+
+    var rightSidePanelViewState: RightSidePanelViewState {
+        let rewardPool = rewardPoolViewState
+        let action = rightActionPanelViewState
+        let shouldExpand = rewardPool.isActive
+            || !rewardPool.rewards.isEmpty
+            || action.actionKind != .none
+            || action.primaryButtonTitle != nil
+            || action.isSecondaryButtonVisible
+            || action.warningText != nil
+            || gameEndAbilityPhaseViewState != nil
+
+        return RightSidePanelViewState(
+            presentation: shouldExpand ? .expanded : .compact,
+            compactTitle: AppStrings.GameBoard.compactRightPanelTitle,
+            compactSubtitle: AppStrings.GameBoard.compactRightPanelEmpty
         )
     }
 
@@ -1808,6 +1852,9 @@ final class GameBoardViewModel: ObservableObject {
             playerId: state.activePlayerId,
             title: AppStrings.GameBoard.discardPile,
             countText: AppStrings.GameBoard.discardPileCountText(cardFaces.count),
+            badgeText: "\(cardFaces.count)",
+            usesCardStackPreview: true,
+            usesOverlayBadge: true,
             count: cardFaces.count,
             topCards: Array(cardFaces.prefix(3)),
             isEmpty: cardFaces.isEmpty,
@@ -1826,7 +1873,9 @@ final class GameBoardViewModel: ObservableObject {
             countText: AppStrings.GameBoard.discardPileDetailCountText(cardFaces.count),
             cards: cardFaces,
             emptyText: AppStrings.GameBoard.discardPileEmpty,
-            maxCardsPerRow: 4
+            maxCardsPerRow: 4,
+            presentationStyle: .fullScreenOverlay,
+            isReadOnly: true
         )
     }
 

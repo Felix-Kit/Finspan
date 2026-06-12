@@ -71,7 +71,7 @@ final class GameDataController {
     private(set) var mode: GameDataMode
 
     init(
-        mode: GameDataMode = .sample,
+        mode: GameDataMode = .baseGame,
         factory: CardCatalogFactory = CardCatalogFactory()
     ) {
         self.factory = factory

@@ -15,7 +15,9 @@ struct GameBoardView: View {
     @StateObject var viewModel: GameBoardViewModel
     @State private var slotFrames: [OceanSlotAddress: CGRect] = [:]
     @State private var isShowingSettings = false
-    var onEndCurrentGameAndReturnHome: (() -> Void)?
+    @State private var isConfirmingDissolveCurrentGame = false
+    var onTemporarilyExitGameAndReturnHome: (() -> Void)?
+    var onDissolveCurrentGameAndReturnHome: (() -> Void)?
 
     var body: some View {
         Group {
@@ -44,7 +46,7 @@ struct GameBoardView: View {
                                 Divider()
 
                                 rightSidePanel
-                                    .frame(width: 300, alignment: .topLeading)
+                                    .frame(width: rightSidePanelWidth, alignment: .topLeading)
                             }
                         }
                         .padding(.horizontal, 18)
@@ -58,6 +60,11 @@ struct GameBoardView: View {
                                 .padding(.horizontal, 18)
                                 .allowsHitTesting(false)
                         }
+
+                        if let detail = viewModel.discardPileDetailViewState {
+                            discardPileDetailOverlay(detail)
+                                .zIndex(20)
+                        }
                     }
                     .toolbar(.hidden, for: .navigationBar)
                     .ignoresSafeArea(.container, edges: [.top, .bottom])
@@ -70,10 +77,25 @@ struct GameBoardView: View {
             isPresented: $isShowingSettings,
             titleVisibility: .visible
         ) {
-            Button(viewModel.settingsMenuViewState.endCurrentGameAndReturnHomeText, role: .destructive) {
-                onEndCurrentGameAndReturnHome?()
+            Button(viewModel.settingsMenuViewState.temporarilyExitGameAndReturnHomeText) {
+                onTemporarilyExitGameAndReturnHome?()
+            }
+            Button(viewModel.settingsMenuViewState.dissolveCurrentGameAndReturnHomeText, role: .destructive) {
+                isConfirmingDissolveCurrentGame = true
             }
             Button(viewModel.settingsMenuViewState.cancelText, role: .cancel) {}
+        }
+        .confirmationDialog(
+            viewModel.settingsMenuViewState.dissolveConfirmationTitle,
+            isPresented: $isConfirmingDissolveCurrentGame,
+            titleVisibility: .visible
+        ) {
+            Button(viewModel.settingsMenuViewState.dissolveCurrentGameAndReturnHomeText, role: .destructive) {
+                onDissolveCurrentGameAndReturnHome?()
+            }
+            Button(viewModel.settingsMenuViewState.cancelText, role: .cancel) {}
+        } message: {
+            Text(viewModel.settingsMenuViewState.dissolveConfirmationMessage)
         }
         .sheet(
             isPresented: Binding(
@@ -123,34 +145,6 @@ struct GameBoardView: View {
                             }
                         }
                 }
-            }
-        }
-        .sheet(
-            isPresented: Binding(
-                get: { viewModel.discardPileViewState.isDetailPresented },
-                set: { isPresented in
-                    if isPresented {
-                        viewModel.showDiscardPile()
-                    } else {
-                        viewModel.hideDiscardPile()
-                    }
-                }
-            )
-        ) {
-            if let detail = viewModel.discardPileDetailViewState {
-                NavigationStack {
-                    discardPileDetailPanel(detail)
-                        .padding(20)
-                        .navigationTitle(detail.title)
-                        .toolbar {
-                            ToolbarItem(placement: .cancellationAction) {
-                                Button(AppStrings.GameBoard.close) {
-                                    viewModel.hideDiscardPile()
-                                }
-                            }
-                        }
-                }
-                .presentationDetents([.medium, .large])
             }
         }
         .onPreferenceChange(SlotFramePreferenceKey.self) { frames in
@@ -360,16 +354,43 @@ struct GameBoardView: View {
         }
     }
 
+    private var rightSidePanelWidth: CGFloat {
+        switch viewModel.rightSidePanelViewState.presentation {
+        case .compact:
+            return 150
+        case .expanded:
+            return 300
+        }
+    }
+
+    @ViewBuilder
     private var rightSidePanel: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            rewardPoolPanel
-                .frame(maxHeight: 300, alignment: .topLeading)
-            Divider()
-            rightActionPanel
-            if let gameEndAbilityPhase = viewModel.gameEndAbilityPhaseViewState {
+        let panel = viewModel.rightSidePanelViewState
+        if panel.presentation == .compact {
+            compactRightSidePanel(panel)
+        } else {
+            VStack(alignment: .leading, spacing: 14) {
+                rewardPoolPanel
+                    .frame(maxHeight: 300, alignment: .topLeading)
                 Divider()
-                gameEndAbilityPanel(gameEndAbilityPhase)
+                rightActionPanel
+                if let gameEndAbilityPhase = viewModel.gameEndAbilityPhaseViewState {
+                    Divider()
+                    gameEndAbilityPanel(gameEndAbilityPhase)
+                }
+                Divider()
+                sidePlayerInfoPanel
             }
+        }
+    }
+
+    private func compactRightSidePanel(_ panel: RightSidePanelViewState) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(panel.compactTitle, systemImage: "sidebar.right")
+                .font(.headline.weight(.semibold))
+            Text(panel.compactSubtitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
             Divider()
             sidePlayerInfoPanel
         }
@@ -480,16 +501,18 @@ struct GameBoardView: View {
                 Button {
                     viewModel.showDiscardPile()
                 } label: {
-                    VStack(alignment: .center, spacing: 6) {
+                    ZStack(alignment: .topTrailing) {
                         discardPileStack(viewState)
 
-                        Text(viewState.countText)
+                        Text(viewState.badgeText)
                             .font(.caption.weight(.black))
                             .foregroundStyle(.white)
                             .lineLimit(1)
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 5)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
                             .background(Capsule().fill(Color.accentColor))
+                            .padding(.top, 4)
+                            .padding(.trailing, 2)
                     }
                     .padding(.vertical, 4)
                     .padding(.horizontal, 6)
@@ -505,49 +528,50 @@ struct GameBoardView: View {
         let width: CGFloat = 82
         let height = width / CardRenderMetrics.cardAspectRatio
         return ZStack(alignment: .center) {
-            if viewState.topCards.isEmpty {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(.tertiarySystemBackground))
-                    .overlay(
-                        VStack(spacing: 4) {
-                            Image(systemName: "tray")
-                                .font(.callout.weight(.semibold))
-                            Text(viewState.emptyText)
-                                .font(.caption2.weight(.semibold))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                        }
-                        .foregroundStyle(.secondary)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.secondary.opacity(0.28), style: StrokeStyle(lineWidth: 1.2, dash: [5, 4]))
-                    )
+            ForEach(Array(viewState.topCards.enumerated()), id: \.offset) { index, card in
+                FishCardFaceView(viewState: card)
                     .frame(width: width, height: height)
-            } else {
-                ForEach(Array(viewState.topCards.enumerated()), id: \.offset) { index, card in
-                    FishCardFaceView(viewState: card)
-                        .frame(width: width, height: height)
-                        .rotationEffect(.degrees(Double(index - 1) * 0.8))
-                        .offset(x: CGFloat(index) * 3, y: CGFloat(index) * -2)
-                        .shadow(color: .black.opacity(0.16), radius: 5, y: 3)
-                        .zIndex(Double(index))
-                }
+                    .rotationEffect(.degrees(Double(index - 1) * 0.8))
+                    .offset(x: CGFloat(index) * 3, y: CGFloat(index) * -2)
+                    .shadow(color: .black.opacity(0.16), radius: 5, y: 3)
+                    .zIndex(Double(index))
             }
         }
         .frame(width: width + 18, height: height + 12, alignment: .center)
     }
 
+    private func discardPileDetailOverlay(_ detail: DiscardPileDetailViewState) -> some View {
+        ZStack {
+            Color.black.opacity(0.72)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    viewModel.hideDiscardPile()
+                }
+
+            discardPileDetailPanel(detail)
+                .padding(.horizontal, 32)
+                .padding(.vertical, 28)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .contentShape(Rectangle())
+                .onTapGesture {}
+        }
+    }
+
     private func discardPileDetailPanel(_ detail: DiscardPileDetailViewState) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
+                Text(detail.title)
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(.white)
                 Text(detail.countText)
                     .font(.headline.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.8))
                 Spacer()
                 Button(AppStrings.GameBoard.close) {
                     viewModel.hideDiscardPile()
                 }
                 .buttonStyle(.bordered)
+                .tint(.white)
             }
 
             if detail.cards.isEmpty {
@@ -568,6 +592,7 @@ struct GameBoardView: View {
                         ForEach(Array(detail.cards.enumerated()), id: \.offset) { _, card in
                             FishCardFaceView(viewState: card)
                                 .frame(maxWidth: .infinity)
+                                .allowsHitTesting(false)
                         }
                     }
                     .padding(.vertical, 4)
@@ -652,9 +677,6 @@ struct GameBoardView: View {
 
     private var oceanPanel: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(AppStrings.GameBoard.ocean)
-                .font(.title2.weight(.semibold))
-
             if viewModel.oceanSlots.isEmpty {
                 ContentUnavailableView(
                     AppStrings.GameBoard.noOceanSlots,

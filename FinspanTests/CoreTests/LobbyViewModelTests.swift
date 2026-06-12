@@ -3,15 +3,15 @@ import XCTest
 
 @MainActor
 final class LobbyViewModelTests: XCTestCase {
-    func testDefaultsToSampleGameDataMode() {
+    func testDefaultsToBaseGameDataModeForNormalRoomFlow() {
         let service = LocalAuthoritativeRoomService()
         let controller = GameDataController()
 
         let viewModel = makeViewModel(roomService: service, gameDataController: controller)
 
-        XCTAssertEqual(viewModel.selectedGameDataMode, .sample)
-        XCTAssertEqual(controller.mode, .sample)
-        XCTAssertEqual(service.gameDataMode, .sample)
+        XCTAssertEqual(viewModel.selectedGameDataMode, .baseGame)
+        XCTAssertEqual(controller.mode, .baseGame)
+        XCTAssertEqual(service.gameDataMode, .baseGame)
     }
 
     func testSelectedGameDataModeIsRecordedBeforeCreatingRoom() {
@@ -19,11 +19,19 @@ final class LobbyViewModelTests: XCTestCase {
         let controller = GameDataController()
         let viewModel = makeViewModel(roomService: service, gameDataController: controller)
 
-        viewModel.selectedGameDataMode = .baseGame
+        viewModel.selectedGameDataMode = .sample
 
-        XCTAssertEqual(viewModel.selectedGameDataMode, .baseGame)
-        XCTAssertEqual(controller.mode, .baseGame)
-        XCTAssertEqual(service.gameDataMode, .baseGame)
+        XCTAssertEqual(viewModel.selectedGameDataMode, .sample)
+        XCTAssertEqual(controller.mode, .sample)
+        XCTAssertEqual(service.gameDataMode, .sample)
+    }
+
+    func testMainMenuCanNavigateToCardLibrary() {
+        let viewModel = makeProfiledViewModel()
+
+        viewModel.showCardLibrary()
+
+        XCTAssertEqual(viewModel.screen, .cardLibrary)
     }
 
     func testFirstLaunchWithoutProfileRequiresProfileSetup() {
@@ -404,6 +412,19 @@ final class LobbyViewModelTests: XCTestCase {
 
         XCTAssertEqual(service.gameRoom?.status, .inProgress)
         XCTAssertNotEqual(service.gameState.phase, .lobby)
+    }
+
+    func testInProgressActiveRoomCanResumeGameBoard() {
+        let service = LocalAuthoritativeRoomService(randomSeedProvider: { 42 })
+        let viewModel = makeProfiledViewModel(roomService: service)
+
+        viewModel.createLocalRoom()
+        viewModel.startGameAsHost()
+        viewModel.returnToMainMenuKeepingRoom()
+
+        XCTAssertEqual(viewModel.screen, .mainMenu)
+        XCTAssertNotNil(viewModel.activeRoomSummary)
+        XCTAssertTrue(viewModel.hasInProgressActiveRoom)
     }
 
     func testSideBRandomGoalsResolveOnlyAfterStartGame() {

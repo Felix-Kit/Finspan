@@ -6,6 +6,7 @@ enum LobbyScreen: Equatable {
     case createRoom
     case roomLobby
     case joinGame
+    case cardLibrary
     case automa
 }
 
@@ -141,6 +142,18 @@ final class LobbyViewModel: ObservableObject {
         return joinableRoomViewData(room)
     }
 
+    var hasInProgressActiveRoom: Bool {
+        guard roomService.gameRoom?.status == .inProgress else {
+            return false
+        }
+        switch roomService.gameState.phase {
+        case .playing, .awaitingChoice, .weekScoring, .endGamePending, .gameEnded:
+            return true
+        case .lobby, .setup:
+            return false
+        }
+    }
+
     var discoveredRooms: [JoinableRoomViewData] {
         guard let activeRoomSummary else {
             return []
@@ -159,9 +172,10 @@ final class LobbyViewModel: ObservableObject {
         self.profileStore = resolvedProfileStore
         selectedGameDataMode = gameDataController?.mode
             ?? (roomService as? GameDataModeConfiguring)?.gameDataMode
-            ?? .sample
+            ?? .baseGame
         localPlayerProfile = resolvedProfileStore.profile
         resetProfileDraft()
+        configureGameDataMode(selectedGameDataMode)
         refresh()
     }
 
@@ -206,6 +220,10 @@ final class LobbyViewModel: ObservableObject {
 
     func showJoinGame() {
         screen = .joinGame
+    }
+
+    func showCardLibrary() {
+        screen = .cardLibrary
     }
 
     func showAutoma() {
