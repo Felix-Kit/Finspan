@@ -498,8 +498,17 @@ enum AbilityPatternParser {
             return nil
         }
         let pattern = normalizedPattern(rawAbilityText)
+        if let definition = allPlayersAbilityDefinition(
+            abilityId: abilityId,
+            trigger: trigger,
+            pattern: pattern
+        ) {
+            return definition
+        }
+
         guard !pattern.contains("[AllPlayers]"),
-              !pattern.contains(";")
+              !pattern.contains(";"),
+              !pattern.contains("/")
         else {
             return nil
         }
@@ -584,6 +593,221 @@ enum AbilityPatternParser {
             )
         }
 
+        if let count = pureRepeatedTokenCount("[FishFromHandConsume]", in: pattern, maxCount: 2) {
+            return repeatedChoiceDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effect: .consumeFishFromHand(count: 1),
+                count: count,
+                action: "海洋中的鱼吞噬 \(count) 张更短手牌鱼"
+            )
+        }
+
+        if let count = pureRepeatedTokenCount("[UnSchoolFish]", in: pattern, maxCount: 2) {
+            return repeatedChoiceDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effect: .scatterSchool(count: 1),
+                count: count,
+                action: "打散鱼群 \(count) 次"
+            )
+        }
+
+        if let placement = paidPlayPlacement(from: pattern) {
+            return AbilityDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effects: [.playFishFromHand(filter: .any, placement: placement, costMode: .payCost)],
+                isOptional: true,
+                displayText: triggerText(trigger, action: "从手牌打出 1 张鱼并支付费用")
+            )
+        }
+
+        if let filter = freePlayFilter(from: pattern) {
+            return AbilityDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effects: [
+                    .playFishForFree(
+                        filter: filter,
+                        placement: .any,
+                        sourceCondition: .none,
+                        count: 1
+                    )
+                ],
+                isOptional: true,
+                displayText: triggerText(trigger, action: "免费从手牌打出 1 张鱼")
+            )
+        }
+
+        if let filter = eggPlacementFilter(from: pattern) {
+            return AbilityDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effects: [.placeEggOnMatchingFish(filter: filter, mode: .onEachEligibleFish)],
+                isOptional: true,
+                displayText: triggerText(trigger, action: "在每条匹配鱼上放置 1 个鱼卵")
+            )
+        }
+
+        if let coralEffects = pureCoralGainEffects(from: pattern) {
+            return AbilityDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effects: coralEffects,
+                canResolveInAnyOrder: false,
+                isOptional: true,
+                displayText: triggerText(trigger, action: "获得珊瑚")
+            )
+        }
+
+        return nil
+    }
+
+    nonisolated private static func allPlayersAbilityDefinition(
+        abilityId: AbilityID,
+        trigger: AbilityTrigger,
+        pattern: String
+    ) -> AbilityDefinition? {
+        guard pattern.hasPrefix("(allplayers)"),
+              pattern.hasSuffix("[AllPlayers]"),
+              !pattern.contains(";"),
+              !pattern.contains("/")
+        else {
+            return nil
+        }
+
+        let innerPattern = String(
+            pattern
+                .dropFirst("(allplayers)".count)
+                .dropLast("[AllPlayers]".count)
+        )
+        guard !innerPattern.isEmpty,
+              let innerDefinition = abilityDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                normalizedNonAllPlayersPattern: innerPattern
+              )
+        else {
+            return nil
+        }
+
+        return AbilityDefinition(
+            abilityId: abilityId,
+            trigger: trigger,
+            effects: innerDefinition.effects,
+            canResolveInAnyOrder: innerDefinition.canResolveInAnyOrder,
+            isOptional: true,
+            displayText: triggerText(trigger, action: "所有玩家依次结算收益"),
+            appliesToAllPlayers: true
+        )
+    }
+
+    nonisolated private static func abilityDefinition(
+        abilityId: AbilityID,
+        trigger: AbilityTrigger,
+        normalizedNonAllPlayersPattern pattern: String
+    ) -> AbilityDefinition? {
+        if let count = pureRepeatedTokenCount("[DrawCard]", in: pattern, maxCount: 5) {
+            return AbilityDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effects: [.drawFish(count: count)],
+                displayText: triggerText(trigger, action: "抽 \(count) 张鱼牌")
+            )
+        }
+
+        if let count = pureRepeatedTokenCount("[Discard]", in: pattern, maxCount: 5) {
+            return repeatedChoiceDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effect: .recoverFromDiscardOrDraw(count: 1),
+                count: count,
+                action: "从弃牌堆拿回 \(count) 张鱼牌，不足时从牌堆抽牌"
+            )
+        }
+
+        if let compoundEffects = mixedCompoundEffects(from: pattern) {
+            return AbilityDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effects: compoundEffects,
+                canResolveInAnyOrder: true,
+                isOptional: true,
+                displayText: triggerText(trigger, action: "任选顺序结算多个收益")
+            )
+        }
+
+        if let count = pureRepeatedTokenCount("[FishHatch]", in: pattern, maxCount: 4) {
+            return repeatedChoiceDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effect: .hatchEgg(count: 1),
+                count: count,
+                action: "孵化 \(count) 个鱼卵"
+            )
+        }
+
+        if let count = pureRepeatedTokenCount("[FishEgg]", in: pattern, maxCount: 4) {
+            return repeatedChoiceDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effect: .placeEgg(count: 1),
+                count: count,
+                action: "放置 \(count) 个鱼卵"
+            )
+        }
+
+        if let count = pureRepeatedTokenCount("[YoungFish]", in: pattern, maxCount: 4) {
+            return repeatedChoiceDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effect: .placeYoung(count: 1),
+                count: count,
+                action: "放置 \(count) 个幼鱼"
+            )
+        }
+
+        if let count = pureRepeatedTokenCount("[SchoolFeederMove]", in: pattern, maxCount: 4) {
+            return repeatedChoiceDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effect: .moveYoungOrSchool(count: 1),
+                count: count,
+                action: "移动 \(count) 次幼鱼或鱼群"
+            )
+        }
+
+        if let count = pureRepeatedTokenCount("[ConsumeFish1]", in: pattern, maxCount: 2) {
+            return repeatedChoiceDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effect: .consumeFishFromHand(count: 1),
+                count: count,
+                action: "海洋中的鱼吞噬 \(count) 张更短手牌鱼"
+            )
+        }
+
+        if let count = pureRepeatedTokenCount("[FishFromHandConsume]", in: pattern, maxCount: 2) {
+            return repeatedChoiceDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effect: .consumeFishFromHand(count: 1),
+                count: count,
+                action: "海洋中的鱼吞噬 \(count) 张更短手牌鱼"
+            )
+        }
+
+        if let count = pureRepeatedTokenCount("[UnSchoolFish]", in: pattern, maxCount: 2) {
+            return repeatedChoiceDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effect: .scatterSchool(count: 1),
+                count: count,
+                action: "打散鱼群 \(count) 次"
+            )
+        }
+
         if let placement = paidPlayPlacement(from: pattern) {
             return AbilityDefinition(
                 abilityId: abilityId,
@@ -650,7 +874,19 @@ enum AbilityPatternParser {
         var remaining = pattern
         var effects: [AbilityEffectUnit] = []
         while !remaining.isEmpty {
-            if remaining.hasPrefix("[DrawCard]") {
+            if remaining.hasPrefix("[BlueCoral]") {
+                effects.append(.gainCoral(selector: .blue, count: 1))
+                remaining.removeFirst("[BlueCoral]".count)
+            } else if remaining.hasPrefix("[PurpleCoral]") {
+                effects.append(.gainCoral(selector: .purple, count: 1))
+                remaining.removeFirst("[PurpleCoral]".count)
+            } else if remaining.hasPrefix("[GreenCoral]") {
+                effects.append(.gainCoral(selector: .green, count: 1))
+                remaining.removeFirst("[GreenCoral]".count)
+            } else if remaining.hasPrefix("[AnyCoral]") {
+                effects.append(.gainCoral(selector: .any, count: 1))
+                remaining.removeFirst("[AnyCoral]".count)
+            } else if remaining.hasPrefix("[DrawCard]") {
                 effects.append(.drawFish(count: 1))
                 remaining.removeFirst("[DrawCard]".count)
             } else if remaining.hasPrefix("[Discard]") {
@@ -668,6 +904,9 @@ enum AbilityPatternParser {
             } else if remaining.hasPrefix("[SchoolFeederMove]") {
                 effects.append(.moveYoungOrSchool(count: 1))
                 remaining.removeFirst("[SchoolFeederMove]".count)
+            } else if remaining.hasPrefix("[UnSchoolFish]") {
+                effects.append(.scatterSchool(count: 1))
+                remaining.removeFirst("[UnSchoolFish]".count)
             } else if remaining.hasPrefix("[FishFromHandConsume]") {
                 effects.append(.consumeFishFromHand(count: 1))
                 remaining.removeFirst("[FishFromHandConsume]".count)

@@ -4047,12 +4047,22 @@ final class GameBoardViewModel: ObservableObject {
     private func pendingChoiceSubtitle(_ choice: PendingChoice) -> String {
         let playerName = players.first(where: { $0.playerId == choice.playerId })?.displayName ?? choice.playerId
         let optionalText = choice.isOptional ? AppStrings.GameBoard.optionalChoice : AppStrings.GameBoard.requiredChoice
-        return [
+        var parts = [
             "\(AppStrings.GameBoard.pendingChoicePlayer)：\(playerName)",
             "\(AppStrings.GameBoard.pendingChoiceSource)：\(AppStrings.pendingChoiceSourceName(choice.source))",
             "\(AppStrings.GameBoard.pendingChoiceStatus)：\(AppStrings.GameBoard.pendingChoiceWaiting)",
             optionalText
-        ].joined(separator: "，")
+        ]
+        if let progress = choice.allPlayersProgress {
+            let remainingNames = progress.remainingPlayerIds.map { playerId in
+                players.first(where: { $0.playerId == playerId })?.displayName ?? playerId
+            }
+            let remainingText = remainingNames.isEmpty
+                ? ""
+                : "，\(AppStrings.GameBoard.allPlayersRemaining)：\(remainingNames.joined(separator: "、"))"
+            parts.append("\(AppStrings.GameBoard.allPlayersChoice)：当前为 \(playerName) 处理\(remainingText)")
+        }
+        return parts.joined(separator: "，")
     }
 
     private func pendingChoiceTitle(_ choice: PendingChoice) -> String {

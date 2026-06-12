@@ -76,16 +76,12 @@
 
 ### 9. GAME END ability sweep
 
-- 39 条 GAME END abilities 中已实现 33 条。
+- 39 条 GAME END abilities 中已实现 39 条。
 - scoring-only 10 条已实现。
-- executable 23 条已实现。
-- 仍 unsupported / future work 6 条：
-  - Honeycomb Scaly Dragonfish
-  - Speckled Butterflyfish
-  - Tripodfish
-  - Blackmouth Angler
-  - Sixgill Sawshark
-  - Yokozuna Slickhead
+- executable 29 条已实现。
+- GAME END remaining unsupported: 0。
+- Pass 2E 后整体 ability coverage 为 199 mapped / 16 unsupported。
+- 剩余 16 条均为 S&R `also, if 3 same-color coral in this dive site` 条件收益，等待规则确认。
 
 ### 10. Catalog Mode 和 Base Game JSON Catalog
 

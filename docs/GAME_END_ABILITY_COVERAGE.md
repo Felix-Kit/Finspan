@@ -1,6 +1,6 @@
 # GAME END Ability Coverage
 
-Last updated: 2026-06-12.
+Last updated: 2026-06-13.
 
 This document records the current GAME END sweep against runtime JSON in
 `Finspan/Resources/Cards`.
@@ -11,6 +11,7 @@ This document records the current GAME END sweep against runtime JSON in
 - Implemented scoring-only: 10
 - Implemented executable: 29
 - Remaining unsupported after Pass 2D: 0
+- Remaining unsupported after Pass 2E: 0
 
 ## Pass 2D Highlights
 
@@ -65,5 +66,6 @@ These remain auto-scored rather than surfaced as clickable actions:
 
 ## Notes
 
-- There are no remaining unsupported GAME END cards after Pass 2D.
-- `AllPlayers` is still deferred globally, but no runtime GAME END card currently requires a separate unmapped `AllPlayers` adapter beyond existing coverage decisions.
+- There are no remaining unsupported GAME END cards after Pass 2D or Pass 2E.
+- Pass 2E implements `AllPlayers` globally; no runtime GAME END card currently requires a separate AllPlayers adapter.
+- Runtime JSON contains no `/` ability text, so branch choice does not affect GAME END coverage.

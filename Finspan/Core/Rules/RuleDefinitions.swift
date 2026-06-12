@@ -85,6 +85,7 @@ struct AbilityDefinition: Codable, Equatable, Sendable {
     var canResolveInAnyOrder: Bool
     var isOptional: Bool
     var displayText: String
+    var appliesToAllPlayers: Bool?
 
     nonisolated init(
         abilityId: AbilityID,
@@ -92,7 +93,8 @@ struct AbilityDefinition: Codable, Equatable, Sendable {
         effects: [AbilityEffectUnit],
         canResolveInAnyOrder: Bool = false,
         isOptional: Bool = true,
-        displayText: String = ""
+        displayText: String = "",
+        appliesToAllPlayers: Bool = false
     ) {
         self.abilityId = abilityId
         self.trigger = trigger
@@ -100,6 +102,7 @@ struct AbilityDefinition: Codable, Equatable, Sendable {
         self.canResolveInAnyOrder = canResolveInAnyOrder
         self.isOptional = isOptional
         self.displayText = displayText
+        self.appliesToAllPlayers = appliesToAllPlayers
     }
 }
 

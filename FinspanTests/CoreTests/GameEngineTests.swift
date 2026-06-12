@@ -118,6 +118,7 @@ final class GameEngineTests: XCTestCase {
         state.firstPlayerId = "player-1"
         state.playerGameStates["player-1"]?.availableDivers = 1
         state.playerGameStates["player-2"]?.availableDivers = 0
+        state.playerGameStates["player-1"]?.diveSitesReachedBottomThisWeek = [.blue]
         let targetSlot = OceanSlotAddress(
             playerId: "player-1",
             diveSite: .blue,
@@ -638,6 +639,7 @@ final class GameEngineTests: XCTestCase {
         state.firstPlayerId = "player-1"
         state.playerGameStates["player-1"]?.availableDivers = 1
         state.playerGameStates["player-2"]?.availableDivers = 0
+        state.playerGameStates["player-1"]?.diveSitesReachedBottomThisWeek = [.blue]
 
         let drafts = try engine.makeEventDrafts(
             for: PlayerCommand(
@@ -1545,6 +1547,9 @@ final class GameEngineTests: XCTestCase {
                         payment: payment,
                         nextActivePlayerId: nil
                     )
+                ),
+                .turnAdvanced(
+                    TurnAdvancedEvent(playerId: "player-1", nextPlayerId: "player-2")
                 )
             ]
         )
@@ -2001,6 +2006,9 @@ final class GameEngineTests: XCTestCase {
                         ),
                         nextActivePlayerId: nil
                     )
+                ),
+                .turnAdvanced(
+                    TurnAdvancedEvent(playerId: "player-1", nextPlayerId: "player-2")
                 )
             ]
         )
@@ -2293,6 +2301,9 @@ final class GameEngineTests: XCTestCase {
                         ),
                         nextActivePlayerId: nil
                     )
+                ),
+                .turnAdvanced(
+                    TurnAdvancedEvent(playerId: "player-1", nextPlayerId: "player-2")
                 )
             ]
         )
@@ -6570,17 +6581,65 @@ final class GameEngineTests: XCTestCase {
         )
     }
 
-    func testDeferredAbilityPatternsRemainUnsupportedUntilRuleConfirmation() throws {
+    func testAbilityPatternParserMapsPass2EAllPlayersRealRuntimePatterns() throws {
         let baseCatalog = try BaseGameCardCatalog()
         let srCatalog = try SharksAndReefsCardCatalog()
         let resolver = AbilityResolver()
+        let baseCards = baseCatalog.fishCards + baseCatalog.starterFishCards
+        let srCards = srCatalog.fishCards + srCatalog.starterFishCards
+
+        let giantHatchetfish = try XCTUnwrap(baseCards.first { $0.id == "base.main.050" })
+        let drawAbility = try XCTUnwrap(resolver.abilityDefinitions(for: giantHatchetfish).first)
+        XCTAssertEqual(giantHatchetfish.name, "Giant Hatchetfish")
+        XCTAssertEqual(giantHatchetfish.abilityText, "(all players) [DrawCard][AllPlayers]")
+        XCTAssertEqual(drawAbility.effects, [.drawFish(count: 1)])
+        XCTAssertEqual(drawAbility.appliesToAllPlayers, true)
+
+        let beardedSeadevil = try XCTUnwrap(baseCards.first { $0.id == "base.main.016" })
+        let eggAbility = try XCTUnwrap(resolver.abilityDefinitions(for: beardedSeadevil).first)
+        XCTAssertEqual(eggAbility.effects, [.placeEggOnMatchingFish(filter: .lengthBucket(.small), mode: .onEachEligibleFish)])
+        XCTAssertEqual(eggAbility.appliesToAllPlayers, true)
+
+        let greatBarracuda = try XCTUnwrap(srCards.first { $0.id == "sr.main.161" })
+        let coralAbility = try XCTUnwrap(resolver.abilityDefinitions(for: greatBarracuda).first)
+        XCTAssertEqual(
+            coralAbility.effects,
+            [.gainCoral(selector: .blue, count: 1), .gainCoral(selector: .blue, count: 1)]
+        )
+        XCTAssertEqual(coralAbility.appliesToAllPlayers, true)
+
+        let greatHammerhead = try XCTUnwrap(srCards.first { $0.id == "sr.main.162" })
+        let scatterConsumeAbility = try XCTUnwrap(resolver.abilityDefinitions(for: greatHammerhead).first)
+        XCTAssertEqual(scatterConsumeAbility.effects, [.scatterSchool(count: 1), .consumeFishFromHand(count: 1)])
+        XCTAssertEqual(scatterConsumeAbility.appliesToAllPlayers, true)
+
+        let shortfinMako = try XCTUnwrap(srCards.first { $0.id == "sr.main.191" })
+        let consumeAbility = try XCTUnwrap(resolver.abilityDefinitions(for: shortfinMako).first)
+        XCTAssertEqual(consumeAbility.effects, [.consumeFishFromHand(count: 1), .consumeFishFromHand(count: 1)])
+        XCTAssertEqual(consumeAbility.appliesToAllPlayers, true)
+    }
+
+    func testRuntimeAbilityTextsContainNoSlashBranchChoicePatterns() throws {
+        let baseCatalog = try BaseGameCardCatalog()
+        let srCatalog = try SharksAndReefsCardCatalog()
         let cards = baseCatalog.fishCards + baseCatalog.starterFishCards + srCatalog.fishCards + srCatalog.starterFishCards
 
+        let slashCards = cards.filter { ($0.abilityText ?? "").contains("/") }
+
+        XCTAssertTrue(slashCards.isEmpty, "Runtime JSON currently has no slash ability cards: \(slashCards.map(\.id))")
+    }
+
+    func testDeferredAbilityPatternsRemainUnsupportedUntilRuleConfirmation() throws {
+        let srCatalog = try SharksAndReefsCardCatalog()
+        let resolver = AbilityResolver()
+        let cards = srCatalog.fishCards + srCatalog.starterFishCards
+
         let deferredIds = [
-            "base.main.050", // Giant Hatchetfish
-            "base.main.111", // Spookfish
-            "base.main.036", // Deepsea Lizardfish
-            "sr.main.191"    // Shortfin Mako
+            "sr.main.138", // Armored Searobin: also, if 3 blue coral in this dive site
+            "sr.main.139", // Atlantic Thornyhead: also, if 3 green coral in this dive site
+            "sr.main.144", // Bluering Angelfish: also, if 3 purple coral in this dive site
+            "sr.starter.212", // Atlantic Barracudina: also, if 3 green coral in this dive site
+            "sr.starter.214" // Fanfin Anglerfish: also, if 3 purple coral in this dive site
         ]
 
         for cardId in deferredIds {
@@ -6591,6 +6650,82 @@ final class GameEngineTests: XCTestCase {
                 "Expected \(cardId) to remain unsupported until rules are confirmed."
             )
         }
+    }
+
+    func testAllPlayersDrawAbilityResolvesEachPlayerIndependentlyFromSourcePlayer() throws {
+        let catalog = try BaseGameCardCatalog()
+        let engine = GameEngine(cardCatalog: catalog)
+        var state = allPlayersGiantHatchetfishDiveState()
+
+        state = applying(
+            try engine.makeEventDrafts(for: diveCommand(commandId: "dive-all-players-draw"), in: state),
+            to: state,
+            using: engine
+        )
+        let printedChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "skip-printed-before-all-players", choiceId: printedChoice.choiceId, resolution: .skip),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        var choice = try XCTUnwrap(state.pendingChoices.values.first)
+        XCTAssertEqual(choice.playerId, "player-1")
+        XCTAssertEqual(choice.allPlayersProgress?.sourcePlayerId, "player-1")
+        XCTAssertEqual(choice.allPlayersProgress?.remainingPlayerIds, ["player-2", "player-3"])
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "all-players-draw-p1", choiceId: choice.choiceId, resolution: .draw(count: 1)),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        XCTAssertEqual(state.playerGameStates["player-1"]?.hand, ["base.main.001"])
+        XCTAssertEqual(state.playerGameStates["player-2"]?.hand, [])
+        XCTAssertEqual(state.playerGameStates["player-3"]?.hand, [])
+
+        choice = try XCTUnwrap(state.pendingChoices.values.first)
+        XCTAssertEqual(choice.playerId, "player-2")
+        XCTAssertEqual(choice.allPlayersProgress?.resolvedPlayerIds, ["player-1"])
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "all-players-skip-p2",
+                    playerId: "player-2",
+                    choiceId: choice.choiceId,
+                    resolution: .skip
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        XCTAssertEqual(state.playerGameStates["player-2"]?.hand, [])
+
+        choice = try XCTUnwrap(state.pendingChoices.values.first)
+        XCTAssertEqual(choice.playerId, "player-3")
+        XCTAssertEqual(choice.allPlayersProgress?.skippedPlayerIds, ["player-2"])
+        let finalDrafts = try engine.makeEventDrafts(
+            for: resolveCommand(
+                commandId: "all-players-draw-p3",
+                playerId: "player-3",
+                choiceId: choice.choiceId,
+                resolution: .draw(count: 1)
+            ),
+            in: state
+        )
+        state = applying(finalDrafts, to: state, using: engine)
+
+        XCTAssertEqual(state.playerGameStates["player-1"]?.hand, ["base.main.001"])
+        XCTAssertEqual(state.playerGameStates["player-2"]?.hand, [])
+        XCTAssertEqual(state.playerGameStates["player-3"]?.hand, ["base.main.002"])
+        XCTAssertTrue(state.pendingChoices.isEmpty)
+        XCTAssertTrue(finalDrafts.contains(where: \.isTurnCompletion))
     }
 
     func testBlueLanternfishWhenPlayedCreatesDrawFourPendingChoice() throws {
@@ -7006,6 +7141,44 @@ final class GameEngineTests: XCTestCase {
         return state
     }
 
+    private func allPlayersGiantHatchetfishDiveState() -> GameState {
+        var state = playFishState()
+        state.players = [
+            Player(id: "player-1", name: "Player 1"),
+            Player(id: "player-2", name: "Player 2"),
+            Player(id: "player-3", name: "Player 3")
+        ]
+        state.playerGameStates["player-1"] = PlayerGameState(
+            playerId: "player-1",
+            hand: [],
+            availableDivers: 6,
+            usedDivers: 0,
+            ocean: emptyOcean(for: "player-1"),
+            diveSitesReachedBottomThisWeek: [.blue]
+        )
+        state.playerGameStates["player-2"] = PlayerGameState(
+            playerId: "player-2",
+            hand: [],
+            availableDivers: 6,
+            usedDivers: 0,
+            ocean: emptyOcean(for: "player-2")
+        )
+        state.playerGameStates["player-3"] = PlayerGameState(
+            playerId: "player-3",
+            hand: [],
+            availableDivers: 6,
+            usedDivers: 0,
+            ocean: emptyOcean(for: "player-3")
+        )
+        setContent(
+            .fishCard("base.main.050"),
+            at: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0),
+            in: &state
+        )
+        state.deckState.fishDrawPile = ["base.main.001", "base.main.002", "base.main.003"]
+        return state
+    }
+
     private func gainCoralAbilityPendingChoice(
         selector: CoralDiveSiteSelector,
         cardId: CardID
@@ -7254,12 +7427,13 @@ final class GameEngineTests: XCTestCase {
 
     private func resolveCommand(
         commandId: CommandID,
+        playerId: PlayerID = "player-1",
         choiceId: PendingChoiceID,
         resolution: PendingChoiceResolution
     ) -> PlayerCommand {
         PlayerCommand(
             commandId: commandId,
-            playerId: "player-1",
+            playerId: playerId,
             roomId: roomId,
             payload: .resolvePendingChoice(
                 ResolvePendingChoiceCommand(

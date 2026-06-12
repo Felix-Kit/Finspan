@@ -220,6 +220,8 @@ enum AppStrings {
         static let pendingChoiceSource = "来源"
         static let pendingChoiceStatus = "状态"
         static let pendingChoiceWaiting = "待处理"
+        static let allPlayersChoice = "全员能力"
+        static let allPlayersRemaining = "等待"
         static let optionalChoice = "可跳过"
         static let requiredChoice = "必须处理"
         static let skipChoice = "跳过"

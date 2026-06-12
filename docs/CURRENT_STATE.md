@@ -61,16 +61,12 @@
 
 ### GAME END ability sweep
 
-- 39 条 GAME END abilities 中已实现 33 条。
+- 39 条 GAME END abilities 中已实现 39 条。
 - scoring-only 10 条已实现。
-- executable 23 条已实现。
-- 仍 unsupported / future work 6 条：
-  - Honeycomb Scaly Dragonfish
-  - Speckled Butterflyfish
-  - Tripodfish
-  - Blackmouth Angler
-  - Sixgill Sawshark
-  - Yokozuna Slickhead
+- executable 29 条已实现。
+- GAME END remaining unsupported: 0。
+- Pass 2E 后整体 ability coverage 为 199 mapped / 16 unsupported。
+- 剩余 16 条均为 S&R `also, if 3 same-color coral in this dive site` 条件收益，等待规则确认。
 
 ### S&R / GAME END scoring
 
@@ -144,7 +140,7 @@
 
 ## 当前建议下一步
 
-1. 先修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。
-2. 然后复查 GAME END sweep 的已实现 / unsupported 列表并补代表性测试。
-3. 再推进 `recoverFromDiscardOrDraw` 与弃牌堆选择模式联动。
+1. 先确认 S&R `also, if 3 same-color coral in this dive site` 条件收益语义。
+2. 再推进 `recoverFromDiscardOrDraw` 与弃牌堆选择模式联动。
+3. 之后修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。
 4. 之后再做 BoardLayout 资产管线和剩余 S&R / 联机工作。

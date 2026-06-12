@@ -93,6 +93,7 @@ private extension PendingChoice {
         normalized.consumeFishFromHandProgress = try consumeFishFromHandProgress?.normalizedCardIdentities(using: resolver)
         normalized.playFishForFreeProgress = try playFishForFreeProgress?.normalizedCardIdentities(using: resolver)
         normalized.playFishFromHandProgress = try playFishFromHandProgress?.normalizedCardIdentities(using: resolver)
+        normalized.allPlayersProgress = try allPlayersProgress?.normalizedCardIdentities(using: resolver)
         return normalized
     }
 }
@@ -138,6 +139,14 @@ private extension PlayFishFromHandProgress {
         if let selectedCardId {
             normalized.selectedCardId = try canonicalCardId(selectedCardId, using: resolver)
         }
+        return normalized
+    }
+}
+
+private extension AllPlayersAbilityProgress {
+    func normalizedCardIdentities(using resolver: CardIdentityResolver) throws -> AllPlayersAbilityProgress {
+        var normalized = self
+        normalized.sourceCardId = try canonicalCardId(sourceCardId, using: resolver)
         return normalized
     }
 }

@@ -175,12 +175,17 @@ def mixed_compound_effects(pattern: str) -> list[str] | None:
     remaining = pattern
     effects: list[str] = []
     token_map = (
+        ("[BlueCoral]", "coral"),
+        ("[PurpleCoral]", "coral"),
+        ("[GreenCoral]", "coral"),
+        ("[AnyCoral]", "coral"),
         ("[DrawCard]", "draw"),
         ("[Discard]", "recover"),
         ("[FishEgg]", "egg"),
         ("[FishHatch]", "hatch"),
         ("[YoungFish]", "young"),
         ("[SchoolFeederMove]", "move"),
+        ("[UnSchoolFish]", "scatter"),
         ("[FishFromHandConsume]", "consume"),
     )
     while remaining:
@@ -197,9 +202,15 @@ def mixed_compound_effects(pattern: str) -> list[str] | None:
     return effects
 
 
-def pattern_parser_maps(text: str) -> bool:
-    pattern = normalize_pattern(text)
-    if not pattern or "[AllPlayers]" in pattern or ";" in pattern or "/" in pattern:
+def all_players_inner_pattern(pattern: str) -> str | None:
+    if not pattern.startswith("(allplayers)") or not pattern.endswith("[AllPlayers]"):
+        return None
+    inner = pattern[len("(allplayers)") : -len("[AllPlayers]")]
+    return inner or None
+
+
+def pattern_parser_maps_normalized(pattern: str) -> bool:
+    if not pattern or ";" in pattern or "/" in pattern:
         return False
     if pure_repeated_token_count(pattern, "[DrawCard]", max_count=5) is not None:
         return True
@@ -215,7 +226,11 @@ def pattern_parser_maps(text: str) -> bool:
         return True
     if pure_repeated_token_count(pattern, "[SchoolFeederMove]") is not None:
         return True
+    if pure_repeated_token_count(pattern, "[UnSchoolFish]", max_count=2) is not None:
+        return True
     if pure_repeated_token_count(pattern, "[ConsumeFish1]", max_count=2) is not None:
+        return True
+    if pure_repeated_token_count(pattern, "[FishFromHandConsume]", max_count=2) is not None:
         return True
     if paid_play_placement(pattern) is not None:
         return True
@@ -226,8 +241,14 @@ def pattern_parser_maps(text: str) -> bool:
     return pure_coral_gain(pattern)
 
 
-def pattern_for(text: str) -> str:
+def pattern_parser_maps(text: str) -> bool:
     pattern = normalize_pattern(text)
+    if inner := all_players_inner_pattern(pattern):
+        return pattern_parser_maps_normalized(inner)
+    return pattern_parser_maps_normalized(pattern)
+
+
+def pattern_label_for_normalized(pattern: str, text: str) -> str:
     if pure_repeated_token_count(pattern, "[DrawCard]", max_count=5) is not None:
         return "draw fish"
     if pure_repeated_token_count(pattern, "[Discard]", max_count=5) is not None:
@@ -247,6 +268,12 @@ def pattern_for(text: str) -> str:
             return "mixed move + draw"
         if effect_set == {"egg", "hatch"}:
             return "mixed egg + hatch"
+        if effect_set == {"scatter", "consume"}:
+            return "mixed scatter + consume"
+        if "coral" in effect_set:
+            return "mixed coral compound"
+        if "scatter" in effect_set:
+            return "mixed scatter compound"
         return "mixed compound effect pool"
     if pure_repeated_token_count(pattern, "[FishHatch]") is not None:
         return "hatch egg"
@@ -256,8 +283,12 @@ def pattern_for(text: str) -> str:
         return "place young"
     if pure_repeated_token_count(pattern, "[SchoolFeederMove]") is not None:
         return "move young/school"
+    if pure_repeated_token_count(pattern, "[UnSchoolFish]", max_count=2) is not None:
+        return "scatter school"
     if pure_repeated_token_count(pattern, "[ConsumeFish1]", max_count=2) is not None:
         return "consume shorter fish from hand"
+    if pure_repeated_token_count(pattern, "[FishFromHandConsume]", max_count=2) is not None:
+        return "consume fish from hand"
     if paid_play_placement(pattern) is not None:
         return "play fish paying cost"
     if free_play_filter(pattern) is not None:
@@ -279,7 +310,6 @@ def pattern_for(text: str) -> str:
         ("consume shorter fish from hand", ["FishFromHandConsume"]),
         ("scatter school", ["UnSchoolFish"]),
         ("gain coral", ["Coral"]),
-        ("all players", ["AllPlayers"]),
         ("compound abilities", [";"]),
     ]
     for label, tokens in checks:
@@ -290,6 +320,13 @@ def pattern_for(text: str) -> str:
     return "no ability text"
 
 
+def pattern_for(text: str) -> str:
+    pattern = normalize_pattern(text)
+    if inner := all_players_inner_pattern(pattern):
+        return "all players · " + pattern_label_for_normalized(inner, text)
+    return pattern_label_for_normalized(pattern, text)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Audit real Finspan card ability coverage.")
     parser.add_argument("--summary-only", action="store_true")
@@ -298,6 +335,8 @@ def main() -> None:
     cards = load_cards()
     registry_ids = load_registry_ids()
     ability_cards = [card for card in cards if ability_text(card) or card.get("abilityIds")]
+    slash_cards = [card for card in ability_cards if "/" in ability_text(card)]
+    all_players_cards = [card for card in ability_cards if "[AllPlayers]" in ability_text(card)]
     status_counts = Counter(ability_status(card, registry_ids) for card in ability_cards)
     trigger_counts = Counter(card.get("abilityTrigger") or "none" for card in ability_cards)
     pattern_counts = Counter(pattern_for(ability_text(card)) for card in ability_cards)
@@ -312,6 +351,8 @@ def main() -> None:
     print(f"- Mixed ability cards: {status_counts['mixed']}")
     print(f"- Unsupported ability cards: {status_counts['unsupported']}")
     print(f"- Unmapped ability cards: {status_counts['unmapped']}")
+    print(f"- Ability cards containing `/`: {len(slash_cards)}")
+    print(f"- AllPlayers ability cards: {len(all_players_cards)}")
     print()
     print("## By Trigger")
     print()
@@ -325,6 +366,15 @@ def main() -> None:
 
     if args.summary_only:
         return
+
+    print()
+    print("## Slash Ability Cards")
+    print()
+    if slash_cards:
+        for card in slash_cards:
+            print(f"- `{card.get('id')}` {card.get('name')} | {ability_text(card)}")
+    else:
+        print("- None found in runtime JSON.")
 
     grouped: dict[tuple[str, str, str], list[dict]] = defaultdict(list)
     for card in ability_cards:

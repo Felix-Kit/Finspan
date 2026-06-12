@@ -11,8 +11,8 @@ does not describe or implement game rules.
 - `tools/raw/finsearch/CARD_DATA_SCHEMA_DRAFT.md`
 
 Update: a saved finsearch webpage was later inspected at
-`/Users/work/Finspan/references/webpage/`. The detailed reverse-engineering
-notes are in `docs/FINSEARCH_RENDERER_REVERSE_ENGINEERING.md`.
+`references/webpage`. The detailed reverse-engineering notes are in
+`docs/FINSEARCH_RENDERER_REVERSE_ENGINEERING.md`.
 
 ## Asset Groups
 

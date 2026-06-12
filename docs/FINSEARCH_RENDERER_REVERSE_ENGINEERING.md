@@ -1,17 +1,17 @@
 # Finsearch Renderer Reverse Engineering
 
 This document records what can be confirmed from the locally saved finsearch
-webpage at `/Users/work/Finspan/references/webpage/`. It is analysis only; the
-saved webpage files should remain reference material and should not be moved
-into app runtime resources.
+webpage at `references/webpage`. It is analysis only; the saved webpage files
+should remain reference material and should not be moved into app runtime
+resources.
 
 ## Source Files Inspected
 
-- `/Users/work/Finspan/references/webpage/Finspan Card Search.html`
-- `/Users/work/Finspan/references/webpage/Finspan Card Search_files/main.3f6711eb.js`
-- `/Users/work/Finspan/references/webpage/Finspan Card Search_files/main.f74b3868.css`
-- `/Users/work/Finspan/references/webpage/Finspan Card Search_files/*.webp`
-- `/Users/work/Finspan/references/webpage/Finspan Card Search_files/*.svg`
+- `<repo-root>/references/webpage/Finspan Card Search.html`
+- `<repo-root>/references/webpage/Finspan Card Search_files/main.3f6711eb.js`
+- `<repo-root>/references/webpage/Finspan Card Search_files/main.f74b3868.css`
+- `<repo-root>/references/webpage/Finspan Card Search_files/*.webp`
+- `<repo-root>/references/webpage/Finspan Card Search_files/*.svg`
 - `Finspan/Resources/CardAssets/backgrounds/*`
 - `tools/generated/assets/asset_download_summary.json`
 - Generated analysis summary: `tools/generated/assets/card_renderer_analysis.json`
@@ -22,9 +22,9 @@ are not present in the saved reference directory.
 
 ## HTML / JS / CSS Paths
 
-- HTML shell: `/Users/work/Finspan/references/webpage/Finspan Card Search.html`
-- React bundle: `/Users/work/Finspan/references/webpage/Finspan Card Search_files/main.3f6711eb.js`
-- CSS bundle: `/Users/work/Finspan/references/webpage/Finspan Card Search_files/main.f74b3868.css`
+- HTML shell: `<repo-root>/references/webpage/Finspan Card Search.html`
+- React bundle: `<repo-root>/references/webpage/Finspan Card Search_files/main.3f6711eb.js`
+- CSS bundle: `<repo-root>/references/webpage/Finspan Card Search_files/main.f74b3868.css`
 
 The saved HTML includes prerendered first-screen card DOM under `#root`, and the
 JS bundle can render the full card list client-side.

@@ -17,6 +17,7 @@ struct PendingChoice: Identifiable, Codable, Equatable, Sendable {
     var playFishForFreeProgress: PlayFishForFreeProgress? = nil
     var playFishFromHandProgress: PlayFishFromHandProgress? = nil
     var selectedAbilityEffect: AbilityEffectUnit? = nil
+    var allPlayersProgress: AllPlayersAbilityProgress? = nil
     var createdAtSequence: EventID
 
     var id: PendingChoiceID { choiceId }
@@ -177,5 +178,39 @@ struct PlayFishFromHandProgress: Codable, Equatable, Sendable {
     nonisolated init(selectedCardId: CardID? = nil, targetSlot: OceanSlotAddress? = nil) {
         self.selectedCardId = selectedCardId
         self.targetSlot = targetSlot
+    }
+}
+
+struct AllPlayersAbilityProgress: Codable, Equatable, Sendable {
+    var abilityId: AbilityID
+    var sourcePlayerId: PlayerID
+    var sourceCardId: CardID
+    var sourceAddress: OceanSlotAddress
+    var baseChoiceId: PendingChoiceID
+    var currentTargetPlayerId: PlayerID
+    var remainingPlayerIds: [PlayerID]
+    var resolvedPlayerIds: [PlayerID]
+    var skippedPlayerIds: [PlayerID]
+
+    nonisolated init(
+        abilityId: AbilityID,
+        sourcePlayerId: PlayerID,
+        sourceCardId: CardID,
+        sourceAddress: OceanSlotAddress,
+        baseChoiceId: PendingChoiceID,
+        currentTargetPlayerId: PlayerID,
+        remainingPlayerIds: [PlayerID],
+        resolvedPlayerIds: [PlayerID] = [],
+        skippedPlayerIds: [PlayerID] = []
+    ) {
+        self.abilityId = abilityId
+        self.sourcePlayerId = sourcePlayerId
+        self.sourceCardId = sourceCardId
+        self.sourceAddress = sourceAddress
+        self.baseChoiceId = baseChoiceId
+        self.currentTargetPlayerId = currentTargetPlayerId
+        self.remainingPlayerIds = remainingPlayerIds
+        self.resolvedPlayerIds = resolvedPlayerIds
+        self.skippedPlayerIds = skippedPlayerIds
     }
 }
