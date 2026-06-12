@@ -513,6 +513,27 @@ enum AbilityPatternParser {
             )
         }
 
+        if let count = pureRepeatedTokenCount("[Discard]", in: pattern, maxCount: 5) {
+            return repeatedChoiceDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effect: .recoverFromDiscardOrDraw(count: 1),
+                count: count,
+                action: "从弃牌堆拿回 \(count) 张鱼牌，不足时从牌堆抽牌"
+            )
+        }
+
+        if let compoundEffects = orderedCardGainCompoundEffects(from: pattern) {
+            return AbilityDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effects: compoundEffects,
+                canResolveInAnyOrder: false,
+                isOptional: true,
+                displayText: triggerText(trigger, action: "按顺序获得鱼牌和鱼卵")
+            )
+        }
+
         if let count = pureRepeatedTokenCount("[FishHatch]", in: pattern, maxCount: 4) {
             return repeatedChoiceDefinition(
                 abilityId: abilityId,
@@ -550,6 +571,16 @@ enum AbilityPatternParser {
                 effect: .moveYoungOrSchool(count: 1),
                 count: count,
                 action: "移动 \(count) 次幼鱼或鱼群"
+            )
+        }
+
+        if let count = pureRepeatedTokenCount("[ConsumeFish1]", in: pattern, maxCount: 2) {
+            return repeatedChoiceDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effect: .consumeFishFromHand(count: 1),
+                count: count,
+                action: "海洋中的鱼吞噬 \(count) 张更短手牌鱼"
             )
         }
 
@@ -595,6 +626,49 @@ enum AbilityPatternParser {
         }
 
         return nil
+    }
+
+    nonisolated private static func orderedCardGainCompoundEffects(from pattern: String) -> [AbilityEffectUnit]? {
+        var remaining = pattern
+        var effects: [AbilityEffectUnit] = []
+        while !remaining.isEmpty {
+            if remaining.hasPrefix("[DrawCard]") {
+                effects.append(.drawFish(count: 1))
+                remaining.removeFirst("[DrawCard]".count)
+            } else if remaining.hasPrefix("[Discard]") {
+                effects.append(.recoverFromDiscardOrDraw(count: 1))
+                remaining.removeFirst("[Discard]".count)
+            } else if remaining.hasPrefix("[FishEgg]") {
+                effects.append(.placeEgg(count: 1))
+                remaining.removeFirst("[FishEgg]".count)
+            } else {
+                return nil
+            }
+        }
+        let includesDraw = effects.contains {
+            if case .drawFish = $0 {
+                return true
+            }
+            return false
+        }
+        let includesRecover = effects.contains {
+            if case .recoverFromDiscardOrDraw = $0 {
+                return true
+            }
+            return false
+        }
+        let includesEgg = effects.contains {
+            if case .placeEgg = $0 {
+                return true
+            }
+            return false
+        }
+        guard effects.count > 1,
+              (includesRecover || (includesDraw && includesEgg))
+        else {
+            return nil
+        }
+        return effects
     }
 
     nonisolated private static func normalizedPattern(_ text: String) -> String {
@@ -686,6 +760,10 @@ enum AbilityPatternParser {
             return .diveSite(.purple)
         case "[FlipperGreen]":
             return .diveSite(.green)
+        case "[AnyCoral][AnyCoral][AnyCoral](inadivesitewithatleast3)":
+            return .diveSiteWithCoralAtLeast(3)
+        case "[AnyCoral][AnyCoral][AnyCoral][AnyCoral][AnyCoral](inadivesitewithatleast5)":
+            return .diveSiteWithCoralAtLeast(5)
         default:
             return nil
         }

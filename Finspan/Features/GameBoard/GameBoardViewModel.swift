@@ -4114,6 +4114,46 @@ final class GameBoardViewModel: ObservableObject {
         }
     }
 
+    private func selectableCompoundEffects(_ progress: CompoundAbilityProgress) -> [AbilityEffectUnit] {
+        guard !progress.canResolveInAnyOrder else {
+            return progress.remainingEffects
+        }
+        return progress.remainingEffects.first(where: { abilityEffectCount($0) > 0 }).map { [normalizedSingleEffect($0)] } ?? []
+    }
+
+    private func normalizedSingleEffect(_ effect: AbilityEffectUnit) -> AbilityEffectUnit {
+        switch effect {
+        case .drawFish:
+            return .drawFish(count: 1)
+        case .placeEgg:
+            return .placeEgg(count: 1)
+        case .placeYoung:
+            return .placeYoung(count: 1)
+        case .hatchEgg:
+            return .hatchEgg(count: 1)
+        case .moveYoungOrSchool:
+            return .moveYoungOrSchool(count: 1)
+        case .recoverFromDiscardOrDraw:
+            return .recoverFromDiscardOrDraw(count: 1)
+        case let .gameEndScore(condition, points):
+            return .gameEndScore(condition: condition, points: points)
+        case let .placeEggOnMatchingFish(filter, mode):
+            return .placeEggOnMatchingFish(filter: filter, mode: mode)
+        case let .playFishFromHand(filter, placement, costMode):
+            return .playFishFromHand(filter: filter, placement: placement, costMode: costMode)
+        case let .gainCoral(selector, _):
+            return .gainCoral(selector: selector, count: 1)
+        case .scatterSchool:
+            return .scatterSchool(count: 1)
+        case .consumeFishFromHand:
+            return .consumeFishFromHand(count: 1)
+        case let .playFishForFree(filter, _):
+            return .playFishForFree(filter: filter, count: 1)
+        case .unsupported:
+            return .unsupported
+        }
+    }
+
     private func abilityEffectKey(_ effect: AbilityEffectUnit) -> String {
         switch effect {
         case .drawFish:
@@ -4199,7 +4239,8 @@ final class GameBoardViewModel: ObservableObject {
             break
         case .compoundAbility:
             if let progress = choice.compoundAbilityProgress {
-                if abilityEffectCount(.placeEgg(count: 1), in: progress.remainingEffects) > 0 {
+                let selectableEffects = selectableCompoundEffects(progress)
+                if abilityEffectCount(.placeEgg(count: 1), in: selectableEffects) > 0 {
                     actions.append(
                         PendingChoiceActionViewData(
                             choiceId: choice.choiceId,
@@ -4209,7 +4250,7 @@ final class GameBoardViewModel: ObservableObject {
                         )
                     )
                 }
-                if abilityEffectCount(.placeYoung(count: 1), in: progress.remainingEffects) > 0 {
+                if abilityEffectCount(.placeYoung(count: 1), in: selectableEffects) > 0 {
                     actions.append(
                         PendingChoiceActionViewData(
                             choiceId: choice.choiceId,
@@ -4219,7 +4260,7 @@ final class GameBoardViewModel: ObservableObject {
                         )
                     )
                 }
-                if abilityEffectCount(.hatchEgg(count: 1), in: progress.remainingEffects) > 0 {
+                if abilityEffectCount(.hatchEgg(count: 1), in: selectableEffects) > 0 {
                     actions.append(
                         PendingChoiceActionViewData(
                             choiceId: choice.choiceId,
@@ -4459,7 +4500,45 @@ final class GameBoardViewModel: ObservableObject {
         case .compoundAbility:
             var entries: [(token: RewardTokenViewState, action: RewardTokenAction)] = []
             if let progress = choice.compoundAbilityProgress {
-                let remainingPlaceEggs = abilityEffectCount(.placeEgg(count: 1), in: progress.remainingEffects)
+                let selectableEffects = selectableCompoundEffects(progress)
+                let remainingDraws = abilityEffectCount(.drawFish(count: 1), in: selectableEffects)
+                for index in 0..<remainingDraws {
+                    let tokenId = "\(choice.choiceId)-compoundDrawFish-\(index)"
+                    entries.append((
+                        rewardToken(
+                            id: tokenId,
+                            kind: .drawFish,
+                            title: AppStrings.GameBoard.drawOneFishCard,
+                            subtitle: rewardSourceText(for: choice),
+                            iconText: "牌",
+                            symbolName: "rectangle.stack",
+                            countText: "\(index + 1)/\(remainingDraws)",
+                            isSelectable: canResolve && !state.deckState.fishDrawPile.isEmpty,
+                            unavailableReasonText: state.deckState.fishDrawPile.isEmpty ? AppStrings.GameBoard.fishDrawPileEmpty : nil
+                        ),
+                        .direct(choiceId: choice.choiceId, resolution: .chooseAbilityEffect(.drawFish(count: 1)))
+                    ))
+                }
+
+                let remainingRecovers = abilityEffectCount(.recoverFromDiscardOrDraw(count: 1), in: selectableEffects)
+                for index in 0..<remainingRecovers {
+                    let tokenId = "\(choice.choiceId)-compoundRecover-\(index)"
+                    entries.append((
+                        rewardToken(
+                            id: tokenId,
+                            kind: .recoverFromDiscardOrDraw,
+                            title: AppStrings.GameBoard.recoverOneFromDiscard,
+                            subtitle: AppStrings.GameBoard.discardPileEmptyDrawAlternative,
+                            iconText: "回",
+                            symbolName: "arrow.uturn.backward",
+                            countText: "\(index + 1)/\(remainingRecovers)",
+                            isSelectable: canResolve
+                        ),
+                        .direct(choiceId: choice.choiceId, resolution: .chooseAbilityEffect(.recoverFromDiscardOrDraw(count: 1)))
+                    ))
+                }
+
+                let remainingPlaceEggs = abilityEffectCount(.placeEgg(count: 1), in: selectableEffects)
                 for index in 0..<remainingPlaceEggs {
                     let tokenId = "\(choice.choiceId)-compoundPlaceEgg-\(index)"
                     entries.append((
@@ -4477,7 +4556,7 @@ final class GameBoardViewModel: ObservableObject {
                     ))
                 }
 
-                let remainingYoung = abilityEffectCount(.placeYoung(count: 1), in: progress.remainingEffects)
+                let remainingYoung = abilityEffectCount(.placeYoung(count: 1), in: selectableEffects)
                 for index in 0..<remainingYoung {
                     let tokenId = "\(choice.choiceId)-compoundPlaceYoung-\(index)"
                     entries.append((
@@ -4495,7 +4574,7 @@ final class GameBoardViewModel: ObservableObject {
                     ))
                 }
 
-                let remainingHatches = abilityEffectCount(.hatchEgg(count: 1), in: progress.remainingEffects)
+                let remainingHatches = abilityEffectCount(.hatchEgg(count: 1), in: selectableEffects)
                 for index in 0..<remainingHatches {
                     let tokenId = "\(choice.choiceId)-compoundHatchEgg-\(index)"
                     entries.append((
@@ -4513,7 +4592,7 @@ final class GameBoardViewModel: ObservableObject {
                     ))
                 }
 
-                for effect in progress.remainingEffects {
+                for effect in selectableEffects {
                     guard case let .gainCoral(selector, count) = effect else {
                         continue
                     }
@@ -4537,7 +4616,7 @@ final class GameBoardViewModel: ObservableObject {
                         ))
                     }
                 }
-                let remainingScatterSchools = abilityEffectCount(.scatterSchool(count: 1), in: progress.remainingEffects)
+                let remainingScatterSchools = abilityEffectCount(.scatterSchool(count: 1), in: selectableEffects)
                 for index in 0..<remainingScatterSchools {
                     let tokenId = "\(choice.choiceId)-compoundScatterSchool-\(index)"
                     entries.append((
@@ -4554,7 +4633,7 @@ final class GameBoardViewModel: ObservableObject {
                         .direct(choiceId: choice.choiceId, resolution: .chooseAbilityEffect(.scatterSchool(count: 1)))
                     ))
                 }
-                let remainingConsumes = abilityEffectCount(.consumeFishFromHand(count: 1), in: progress.remainingEffects)
+                let remainingConsumes = abilityEffectCount(.consumeFishFromHand(count: 1), in: selectableEffects)
                 for index in 0..<remainingConsumes {
                     let tokenId = "\(choice.choiceId)-compoundConsumeFish-\(index)"
                     entries.append((
@@ -4571,7 +4650,7 @@ final class GameBoardViewModel: ObservableObject {
                         .direct(choiceId: choice.choiceId, resolution: .chooseAbilityEffect(.consumeFishFromHand(count: 1)))
                     ))
                 }
-                for effect in progress.remainingEffects {
+                for effect in selectableEffects {
                     guard case let .playFishForFree(filter, count) = effect else {
                         continue
                     }
@@ -5576,6 +5655,11 @@ final class GameBoardViewModel: ObservableObject {
             return address.zone == .sunlit
         case let .diveSite(diveSite):
             return address.diveSite == diveSite
+        case let .diveSiteWithCoralAtLeast(requiredCoral):
+            guard let reef = state.playerGameStates[address.playerId]?.ocean.coralReefs.first(where: { $0.diveSite == address.diveSite }) else {
+                return false
+            }
+            return reef.coralCount >= requiredCoral
         }
     }
 

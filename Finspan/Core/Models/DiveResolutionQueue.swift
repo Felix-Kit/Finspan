@@ -109,6 +109,7 @@ enum FishPlacementConstraint: Codable, Equatable, Sendable {
     case bottomRow
     case sunlight
     case diveSite(DiveSite)
+    case diveSiteWithCoralAtLeast(Int)
 }
 
 enum PlayFishCostMode: Codable, Equatable, Sendable {

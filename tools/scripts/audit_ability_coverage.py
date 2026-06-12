@@ -111,6 +111,8 @@ def paid_play_placement(pattern: str) -> str | None:
         "[FlipperBlue]": "blue",
         "[FlipperPurple]": "purple",
         "[FlipperGreen]": "green",
+        "[AnyCoral][AnyCoral][AnyCoral](inadivesitewithatleast3)": "coralAtLeast3",
+        "[AnyCoral][AnyCoral][AnyCoral][AnyCoral][AnyCoral](inadivesitewithatleast5)": "coralAtLeast5",
     }
     return mapping.get(remainder)
 
@@ -146,11 +148,33 @@ def pure_coral_gain(pattern: str) -> bool:
     return matched
 
 
+def ordered_card_gain_compound(pattern: str) -> bool:
+    remaining = pattern
+    effects: list[str] = []
+    while remaining:
+        for token, label in (
+            ("[DrawCard]", "draw"),
+            ("[Discard]", "recover"),
+            ("[FishEgg]", "egg"),
+        ):
+            if remaining.startswith(token):
+                effects.append(label)
+                remaining = remaining[len(token):]
+                break
+        else:
+            return False
+    return len(effects) > 1 and ("recover" in effects or ("draw" in effects and "egg" in effects))
+
+
 def pattern_parser_maps(text: str) -> bool:
     pattern = normalize_pattern(text)
     if not pattern or "[AllPlayers]" in pattern or ";" in pattern:
         return False
     if pure_repeated_token_count(pattern, "[DrawCard]", max_count=5) is not None:
+        return True
+    if pure_repeated_token_count(pattern, "[Discard]", max_count=5) is not None:
+        return True
+    if ordered_card_gain_compound(pattern):
         return True
     if pure_repeated_token_count(pattern, "[FishHatch]") is not None:
         return True
@@ -159,6 +183,8 @@ def pattern_parser_maps(text: str) -> bool:
     if pure_repeated_token_count(pattern, "[YoungFish]") is not None:
         return True
     if pure_repeated_token_count(pattern, "[SchoolFeederMove]") is not None:
+        return True
+    if pure_repeated_token_count(pattern, "[ConsumeFish1]", max_count=2) is not None:
         return True
     if paid_play_placement(pattern) is not None:
         return True
@@ -173,6 +199,10 @@ def pattern_for(text: str) -> str:
     pattern = normalize_pattern(text)
     if pure_repeated_token_count(pattern, "[DrawCard]", max_count=5) is not None:
         return "draw fish"
+    if pure_repeated_token_count(pattern, "[Discard]", max_count=5) is not None:
+        return "recover from discard or draw"
+    if ordered_card_gain_compound(pattern):
+        return "compound card gain"
     if pure_repeated_token_count(pattern, "[FishHatch]") is not None:
         return "hatch egg"
     if pure_repeated_token_count(pattern, "[FishEgg]") is not None:
@@ -181,6 +211,8 @@ def pattern_for(text: str) -> str:
         return "place young"
     if pure_repeated_token_count(pattern, "[SchoolFeederMove]") is not None:
         return "move young/school"
+    if pure_repeated_token_count(pattern, "[ConsumeFish1]", max_count=2) is not None:
+        return "consume shorter fish from hand"
     if paid_play_placement(pattern) is not None:
         return "play fish paying cost"
     if free_play_filter(pattern) is not None:

@@ -1204,6 +1204,120 @@ final class GameEngineTests: XCTestCase {
         XCTAssertTrue(state.activatedGameEndAbilitySourceIds.contains(source.id))
     }
 
+    func testCoralGatedPlayFishFromHandRequiresSameDiveSiteCoralAndPaysCost() throws {
+        let ability = AbilityDefinition(
+            abilityId: "fixture.coral.gated.play",
+            trigger: .whenPlayed,
+            effects: [
+                .playFishFromHand(
+                    filter: .any,
+                    placement: .diveSiteWithCoralAtLeast(3),
+                    costMode: .payCost
+                )
+            ],
+            isOptional: true
+        )
+        let engine = GameEngine(cardCatalog: coralGatedPlayCatalog())
+        var state = playFishState()
+        state.playerGameStates["player-1"]?.hand = ["coral.hand", "coral.payment"]
+        state.playerGameStates["player-1"]?.ocean.coralReefs = [
+            CoralReefState(diveSite: .blue, coralCount: 0, maxCoral: 6, completionBonus: 6),
+            CoralReefState(diveSite: .purple, coralCount: 0, maxCoral: 6, completionBonus: 8),
+            CoralReefState(diveSite: .green, coralCount: 3, maxCoral: 6, completionBonus: 5)
+        ]
+        state.pendingChoices["coral-gated"] = PendingChoice(
+            choiceId: "coral-gated",
+            playerId: "player-1",
+            source: .fishAbility("fixture.source"),
+            kind: .playFishFromHand,
+            options: [],
+            expectedInput: .playFishFromHandCard,
+            isOptional: true,
+            abilityDefinition: ability,
+            selectedAbilityEffect: ability.effects.first,
+            createdAtSequence: 9
+        )
+
+        var choice = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "coral-gated-choose-card",
+                    choiceId: choice.choiceId,
+                    resolution: .choosePlayFishFromHand("coral.hand")
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        choice = try XCTUnwrap(state.pendingChoices.values.first)
+        let blueTarget = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "coral-gated-blue-target",
+                    choiceId: choice.choiceId,
+                    resolution: .choosePlayFishFromHandTarget(blueTarget)
+                ),
+                in: state
+            )
+        )
+
+        let greenTarget = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 0)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "coral-gated-green-target",
+                    choiceId: choice.choiceId,
+                    resolution: .choosePlayFishFromHandTarget(greenTarget)
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        choice = try XCTUnwrap(state.pendingChoices.values.first)
+        XCTAssertEqual(choice.expectedInput, .playFishFromHandPayment)
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "coral-gated-missing-payment",
+                    choiceId: choice.choiceId,
+                    resolution: .playFishFromHand(cardId: "coral.hand", targetSlot: greenTarget, payment: .empty)
+                ),
+                in: state
+            )
+        )
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "coral-gated-paid",
+                    choiceId: choice.choiceId,
+                    resolution: .playFishFromHand(
+                        cardId: "coral.hand",
+                        targetSlot: greenTarget,
+                        payment: PlayFishPayment(
+                            discardedCardIds: ["coral.payment"],
+                            eggSources: [],
+                            youngSources: []
+                        )
+                    )
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        let playerState = try XCTUnwrap(state.playerGameStates["player-1"])
+        XCTAssertEqual(playerState.ocean.slots.first { $0.address == greenTarget }?.content, .fishCard("coral.hand"))
+        XCTAssertEqual(playerState.discardPile, ["coral.payment"])
+        XCTAssertFalse(playerState.hand.contains("coral.hand"))
+    }
+
     func testGameEndAbilityEffectsAreIncludedInFinalScoreAfterFinish() throws {
         let engine = GameEngine(cardCatalog: gameEndAbilityCatalog())
         var state = gameEndAbilityState(cardIds: ["sr.gameEnd.anyCoral"])
@@ -3464,6 +3578,73 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(nextChoice.choiceId, queue.currentStep?.pendingChoice.choiceId)
     }
 
+    func testRepeatedConsumeFish1CanChooseDifferentConsumers() throws {
+        let ability = AbilityDefinition(
+            abilityId: "fixture.consume.twice",
+            trigger: .ifActivated,
+            effects: [.consumeFishFromHand(count: 1), .consumeFishFromHand(count: 1)],
+            canResolveInAnyOrder: false,
+            isOptional: true
+        )
+        let engine = GameEngine(cardCatalog: consumeFishCatalog())
+        let firstConsumer = consumeFishConsumerAddress()
+        let secondConsumer = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 0)
+        var state = consumeFishState(hand: ["consume.short", "consume.extra"])
+        setContent(.fishCard("consume.consumer"), at: secondConsumer, in: &state)
+        state.pendingChoices["consume-twice"] = compoundAbilityChoice(choiceId: "consume-twice", ability: ability)
+
+        for (index, pair) in [(firstConsumer, "consume.short"), (secondConsumer, "consume.extra")].enumerated() {
+            var choice = try XCTUnwrap(state.pendingChoices.values.first)
+            state = applying(
+                try engine.makeEventDrafts(
+                    for: resolveCommand(
+                        commandId: "consume-twice-choose-effect-\(index)",
+                        choiceId: choice.choiceId,
+                        resolution: .chooseAbilityEffect(.consumeFishFromHand(count: 1))
+                    ),
+                    in: state
+                ),
+                to: state,
+                using: engine
+            )
+            choice = try XCTUnwrap(state.pendingChoices.values.first)
+            state = applying(
+                try engine.makeEventDrafts(
+                    for: resolveCommand(
+                        commandId: "consume-twice-choose-consumer-\(index)",
+                        choiceId: choice.choiceId,
+                        resolution: .chooseConsumeFishConsumer(pair.0)
+                    ),
+                    in: state
+                ),
+                to: state,
+                using: engine
+            )
+            choice = try XCTUnwrap(state.pendingChoices.values.first)
+            state = applying(
+                try engine.makeEventDrafts(
+                    for: resolveCommand(
+                        commandId: "consume-twice-card-\(index)",
+                        choiceId: choice.choiceId,
+                        resolution: .consumeFishFromHand(pair.1)
+                    ),
+                    in: state
+                ),
+                to: state,
+                using: engine
+            )
+        }
+
+        let playerState = try XCTUnwrap(state.playerGameStates["player-1"])
+        let firstSlot = try XCTUnwrap(playerState.ocean.slots.first { $0.address == firstConsumer })
+        let secondSlot = try XCTUnwrap(playerState.ocean.slots.first { $0.address == secondConsumer })
+        XCTAssertEqual(firstSlot.consumedFish.last, ConsumedFish(cardId: "consume.short", lengthCm: 10))
+        XCTAssertEqual(secondSlot.consumedFish.last, ConsumedFish(cardId: "consume.extra", lengthCm: 12))
+        XCTAssertEqual(playerState.hand, [])
+        XCTAssertEqual(playerState.discardPile, [])
+        XCTAssertTrue(state.pendingChoices.isEmpty)
+    }
+
     func testPlayFishForFreeAbilityIdsResolveFromRealSharksAndReefsCatalog() throws {
         let catalog = try SharksAndReefsCardCatalog()
         let lollipop = try XCTUnwrap(catalog.fishCards.first { $0.id == "sr.main.170" })
@@ -4215,6 +4396,173 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(nextState.playerGameStates["player-1"]?.hand, startingHand)
         XCTAssertEqual(nextState.playerGameStates["player-1"]?.discardPile, ["fish-9"])
         XCTAssertEqual(nextState.deckState.fishDrawPile, ["fish-10"])
+    }
+
+    func testAtlanticBluefinTunaDrawsThenRecoversInOrder() throws {
+        let catalog = try BaseGameCardCatalog()
+        let card = try XCTUnwrap((catalog.starterFishCards + catalog.fishCards).first { $0.id == "base.main.007" })
+        let ability = try XCTUnwrap(AbilityResolver().abilityDefinitions(for: card).first)
+        let engine = GameEngine(cardCatalog: catalog)
+        var state = playFishState()
+        state.playerGameStates["player-1"]?.hand = []
+        state.playerGameStates["player-1"]?.discardPile = ["discard-a", "discard-b"]
+        state.deckState.fishDrawPile = ["deck-a", "deck-b", "deck-c"]
+        state.pendingChoices["bluefin"] = compoundAbilityChoice(choiceId: "bluefin", ability: ability)
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "bluefin-recover-too-early",
+                    choiceId: "bluefin",
+                    resolution: .chooseAbilityEffect(.recoverFromDiscardOrDraw(count: 1))
+                ),
+                in: state
+            )
+        )
+
+        for index in 0..<2 {
+            var choice = try XCTUnwrap(state.pendingChoices.values.first)
+            state = applying(
+                try engine.makeEventDrafts(
+                    for: resolveCommand(
+                        commandId: "bluefin-choose-draw-\(index)",
+                        choiceId: choice.choiceId,
+                        resolution: .chooseAbilityEffect(.drawFish(count: 1))
+                    ),
+                    in: state
+                ),
+                to: state,
+                using: engine
+            )
+            choice = try XCTUnwrap(state.pendingChoices.values.first)
+            state = applying(
+                try engine.makeEventDrafts(
+                    for: resolveCommand(
+                        commandId: "bluefin-resolve-draw-\(index)",
+                        choiceId: choice.choiceId,
+                        resolution: .draw(count: 1)
+                    ),
+                    in: state
+                ),
+                to: state,
+                using: engine
+            )
+        }
+
+        for (index, cardId) in ["discard-a", "discard-b"].enumerated() {
+            var choice = try XCTUnwrap(state.pendingChoices.values.first)
+            state = applying(
+                try engine.makeEventDrafts(
+                    for: resolveCommand(
+                        commandId: "bluefin-choose-recover-\(index)",
+                        choiceId: choice.choiceId,
+                        resolution: .chooseAbilityEffect(.recoverFromDiscardOrDraw(count: 1))
+                    ),
+                    in: state
+                ),
+                to: state,
+                using: engine
+            )
+            choice = try XCTUnwrap(state.pendingChoices.values.first)
+            state = applying(
+                try engine.makeEventDrafts(
+                    for: resolveCommand(
+                        commandId: "bluefin-resolve-recover-\(index)",
+                        choiceId: choice.choiceId,
+                        resolution: .recoverCard(cardId)
+                    ),
+                    in: state
+                ),
+                to: state,
+                using: engine
+            )
+        }
+
+        XCTAssertEqual(state.playerGameStates["player-1"]?.hand, ["deck-a", "deck-b", "discard-a", "discard-b"])
+        XCTAssertEqual(state.playerGameStates["player-1"]?.discardPile, [])
+        XCTAssertEqual(state.deckState.fishDrawPile, ["deck-c"])
+        XCTAssertTrue(state.pendingChoices.isEmpty)
+    }
+
+    func testRepeatedDiscardRecoverDrawsRemainderWhenDiscardRunsOut() throws {
+        let ability = AbilityDefinition(
+            abilityId: "fixture.recover.three",
+            trigger: .whenPlayed,
+            effects: [
+                .recoverFromDiscardOrDraw(count: 1),
+                .recoverFromDiscardOrDraw(count: 1),
+                .recoverFromDiscardOrDraw(count: 1)
+            ],
+            canResolveInAnyOrder: false,
+            isOptional: true
+        )
+        let engine = GameEngine()
+        var state = playFishState()
+        state.playerGameStates["player-1"]?.hand = []
+        state.playerGameStates["player-1"]?.discardPile = ["discard-a"]
+        state.deckState.fishDrawPile = ["deck-a", "deck-b", "deck-c"]
+        state.pendingChoices["recover-three"] = compoundAbilityChoice(choiceId: "recover-three", ability: ability)
+
+        var choice = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "recover-three-choose-0",
+                    choiceId: choice.choiceId,
+                    resolution: .chooseAbilityEffect(.recoverFromDiscardOrDraw(count: 1))
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        choice = try XCTUnwrap(state.pendingChoices.values.first)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "recover-three-discard-0",
+                    choiceId: choice.choiceId,
+                    resolution: .recoverCard("discard-a")
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        for index in 1...2 {
+            choice = try XCTUnwrap(state.pendingChoices.values.first)
+            state = applying(
+                try engine.makeEventDrafts(
+                    for: resolveCommand(
+                        commandId: "recover-three-choose-\(index)",
+                        choiceId: choice.choiceId,
+                        resolution: .chooseAbilityEffect(.recoverFromDiscardOrDraw(count: 1))
+                    ),
+                    in: state
+                ),
+                to: state,
+                using: engine
+            )
+            choice = try XCTUnwrap(state.pendingChoices.values.first)
+            state = applying(
+                try engine.makeEventDrafts(
+                    for: resolveCommand(
+                        commandId: "recover-three-draw-\(index)",
+                        choiceId: choice.choiceId,
+                        resolution: .drawFromDeck
+                    ),
+                    in: state
+                ),
+                to: state,
+                using: engine
+            )
+        }
+
+        XCTAssertEqual(state.playerGameStates["player-1"]?.hand, ["discard-a", "deck-a", "deck-b"])
+        XCTAssertEqual(state.playerGameStates["player-1"]?.discardPile, [])
+        XCTAssertEqual(state.deckState.fishDrawPile, ["deck-c"])
+        XCTAssertTrue(state.pendingChoices.isEmpty)
     }
 
     func testMoveYoungMovesOneYoungToTarget() throws {
@@ -5817,16 +6165,91 @@ final class GameEngineTests: XCTestCase {
         )
     }
 
-    func testAbilityPatternParserKeepsConditionalCoralPlayFishUnsupported() throws {
-        let catalog = try SharksAndReefsCardCatalog()
-        let cards = catalog.starterFishCards + catalog.fishCards
+    func testAbilityPatternParserMapsPass2CRecoverConsumeAndCoralGatedPatterns() throws {
+        let baseCatalog = try BaseGameCardCatalog()
+        let srCatalog = try SharksAndReefsCardCatalog()
         let resolver = AbilityResolver()
+        let baseCards = baseCatalog.starterFishCards + baseCatalog.fishCards
+        let srCards = srCatalog.starterFishCards + srCatalog.fishCards
 
-        let reefTriggerfish = try XCTUnwrap(cards.first { $0.id == "sr.main.182" })
-        XCTAssertEqual(resolver.abilityDefinitions(for: reefTriggerfish).first?.effects, [.unsupported])
+        let atlanticSturgeon = try XCTUnwrap(baseCards.first { $0.id == "base.main.012" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: atlanticSturgeon).first?.effects,
+            [.recoverFromDiscardOrDraw(count: 1)]
+        )
 
-        let yokozuna = try XCTUnwrap(cards.first { $0.id == "sr.main.209" })
-        XCTAssertEqual(resolver.abilityDefinitions(for: yokozuna).first?.effects, [.unsupported])
+        let paintspottedMoray = try XCTUnwrap(baseCards.first { $0.id == "base.main.086" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: paintspottedMoray).first?.effects,
+            [
+                .recoverFromDiscardOrDraw(count: 1),
+                .recoverFromDiscardOrDraw(count: 1),
+                .recoverFromDiscardOrDraw(count: 1)
+            ]
+        )
+
+        let atlanticBluefinTuna = try XCTUnwrap(baseCards.first { $0.id == "base.main.007" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: atlanticBluefinTuna).first?.effects,
+            [
+                .drawFish(count: 1),
+                .drawFish(count: 1),
+                .recoverFromDiscardOrDraw(count: 1),
+                .recoverFromDiscardOrDraw(count: 1)
+            ]
+        )
+
+        let smoothcheekLanternfish = try XCTUnwrap(baseCards.first { $0.id == "base.starter.129" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: smoothcheekLanternfish).first?.effects,
+            [
+                .placeEgg(count: 1),
+                .placeEgg(count: 1),
+                .drawFish(count: 1),
+                .drawFish(count: 1)
+            ]
+        )
+
+        let mandarinfish = try XCTUnwrap(baseCards.first { $0.id == "base.starter.131" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: mandarinfish).first?.effects,
+            [
+                .drawFish(count: 1),
+                .drawFish(count: 1),
+                .drawFish(count: 1),
+                .placeEgg(count: 1)
+            ]
+        )
+
+        let creolefish = try XCTUnwrap(baseCards.first { $0.id == "base.main.034" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: creolefish).first?.effects,
+            [.consumeFishFromHand(count: 1)]
+        )
+
+        let sargassumFish = try XCTUnwrap(baseCards.first { $0.id == "base.main.099" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: sargassumFish).first?.effects,
+            [.consumeFishFromHand(count: 1), .consumeFishFromHand(count: 1)]
+        )
+
+        let tripodfish = try XCTUnwrap(baseCards.first { $0.id == "base.main.117" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: tripodfish).first?.effects,
+            [.consumeFishFromHand(count: 1), .consumeFishFromHand(count: 1)]
+        )
+
+        let reefTriggerfish = try XCTUnwrap(srCards.first { $0.id == "sr.main.182" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: reefTriggerfish).first?.effects,
+            [.playFishFromHand(filter: .any, placement: .diveSiteWithCoralAtLeast(3), costMode: .payCost)]
+        )
+
+        let yokozuna = try XCTUnwrap(srCards.first { $0.id == "sr.main.209" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: yokozuna).first?.effects,
+            [.playFishFromHand(filter: .any, placement: .diveSiteWithCoralAtLeast(5), costMode: .payCost)]
+        )
     }
 
     func testDeferredAbilityPatternsRemainUnsupportedUntilRuleConfirmation() throws {
@@ -5840,10 +6263,7 @@ final class GameEngineTests: XCTestCase {
             "base.main.111", // Spookfish
             "base.main.051", // Giant Hawkfish
             "base.main.101", // Shortspine African Angler
-            "base.main.117", // Tripodfish
-            "sr.main.182",   // Reef Triggerfish
             "sr.main.141",   // Blackmouth Angler
-            "sr.main.209",   // Yokozuna Slickhead
             "sr.main.193"    // Sixgill Sawshark
         ]
 
@@ -6554,6 +6974,33 @@ final class GameEngineTests: XCTestCase {
         )
     }
 
+    private func compoundAbilityChoice(
+        choiceId: PendingChoiceID,
+        ability: AbilityDefinition
+    ) -> PendingChoice {
+        PendingChoice(
+            choiceId: choiceId,
+            playerId: "player-1",
+            source: .fishAbility("fixture.source"),
+            kind: .compoundAbility,
+            options: [],
+            expectedInput: .abilityEffectSelection,
+            isOptional: ability.isOptional,
+            abilityDefinition: ability,
+            compoundAbilityProgress: CompoundAbilityProgress(
+                abilityId: ability.abilityId,
+                playerId: "player-1",
+                sourceCardId: "fixture.source",
+                sourceAddress: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0),
+                remainingEffects: ability.effects,
+                completedEffects: [],
+                canResolveInAnyOrder: ability.canResolveInAnyOrder,
+                isOptional: ability.isOptional
+            ),
+            createdAtSequence: 9
+        )
+    }
+
     private func expectedInput(for kind: PendingChoiceKind) -> PendingChoiceExpectedInput {
         switch kind {
         case .placeEgg,
@@ -6894,6 +7341,26 @@ final class GameEngineTests: XCTestCase {
         )
     }
 
+    private func coralGatedPlayCatalog() -> TestCardCatalog {
+        TestCardCatalog(
+            fishCards: [
+                Card(
+                    id: "coral.hand",
+                    name: "Coral Gated Hand Fish",
+                    costs: [.discardCards(count: 1)],
+                    printedPoints: 1,
+                    lengthCm: 20
+                ),
+                Card(
+                    id: "coral.payment",
+                    name: "Coral Payment Fish",
+                    printedPoints: 1,
+                    lengthCm: 10
+                )
+            ]
+        )
+    }
+
     private func playFishForFreeResolver() -> AbilityResolver {
         AbilityResolver(
             provider: AbilityRegistry(
@@ -6944,6 +7411,7 @@ final class GameEngineTests: XCTestCase {
             fishCards: [
                 Card(id: "consume.consumer", name: "Consumer Fish", printedPoints: 5, lengthCm: 40),
                 Card(id: "consume.short", name: "Short Fish", printedPoints: 1, lengthCm: 10),
+                Card(id: "consume.extra", name: "Extra Short Fish", printedPoints: 1, lengthCm: 12),
                 Card(id: "consume.same", name: "Same Fish", printedPoints: 1, lengthCm: 40),
                 Card(id: "consume.long", name: "Long Fish", printedPoints: 1, lengthCm: 60)
             ]

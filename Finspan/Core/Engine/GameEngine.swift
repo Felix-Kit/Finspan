@@ -1080,7 +1080,7 @@ struct GameEngine {
         else {
             throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
         }
-        guard placementConstraintMatches(slot.address, for: choice) else {
+        guard placementConstraintMatches(slot.address, for: choice, playerState: playerState) else {
             throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
         }
         try validateFishPlacement(card, targetSlot: slot, playerState: playerState)
@@ -1106,7 +1106,7 @@ struct GameEngine {
         else {
             throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
         }
-        guard placementConstraintMatches(slot.address, for: choice) else {
+        guard placementConstraintMatches(slot.address, for: choice, playerState: playerState) else {
             throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
         }
         try validateFishPlacement(card, targetSlot: slot, playerState: playerState)
@@ -1138,16 +1138,21 @@ struct GameEngine {
         }
     }
 
-    private func placementConstraintMatches(_ address: OceanSlotAddress, for choice: PendingChoice) -> Bool {
+    private func placementConstraintMatches(
+        _ address: OceanSlotAddress,
+        for choice: PendingChoice,
+        playerState: PlayerGameState
+    ) -> Bool {
         guard case let .playFishFromHand(_, placement, _) = selectedEffect(for: choice) else {
             return false
         }
-        return placementConstraintMatches(address, placement: placement)
+        return placementConstraintMatches(address, placement: placement, playerState: playerState)
     }
 
     private func placementConstraintMatches(
         _ address: OceanSlotAddress,
-        placement: FishPlacementConstraint
+        placement: FishPlacementConstraint,
+        playerState: PlayerGameState? = nil
     ) -> Bool {
         switch placement {
         case .topRow:
@@ -1158,6 +1163,11 @@ struct GameEngine {
             return address.zone == .sunlit
         case let .diveSite(diveSite):
             return address.diveSite == diveSite
+        case let .diveSiteWithCoralAtLeast(requiredCoral):
+            guard let reef = playerState?.ocean.coralReefs.first(where: { $0.diveSite == address.diveSite }) else {
+                return false
+            }
+            return reef.coralCount >= requiredCoral
         }
     }
 
@@ -2182,6 +2192,9 @@ struct GameEngine {
             return nil
         }
         if case .skip = resolution {
+            if choice.compoundAbilityProgress != nil {
+                return compoundDiveQueueProgressAfterConsumeFishCompletion(choice: choice, queue: queue)
+            }
             return advanceDiveQueue(queue)
         }
         guard let nextChoice = consumeFishFromHandChoiceAfterResolving(
@@ -2390,6 +2403,23 @@ struct GameEngine {
         return compoundSelectorChoice(from: choice, progress: updatedProgress)
     }
 
+    private func nextCompoundChoiceAfterCompletingCurrentEffect(_ choice: PendingChoice) -> PendingChoice? {
+        guard let progress = choice.compoundAbilityProgress,
+              let completedEffect = compoundEffectUnit(for: choice)
+        else {
+            return nil
+        }
+
+        var updatedProgress = progress
+        updatedProgress.remainingEffects = decrement(completedEffect, from: progress.remainingEffects)
+        updatedProgress.completedEffects.append(completedEffect)
+
+        guard !abilityProgressIsComplete(updatedProgress) else {
+            return nil
+        }
+        return compoundSelectorChoice(from: choice, progress: updatedProgress)
+    }
+
     private func nonQueueConsumeFishFromHandChoiceAfterResolving(
         _ payload: ResolvePendingChoiceCommand,
         choice: PendingChoice
@@ -2398,7 +2428,7 @@ struct GameEngine {
             return nil
         }
         if case .skip = payload.resolution {
-            return nil
+            return nextCompoundChoiceAfterCompletingCurrentEffect(choice)
         }
         if let nextChoice = consumeFishFromHandChoiceAfterResolving(
             choice: choice,
@@ -2760,7 +2790,15 @@ struct GameEngine {
         guard let progress else {
             return false
         }
+        if !progress.canResolveInAnyOrder {
+            return nextOrderedEffect(in: progress).map { abilityEffectKey($0) == abilityEffectKey(effect) } ?? false
+        }
         return effectCount(for: effect, in: progress.remainingEffects) > 0
+    }
+
+    private func nextOrderedEffect(in progress: CompoundAbilityProgress) -> AbilityEffectUnit? {
+        progress.remainingEffects.first { effectCount($0) > 0 }
+            .map(normalizedSingleEffect)
     }
 
     private func abilityProgressIsComplete(_ progress: CompoundAbilityProgress) -> Bool {
@@ -2953,6 +2991,8 @@ struct GameEngine {
             return "sunlight"
         case let .diveSite(diveSite):
             return "diveSite-\(diveSite.rawValue)"
+        case let .diveSiteWithCoralAtLeast(count):
+            return "diveSiteCoralAtLeast-\(count)"
         }
     }
 

@@ -7,8 +7,8 @@ data. It is a coverage log, not a rules spec.
 
 - Total GAME END abilities found in base + S&R JSON: 39
 - Implemented scoring-only: 10
-- Implemented executable: 23
-- Remaining unsupported / future work: 6
+- Implemented executable: 25
+- Remaining unsupported / future work: 4
 
 ## Scoring-Only Abilities
 
@@ -38,7 +38,7 @@ These create pending choice flow or directly apply existing reusable effects.
 | --- | --- | --- | --- | --- | --- |
 | Binocular Fish | base.main.019 | unsupported.base.gameEnd.card_019 | `[FishEgg][ArrowDown][FishLengthSmall] on each` | implemented | `placeEggOnMatchingFish(lengthBucket(.small), onEachEligibleFish)` |
 | Chinese Trumpetfish | base.main.028 | unsupported.base.gameEnd.card_028 | `[FishEgg][ArrowDown][FishLengthMedium] on each` | implemented | `placeEggOnMatchingFish(lengthBucket(.medium), onEachEligibleFish)` |
-| European Anchovy | base.main.041 | unsupported.base.gameEnd.card_041 | `[FishEgg][ArrowDown][Estuary]` | implemented | `placeEggOnMatchingFish(topRow, chooseOneEligibleFish)` |
+| European Anchovy | base.main.041 | unsupported.base.gameEnd.card_041 | `[FishEgg][ArrowDown][Estuary]` | implemented | `placeEggOnMatchingFish(topRow, onEachEligibleFish)` |
 | Largetooth Flounder | base.main.069 | unsupported.base.gameEnd.card_069 | `[FishEgg][ArrowDown][FlipperGreen]` | implemented | `placeEggOnMatchingFish(diveSite(.green), chooseOneEligibleFish)` |
 | Mariana Snailfish | base.main.077 | unsupported.base.gameEnd.card_077 | `[FishEgg][ArrowDown][PlayFishBottomRow] on each` | implemented | `placeEggOnMatchingFish(bottomRow, onEachEligibleFish)` |
 | Ocean Sunfish | base.main.081 | unsupported.base.gameEnd.card_081 | `[FishEgg][ArrowDown][FishLengthLarge] on each` | implemented | `placeEggOnMatchingFish(lengthBucket(.large), onEachEligibleFish)` |
@@ -56,6 +56,7 @@ These create pending choice flow or directly apply existing reusable effects.
 | Faceless Cusk | base.main.044 | unsupported.base.gameEnd.card_044 | `[FishFromHand][ArrowDown][PlayFishBottomRow]` | implemented | `playFishFromHand(bottomRow, payCost)` |
 | Giant Trevally | base.main.054 | unsupported.base.gameEnd.card_054 | `[FishFromHand][ArrowDown][FlipperPurple]` | implemented | `playFishFromHand(diveSite(.purple), payCost)` |
 | Striped Marlin | base.main.115 | unsupported.base.gameEnd.card_115 | `[FishFromHand][ArrowDown][Sun]` | implemented | `playFishFromHand(sunlight, payCost)` |
+| Yokozuna Slickhead | sr.main.209 | unsupported.sr.gameEnd.card_209 | `[FishFromHand][ArrowDown][AnyCoral]...` | implemented | `playFishFromHand(diveSiteWithCoralAtLeast(5), payCost)` |
 
 ### S&R Executable Effects
 
@@ -68,6 +69,7 @@ These create pending choice flow or directly apply existing reusable effects.
 | Frilled Shark | sr.main.156 | unsupported.sr.gameEnd.card_156 | `[FreePlayFishFromHand][FishLengthMedium] only` | implemented | `playFishForFree(lengthBucket(.medium))` |
 | Mimic Goatfish | sr.main.174 | unsupported.sr.gameEnd.card_174 | `[AnyCoral][AnyCoral]` | implemented | `gainCoral(.any, 2)` |
 | Red-lipped Batfish | sr.main.181 | unsupported.sr.gameEnd.card_181 | `[BlueCoral][PurpleCoral][GreenCoral]` | implemented | `gainCoral(.blue/.purple/.green)` |
+| Tripodfish | base.main.117 | unsupported.base.gameEnd.card_117 | `[ConsumeFish1][ConsumeFish1]` | implemented | `consumeFishFromHand x2` |
 | Yellow Clown Goby | sr.main.208 | unsupported.sr.gameEnd.card_208 | `[GreenCoral][GreenCoral][GreenCoral]` | implemented | `gainCoral(.green, 3)` |
 
 ## Unsupported / Future Work
@@ -78,10 +80,8 @@ These are still represented as unsupported GAME END abilities.
 | --- | --- | --- | --- | --- | --- |
 | Honeycomb Scaly Dragonfish | base.main.062 | unsupported.base.gameEnd.card_062 | `[YoungFish][SchoolFeederMove]` | future work | mixed move-young / move-school behavior needs a dedicated adapter |
 | Speckled Butterflyfish | base.main.109 | unsupported.base.gameEnd.card_109 | `[FishHatch][FishHatch][FishHatch][SchoolFeederMove]` | future work | mixed hatch + school move sequence is not modeled yet |
-| Tripodfish | base.main.117 | unsupported.base.gameEnd.card_117 | `[ConsumeFish1][ConsumeFish1]` | future work | mixed consume flow not wired into this GAME END path |
 | Blackmouth Angler | sr.main.141 | unsupported.sr.gameEnd.card_141 | `[FreePlayFishFromHand] if no [AnyCoral] in this fish's dive site` | future work | condition + free play path still needs a safe generic adapter |
 | Sixgill Sawshark | sr.main.193 | unsupported.sr.gameEnd.card_193 | `[YoungFish][FishFromHandConsume]` | future work | mixed young / consume flow not modeled |
-| Yokozuna Slickhead | sr.main.209 | unsupported.sr.gameEnd.card_209 | `[FishFromHand][ArrowDown][AnyCoral]...` | future work | coral-gated hand play needs a broader generic condition path |
 
 ## Notes
 
@@ -91,5 +91,5 @@ These are still represented as unsupported GAME END abilities.
   skipped.
 - Newly played GAME END fish can be discovered dynamically because the phase
   rescans visible fish after each resolve / skip.
-- The six future-work cards are intentionally left unsupported for now instead
+- The four future-work cards are intentionally left unsupported for now instead
   of forcing a brittle one-off implementation.
