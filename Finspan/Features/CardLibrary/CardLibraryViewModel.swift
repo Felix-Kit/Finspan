@@ -69,7 +69,7 @@ final class CardLibraryViewModel: ObservableObject {
         } else {
             let factory = CardCatalogFactory()
             let resolvedCatalog = (try? factory.makeCatalog(for: .baseGame, enabledExpansions: [.sharksAndReefs]))
-                ?? SampleCardCatalog()
+                ?? EmptyCardCatalog()
             cards = Self.sortedCards(from: resolvedCatalog)
         }
     }

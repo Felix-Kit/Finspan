@@ -85,6 +85,7 @@ enum AppStrings {
         static let hostStartGame = "房主开始游戏"
         static let selectPlayerFirst = "请先选择玩家。"
         static let noRoom = "暂无房间"
+        static let incompatibleLocalRoom = "检测到旧房间数据与当前版本不兼容，已清理本地房间，请重新创建。"
         static let hostName = "房主"
         static let simulatedPlayerPrefix = "玩家"
         static let ready = "已准备"

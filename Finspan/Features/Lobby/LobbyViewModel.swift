@@ -359,6 +359,10 @@ final class LobbyViewModel: ObservableObject {
     }
 
     func refresh() {
+        if let localRoomIssue = (roomService as? LocalRoomSessionIssueReporting)?.consumeLocalRoomIssueMessage() {
+            errorMessage = localRoomIssue
+        }
+
         guard let room = roomService.gameRoom else {
             roomCode = "-"
             hostName = "-"

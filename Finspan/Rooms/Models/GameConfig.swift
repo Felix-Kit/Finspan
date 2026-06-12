@@ -14,7 +14,7 @@ struct GameConfig: Codable, Equatable, Sendable {
         enabledExpansions: [Expansion] = [],
         rulesetVersion: RulesetVersion = .baseGameV1,
         randomSeed: Int,
-        gameDataMode: GameDataMode = .sample,
+        gameDataMode: GameDataMode = .baseGame,
         weeklyGoalSetup: WeeklyGoalSetupConfig = WeeklyGoalSetupConfig(),
         roomName: String = ""
     ) {
@@ -43,7 +43,7 @@ struct GameConfig: Codable, Equatable, Sendable {
         enabledExpansions = try container.decodeIfPresent([Expansion].self, forKey: .enabledExpansions) ?? []
         rulesetVersion = try container.decodeIfPresent(RulesetVersion.self, forKey: .rulesetVersion) ?? .baseGameV1
         randomSeed = try container.decode(Int.self, forKey: .randomSeed)
-        gameDataMode = try container.decodeIfPresent(GameDataMode.self, forKey: .gameDataMode) ?? .sample
+        gameDataMode = try container.decodeIfPresent(GameDataMode.self, forKey: .gameDataMode) ?? .baseGame
         weeklyGoalSetup = try container.decodeIfPresent(WeeklyGoalSetupConfig.self, forKey: .weeklyGoalSetup)
             ?? WeeklyGoalSetupConfig()
         roomName = try container.decodeIfPresent(String.self, forKey: .roomName) ?? ""

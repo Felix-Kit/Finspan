@@ -3598,7 +3598,7 @@ struct GameEngine {
     }
 
     private func card(withId cardId: CardID) -> Card? {
-        (cardCatalog.starterFishCards + cardCatalog.fishCards).first { $0.id == cardId }
+        cardCatalog.card(forStoredId: cardId)
     }
 
     private func diveSiteSortIndex(_ diveSite: DiveSite) -> Int {

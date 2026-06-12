@@ -83,9 +83,7 @@ struct FinalScoreCalculator: Sendable {
     }
 
     func calculate(in state: GameState, cardCatalog: any CardCatalog) -> FinalScoreResult {
-        let cardsById = Dictionary(
-            uniqueKeysWithValues: (cardCatalog.starterFishCards + cardCatalog.fishCards).map { ($0.id, $0) }
-        )
+        let cardsById = cardCatalog.identityResolver().cardsByLookupId
         let results = state.players.compactMap { player in
             state.playerGameStates[player.id].map { playerState in
                 score(

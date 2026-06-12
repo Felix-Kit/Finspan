@@ -26,8 +26,7 @@ struct ContentView: View {
         )
         _gameBoardViewModel = StateObject(
             wrappedValue: GameBoardViewModel(
-                roomService: environment.roomService,
-                cardCatalogProvider: environment.gameDataController.currentCatalog
+                roomService: environment.roomService
             )
         )
         _cardLibraryViewModel = StateObject(

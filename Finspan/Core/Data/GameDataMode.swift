@@ -76,7 +76,7 @@ final class GameDataController {
     ) {
         self.factory = factory
         self.mode = mode
-        catalog = (try? factory.makeCatalog(for: mode)) ?? SampleCardCatalog()
+        catalog = (try? factory.makeCatalog(for: mode)) ?? EmptyCardCatalog()
     }
 
     func currentCatalog() -> any CardCatalog {

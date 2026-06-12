@@ -86,7 +86,7 @@ final class GameRoomModelTests: XCTestCase {
         XCTAssertEqual(decoded, room)
     }
 
-    func testGameConfigDecodesMissingGameDataModeAsSample() throws {
+    func testGameConfigDecodesMissingGameDataModeAsBaseGame() throws {
         let data = """
         {
           "playerCount": 2,
@@ -98,7 +98,7 @@ final class GameRoomModelTests: XCTestCase {
 
         let config = try JSONDecoder().decode(GameConfig.self, from: data)
 
-        XCTAssertEqual(config.gameDataMode, .sample)
+        XCTAssertEqual(config.gameDataMode, .baseGame)
     }
 
     func testGameConfigDecodesMissingEnabledExpansionsAsEmpty() throws {

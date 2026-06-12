@@ -953,10 +953,11 @@ final class GameBoardViewModel: ObservableObject {
     private var cardCatalog: any CardCatalog {
         cardCatalogProvider()
     }
+    private var cardIdentityResolver: CardIdentityResolver {
+        cardCatalog.identityResolver()
+    }
     private var cardsById: [CardID: Card] {
-        Dictionary(
-            uniqueKeysWithValues: (cardCatalog.starterFishCards + cardCatalog.fishCards).map { ($0.id, $0) }
-        )
+        cardIdentityResolver.cardsByLookupId
     }
 
     var currentWeekText: String {
@@ -2309,10 +2310,10 @@ final class GameBoardViewModel: ObservableObject {
             roomService: roomService,
             cardCatalogProvider: {
                 guard let mode = (roomService as? GameDataModeConfiguring)?.gameDataMode else {
-                    return SampleCardCatalog()
+                    return EmptyCardCatalog()
                 }
                 let enabledExpansions = roomService.gameRoom?.gameConfig.enabledExpansions ?? []
-                return (try? factory.makeCatalog(for: mode, enabledExpansions: enabledExpansions)) ?? SampleCardCatalog()
+                return (try? factory.makeCatalog(for: mode, enabledExpansions: enabledExpansions)) ?? EmptyCardCatalog()
             }
         )
     }
@@ -2341,6 +2342,14 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     func refresh() {
+        if invalidateRoomForUnresolvableCardsIfNeeded() {
+            state = roomService.gameState
+            players = roomService.gameRoom?.players ?? []
+            eventLog = roomService.eventLog
+            removeInvalidSelections()
+            updateHudToast()
+            return
+        }
         state = roomService.gameState
         players = roomService.gameRoom?.players ?? []
         eventLog = roomService.eventLog
@@ -3392,7 +3401,7 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     private func fishCardFaceViewState(cardId: CardID) -> FishCardFaceViewState {
-        guard let card = cardsById[cardId] else {
+        guard let card = resolvedCard(for: cardId) else {
             return FishCardFaceViewState(
                 kind: .placeholder,
                 cardId: cardId,
@@ -3451,6 +3460,30 @@ final class GameBoardViewModel: ObservableObject {
             aspectRatio: CardRenderMetrics.cardAspectRatio,
             isPlaceholder: false
         )
+    }
+
+    private func resolvedCard(for cardId: CardID) -> Card? {
+        cardIdentityResolver.card(for: cardId)
+    }
+
+    private func invalidateRoomForUnresolvableCardsIfNeeded() -> Bool {
+        guard roomService.gameState.phase != .lobby && roomService.gameState.phase != .setup else {
+            return false
+        }
+
+        let unresolvedCardIds = roomService.gameState.unresolvedCardIds(using: cardIdentityResolver)
+        guard !unresolvedCardIds.isEmpty else {
+            return false
+        }
+
+        let reason = AppStrings.Lobby.incompatibleLocalRoom
+        if let invalidLocalRoomHandler = roomService as? InvalidLocalRoomHandling {
+            invalidLocalRoomHandler.invalidateLocalRoomSession(reason: reason)
+        } else {
+            roomService.resetLocalRoomSession()
+        }
+        errorMessage = reason
+        return true
     }
 
     private func fishCardFaceViewState(content: OceanSlotContent) -> FishCardFaceViewState {

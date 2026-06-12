@@ -16,3 +16,11 @@ protocol RoomService: AnyObject {
     /// without implying reconnect or room restoration support.
     func resetLocalRoomSession()
 }
+
+protocol LocalRoomSessionIssueReporting: AnyObject {
+    func consumeLocalRoomIssueMessage() -> String?
+}
+
+protocol InvalidLocalRoomHandling: AnyObject {
+    func invalidateLocalRoomSession(reason: String)
+}

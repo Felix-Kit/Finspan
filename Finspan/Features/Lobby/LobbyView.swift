@@ -50,24 +50,34 @@ struct LobbyView: View {
 
     @ViewBuilder
     private var screenContent: some View {
-        switch viewModel.screen {
-        case .mainMenu:
-            MainMenuView(viewModel: viewModel, onResumeActiveGame: onResumeActiveGame)
-        case .createRoom:
-            CreateRoomSetupView(
-                viewModel: viewModel,
-                selectingWeeklyGoalWeek: $selectingWeeklyGoalWeek
-            )
-        case .roomLobby:
-            RoomLobbyView(viewModel: viewModel)
-        case .joinGame:
-            JoinGameBrowserView(viewModel: viewModel, onResumeActiveGame: onResumeActiveGame)
-        case .cardLibrary:
-            CardLibraryView(viewModel: cardLibraryViewModel) {
-                viewModel.showMainMenu()
+        VStack(alignment: .leading, spacing: 12) {
+            if let errorMessage = viewModel.errorMessage {
+                Text(errorMessage)
+                    .font(.callout)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
             }
-        case .automa:
-            AutomaPlaceholderView(viewModel: viewModel)
+
+            switch viewModel.screen {
+            case .mainMenu:
+                MainMenuView(viewModel: viewModel, onResumeActiveGame: onResumeActiveGame)
+            case .createRoom:
+                CreateRoomSetupView(
+                    viewModel: viewModel,
+                    selectingWeeklyGoalWeek: $selectingWeeklyGoalWeek
+                )
+            case .roomLobby:
+                RoomLobbyView(viewModel: viewModel)
+            case .joinGame:
+                JoinGameBrowserView(viewModel: viewModel, onResumeActiveGame: onResumeActiveGame)
+            case .cardLibrary:
+                CardLibraryView(viewModel: cardLibraryViewModel) {
+                    viewModel.showMainMenu()
+                }
+            case .automa:
+                AutomaPlaceholderView(viewModel: viewModel)
+            }
         }
     }
 

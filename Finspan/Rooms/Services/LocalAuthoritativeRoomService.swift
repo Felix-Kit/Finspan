@@ -1,6 +1,6 @@
 import Foundation
 
-final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring {
+final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring, LocalRoomSessionIssueReporting, InvalidLocalRoomHandling {
     private var engine: GameEngine
     private let reducer: EventReducer
     private var setupBuilder: DeterministicSetupBuilder
@@ -9,6 +9,7 @@ final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring 
     private var eventFactory: AuthoritativeEventFactory
     private let randomSeedProvider: () -> Int
     private var eventContinuations: [AsyncStream<GameEvent>.Continuation] = []
+    private var localRoomIssueMessage: String?
     private(set) var gameDataMode: GameDataMode
     private(set) var enabledExpansions: [Expansion]
 
@@ -27,7 +28,7 @@ final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring 
         engine: GameEngine? = nil,
         reducer: EventReducer = EventReducer(),
         setupBuilder: DeterministicSetupBuilder? = nil,
-        gameDataMode: GameDataMode = .sample,
+        gameDataMode: GameDataMode = .baseGame,
         cardCatalogFactory: CardCatalogFactory = CardCatalogFactory(),
         snapshot: RoomSnapshot = .empty,
         roomId: RoomID = RoomSnapshot.empty.id,
@@ -61,6 +62,7 @@ final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring 
             randomSeed: randomSeed,
             timestampProvider: timestampProvider
         )
+        normalizeSnapshotStateIfNeeded()
     }
 
     func setGameDataMode(_ mode: GameDataMode) throws {
@@ -133,6 +135,16 @@ final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring 
         )
     }
 
+    func invalidateLocalRoomSession(reason: String) {
+        localRoomIssueMessage = reason
+        resetLocalRoomSession()
+    }
+
+    func consumeLocalRoomIssueMessage() -> String? {
+        defer { localRoomIssueMessage = nil }
+        return localRoomIssueMessage
+    }
+
     private func configureGameDataMode(_ mode: GameDataMode) throws {
         let catalog = try cardCatalogFactory.makeCatalog(
             for: mode,
@@ -183,7 +195,28 @@ final class LocalAuthoritativeRoomService: RoomService, GameDataModeConfiguring 
         enabledExpansions: [Expansion],
         factory: CardCatalogFactory
     ) -> any CardCatalog {
-        (try? factory.makeCatalog(for: mode, enabledExpansions: enabledExpansions)) ?? SampleCardCatalog()
+        (try? factory.makeCatalog(for: mode, enabledExpansions: enabledExpansions)) ?? EmptyCardCatalog()
+    }
+
+    private func normalizeSnapshotStateIfNeeded() {
+        guard snapshot.state != .empty else {
+            return
+        }
+
+        let resolver = cardCatalog.identityResolver()
+
+        do {
+            let normalizedState = try snapshot.state.normalizedCardIdentities(using: resolver)
+            gameState = normalizedState
+            snapshot = RoomSnapshot(
+                id: snapshot.id,
+                players: snapshot.players,
+                state: normalizedState,
+                events: snapshot.events
+            )
+        } catch {
+            invalidateLocalRoomSession(reason: AppStrings.Lobby.incompatibleLocalRoom)
+        }
     }
 
     private func validateRoomCommand(_ command: PlayerCommand) throws {

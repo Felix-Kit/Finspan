@@ -2,5 +2,5 @@ import Foundation
 
 struct GameDataCatalog {
     var cards: [Card] = []
-    var cardCatalog: any CardCatalog = SampleCardCatalog()
+    var cardCatalog: any CardCatalog = EmptyCardCatalog()
 }
