@@ -34,11 +34,30 @@ def load_cards() -> list[dict]:
     return cards
 
 
+def ability_text(card: dict) -> str:
+    value = card.get("abilityText") or ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return " ".join(str(item) for item in value)
+    if isinstance(value, dict):
+        for key in ("raw", "text", "display"):
+            if isinstance(value.get(key), str):
+                return value[key]
+        return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    return str(value)
+
+
 def ability_status(card: dict, registry_ids: set[str]) -> str:
     ids = card.get("abilityIds") or []
     if not ids:
         return "unmapped"
-    mapped = [ability_id for ability_id in ids if ability_id in registry_ids]
+    parser_mapped = pattern_parser_maps(ability_text(card))
+    mapped = [
+        ability_id
+        for ability_id in ids
+        if ability_id in registry_ids or parser_mapped
+    ]
     if len(mapped) == len(ids):
         return "mapped"
     if mapped:
@@ -48,10 +67,84 @@ def ability_status(card: dict, registry_ids: set[str]) -> str:
     return "unmapped"
 
 
+def normalize_pattern(text: str) -> str:
+    return re.sub(r"\s+", "", text).replace("（", "(").replace("）", ")")
+
+
+def pure_repeated_token_count(pattern: str, token: str, max_count: int = 4) -> int | None:
+    for count in range(1, max_count + 1):
+        if pattern == token * count:
+            return count
+    return None
+
+
+def egg_placement_filter(pattern: str) -> str | None:
+    prefix = "[FishEgg][ArrowDown]"
+    if not pattern.startswith(prefix):
+        return None
+    remainder = pattern[len(prefix):].replace("(oneach)", "").replace("oneach", "")
+    mapping = {
+        "[Estuary]": "topRow",
+        "[PlayFishBottomRow]": "bottomRow",
+        "[Predator]": "predator",
+        "[FishLengthSmall]": "small",
+        "[FishLengthMedium]": "medium",
+        "[FishLengthLarge]": "large",
+        "[FlipperBlue]": "blue",
+        "[FlipperPurple]": "purple",
+        "[FlipperGreen]": "green",
+    }
+    return mapping.get(remainder)
+
+
+def pure_coral_gain(pattern: str) -> bool:
+    remaining = pattern
+    tokens = ("[BlueCoral]", "[PurpleCoral]", "[GreenCoral]", "[AnyCoral]")
+    matched = False
+    while remaining:
+        for token in tokens:
+            if remaining.startswith(token):
+                matched = True
+                remaining = remaining[len(token):]
+                break
+        else:
+            return False
+    return matched
+
+
+def pattern_parser_maps(text: str) -> bool:
+    pattern = normalize_pattern(text)
+    if not pattern or "[AllPlayers]" in pattern or ";" in pattern:
+        return False
+    if pure_repeated_token_count(pattern, "[DrawCard]") is not None:
+        return True
+    if pure_repeated_token_count(pattern, "[FishHatch]") is not None:
+        return True
+    if pure_repeated_token_count(pattern, "[FishEgg]") is not None:
+        return True
+    if pure_repeated_token_count(pattern, "[YoungFish]") is not None:
+        return True
+    if egg_placement_filter(pattern) is not None:
+        return True
+    return pure_coral_gain(pattern)
+
+
 def pattern_for(text: str) -> str:
+    pattern = normalize_pattern(text)
+    if pure_repeated_token_count(pattern, "[DrawCard]") is not None:
+        return "draw fish"
+    if pure_repeated_token_count(pattern, "[FishHatch]") is not None:
+        return "hatch egg"
+    if pure_repeated_token_count(pattern, "[FishEgg]") is not None:
+        return "place egg single target"
+    if pure_repeated_token_count(pattern, "[YoungFish]") is not None:
+        return "place young"
+    if egg_placement_filter(pattern) is not None:
+        return "place egg on each matching fish"
+    if pure_coral_gain(pattern):
+        return "gain coral"
     checks = [
         ("scoring-only GAME END", ["[Wave]", "if "]),
-        ("draw fish", ["FishDraw"]),
         ("place egg on each matching fish", ["FishEgg", "on each"]),
         ("place egg on one/matching fish", ["FishEgg", "ArrowDown"]),
         ("hatch egg", ["FishHatch"]),
@@ -81,10 +174,10 @@ def main() -> None:
 
     cards = load_cards()
     registry_ids = load_registry_ids()
-    ability_cards = [card for card in cards if card.get("abilityText") or card.get("abilityIds")]
+    ability_cards = [card for card in cards if ability_text(card) or card.get("abilityIds")]
     status_counts = Counter(ability_status(card, registry_ids) for card in ability_cards)
     trigger_counts = Counter(card.get("abilityTrigger") or "none" for card in ability_cards)
-    pattern_counts = Counter(pattern_for(card.get("abilityText") or "") for card in ability_cards)
+    pattern_counts = Counter(pattern_for(ability_text(card)) for card in ability_cards)
 
     print("# Ability Coverage Audit")
     print()
@@ -115,7 +208,7 @@ def main() -> None:
         grouped[
             (
                 card.get("abilityTrigger") or "none",
-                pattern_for(card.get("abilityText") or ""),
+                pattern_for(ability_text(card)),
                 ability_status(card, registry_ids),
             )
         ].append(card)
@@ -130,7 +223,7 @@ def main() -> None:
             ability_ids = ", ".join(card.get("abilityIds") or [])
             print(
                 f"- `{card.get('id')}` {card.get('name')} | "
-                f"`{ability_ids or 'none'}` | {card.get('abilityText') or ''}"
+                f"`{ability_ids or 'none'}` | {ability_text(card)}"
             )
         if len(group) > 8:
             print(f"- ... {len(group) - 8} more")

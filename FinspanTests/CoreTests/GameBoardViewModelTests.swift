@@ -3063,6 +3063,19 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(pendingChoice.actions.map(\.isEnabled), [true])
     }
 
+    func testPlaceYoungPendingChoiceShowsTargetPromptAndSkipAction() {
+        let choice = pendingChoice(kind: .placeYoung)
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let pendingChoice = viewModel.pendingChoices[0]
+
+        XCTAssertEqual(pendingChoice.targetPrompt, AppStrings.GameBoard.choosePlaceYoungTarget)
+        XCTAssertFalse(pendingChoice.targets.isEmpty)
+        XCTAssertEqual(pendingChoice.actions.map(\.title), [AppStrings.GameBoard.skipChoice])
+        XCTAssertEqual(pendingChoice.actions.map(\.isEnabled), [true])
+    }
+
     func testDrawFishPendingChoiceGeneratesRewardToken() {
         let choice = pendingChoice(kind: .drawFish)
         let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
@@ -3097,6 +3110,18 @@ final class GameBoardViewModelTests: XCTestCase {
 
         XCTAssertEqual(rewardPool.rewards.map(\.kind), [.hatchEgg])
         XCTAssertEqual(rewardPool.rewards.first?.title, AppStrings.GameBoard.hatchEggAbilityAction)
+        XCTAssertEqual(rewardPool.instructionText, AppStrings.GameBoard.chooseRewardThenTarget)
+    }
+
+    func testPlaceYoungPendingChoiceGeneratesYoungRewardToken() {
+        let choice = pendingChoice(kind: .placeYoung)
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let rewardPool = viewModel.rewardPoolViewState
+
+        XCTAssertEqual(rewardPool.rewards.map(\.kind), [.placeYoung])
+        XCTAssertEqual(rewardPool.rewards.first?.title, AppStrings.GameBoard.placeYoungAbilityAction)
         XCTAssertEqual(rewardPool.instructionText, AppStrings.GameBoard.chooseRewardThenTarget)
     }
 
@@ -4194,6 +4219,7 @@ final class GameBoardViewModelTests: XCTestCase {
     private func expectedInput(for kind: PendingChoiceKind) -> PendingChoiceExpectedInput {
         switch kind {
         case .placeEgg,
+             .placeYoung,
              .hatchEgg:
             return .targetSlot
         case .recoverFromDiscardOrDraw:

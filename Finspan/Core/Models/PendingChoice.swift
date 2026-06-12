@@ -36,6 +36,7 @@ enum PendingChoiceKind: String, Codable, Equatable, Sendable {
     case drawFish
     case placeEgg
     case hatchEgg
+    case placeYoung
     case recoverFromDiscardOrDraw
     case moveYoungOrSchool
     case gainCoral
@@ -107,6 +108,7 @@ enum PendingChoiceAppliedEffect: Codable, Equatable, Sendable {
     case recoverFromDiscard(playerId: PlayerID, cardId: CardID)
     case placeEgg(target: OceanSlotAddress, amount: Int)
     case hatchEgg(target: OceanSlotAddress, amount: Int)
+    case placeYoung(target: OceanSlotAddress, amount: Int)
     case moveResource(source: OceanSlotAddress, target: OceanSlotAddress, kind: ResourceKind, amount: Int)
     case gainCoral(playerId: PlayerID, diveSite: DiveSite, payment: CoralPayment)
     case gainCoralFromAbility(playerId: PlayerID, diveSite: DiveSite, sourceCardId: CardID)

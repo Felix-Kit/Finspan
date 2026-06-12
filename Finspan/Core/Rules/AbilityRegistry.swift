@@ -486,6 +486,191 @@ enum SharksAndReefsAbilityDefinitions {
     ]
 }
 
+enum AbilityPatternParser {
+    nonisolated static func abilityDefinition(
+        abilityId: AbilityID,
+        trigger: AbilityTrigger,
+        rawAbilityText: String?
+    ) -> AbilityDefinition? {
+        guard let rawAbilityText,
+              !rawAbilityText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else {
+            return nil
+        }
+        let pattern = normalizedPattern(rawAbilityText)
+        guard !pattern.contains("[AllPlayers]"),
+              !pattern.contains(";")
+        else {
+            return nil
+        }
+
+        if let count = pureRepeatedTokenCount("[DrawCard]", in: pattern, maxCount: 4) {
+            return AbilityDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effects: [.drawFish(count: count)],
+                displayText: triggerText(trigger, action: "抽 \(count) 张鱼牌")
+            )
+        }
+
+        if let count = pureRepeatedTokenCount("[FishHatch]", in: pattern, maxCount: 4) {
+            return repeatedChoiceDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effect: .hatchEgg(count: 1),
+                count: count,
+                action: "孵化 \(count) 个鱼卵"
+            )
+        }
+
+        if let count = pureRepeatedTokenCount("[FishEgg]", in: pattern, maxCount: 4) {
+            return repeatedChoiceDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effect: .placeEgg(count: 1),
+                count: count,
+                action: "放置 \(count) 个鱼卵"
+            )
+        }
+
+        if let count = pureRepeatedTokenCount("[YoungFish]", in: pattern, maxCount: 4) {
+            return repeatedChoiceDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effect: .placeYoung(count: 1),
+                count: count,
+                action: "放置 \(count) 个幼鱼"
+            )
+        }
+
+        if let filter = eggPlacementFilter(from: pattern) {
+            return AbilityDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effects: [.placeEggOnMatchingFish(filter: filter, mode: .onEachEligibleFish)],
+                isOptional: true,
+                displayText: triggerText(trigger, action: "在每条匹配鱼上放置 1 个鱼卵")
+            )
+        }
+
+        if let coralEffects = pureCoralGainEffects(from: pattern) {
+            return AbilityDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                effects: coralEffects,
+                canResolveInAnyOrder: false,
+                isOptional: true,
+                displayText: triggerText(trigger, action: "获得珊瑚")
+            )
+        }
+
+        return nil
+    }
+
+    nonisolated private static func normalizedPattern(_ text: String) -> String {
+        text
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+            .replacingOccurrences(of: "（", with: "(")
+            .replacingOccurrences(of: "）", with: ")")
+    }
+
+    nonisolated private static func pureRepeatedTokenCount(
+        _ token: String,
+        in pattern: String,
+        maxCount: Int
+    ) -> Int? {
+        guard !pattern.isEmpty else {
+            return nil
+        }
+        for count in 1...maxCount where pattern == String(repeating: token, count: count) {
+            return count
+        }
+        return nil
+    }
+
+    nonisolated private static func repeatedChoiceDefinition(
+        abilityId: AbilityID,
+        trigger: AbilityTrigger,
+        effect: AbilityEffectUnit,
+        count: Int,
+        action: String
+    ) -> AbilityDefinition {
+        AbilityDefinition(
+            abilityId: abilityId,
+            trigger: trigger,
+            effects: Array(repeating: effect, count: count),
+            canResolveInAnyOrder: false,
+            isOptional: true,
+            displayText: triggerText(trigger, action: action)
+        )
+    }
+
+    nonisolated private static func eggPlacementFilter(from pattern: String) -> EggPlacementFilter? {
+        guard pattern.hasPrefix("[FishEgg][ArrowDown]") else {
+            return nil
+        }
+        let remainder = String(pattern.dropFirst("[FishEgg][ArrowDown]".count))
+            .replacingOccurrences(of: "(oneach)", with: "")
+            .replacingOccurrences(of: "oneach", with: "")
+        switch remainder {
+        case "[Estuary]":
+            return .topRow
+        case "[PlayFishBottomRow]":
+            return .bottomRow
+        case "[Predator]":
+            return .tag("predator")
+        case "[FishLengthSmall]":
+            return .lengthBucket(.small)
+        case "[FishLengthMedium]":
+            return .lengthBucket(.medium)
+        case "[FishLengthLarge]":
+            return .lengthBucket(.large)
+        case "[FlipperBlue]":
+            return .diveSite(.blue)
+        case "[FlipperPurple]":
+            return .diveSite(.purple)
+        case "[FlipperGreen]":
+            return .diveSite(.green)
+        default:
+            return nil
+        }
+    }
+
+    nonisolated private static func pureCoralGainEffects(from pattern: String) -> [AbilityEffectUnit]? {
+        var remaining = pattern
+        var effects: [AbilityEffectUnit] = []
+        while !remaining.isEmpty {
+            if remaining.hasPrefix("[BlueCoral]") {
+                effects.append(.gainCoral(selector: .blue, count: 1))
+                remaining.removeFirst("[BlueCoral]".count)
+            } else if remaining.hasPrefix("[PurpleCoral]") {
+                effects.append(.gainCoral(selector: .purple, count: 1))
+                remaining.removeFirst("[PurpleCoral]".count)
+            } else if remaining.hasPrefix("[GreenCoral]") {
+                effects.append(.gainCoral(selector: .green, count: 1))
+                remaining.removeFirst("[GreenCoral]".count)
+            } else if remaining.hasPrefix("[AnyCoral]") {
+                effects.append(.gainCoral(selector: .any, count: 1))
+                remaining.removeFirst("[AnyCoral]".count)
+            } else {
+                return nil
+            }
+        }
+        return effects.isEmpty ? nil : effects
+    }
+
+    nonisolated private static func triggerText(_ trigger: AbilityTrigger, action: String) -> String {
+        switch trigger {
+        case .whenPlayed:
+            return "打出时：\(action)"
+        case .ifActivated:
+            return "发动时：\(action)"
+        case .gameEnd:
+            return "游戏结束：\(action)"
+        }
+    }
+}
+
 struct AbilityResolver: Sendable {
     private let provider: any AbilityDefinitionProvider
     private let fallbackAbilityIdsByCardId: [CardID: [AbilityID]]
@@ -509,6 +694,11 @@ struct AbilityResolver: Sendable {
 
         return ids.map { abilityId in
             provider.abilityDefinition(for: abilityId)
+                ?? AbilityPatternParser.abilityDefinition(
+                    abilityId: abilityId,
+                    trigger: abilityTrigger(for: abilityId),
+                    rawAbilityText: card.abilityText
+                )
                 ?? unsupportedAbilityDefinition(abilityId: abilityId)
         }
     }
@@ -521,6 +711,16 @@ struct AbilityResolver: Sendable {
     }
 
     nonisolated private func unsupportedAbilityDefinition(abilityId: AbilityID) -> AbilityDefinition {
+        let trigger = abilityTrigger(for: abilityId)
+        return AbilityDefinition(
+            abilityId: abilityId,
+            trigger: trigger,
+            effects: [.unsupported],
+            isOptional: true
+        )
+    }
+
+    nonisolated private func abilityTrigger(for abilityId: AbilityID) -> AbilityTrigger {
         let trigger: AbilityTrigger
         if abilityId.contains(".gameEnd.") {
             trigger = .gameEnd
@@ -529,11 +729,6 @@ struct AbilityResolver: Sendable {
         } else {
             trigger = .ifActivated
         }
-        return AbilityDefinition(
-            abilityId: abilityId,
-            trigger: trigger,
-            effects: [.unsupported],
-            isOptional: true
-        )
+        return trigger
     }
 }

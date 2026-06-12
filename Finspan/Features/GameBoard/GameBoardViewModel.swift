@@ -859,6 +859,7 @@ enum RewardTokenKind: String, Equatable {
     case drawFish
     case recoverFromDiscardOrDraw
     case placeEgg
+    case placeYoung
     case hatchEgg
     case moveYoung
     case moveSchool
@@ -914,6 +915,7 @@ enum PendingChoiceAction: String, Equatable {
     case drawFromDeck
     case chooseTarget
     case choosePlaceEggAbilityEffect
+    case choosePlaceYoungAbilityEffect
     case chooseHatchEggAbilityEffect
     case finishAbility
     case skip
@@ -1501,6 +1503,12 @@ final class GameBoardViewModel: ObservableObject {
                 return false
             }) {
                 return AppStrings.GameBoard.rewardHatchEggActionSummary(playerName: playerName)
+            }
+            if payload.appliedEffects.contains(where: {
+                if case .placeYoung = $0 { return true }
+                return false
+            }) {
+                return AppStrings.GameBoard.rewardResolvedActionSummary(playerName: playerName)
             }
             return AppStrings.GameBoard.rewardResolvedActionSummary(playerName: playerName)
         case .moveResource:
@@ -3096,6 +3104,8 @@ final class GameBoardViewModel: ObservableObject {
             errorMessage = AppStrings.GameBoard.chooseTargetFromList
         case .choosePlaceEggAbilityEffect:
             resolvePendingChoice(choiceId, resolution: .chooseAbilityEffect(.placeEgg(count: 1)))
+        case .choosePlaceYoungAbilityEffect:
+            resolvePendingChoice(choiceId, resolution: .chooseAbilityEffect(.placeYoung(count: 1)))
         case .chooseHatchEggAbilityEffect:
             resolvePendingChoice(choiceId, resolution: .chooseAbilityEffect(.hatchEgg(count: 1)))
         case .finishAbility:
@@ -4030,6 +4040,11 @@ final class GameBoardViewModel: ObservableObject {
                 progress: progress
             ),
             abilityProgressLine(
+                title: AppStrings.GameBoard.placeYoungAbilityAction,
+                kind: .placeYoung(count: 1),
+                progress: progress
+            ),
+            abilityProgressLine(
                 title: AppStrings.GameBoard.hatchEggAbilityAction,
                 kind: .hatchEgg(count: 1),
                 progress: progress
@@ -4081,6 +4096,7 @@ final class GameBoardViewModel: ObservableObject {
         switch effect {
         case let .drawFish(count),
             let .placeEgg(count),
+             let .placeYoung(count),
              let .hatchEgg(count),
              let .moveYoungOrSchool(count),
              let .recoverFromDiscardOrDraw(count),
@@ -4104,6 +4120,8 @@ final class GameBoardViewModel: ObservableObject {
             return "drawFish"
         case .placeEgg:
             return "placeEgg"
+        case .placeYoung:
+            return "placeYoung"
         case .hatchEgg:
             return "hatchEgg"
         case .moveYoungOrSchool:
@@ -4169,6 +4187,7 @@ final class GameBoardViewModel: ObservableObject {
                 )
             }
         case .placeEgg,
+             .placeYoung,
              .placeEggOnMatchingFish,
              .hatchEgg,
              .moveYoungOrSchool,
@@ -4186,6 +4205,16 @@ final class GameBoardViewModel: ObservableObject {
                             choiceId: choice.choiceId,
                             action: .choosePlaceEggAbilityEffect,
                             title: AppStrings.GameBoard.placeEggAbilityAction,
+                            isEnabled: canResolve
+                        )
+                    )
+                }
+                if abilityEffectCount(.placeYoung(count: 1), in: progress.remainingEffects) > 0 {
+                    actions.append(
+                        PendingChoiceActionViewData(
+                            choiceId: choice.choiceId,
+                            action: .choosePlaceYoungAbilityEffect,
+                            title: AppStrings.GameBoard.placeYoungAbilityAction,
                             isEnabled: canResolve
                         )
                     )
@@ -4304,6 +4333,20 @@ final class GameBoardViewModel: ObservableObject {
                     isSelectable: canResolve
                 ),
                 .chooseTarget(choiceId: choice.choiceId, kind: .placeEgg)
+            )]
+        case .placeYoung:
+            let tokenId = "\(choice.choiceId)-placeYoung"
+            return [(
+                rewardToken(
+                    id: tokenId,
+                    kind: .placeYoung,
+                    title: AppStrings.GameBoard.placeYoungAbilityAction,
+                    subtitle: AppStrings.GameBoard.chooseLeftTarget,
+                    iconText: "幼",
+                    symbolName: "circle.fill",
+                    isSelectable: canResolve
+                ),
+                .chooseTarget(choiceId: choice.choiceId, kind: .placeYoung)
             )]
         case .hatchEgg:
             let tokenId = "\(choice.choiceId)-hatchEgg"
@@ -4431,6 +4474,24 @@ final class GameBoardViewModel: ObservableObject {
                             isSelectable: canResolve
                         ),
                         .direct(choiceId: choice.choiceId, resolution: .chooseAbilityEffect(.placeEgg(count: 1)))
+                    ))
+                }
+
+                let remainingYoung = abilityEffectCount(.placeYoung(count: 1), in: progress.remainingEffects)
+                for index in 0..<remainingYoung {
+                    let tokenId = "\(choice.choiceId)-compoundPlaceYoung-\(index)"
+                    entries.append((
+                        rewardToken(
+                            id: tokenId,
+                            kind: .placeYoung,
+                            title: AppStrings.GameBoard.placeYoungAbilityAction,
+                            subtitle: AppStrings.GameBoard.chooseLeftTarget,
+                            iconText: "幼",
+                            symbolName: "circle.fill",
+                            countText: "\(index + 1)/\(remainingYoung)",
+                            isSelectable: canResolve
+                        ),
+                        .direct(choiceId: choice.choiceId, resolution: .chooseAbilityEffect(.placeYoung(count: 1)))
                     ))
                 }
 
@@ -4864,7 +4925,10 @@ final class GameBoardViewModel: ObservableObject {
 
     func pendingChoiceTargets(for choice: PendingChoice) -> [PendingChoiceTargetViewData] {
         guard let playerState = state.playerGameStates[choice.playerId],
-              choice.kind == .placeEgg || choice.kind == .hatchEgg || choice.kind == .placeEggOnMatchingFish
+              choice.kind == .placeEgg
+                || choice.kind == .placeYoung
+                || choice.kind == .hatchEgg
+                || choice.kind == .placeEggOnMatchingFish
         else {
             return []
         }
@@ -4965,6 +5029,8 @@ final class GameBoardViewModel: ObservableObject {
         switch choice.kind {
         case .placeEgg:
             return slot.content.hasFish && resourceAmount(.egg, in: slot) == 0
+        case .placeYoung:
+            return slot.content.hasFish || slot.content == .empty
         case .placeEggOnMatchingFish:
             return matchingEggTargetIsLegal(slot, for: choice)
         case .hatchEgg:
@@ -4989,6 +5055,8 @@ final class GameBoardViewModel: ObservableObject {
         switch choice.kind {
         case .placeEgg:
             return AppStrings.GameBoard.choosePlaceEggTarget
+        case .placeYoung:
+            return AppStrings.GameBoard.choosePlaceYoungTarget
         case .hatchEgg:
             return AppStrings.GameBoard.chooseHatchEggTarget
         case .placeEggOnMatchingFish:
@@ -5034,7 +5102,7 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     private func noPendingChoiceTargetsText(for choice: PendingChoice) -> String? {
-        if choice.kind == .placeEgg || choice.kind == .hatchEgg || choice.kind == .placeEggOnMatchingFish {
+        if choice.kind == .placeEgg || choice.kind == .placeYoung || choice.kind == .hatchEgg || choice.kind == .placeEggOnMatchingFish {
             return pendingChoiceTargets(for: choice).isEmpty ? AppStrings.GameBoard.noPendingChoiceTargets : nil
         }
         if choice.kind == .moveYoungOrSchool {
@@ -5120,6 +5188,7 @@ final class GameBoardViewModel: ObservableObject {
              .compoundAbility:
             return AppStrings.GameBoard.chooseRewardToken
         case .placeEgg,
+             .placeYoung,
              .placeEggOnMatchingFish,
              .hatchEgg:
             return AppStrings.GameBoard.chooseRewardThenTarget

@@ -4853,6 +4853,63 @@ final class GameEngineTests: XCTestCase {
         XCTAssertNil(nextState.pendingChoices[choice.choiceId])
     }
 
+    func testResolvePlaceYoungChoiceAddsYoungToFishAndOpenSlot() throws {
+        let engine = GameEngine()
+        let fishTarget = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 1)
+        let openTarget = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+
+        for (index, target) in [fishTarget, openTarget].enumerated() {
+            var state = playFishState()
+            if target == fishTarget {
+                setContent(.fishCard("fish-1"), at: target, in: &state)
+            }
+            setResources([], at: target, in: &state)
+            let choice = pendingChoice(choiceId: "choice-place-young-\(index)", kind: .placeYoung)
+            state.pendingChoices[choice.choiceId] = choice
+
+            let drafts = try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "resolve-place-young-\(index)",
+                    choiceId: choice.choiceId,
+                    resolution: .chooseTarget(target)
+                ),
+                in: state
+            )
+
+            guard case let .pendingChoiceResolved(resolved) = drafts.first else {
+                return XCTFail("Expected place young pending choice to resolve.")
+            }
+            XCTAssertEqual(resolved.appliedEffects, [.placeYoung(target: target, amount: 1)])
+            state = applying(drafts, to: state, using: engine)
+            XCTAssertEqual(resourceAmount(.young, at: target, in: state), 1)
+        }
+    }
+
+    func testPlaceYoungFormsSchoolWhenYoungReachesThree() throws {
+        let engine = GameEngine()
+        var state = playFishState(keepForageFish: true)
+        let choice = pendingChoice(kind: .placeYoung)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 4)
+        state.pendingChoices[choice.choiceId] = choice
+        setResources([ResourceQuantity(kind: .young, amount: 2)], at: target, in: &state)
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "resolve-place-young-school",
+                    choiceId: choice.choiceId,
+                    resolution: .chooseTarget(target)
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        XCTAssertEqual(resourceAmount(.young, at: target, in: state), 0)
+        XCTAssertEqual(resourceAmount(.school, at: target, in: state), 1)
+    }
+
     func testResolveHatchEggChoiceRejectsSlotWithoutEgg() {
         let engine = GameEngine()
         var state = playFishState(keepForageFish: true)
@@ -5596,6 +5653,57 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(ability.effects, [.drawFish(count: 4)])
     }
 
+    func testAbilityPatternParserMapsRealBaseGameIconPatterns() throws {
+        let catalog = try BaseGameCardCatalog()
+        let cards = catalog.starterFishCards + catalog.fishCards
+        let resolver = AbilityResolver()
+
+        let sailfish = try XCTUnwrap(cards.first { $0.id == "base.main.010" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: sailfish).first?.effects,
+            [.drawFish(count: 3)]
+        )
+
+        let spiderfish = try XCTUnwrap(cards.first { $0.id == "base.main.003" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: spiderfish).first?.effects,
+            [.hatchEgg(count: 1), .hatchEgg(count: 1), .hatchEgg(count: 1)]
+        )
+
+        let mackerel = try XCTUnwrap(cards.first { $0.id == "base.main.009" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: mackerel).first?.effects,
+            [.placeEgg(count: 1), .placeEgg(count: 1)]
+        )
+
+        let carpetshark = try XCTUnwrap(cards.first { $0.id == "base.main.006" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: carpetshark).first?.effects,
+            [.placeEggOnMatchingFish(filter: .tag("predator"), mode: .onEachEligibleFish)]
+        )
+
+        let devilRay = try XCTUnwrap(cards.first { $0.id == "base.main.049" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: devilRay).first?.effects,
+            [.placeYoung(count: 1), .placeYoung(count: 1)]
+        )
+    }
+
+    func testAbilityPatternParserMapsRealSharksAndReefsCoralPatterns() throws {
+        let catalog = try SharksAndReefsCardCatalog()
+        let cards = catalog.starterFishCards + catalog.fishCards
+        let resolver = AbilityResolver()
+
+        let surgeonfish = try XCTUnwrap(cards.first { $0.id == "sr.main.165" })
+        XCTAssertEqual(
+            resolver.abilityDefinitions(for: surgeonfish).first?.effects,
+            [
+                .gainCoral(selector: .blue, count: 1),
+                .gainCoral(selector: .purple, count: 1)
+            ]
+        )
+    }
+
     func testBlueLanternfishWhenPlayedCreatesDrawFourPendingChoice() throws {
         let catalog = try BaseGameCardCatalog()
         let engine = GameEngine(cardCatalog: catalog)
@@ -6265,6 +6373,7 @@ final class GameEngineTests: XCTestCase {
     private func expectedInput(for kind: PendingChoiceKind) -> PendingChoiceExpectedInput {
         switch kind {
         case .placeEgg,
+             .placeYoung,
              .hatchEgg:
             return .targetSlot
         case .recoverFromDiscardOrDraw:

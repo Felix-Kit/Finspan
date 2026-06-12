@@ -227,11 +227,13 @@ enum AppStrings {
         static let recoverOneFromDiscard = "从弃牌堆拿回 1 张"
         static let triggeringFishAbilityPrefix = "正在发动"
         static let placeEggAbilityAction = "放置鱼卵"
+        static let placeYoungAbilityAction = "放置幼鱼"
         static let hatchEggAbilityAction = "孵化鱼卵"
         static let finishAbility = "结束此能力"
         static let chooseTargetUnsupported = "选择目标（暂未接入）"
         static let chooseTargetFromList = "请从目标列表中选择格子。"
         static let choosePlaceEggTarget = "选择放置鱼卵的格子"
+        static let choosePlaceYoungTarget = "选择放置幼鱼的格子"
         static let chooseHatchEggTarget = "选择要孵化的鱼卵"
         static let recoverFromDiscardOrDraw = "从弃牌堆拿回 1 张牌"
         static let discardPile = "弃牌堆"
@@ -708,6 +710,8 @@ enum AppStrings {
             return "抽鱼牌"
         case .placeEgg:
             return "放置鱼卵"
+        case .placeYoung:
+            return "放置幼鱼"
         case .hatchEgg:
             return "孵化鱼卵"
         case .recoverFromDiscardOrDraw:

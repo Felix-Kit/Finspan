@@ -60,6 +60,7 @@ enum AbilityEffectUnit: Codable, Equatable, Sendable {
     case drawFish(count: Int)
     case placeEgg(count: Int)
     case hatchEgg(count: Int)
+    case placeYoung(count: Int)
     case moveYoungOrSchool(count: Int)
     case recoverFromDiscardOrDraw(count: Int)
     case gameEndScore(condition: GameEndScoreCondition, points: Int)

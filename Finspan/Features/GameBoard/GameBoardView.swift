@@ -1665,7 +1665,8 @@ struct GameBoardView: View {
         case .placeEgg,
              .compoundPlaceEgg:
             return .yellow.opacity(0.25)
-        case .hatchEgg,
+        case .placeYoung,
+             .hatchEgg,
              .compoundHatchEgg:
             return .cyan.opacity(0.18)
         case .moveYoung,

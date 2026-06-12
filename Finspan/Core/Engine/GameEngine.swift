@@ -716,7 +716,11 @@ struct GameEngine {
                 throw CommandValidationError.fishDrawPileEmpty
             }
         case let .chooseTarget(target):
-            guard choice.kind == .placeEgg || choice.kind == .hatchEgg || choice.kind == .placeEggOnMatchingFish else {
+            guard choice.kind == .placeEgg
+                || choice.kind == .hatchEgg
+                || choice.kind == .placeYoung
+                || choice.kind == .placeEggOnMatchingFish
+            else {
                 throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
             }
             try validatePendingChoiceTarget(
@@ -872,6 +876,10 @@ struct GameEngine {
             guard slot.content.hasFish,
                   resourceAmount(.egg, in: slot) == 0
             else {
+                throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+            }
+        case .placeYoung:
+            guard slot.content.hasFish || slot.content == .empty else {
                 throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
             }
         case .placeEggOnMatchingFish:
@@ -1750,6 +1758,8 @@ struct GameEngine {
                 return [.placeEgg(target: target, amount: 1)]
             case .hatchEgg:
                 return [.hatchEgg(target: target, amount: 1)]
+            case .placeYoung:
+                return [.placeYoung(target: target, amount: 1)]
             case .drawFish,
                  .recoverFromDiscardOrDraw,
                  .moveYoungOrSchool,
@@ -2787,6 +2797,7 @@ struct GameEngine {
         switch effect {
         case let .drawFish(count),
             let .placeEgg(count),
+             let .placeYoung(count),
              let .hatchEgg(count),
              let .moveYoungOrSchool(count),
              let .recoverFromDiscardOrDraw(count),
@@ -2810,6 +2821,8 @@ struct GameEngine {
             return .drawFish(count: count)
         case .placeEgg:
             return .placeEgg(count: count)
+        case .placeYoung:
+            return .placeYoung(count: count)
         case .hatchEgg:
             return .hatchEgg(count: count)
         case .moveYoungOrSchool:
@@ -2841,6 +2854,8 @@ struct GameEngine {
             return "drawFish"
         case .placeEgg:
             return "placeEgg"
+        case .placeYoung:
+            return "placeYoung"
         case .hatchEgg:
             return "hatchEgg"
         case .moveYoungOrSchool:
@@ -2947,6 +2962,8 @@ struct GameEngine {
             return .drawFish
         case .placeEgg:
             return .placeEgg
+        case .placeYoung:
+            return .placeYoung
         case .hatchEgg:
             return .hatchEgg
         case .moveYoungOrSchool:
@@ -2977,6 +2994,7 @@ struct GameEngine {
         case .drawFish:
             return .none
         case .placeEgg,
+             .placeYoung,
              .hatchEgg:
             return .targetSlot
         case .moveYoungOrSchool:
@@ -3012,6 +3030,8 @@ struct GameEngine {
             return .drawFish(count: 1)
         case .placeEgg:
             return .placeEgg(count: 1)
+        case .placeYoung:
+            return .placeYoung(count: 1)
         case .hatchEgg:
             return .hatchEgg(count: 1)
         case .moveYoungOrSchool:
@@ -3244,6 +3264,8 @@ struct GameEngine {
                 state.playerGameStates[playerId] = playerState
             case let .placeEgg(target, amount):
                 applyResourceChange(.egg, amount: amount, at: target, to: &state)
+            case let .placeYoung(target, amount):
+                applyResourceChange(.young, amount: amount, at: target, to: &state)
             case let .hatchEgg(target, amount):
                 applyResourceChange(.egg, amount: -amount, at: target, to: &state)
                 applyResourceChange(.young, amount: amount, at: target, to: &state)
