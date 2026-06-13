@@ -433,6 +433,208 @@ final class GameEngineTests: XCTestCase {
         )
     }
 
+    func testResolveEffectNodeMoveYoungWithNativePayloadMovesResource() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 0)
+        setResources([ResourceQuantity(kind: .young, amount: 2)], at: source, in: &state)
+        setResources([], at: target, in: &state)
+        var choice = pendingChoice(kind: .moveYoungOrSchool)
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-move-young",
+            sourceCardId: "fish-30",
+            sourceAbilityId: "fixture.move",
+            available: [
+                effectNode(id: "move-node", effect: .moveYoungOrSchool(count: 1), legacyKind: .moveYoungOrSchool)
+            ]
+        )
+        state.pendingChoices[choice.choiceId] = choice
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveEffectNodeCommand(
+                commandId: "native-move-young",
+                executionId: "exec-move-young",
+                effectNodeId: "move-node",
+                payload: .moveResource(
+                    EffectMoveResourcePayload(
+                        sourceSlot: source,
+                        targetSlot: target,
+                        resourceKind: .young
+                    )
+                )
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(resolved) = drafts.first else {
+            return XCTFail("Expected pendingChoiceResolved draft.")
+        }
+        XCTAssertEqual(resolved.resolution, .moveResource(source: source, target: target, kind: .young))
+        XCTAssertEqual(resolved.appliedEffects, [.moveResource(source: source, target: target, kind: .young, amount: 1)])
+    }
+
+    func testResolveEffectNodeMoveSchoolWithNativePayloadMovesResource() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 0)
+        setResources([ResourceQuantity(kind: .school, amount: 1)], at: source, in: &state)
+        setResources([], at: target, in: &state)
+        var choice = pendingChoice(kind: .moveYoungOrSchool)
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-move-school",
+            sourceCardId: "fish-30",
+            sourceAbilityId: "fixture.move",
+            available: [
+                effectNode(id: "move-node", effect: .moveYoungOrSchool(count: 1), legacyKind: .moveYoungOrSchool)
+            ]
+        )
+        state.pendingChoices[choice.choiceId] = choice
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveEffectNodeCommand(
+                commandId: "native-move-school",
+                executionId: "exec-move-school",
+                effectNodeId: "move-node",
+                payload: .moveResource(
+                    EffectMoveResourcePayload(
+                        sourceSlot: source,
+                        targetSlot: target,
+                        resourceKind: .school
+                    )
+                )
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(resolved) = drafts.first else {
+            return XCTFail("Expected pendingChoiceResolved draft.")
+        }
+        XCTAssertEqual(resolved.resolution, .moveResource(source: source, target: target, kind: .school))
+        XCTAssertEqual(resolved.appliedEffects, [.moveResource(source: source, target: target, kind: .school, amount: 1)])
+    }
+
+    func testResolveEffectNodeMoveRejectsIllegalNativePayloadWithoutMutatingState() {
+        let engine = GameEngine()
+        var state = playFishState()
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 5)
+        setResources([ResourceQuantity(kind: .young, amount: 1)], at: source, in: &state)
+        setResources([], at: target, in: &state)
+        var choice = pendingChoice(kind: .moveYoungOrSchool)
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-move-invalid",
+            sourceCardId: "fish-30",
+            sourceAbilityId: "fixture.move",
+            available: [
+                effectNode(id: "move-node", effect: .moveYoungOrSchool(count: 1), legacyKind: .moveYoungOrSchool)
+            ]
+        )
+        state.pendingChoices[choice.choiceId] = choice
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: resolveEffectNodeCommand(
+                    commandId: "native-move-invalid",
+                    executionId: "exec-move-invalid",
+                    effectNodeId: "move-node",
+                    payload: .moveResource(
+                        EffectMoveResourcePayload(
+                            sourceSlot: source,
+                            targetSlot: target,
+                            resourceKind: .young
+                        )
+                    )
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .invalidPendingChoiceResolution(choice.choiceId))
+        }
+        XCTAssertEqual(resourceAmount(.young, at: source, in: state), 1)
+        XCTAssertEqual(resourceAmount(.young, at: target, in: state), 0)
+    }
+
+    func testResolveEffectNodeMoveRejectsStaleEffectNodeId() {
+        let engine = GameEngine()
+        var state = playFishState()
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 0)
+        setResources([ResourceQuantity(kind: .young, amount: 1)], at: source, in: &state)
+        var choice = pendingChoice(kind: .moveYoungOrSchool)
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-move-stale",
+            sourceCardId: "fish-30",
+            sourceAbilityId: "fixture.move",
+            available: [
+                effectNode(id: "move-node", effect: .moveYoungOrSchool(count: 1), legacyKind: .moveYoungOrSchool)
+            ]
+        )
+        state.pendingChoices[choice.choiceId] = choice
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: resolveEffectNodeCommand(
+                    commandId: "native-move-stale",
+                    executionId: "exec-move-stale",
+                    effectNodeId: "stale-move-node",
+                    payload: .moveResource(
+                        EffectMoveResourcePayload(
+                            sourceSlot: source,
+                            targetSlot: target,
+                            resourceKind: .young
+                        )
+                    )
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .invalidPendingChoiceResolution(choice.choiceId))
+        }
+    }
+
+    func testResolveEffectNodeRewardTokenSelectsCompoundEffectNatively() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        let ability = AbilityDefinition(
+            abilityId: "fixture.reward-token",
+            trigger: .ifActivated,
+            effects: [.placeEgg(count: 1), .hatchEgg(count: 1)],
+            canResolveInAnyOrder: true,
+            isOptional: true
+        )
+        var choice = compoundAbilityChoice(choiceId: "compound-reward-token", ability: ability)
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-reward-token",
+            sourceCardId: "fixture.source",
+            sourceAbilityId: ability.abilityId,
+            available: [
+                effectNode(id: "egg-node", effect: .placeEgg(count: 1), legacyKind: .compoundAbility),
+                effectNode(id: "hatch-node", effect: .hatchEgg(count: 1), legacyKind: .compoundAbility)
+            ]
+        )
+        state.pendingChoices[choice.choiceId] = choice
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveEffectNodeCommand(
+                commandId: "native-reward-token",
+                executionId: "exec-reward-token",
+                effectNodeId: "egg-node",
+                payload: .rewardToken(
+                    EffectRewardTokenPayload(tokenKind: .placeEgg, count: 1)
+                )
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(resolved) = drafts.first else {
+            return XCTFail("Expected pendingChoiceResolved draft.")
+        }
+        XCTAssertEqual(resolved.choiceId, choice.choiceId)
+        XCTAssertEqual(resolved.resolution, .chooseAbilityEffect(.placeEgg(count: 1)))
+    }
+
     func testPlayFishAutomaticallyAdvancesActivePlayer() throws {
         let engine = GameEngine()
         let state = playFishState()

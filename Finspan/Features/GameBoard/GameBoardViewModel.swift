@@ -2698,9 +2698,15 @@ final class GameBoardViewModel: ObservableObject {
                 errorMessage = AppStrings.GameBoard.chooseTarget
                 return true
             }
-            resolvePendingChoice(
-                choiceId,
-                resolution: .moveResource(source: sourceAddress, target: address, kind: kind)
+            performNativeEffectPayload(
+                .moveResource(
+                    EffectMoveResourcePayload(
+                        sourceSlot: sourceAddress,
+                        targetSlot: address,
+                        resourceKind: kind
+                    )
+                ),
+                for: choiceId
             )
             return true
         case let .coralResource(choiceId, _, kind):
@@ -3282,9 +3288,15 @@ final class GameBoardViewModel: ObservableObject {
         target: OceanSlotAddress,
         kind: ResourceKind
     ) {
-        resolvePendingChoice(
-            choiceId,
-            resolution: .moveResource(source: moveSource, target: target, kind: kind)
+        performNativeEffectPayload(
+            .moveResource(
+                EffectMoveResourcePayload(
+                    sourceSlot: moveSource,
+                    targetSlot: target,
+                    resourceKind: kind
+                )
+            ),
+            for: choiceId
         )
     }
 
@@ -3418,9 +3430,22 @@ final class GameBoardViewModel: ObservableObject {
                 for: choiceId
             )
             return true
+        case let .moveResource(source, target, kind):
+            performNativeEffectPayload(
+                .moveResource(
+                    EffectMoveResourcePayload(
+                        sourceSlot: source,
+                        targetSlot: target,
+                        resourceKind: kind
+                    )
+                ),
+                for: choiceId
+            )
+            return true
+        case let .chooseAbilityEffect(effect):
+            return performNativeAbilityEffectSelection(effect, for: choiceId)
         case .skip,
              .chooseTarget,
-             .moveResource,
              .gainCoralFromAbility,
              .chooseScatterSchoolSource,
              .placeScatterSchoolYoung,
@@ -3432,10 +3457,36 @@ final class GameBoardViewModel: ObservableObject {
              .choosePlayFishFromHand,
              .choosePlayFishFromHandTarget,
              .chooseOption,
-             .chooseAbilityEffect,
              .finishAbility:
             return false
         }
+    }
+
+    @discardableResult
+    private func performNativeAbilityEffectSelection(
+        _ effect: AbilityEffectUnit,
+        for choiceId: PendingChoiceID
+    ) -> Bool {
+        guard let tokenKind = effectRewardTokenKind(for: effect),
+              let choice = state.pendingChoices[choiceId],
+              let node = choice.v2PendingEffectSet.available.first(where: { abilityEffectKey($0.effect) == abilityEffectKey(effect) })
+        else {
+            return false
+        }
+        performPendingEffectIntent(
+            resolveIntent(
+                for: node,
+                choice: choice,
+                payload: .rewardToken(
+                    EffectRewardTokenPayload(
+                        tokenKind: tokenKind,
+                        count: abilityEffectCount(effect)
+                    )
+                )
+            ),
+            for: choiceId
+        )
+        return true
     }
 
     private func nativePayloadEffectNode(
@@ -3448,10 +3499,13 @@ final class GameBoardViewModel: ObservableObject {
                  (.consumeFishFromHand, .consumeFishFromHand),
                  (.playFishForFree, .playCard),
                  (.playFishFromHand, .playCard),
-                 (.gainCoral, .coralPayment):
+                 (.gainCoral, .coralPayment),
+                 (.moveYoungOrSchool, .moveResource):
                 return true
             case (.drawFish, .rewardToken):
                 return true
+            case let (_, .rewardToken(payload)):
+                return effectRewardTokenKind(for: node.effect) == payload.tokenKind
             case (.drawFish, .none),
                  (.recoverFromDiscardOrDraw, .none),
                  (.recoverFromDiscardOrDraw, .selectedDiscardCard),
@@ -4548,6 +4602,37 @@ final class GameBoardViewModel: ObservableObject {
             return 1
         case .unsupported:
             return 0
+        }
+    }
+
+    private func effectRewardTokenKind(for effect: AbilityEffectUnit) -> EffectRewardTokenKind? {
+        switch effect {
+        case .drawFish:
+            return .drawFish
+        case .recoverFromDiscardOrDraw:
+            return .recoverFromDiscardOrDraw
+        case .placeEgg:
+            return .placeEgg
+        case .placeYoung:
+            return .placeYoung
+        case .hatchEgg:
+            return .hatchEgg
+        case .moveYoungOrSchool:
+            return .moveYoungOrSchool
+        case .gainCoral:
+            return .gainCoral
+        case .scatterSchool:
+            return .scatterSchool
+        case .consumeFishFromHand:
+            return .consumeFishFromHand
+        case .playFishForFree:
+            return .playFishForFree
+        case .playFishFromHand:
+            return .playFishFromHand
+        case .gameEndScore,
+             .placeEggOnMatchingFish,
+             .unsupported:
+            return nil
         }
     }
 

@@ -1,8 +1,8 @@
 # Ability Engine v2 Design
 
-Last updated: 2026-06-13.
+Last updated: 2026-06-14.
 
-This document describes the Ability Engine v2 core migration and Cleanup Passes 1-4.
+This document describes the Ability Engine v2 core migration and Cleanup Passes 1-5.
 It is an architecture consolidation pass, not a rules expansion.
 
 ## Current Coverage Baseline
@@ -43,6 +43,9 @@ effect-node command entry points for safe simple resolve / skip flows while
 retaining legacy `PendingChoiceResolution` as the compatibility fallback for
 complex staged payloads. Cleanup Pass 4 migrates the main staged payloads into
 native effect-node payloads while keeping the same legacy reducer event shell.
+Cleanup Pass 5 migrates move young / school payloads and compound reward-token
+action selection into the native effect-node command path, further shrinking the
+legacy adapter boundary without changing game results.
 
 ## Unified Execution Shape
 
@@ -371,6 +374,65 @@ Blocked By Future Work:
 Cleanup Pass 4 still does not implement v2.1 replay, a debug timeline, or a
 graph viewer.
 
+## Cleanup Pass 5 Boundary
+
+Cleanup Pass 5 completes the remaining low-risk staged payload migration while
+still preserving the legacy event shell:
+
+- `EffectMoveResourcePayload` carries source slot, target slot, and whether the
+  move is for young or school.
+- Move young / school source-target selection now enters `GameEngine` through
+  `resolveEffectNode` when the current `effectNodeId` is available.
+- Compound reward-token action selection now uses `EffectRewardTokenPayload` for
+  native effect-node intent before mapping to the existing follow-up pending
+  choice.
+- Legacy `resolvePendingChoice` still exists as fallback for saved local rooms,
+  older pending choices, and tests that exercise the compatibility path.
+
+Native coverage after Pass 5:
+
+- draw / recover / egg / young / hatch simple effects
+- compound effect selection and skip remaining
+- scatter school full source plus target placement
+- consume-from-hand full consumer plus hand-card selection
+- free-play and paid-play final card / target / payment payloads
+- coral payment via egg, young, or discard
+- move young / school source-target payload
+- draw reward token action
+- compound reward-token selection for recover, place egg, place young, hatch,
+  move, gain coral, scatter, consume, free play, and play from hand
+- AllPlayers skip and GAME END executable skip
+
+Legacy Still Required:
+
+- saved-state compatibility for local rooms created with older pending-choice
+  shapes
+- `PendingChoiceResolvedEvent` as the reducer/event compatibility shell
+- legacy `resolvePendingChoice` command support for fallback and compatibility
+  tests
+- follow-up target, payment, and discard-selection choices that are still
+  represented as existing pending choices after a native reward-token selection
+
+Safe To Remove Later:
+
+- move young / school direct legacy dispatch once saved-state migration no
+  longer needs it
+- reward-token selection dispatch cases now covered by native
+  `EffectRewardTokenPayload`
+- scatter / consume / play / coral payment staged progress fields already
+  covered by Pass 4 native payloads, once saved-state compatibility is migrated
+
+Blocked By Future Work:
+
+- saved-state migration for old active rooms with legacy pending-choice payloads
+- native effect-node event type that replaces `PendingChoiceResolvedEvent`
+- final removal of legacy step-specific fields after ViewModel and persistence
+  no longer need them
+- v2.1 trace / replay / debug timeline using the reserved execution and node ids
+
+Cleanup Pass 5 still does not implement v2.1 replay, a debug timeline, or a
+graph viewer.
+
 ## Behavior Guarantees
 
 This pass must not change gameplay results:
@@ -386,8 +448,8 @@ This pass must not change gameplay results:
 
 ## Next Steps
 
-- Finish the remaining staged native payloads, especially move young / school
-  and any reward-token action that still needs multi-step UI state.
+- Plan saved-state migration and legacy field cleanup now that the remaining
+  low-risk staged payloads have native effect-node entry points.
 - Stabilize GameBoardViewModel pending UI around v2 metadata and native payloads.
 - Add v2.1 trace / replay / debug timeline using the reserved ids.
 - Remove legacy step-specific pending fields only after v2 choices are fully

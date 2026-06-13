@@ -158,6 +158,7 @@ enum EffectResolutionPayload: Codable, Equatable, Sendable {
     case playCard(EffectPlayCardPayload)
     case coralPayment(EffectCoralPaymentPayload)
     case rewardToken(EffectRewardTokenPayload)
+    case moveResource(EffectMoveResourcePayload)
 }
 
 struct EffectScatterSchoolPayload: Codable, Equatable, Sendable {
@@ -184,6 +185,12 @@ struct EffectCoralPaymentPayload: Codable, Equatable, Sendable {
 struct EffectRewardTokenPayload: Codable, Equatable, Sendable {
     var tokenKind: EffectRewardTokenKind
     var count: Int
+}
+
+struct EffectMoveResourcePayload: Codable, Equatable, Sendable {
+    var sourceSlot: OceanSlotAddress
+    var targetSlot: OceanSlotAddress
+    var resourceKind: ResourceKind
 }
 
 struct EffectTargetRequirement: Codable, Equatable, Sendable {
@@ -598,6 +605,12 @@ enum AbilityEngineV2Adapter {
             return choice.kind == .compoundAbility
                 ? .chooseAbilityEffect(effectWithCount(effect, count: 1))
                 : .chooseTarget(address)
+        case (.moveYoungOrSchool, let .moveResource(payload)):
+            return .moveResource(
+                source: payload.sourceSlot,
+                target: payload.targetSlot,
+                kind: payload.resourceKind
+            )
         case (.scatterSchool, let .targetSlot(address)):
             switch choice.expectedInput {
             case .scatterSchoolSource?:
@@ -692,6 +705,26 @@ enum AbilityEngineV2Adapter {
             return choice.kind == .compoundAbility
                 ? .chooseAbilityEffect(.drawFish(count: payload.count))
                 : .draw(count: payload.count)
+        case (.recoverFromDiscardOrDraw, let .rewardToken(payload)) where payload.tokenKind == .recoverFromDiscardOrDraw:
+            return .chooseAbilityEffect(.recoverFromDiscardOrDraw(count: payload.count))
+        case (.placeEgg, let .rewardToken(payload)) where payload.tokenKind == .placeEgg:
+            return .chooseAbilityEffect(.placeEgg(count: payload.count))
+        case (.placeYoung, let .rewardToken(payload)) where payload.tokenKind == .placeYoung:
+            return .chooseAbilityEffect(.placeYoung(count: payload.count))
+        case (.hatchEgg, let .rewardToken(payload)) where payload.tokenKind == .hatchEgg:
+            return .chooseAbilityEffect(.hatchEgg(count: payload.count))
+        case (.moveYoungOrSchool, let .rewardToken(payload)) where payload.tokenKind == .moveYoungOrSchool:
+            return .chooseAbilityEffect(.moveYoungOrSchool(count: payload.count))
+        case (.gainCoral, let .rewardToken(payload)) where payload.tokenKind == .gainCoral:
+            return .chooseAbilityEffect(effectWithCount(effect, count: payload.count))
+        case (.scatterSchool, let .rewardToken(payload)) where payload.tokenKind == .scatterSchool:
+            return .chooseAbilityEffect(.scatterSchool(count: payload.count))
+        case (.consumeFishFromHand, let .rewardToken(payload)) where payload.tokenKind == .consumeFishFromHand:
+            return .chooseAbilityEffect(.consumeFishFromHand(count: payload.count))
+        case (.playFishForFree, let .rewardToken(payload)) where payload.tokenKind == .playFishForFree:
+            return .chooseAbilityEffect(effectWithCount(effect, count: payload.count))
+        case (.playFishFromHand, let .rewardToken(payload)) where payload.tokenKind == .playFishFromHand:
+            return .chooseAbilityEffect(effect)
         default:
             throw PendingEffectIntentAdapterError.unsupportedPayload
         }
@@ -741,9 +774,28 @@ enum AbilityEngineV2Adapter {
                  .recoverFromDiscardOrDraw,
                  .placeEgg,
                  .placeYoung,
-                 .hatchEgg:
+                 .hatchEgg,
+                 .moveYoungOrSchool,
+                 .gainCoral,
+                 .scatterSchool,
+                 .consumeFishFromHand,
+                 .playFishForFree,
+                 .playFishFromHand:
                 return choice.kind == .compoundAbility
-            case .moveYoungOrSchool,
+            case .gameEndScore,
+                 .placeEggOnMatchingFish,
+                 .unsupported:
+                return false
+            }
+        case .moveResource:
+            switch effect {
+            case .moveYoungOrSchool:
+                return true
+            case .drawFish,
+                 .recoverFromDiscardOrDraw,
+                 .placeEgg,
+                 .placeYoung,
+                 .hatchEgg,
                  .gameEndScore,
                  .placeEggOnMatchingFish,
                  .playFishFromHand,
@@ -754,8 +806,7 @@ enum AbilityEngineV2Adapter {
                  .unsupported:
                 return false
             }
-        case .moveResource,
-             .gainCoralFromAbility,
+        case .gainCoralFromAbility,
              .chooseScatterSchoolSource,
              .placeScatterSchoolYoung,
              .chooseConsumeFishConsumer,
