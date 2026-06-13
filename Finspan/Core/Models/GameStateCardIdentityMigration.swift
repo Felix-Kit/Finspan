@@ -95,6 +95,7 @@ private extension PendingChoice {
         normalized.playFishFromHandProgress = try playFishFromHandProgress?.normalizedCardIdentities(using: resolver)
         normalized.allPlayersProgress = try allPlayersProgress?.normalizedCardIdentities(using: resolver)
         normalized.conditionalBonusProgress = try conditionalBonusProgress?.normalizedCardIdentities(using: resolver)
+        normalized.pendingEffectSet = try pendingEffectSet?.normalizedCardIdentities(using: resolver)
         return normalized
     }
 }
@@ -154,6 +155,14 @@ private extension AllPlayersAbilityProgress {
 
 private extension ConditionalBonusAbilityProgress {
     func normalizedCardIdentities(using resolver: CardIdentityResolver) throws -> ConditionalBonusAbilityProgress {
+        var normalized = self
+        normalized.sourceCardId = try canonicalCardId(sourceCardId, using: resolver)
+        return normalized
+    }
+}
+
+private extension PendingEffectSet {
+    func normalizedCardIdentities(using resolver: CardIdentityResolver) throws -> PendingEffectSet {
         var normalized = self
         normalized.sourceCardId = try canonicalCardId(sourceCardId, using: resolver)
         return normalized

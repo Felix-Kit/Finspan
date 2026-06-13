@@ -6655,6 +6655,169 @@ final class GameEngineTests: XCTestCase {
         }
     }
 
+    func testAbilityEngineV2GraphExpressesUnorderedCompound() throws {
+        let catalog = try BaseGameCardCatalog()
+        let resolver = AbilityResolver()
+        let card = try XCTUnwrap(catalog.fishCards.first { $0.id == "base.main.024" })
+        let ability = try XCTUnwrap(resolver.abilityDefinitions(for: card).first)
+        let sourceAddress = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+
+        let ir = AbilityEngineV2Adapter.abilityIR(
+            for: ability,
+            sourceCardId: card.id,
+            sourcePlayerId: "player-1",
+            sourceAddress: sourceAddress
+        )
+
+        XCTAssertEqual(ir.sourceAbilityId, ability.abilityId)
+        XCTAssertEqual(ir.graph.nodes.map(\.effect), [.moveYoungOrSchool(count: 1), .placeYoung(count: 1)])
+        XCTAssertTrue(ir.graph.nodes.allSatisfy { $0.dependencies.isEmpty })
+        XCTAssertTrue(ir.graph.nodes.allSatisfy { $0.optionality == .optional })
+    }
+
+    func testAbilityEngineV2GraphExpressesAllPlayersFanOutScope() throws {
+        let catalog = try BaseGameCardCatalog()
+        let resolver = AbilityResolver()
+        let card = try XCTUnwrap(catalog.fishCards.first { $0.id == "base.main.050" })
+        let ability = try XCTUnwrap(resolver.abilityDefinitions(for: card).first)
+        let sourceAddress = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+
+        let ir = AbilityEngineV2Adapter.abilityIR(
+            for: ability,
+            sourceCardId: card.id,
+            sourcePlayerId: "player-1",
+            sourceAddress: sourceAddress,
+            allPlayerIds: ["player-1", "player-2"]
+        )
+
+        XCTAssertEqual(ability.appliesToAllPlayers, true)
+        XCTAssertEqual(ir.graph.nodes.count, 1)
+        XCTAssertEqual(ir.graph.nodes.first?.effect, .drawFish(count: 1))
+        XCTAssertEqual(ir.graph.nodes.first?.scope, .allPlayers(startingFrom: "player-1"))
+    }
+
+    func testAbilityEngineV2GraphExpressesColoredCoralConditionalBonus() throws {
+        let catalog = try SharksAndReefsCardCatalog()
+        let resolver = AbilityResolver()
+        let card = try XCTUnwrap(catalog.fishCards.first { $0.id == "sr.main.138" })
+        let ability = try XCTUnwrap(resolver.abilityDefinitions(for: card).first)
+        let sourceAddress = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+
+        let ir = AbilityEngineV2Adapter.abilityIR(
+            for: ability,
+            sourceCardId: card.id,
+            sourcePlayerId: "player-1",
+            sourceAddress: sourceAddress
+        )
+
+        let baseNode = try XCTUnwrap(ir.graph.nodes.first { $0.id.hasPrefix("base-") })
+        let bonusNode = try XCTUnwrap(ir.graph.nodes.first { $0.id.hasPrefix("bonus-") })
+        XCTAssertEqual(baseNode.effect, .recoverFromDiscardOrDraw(count: 1))
+        XCTAssertEqual(bonusNode.effect, .drawFish(count: 1))
+        XCTAssertEqual(bonusNode.dependencies, [baseNode.id])
+        XCTAssertTrue(
+            bonusNode.conditions.contains(
+                .sourceDiveSiteHasColoredCoral(color: .blue, minimum: 3)
+            )
+        )
+        XCTAssertTrue(bonusNode.conditions.contains(.sourceFishLocated))
+        XCTAssertTrue(bonusNode.conditions.contains(.sourceFishVisible))
+    }
+
+    func testAbilityEngineV2GraphExpressesBlackmouthSourceSiteCondition() throws {
+        let catalog = try SharksAndReefsCardCatalog()
+        let resolver = AbilityResolver()
+        let card = try XCTUnwrap(catalog.fishCards.first { $0.id == "sr.main.141" })
+        let ability = try XCTUnwrap(resolver.abilityDefinitions(for: card).first)
+        let sourceAddress = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 1)
+
+        let ir = AbilityEngineV2Adapter.abilityIR(
+            for: ability,
+            sourceCardId: card.id,
+            sourcePlayerId: "player-1",
+            sourceAddress: sourceAddress
+        )
+
+        let node = try XCTUnwrap(ir.graph.nodes.first)
+        XCTAssertEqual(
+            node.effect,
+            .playFishForFree(
+                filter: .any,
+                placement: .sameDiveSiteAsSource,
+                sourceCondition: .sourceDiveSiteHasNoCoral,
+                count: 1
+            )
+        )
+        XCTAssertTrue(node.conditions.contains(.sourceDiveSiteHasNoCoral))
+        XCTAssertTrue(node.conditions.contains(.sourceFishLocated))
+        XCTAssertTrue(node.conditions.contains(.sourceFishVisible))
+    }
+
+    func testAbilityEngineV2GraphExpressesGameEndExecutableTrigger() throws {
+        let catalog = try BaseGameCardCatalog()
+        let resolver = AbilityResolver()
+        let card = try XCTUnwrap(catalog.fishCards.first { $0.id == "base.main.117" })
+        let ability = try XCTUnwrap(resolver.abilityDefinitions(for: card, trigger: .gameEnd).first)
+        let sourceAddress = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 2)
+
+        let ir = AbilityEngineV2Adapter.abilityIR(
+            for: ability,
+            sourceCardId: card.id,
+            sourcePlayerId: "player-1",
+            sourceAddress: sourceAddress
+        )
+
+        XCTAssertEqual(ir.trigger, .gameEnd)
+        XCTAssertEqual(ir.graph.nodes.map(\.effect), [.consumeFishFromHand(count: 1), .consumeFishFromHand(count: 1)])
+        XCTAssertTrue(ir.graph.nodes.allSatisfy { $0.optionality == .optional })
+    }
+
+    func testPendingEffectSetRecomputesAvailableEffectsAfterCompoundProgressChanges() {
+        let ability = AbilityDefinition(
+            abilityId: "fixture.compound",
+            trigger: .ifActivated,
+            effects: [.placeEgg(count: 1), .hatchEgg(count: 1)],
+            canResolveInAnyOrder: true,
+            displayText: "fixture compound"
+        )
+        let sourceAddress = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        let initialChoice = PendingChoice(
+            choiceId: "choice-compound",
+            playerId: "player-1",
+            source: .fishAbility("fixture-fish"),
+            kind: .compoundAbility,
+            options: [],
+            expectedInput: .abilityEffectSelection,
+            isOptional: true,
+            abilityDefinition: ability,
+            compoundAbilityProgress: CompoundAbilityProgress(
+                abilityId: ability.abilityId,
+                playerId: "player-1",
+                sourceCardId: "fixture-fish",
+                sourceAddress: sourceAddress,
+                remainingEffects: ability.effects,
+                completedEffects: [],
+                canResolveInAnyOrder: true,
+                isOptional: true
+            ),
+            createdAtSequence: 1
+        )
+        let initialSet = initialChoice.v2PendingEffectSet
+        XCTAssertEqual(initialSet.available.map(\.effect), [.placeEgg(count: 1), .hatchEgg(count: 1)])
+        XCTAssertEqual(initialSet.completed.count, 0)
+
+        var updatedChoice = initialChoice
+        updatedChoice.compoundAbilityProgress?.remainingEffects = [.hatchEgg(count: 1)]
+        updatedChoice.compoundAbilityProgress?.completedEffects = [.placeEgg(count: 1)]
+        let updatedSet = updatedChoice.v2PendingEffectSet
+
+        XCTAssertEqual(updatedSet.available.map(\.effect), [.hatchEgg(count: 1)])
+        XCTAssertEqual(updatedSet.completed.map(\.effect), [.placeEgg(count: 1)])
+        XCTAssertEqual(initialSet.executionId, updatedSet.executionId)
+        XCTAssertEqual(updatedSet.sourcePlayerId, "player-1")
+        XCTAssertEqual(updatedSet.targetPlayerId, "player-1")
+    }
+
     func testColoredCoralConditionalBaseResolvesWithoutBonusWhenRequirementIsNotMet() throws {
         let engine = GameEngine(cardCatalog: try SharksAndReefsCardCatalog())
         var state = coloredCoralConditionalDiveState(

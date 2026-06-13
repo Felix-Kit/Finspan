@@ -227,6 +227,9 @@ enum AppStrings {
         static func coloredCoralRequirement(_ color: String, count: Int) -> String {
             "来源潜水点至少 \(count) 个\(color)珊瑚"
         }
+        static let abilityEngineV2Available = "可选收益"
+        static let abilityEngineV2Completed = "已完成"
+        static let abilityEngineV2Skipped = "已跳过"
         static let optionalChoice = "可跳过"
         static let requiredChoice = "必须处理"
         static let skipChoice = "跳过"

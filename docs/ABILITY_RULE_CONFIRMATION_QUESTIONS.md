@@ -13,6 +13,7 @@ This document tracks the rule questions still blocking unsupported real-card abi
 - Pass 2F before: 199 mapped / 16 unsupported
 - Pass 2F after: 215 mapped / 0 unsupported
 - Runtime ability texts containing `/`: 0
+- Current implementation focus: Ability Engine v2 execution-model consolidation, not new rule confirmation.
 
 Already confirmed and implemented:
 

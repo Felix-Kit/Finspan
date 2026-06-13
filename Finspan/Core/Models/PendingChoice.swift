@@ -19,6 +19,7 @@ struct PendingChoice: Identifiable, Codable, Equatable, Sendable {
     var selectedAbilityEffect: AbilityEffectUnit? = nil
     var allPlayersProgress: AllPlayersAbilityProgress? = nil
     var conditionalBonusProgress: ConditionalBonusAbilityProgress? = nil
+    var pendingEffectSet: PendingEffectSet? = nil
     var createdAtSequence: EventID
 
     var id: PendingChoiceID { choiceId }

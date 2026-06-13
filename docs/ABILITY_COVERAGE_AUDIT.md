@@ -22,6 +22,7 @@ python3 tools/scripts/audit_ability_coverage.py
 - Unmapped ability cards: 0
 - Runtime ability texts containing `/`: 0
 - Runtime `AllPlayers` ability cards: 34
+- Ability Engine v2 core migration has started as an adapter layer over existing `PendingChoice`; it does not add new mapped abilities or change gameplay results.
 
 Coverage history:
 
@@ -182,6 +183,6 @@ Representative real cards:
 
 ## Recommended Next Pass
 
-1. Keep `/` branch-choice modeling out of scope unless runtime JSON introduces a real slash ability.
-2. Continue validating unknown semantics strictly against runtime JSON before mapping.
-3. Move next implementation focus back to known UX / interaction gaps such as `recoverFromDiscardOrDraw` discard-pile selection.
+1. Continue Ability Engine v2 consolidation around `AbilityIR`, `EffectGraph`, and `PendingEffectSet`.
+2. Keep `/` branch-choice modeling out of scope unless runtime JSON introduces a real slash ability.
+3. Continue validating unknown semantics strictly against runtime JSON before mapping.

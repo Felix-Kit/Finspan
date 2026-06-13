@@ -111,10 +111,30 @@
 - `AbilityRegistry` / `AbilityResolver` 已落地。
 - Fish A / Fish B / Fish C sample ability 已迁移到 registry / resolver。
 - 当前 runtime JSON 中 215 张真实鱼牌能力已全部映射。
+- Ability Engine v2 core bridge 已开始接入：`AbilityIR` / `EffectGraph` / `EffectNode` / `PendingEffectSet` 已用于描述现有 pending choice。
+- v2 预留 trace / replay 字段，但本阶段不实现完整 replay、timeline 或 debug UI。
 
 ## 下一阶段计划
 
-### P0 当前 UI 修复
+### P0 Ability Engine v2 Core consolidation
+
+- 继续把 AllPlayers、compound effect pool、conditional bonus、Blackmouth source-site condition 和 GAME END executable abilities 收敛到统一 effect-node 模型。
+- 将更多 engine pending resolution 入口迁移到 `PendingEffectSet.available`。
+- 保留 legacy `PendingChoice` adapter，等 v2 choices 完全稳定后再清理 step-specific fields。
+
+### P1 GameBoardViewModel pending UI stabilization
+
+- 让 ViewModel 优先读取 current execution id、source player、target player、available / blocked / completed / skipped effects。
+- 减少 ViewModel 对 ability type、step index 和特殊 pipeline 的判断。
+- 保持 UI 小步稳定，不做大规模卡牌 UI 重构。
+
+### P2 `recoverFromDiscardOrDraw`
+
+- 弃牌堆只读详情升级为可选择模式。
+- pending choice 进入弃牌选择模式。
+- 弃牌为空时 fallback draw deck。
+
+### P3 当前 UI 修复
 
 - 去掉底部白色背景条。
 - 手牌居中。
@@ -123,33 +143,7 @@
 - 右侧行动玩家摘要精简。
 - 顶部行动摘要 toast 化。
 
-### P1 GAME END sweep 复查
-
-- 复查 33 条已实现 GAME END ability。
-- 补代表性真实卡端到端测试。
-- 确认 scoring-only / executable / unsupported 三种状态。
-- 确认 GAME END 打出新鱼后动态扫描。
-
-### P2 剩余 GAME END future work
-
-- Honeycomb Scaly Dragonfish / Speckled Butterflyfish：move young / move school 类。
-- Tripodfish / Blackmouth Angler / Sixgill Sawshark / Yokozuna Slickhead：复杂 mixed 类。
-
-### P3 S&R 成就和周目标
-
-- S&R achievement tiles。
-- Side A / Side B。
-- Side B 前三周随机 tile。
-- 最高分 +3。
-- 第 4 周 GAME END 说明格。
-
-### P4 `recoverFromDiscardOrDraw`
-
-- 弃牌堆只读详情升级为可选择模式。
-- pending choice 进入弃牌选择模式。
-- 弃牌为空时 fallback draw deck。
-
-### P5 BoardLayout 和真实背景板
+### P4 BoardLayout 和真实背景板
 
 - 从 AI / Figma 标注 SVG rect。
 - 生成 `BoardLayout.json`。
@@ -157,13 +151,15 @@
 - debug overlay。
 - 后续逐步迁移 slot / coral reef / diver area。
 
-### P6 真实卡牌渲染继续 QA
+### P5 S&R 成就和周目标
 
-- `FishCardFaceView` 视觉 QA。
-- compact / normal / detail 可以后置，不要过早复杂化。
-- empty slot / forage / real fish / unknown cardId 明确区分。
+- S&R achievement tiles。
+- Side A / Side B。
+- Side B 前三周随机 tile。
+- 最高分 +3。
+- 第 4 周 GAME END 说明格。
 
-### P7 多玩家 / 联机 / 产品化
+### P6 多玩家 / 联机 / 产品化
 
 - 点击对手头像查看 board。
 - 本地多人完整流程。
@@ -171,8 +167,20 @@
 - reconnect / 房间恢复。
 - App icon / launch screen / debug menu。
 
+### P7 v2.1 trace / replay / debug timeline
+
+- 使用 v2 已预留的 `executionId`、`effectNodeId`、`sourcePlayerId`、`targetPlayerId` 和 `decisionIndex`。
+- 增加 replay / trace 输出和 debug timeline。
+- 不在 v2 core consolidation 阶段提前实现 full replay。
+
+### Later 真实卡牌渲染继续 QA
+
+- `FishCardFaceView` 视觉 QA。
+- compact / normal / detail 可以后置，不要过早复杂化。
+- empty slot / forage / real fish / unknown cardId 明确区分。
+
 ## 当前建议下一步
 
-1. 先修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。
-2. 然后复查 GAME END sweep 的已实现 / unsupported 列表并补代表性测试。
+1. 先推进 Ability Engine v2 Core consolidation。
+2. 然后稳定 GameBoardViewModel pending UI。
 3. 再推进 `recoverFromDiscardOrDraw` 与弃牌堆选择模式联动。

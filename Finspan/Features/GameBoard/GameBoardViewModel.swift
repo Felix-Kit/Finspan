@@ -1718,7 +1718,7 @@ final class GameBoardViewModel: ObservableObject {
                     subtitle: pendingChoiceSubtitle(choice),
                     sourceText: AppStrings.pendingChoiceSourceName(choice.source),
                     statusText: AppStrings.GameBoard.pendingChoiceWaiting,
-                    progressLines: compoundAbilityProgressLines(for: choice),
+                    progressLines: pendingEffectSetProgressLines(for: choice) + compoundAbilityProgressLines(for: choice),
                     targetPrompt: pendingChoiceTargetPrompt(for: choice),
                     noTargetsText: noPendingChoiceTargetsText(for: choice),
                     targets: pendingChoiceTargets(for: choice),
@@ -4129,6 +4129,18 @@ final class GameBoardViewModel: ObservableObject {
                 progress: progress
             )
         ].compactMap { $0 }
+    }
+
+    private func pendingEffectSetProgressLines(for choice: PendingChoice) -> [String] {
+        let effectSet = choice.v2PendingEffectSet
+        guard !effectSet.available.isEmpty || !effectSet.completed.isEmpty || !effectSet.skipped.isEmpty else {
+            return []
+        }
+        return [
+            "\(AppStrings.GameBoard.abilityEngineV2Available)：\(effectSet.available.count)",
+            "\(AppStrings.GameBoard.abilityEngineV2Completed)：\(effectSet.completed.count)",
+            "\(AppStrings.GameBoard.abilityEngineV2Skipped)：\(effectSet.skipped.count)"
+        ]
     }
 
     private func abilityProgressLine(
