@@ -104,7 +104,8 @@
 - Ability Engine v2 core bridge 已开始接入：`PendingChoice` 可通过 `v2PendingEffectSet` 暴露统一的 execution / effect-node 状态。
 - Ability Engine v2 Cleanup Pass 1 已完成：`GameBoardViewModel` 的 pending action 按钮和通用进度摘要优先读取 `PendingEffectSet.available` / completed / skipped。
 - Ability Engine v2 Cleanup Pass 2 已完成：v2 action button / simple target selection 现在携带 `PendingEffectIntent` 和 `effectNodeId`，再通过 adapter 映射到现有 `PendingChoiceResolution`。
-- legacy `PendingChoice` 仍保留为 compatibility shell，继续承载 reward pool、复杂 staged target selection 和现有 `PendingChoiceResolution` 命令。
+- Ability Engine v2 Cleanup Pass 3A 已完成：`EffectNodeMetadata` 已能描述 reward token、target requirement、payment requirement、resource requirement 和复杂 staged selection prompt；reward pool / prompt display 优先读取 v2 metadata，再 fallback 到 legacy。
+- legacy `PendingChoice` 仍保留为 compatibility shell，继续承载复杂 staged payload、reward token action dispatch 和现有 `PendingChoiceResolution` 命令。
 - v2 当前是 adapter / consolidation 层，不改变既有玩法结果，也不实现完整 replay / debug timeline。
 - 未来 runtime JSON 新增或变更的未知能力仍应保持可表示、可跳过，不应导致崩溃。
 
@@ -132,7 +133,7 @@
 
 ### 规则与功能
 
-- Ability Engine v2 cleanup：继续把 reward pool token generation、复杂 staged target prompts 和 native engine resolve / skip 入口迁移到 effect-node model。
+- Ability Engine v2 cleanup：下一步推进 native effect-node resolve / skip 入口；复杂 staged payload 仍通过 legacy adapter 保持行为稳定。
 - GameBoardViewModel pending UI stabilization：继续减少 ViewModel 对具体 ability type / step order 的依赖。
 - `recoverFromDiscardOrDraw` 与弃牌堆选择模式联动。
 - S&R achievements。
@@ -145,6 +146,6 @@
 
 ## 当前建议下一步
 
-1. 先推进 Ability Engine v2 cleanup，把 reward pool 和复杂 staged target selection 继续迁移到 `PendingEffectSet` / effect-node model。
+1. 先推进 Ability Engine v2 cleanup，把 native effect-node resolve / skip 入口接到 engine，同时保留 legacy adapter 作为回退。
 2. 再推进 `recoverFromDiscardOrDraw` 与弃牌堆选择模式联动。
 3. 之后修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。

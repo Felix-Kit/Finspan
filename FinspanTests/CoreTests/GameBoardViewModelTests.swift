@@ -3478,6 +3478,94 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(rewardPool.instructionText, AppStrings.GameBoard.chooseRewardThenTarget)
     }
 
+    func testEffectNodeMetadataDescribesDrawRewardToken() throws {
+        let choice = pendingChoice(kind: .drawFish)
+        let node = try XCTUnwrap(choice.v2PendingEffectSet.available.first)
+
+        XCTAssertEqual(node.metadata.rewardTokenRequirement?.tokenKind, .drawFish)
+        XCTAssertEqual(node.metadata.rewardTokenRequirement?.count, 1)
+        XCTAssertNil(node.metadata.targetRequirement)
+    }
+
+    func testEffectNodeMetadataDescribesSimpleTargetRequirements() throws {
+        let cases: [(PendingChoiceKind, EffectSlotTargetKind)] = [
+            (.placeEgg, .placeEgg),
+            (.hatchEgg, .hatchEgg),
+            (.placeYoung, .placeYoung)
+        ]
+
+        for (kind, targetKind) in cases {
+            let choice = pendingChoice(kind: kind)
+            let node = try XCTUnwrap(choice.v2PendingEffectSet.available.first)
+
+            XCTAssertEqual(node.metadata.targetRequirement?.kind, .slot(targetKind))
+            XCTAssertEqual(node.metadata.rewardTokenRequirement?.tokenKind, effectRewardKind(for: kind))
+        }
+    }
+
+    func testEffectNodeMetadataDescribesScatterAndConsumeStages() throws {
+        let scatterChoice = scatterSchoolPendingChoice()
+        let scatterNode = try XCTUnwrap(scatterChoice.v2PendingEffectSet.available.first)
+        XCTAssertEqual(scatterNode.metadata.stagedSelection?.stage, .selectScatterSchoolSource)
+        XCTAssertEqual(scatterNode.metadata.stagedSelection?.nextStageHint, .selectScatterSchoolYoungTarget)
+        XCTAssertEqual(scatterNode.metadata.targetRequirement?.kind, .slot(.scatterSchoolSource))
+
+        let consumeChoice = consumeFishFromHandPendingChoice()
+        let consumeNode = try XCTUnwrap(consumeChoice.v2PendingEffectSet.available.first)
+        XCTAssertEqual(consumeNode.metadata.stagedSelection?.stage, .selectConsumerFish)
+        XCTAssertEqual(consumeNode.metadata.stagedSelection?.nextStageHint, .selectConsumedHandFish)
+        XCTAssertEqual(consumeNode.metadata.targetRequirement?.kind, .slot(.consumeFishConsumer))
+    }
+
+    func testEffectNodeMetadataDescribesFreePlayAndPlayFromHandPrompts() throws {
+        let freeChoice = playFishForFreePendingChoice()
+        let freeNode = try XCTUnwrap(freeChoice.v2PendingEffectSet.available.first)
+        XCTAssertEqual(freeNode.metadata.stagedSelection?.stage, .selectFreePlayHandFish)
+        XCTAssertEqual(freeNode.metadata.paymentRequirement?.paymentKind, .freePlay)
+        XCTAssertEqual(freeNode.metadata.paymentRequirement?.costWaived, true)
+
+        let paidChoice = playFishFromHandPendingChoice()
+        let paidNode = try XCTUnwrap(paidChoice.v2PendingEffectSet.available.first)
+        XCTAssertEqual(paidNode.metadata.stagedSelection?.stage, .selectPlayFromHandFish)
+        XCTAssertEqual(paidNode.metadata.paymentRequirement?.paymentKind, .playFish)
+        XCTAssertEqual(paidNode.metadata.paymentRequirement?.costWaived, false)
+    }
+
+    func testEffectNodeMetadataDescribesCoralPaymentPrompt() throws {
+        let choice = pendingChoice(kind: .gainCoral, source: .coralReef(.blue))
+        let node = try XCTUnwrap(choice.v2PendingEffectSet.available.first)
+
+        XCTAssertEqual(node.metadata.rewardTokenRequirement?.tokenKind, .gainCoral)
+        XCTAssertEqual(node.metadata.stagedSelection?.stage, .selectCoralPaymentSource)
+        XCTAssertEqual(node.metadata.paymentRequirement?.paymentKind, .coral)
+        XCTAssertEqual(node.metadata.paymentRequirement?.allowedSources, [.egg, .young, .handCard])
+    }
+
+    func testViewModelUsesV2RewardMetadataWhenCatalogIsAvailable() {
+        let choice = pendingChoice(kind: .drawFish)
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+
+        let rewardPool = viewModel.rewardPoolViewState
+
+        XCTAssertTrue(rewardPool.isActive)
+        XCTAssertEqual(choice.v2PendingEffectSet.available.first?.metadata.rewardTokenRequirement?.tokenKind, .drawFish)
+        XCTAssertEqual(rewardPool.rewards.map(\.kind), [.drawFish])
+        XCTAssertEqual(rewardPool.rewards.map(\.title), [AppStrings.GameBoard.drawOneFishCard])
+    }
+
+    func testViewModelUsesV2StagedSelectionMetadataForPromptWhenCatalogIsAvailable() {
+        let choice = scatterSchoolPendingChoice()
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+
+        XCTAssertEqual(
+            choice.v2PendingEffectSet.available.first?.metadata.stagedSelection?.stage,
+            .selectScatterSchoolSource
+        )
+        XCTAssertEqual(viewModel.rewardPoolViewState.instructionText, AppStrings.GameBoard.scatterSchoolSource)
+    }
+
     func testMoveYoungOrSchoolPendingChoiceGeneratesMoveRewardToken() {
         let choice = pendingChoice(kind: .moveYoungOrSchool)
         let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
@@ -4536,6 +4624,33 @@ final class GameBoardViewModelTests: XCTestCase {
         )
     }
 
+    private func playFishFromHandPendingChoice(
+        filter: HandFishFilter = .any,
+        expectedInput: PendingChoiceExpectedInput = .playFishFromHandCard,
+        progress: PlayFishFromHandProgress? = nil
+    ) -> PendingChoice {
+        let ability = AbilityDefinition(
+            abilityId: "fixture-play-fish-from-hand",
+            trigger: .whenPlayed,
+            effects: [.playFishFromHand(filter: filter, placement: .any, costMode: .payCost)],
+            isOptional: true,
+            displayText: "打出时：从手牌打出鱼"
+        )
+        return PendingChoice(
+            choiceId: "choice-play-fish-from-hand",
+            playerId: "player-1",
+            source: .fishAbility("fixture.paid"),
+            kind: .playFishFromHand,
+            options: [],
+            expectedInput: expectedInput,
+            isOptional: true,
+            abilityDefinition: ability,
+            playFishFromHandProgress: progress,
+            selectedAbilityEffect: .playFishFromHand(filter: filter, placement: .any, costMode: .payCost),
+            createdAtSequence: 2
+        )
+    }
+
     private func compoundAbilityPendingChoice() -> PendingChoice {
         let sourceAddress = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
         let ability = AbilityDefinition(
@@ -4597,6 +4712,39 @@ final class GameBoardViewModelTests: XCTestCase {
              .placeholder,
              .unsupported:
             return .none
+        }
+    }
+
+    private func effectRewardKind(for kind: PendingChoiceKind) -> EffectRewardTokenKind {
+        switch kind {
+        case .drawFish:
+            return .drawFish
+        case .recoverFromDiscardOrDraw:
+            return .recoverFromDiscardOrDraw
+        case .placeEgg,
+             .placeEggOnMatchingFish:
+            return .placeEgg
+        case .placeYoung:
+            return .placeYoung
+        case .hatchEgg:
+            return .hatchEgg
+        case .moveYoungOrSchool:
+            return .moveYoungOrSchool
+        case .gainCoral:
+            return .gainCoral
+        case .scatterSchool:
+            return .scatterSchool
+        case .consumeFishFromHand:
+            return .consumeFishFromHand
+        case .playFishForFree:
+            return .playFishForFree
+        case .playFishFromHand:
+            return .playFishFromHand
+        case .compoundAbility,
+             .bottomBonus,
+             .placeholder,
+             .unsupported:
+            return .unsupported
         }
     }
 

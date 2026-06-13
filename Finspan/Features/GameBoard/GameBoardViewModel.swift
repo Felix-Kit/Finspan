@@ -4681,10 +4681,21 @@ final class GameBoardViewModel: ObservableObject {
                 switch requirement.kind {
                 case .slot(.placeEgg),
                      .slot(.placeYoung),
-                     .slot(.hatchEgg):
+                     .slot(.hatchEgg),
+                     .slot(.scatterSchoolSource),
+                     .slot(.scatterSchoolYoungTarget),
+                     .slot(.consumeFishConsumer),
+                     .slot(.freePlayTarget),
+                     .slot(.playFishFromHandTarget):
                     return true
                 case .discardCard:
                     return choice.kind == .recoverFromDiscardOrDraw
+                case .fish,
+                     .visibleFish,
+                     .handCard,
+                     .coralReef,
+                     .sourceTargetSlotPair:
+                    return false
                 }
             }
     }
@@ -4781,6 +4792,10 @@ final class GameBoardViewModel: ObservableObject {
     private func rewardTokenEntries(
         for choice: PendingChoice
     ) -> [(token: RewardTokenViewState, action: RewardTokenAction)] {
+        if let entries = v2RewardTokenEntries(for: choice) {
+            return entries
+        }
+
         let canResolve = canResolvePendingChoice(choice)
         switch choice.kind {
         case .drawFish:
@@ -5188,6 +5203,254 @@ final class GameBoardViewModel: ObservableObject {
                 .unsupported
             )]
         }
+    }
+
+    private func v2RewardTokenEntries(
+        for choice: PendingChoice
+    ) -> [(token: RewardTokenViewState, action: RewardTokenAction)]? {
+        guard choice.kind != .compoundAbility,
+              let node = choice.v2PendingEffectSet.available.first,
+              let rewardRequirement = AbilityEngineV2Adapter.rewardTokenRequirement(for: node)
+        else {
+            return nil
+        }
+
+        switch rewardRequirement.tokenKind {
+        case .drawFish:
+            let count = drawCount(for: choice)
+            let tokenId = "\(choice.choiceId)-drawFish"
+            return [(
+                rewardToken(
+                    id: tokenId,
+                    kind: .drawFish,
+                    title: AppStrings.GameBoard.drawFishCard(count: count),
+                    subtitle: rewardSourceText(for: choice),
+                    iconText: "牌",
+                    symbolName: "rectangle.stack",
+                    isSelectable: canResolvePendingChoice(choice)
+                ),
+                .direct(choiceId: choice.choiceId, resolution: .draw(count: count))
+            )]
+        case .recoverFromDiscardOrDraw:
+            guard let playerState = state.playerGameStates[choice.playerId] else {
+                return []
+            }
+            if playerState.discardPile.isEmpty {
+                let tokenId = "\(choice.choiceId)-drawFromDeck"
+                return [(
+                    rewardToken(
+                        id: tokenId,
+                        kind: .recoverFromDiscardOrDraw,
+                        title: AppStrings.GameBoard.drawOneFishCard,
+                        subtitle: AppStrings.GameBoard.discardPileEmptyDrawAlternative,
+                        iconText: "牌",
+                        symbolName: "rectangle.stack",
+                        isSelectable: canResolvePendingChoice(choice) && !state.deckState.fishDrawPile.isEmpty,
+                        unavailableReasonText: state.deckState.fishDrawPile.isEmpty ? AppStrings.GameBoard.fishDrawPileEmpty : nil
+                    ),
+                    .direct(choiceId: choice.choiceId, resolution: .drawFromDeck)
+                )]
+            }
+            return playerState.discardPile.map { cardId in
+                let tokenId = "\(choice.choiceId)-recover-\(cardId)"
+                return (
+                    rewardToken(
+                        id: tokenId,
+                        kind: .recoverFromDiscardOrDraw,
+                        title: AppStrings.GameBoard.recoverOneFromDiscard,
+                        subtitle: cardTitle(cardId),
+                        iconText: "回",
+                        symbolName: "arrow.uturn.backward",
+                        isSelectable: canResolvePendingChoice(choice)
+                    ),
+                    .direct(choiceId: choice.choiceId, resolution: .recoverCard(cardId))
+                )
+            }
+        case .placeEgg:
+            return v2TargetRewardEntries(
+                for: choice,
+                node: node,
+                kind: .placeEgg,
+                title: AppStrings.GameBoard.placeEggAbilityAction,
+                subtitle: AppStrings.GameBoard.chooseLeftTarget,
+                iconText: "卵",
+                symbolName: "circle",
+                resolutionKind: .placeEgg
+            )
+        case .placeYoung:
+            return v2TargetRewardEntries(
+                for: choice,
+                node: node,
+                kind: .placeYoung,
+                title: AppStrings.GameBoard.placeYoungAbilityAction,
+                subtitle: AppStrings.GameBoard.chooseLeftTarget,
+                iconText: "幼",
+                symbolName: "circle.fill",
+                resolutionKind: .placeYoung
+            )
+        case .hatchEgg:
+            return v2TargetRewardEntries(
+                for: choice,
+                node: node,
+                kind: .hatchEgg,
+                title: AppStrings.GameBoard.hatchEggAbilityAction,
+                subtitle: AppStrings.GameBoard.chooseLeftTarget,
+                iconText: "孵",
+                symbolName: "circle.dotted",
+                resolutionKind: .hatchEgg
+            )
+        case .moveYoungOrSchool:
+            guard AbilityEngineV2Adapter.stagedSelectionRequirement(for: node)?.stage == .selectMoveSource
+                    || node.metadata.rewardTokenRequirement != nil
+            else {
+                return nil
+            }
+            let tokenId = "\(choice.choiceId)-moveYoungOrSchool"
+            return [(
+                rewardToken(
+                    id: tokenId,
+                    kind: .moveYoungOrSchool,
+                    title: AppStrings.GameBoard.moveYoungOrSchool,
+                    subtitle: AppStrings.GameBoard.chooseSource,
+                    iconText: "移",
+                    symbolName: "arrow.up.and.down.and.arrow.left.and.right",
+                    isSelectable: canResolvePendingChoice(choice)
+                ),
+                .chooseMoveSource(choiceId: choice.choiceId)
+            )]
+        case .gainCoral:
+            guard AbilityEngineV2Adapter.paymentRequirement(for: node) != nil || choice.expectedInput != .coralPayment else {
+                return nil
+            }
+            return choice.expectedInput == .coralPayment
+                ? v2CoralPaymentRewardEntries(for: choice)
+                : abilityCoralRewardEntries(for: choice)
+        case .scatterSchool:
+            guard AbilityEngineV2Adapter.stagedSelectionRequirement(for: node) != nil else {
+                return nil
+            }
+            return scatterSchoolRewardEntries(for: choice)
+        case .consumeFishFromHand:
+            guard AbilityEngineV2Adapter.stagedSelectionRequirement(for: node) != nil else {
+                return nil
+            }
+            return consumeFishFromHandRewardEntries(for: choice)
+        case .playFishForFree:
+            guard AbilityEngineV2Adapter.stagedSelectionRequirement(for: node) != nil
+                    || AbilityEngineV2Adapter.paymentRequirement(for: node)?.costWaived == true
+            else {
+                return nil
+            }
+            return playFishForFreeRewardEntries(for: choice)
+        case .playFishFromHand:
+            guard AbilityEngineV2Adapter.stagedSelectionRequirement(for: node) != nil
+                    || AbilityEngineV2Adapter.paymentRequirement(for: node)?.paymentKind == .playFish
+            else {
+                return nil
+            }
+            return playFishFromHandRewardEntries(for: choice)
+        case .skipOrEnd,
+             .unsupported:
+            return nil
+        }
+    }
+
+    private func v2TargetRewardEntries(
+        for choice: PendingChoice,
+        node: EffectNode,
+        kind: RewardTokenKind,
+        title: String,
+        subtitle: String,
+        iconText: String,
+        symbolName: String,
+        resolutionKind: PendingChoiceKind
+    ) -> [(token: RewardTokenViewState, action: RewardTokenAction)]? {
+        guard node.metadata.targetRequirement != nil else {
+            return nil
+        }
+        let tokenId = "\(choice.choiceId)-\(kind.rawValue)"
+        return [(
+            rewardToken(
+                id: tokenId,
+                kind: kind,
+                title: title,
+                subtitle: subtitle,
+                iconText: iconText,
+                symbolName: symbolName,
+                isSelectable: canResolvePendingChoice(choice)
+            ),
+            .chooseTarget(choiceId: choice.choiceId, kind: resolutionKind)
+        )]
+    }
+
+    private func v2CoralPaymentRewardEntries(
+        for choice: PendingChoice
+    ) -> [(token: RewardTokenViewState, action: RewardTokenAction)] {
+        guard let playerState = state.playerGameStates[choice.playerId],
+              let diveSite = coralDiveSite(for: choice),
+              let reef = playerState.ocean.coralReefs.first(where: { $0.diveSite == diveSite })
+        else {
+            return []
+        }
+
+        let canResolve = canResolvePendingChoice(choice)
+        let hasEgg = playerState.ocean.slots.contains { resourceAmount(.egg, in: $0) > 0 }
+        let hasYoung = playerState.ocean.slots.contains { resourceAmount(.young, in: $0) > 0 }
+        let hasHandCard = !playerState.hand.isEmpty
+        let progressText = AppStrings.coralReefProgressText(coralCount: reef.coralCount, maxCoral: reef.maxCoral)
+        return [
+            (
+                rewardToken(
+                    id: "\(choice.choiceId)-coral-egg",
+                    kind: .gainCoral,
+                    title: AppStrings.GameBoard.payOneEgg,
+                    subtitle: progressText,
+                    iconText: "卵",
+                    symbolName: "circle",
+                    isSelectable: canResolve && hasEgg,
+                    unavailableReasonText: hasEgg ? nil : AppStrings.GameBoard.noCoralPaymentResource
+                ),
+                .chooseCoralResource(choiceId: choice.choiceId, tokenId: "\(choice.choiceId)-coral-egg", kind: .egg)
+            ),
+            (
+                rewardToken(
+                    id: "\(choice.choiceId)-coral-young",
+                    kind: .gainCoral,
+                    title: AppStrings.GameBoard.payOneYoung,
+                    subtitle: progressText,
+                    iconText: "幼",
+                    symbolName: "circle.dotted",
+                    isSelectable: canResolve && hasYoung,
+                    unavailableReasonText: hasYoung ? nil : AppStrings.GameBoard.noCoralPaymentResource
+                ),
+                .chooseCoralResource(choiceId: choice.choiceId, tokenId: "\(choice.choiceId)-coral-young", kind: .young)
+            ),
+            (
+                rewardToken(
+                    id: "\(choice.choiceId)-coral-discard",
+                    kind: .gainCoral,
+                    title: AppStrings.GameBoard.discardOneHandCard,
+                    subtitle: progressText,
+                    iconText: "牌",
+                    symbolName: "rectangle.stack.badge.minus",
+                    isSelectable: canResolve && hasHandCard,
+                    unavailableReasonText: hasHandCard ? nil : AppStrings.GameBoard.noCoralPaymentHandCard
+                ),
+                .chooseCoralHandCard(choiceId: choice.choiceId, tokenId: "\(choice.choiceId)-coral-discard")
+            ),
+            (
+                rewardToken(
+                    id: "\(choice.choiceId)-coral-skip",
+                    kind: .skipOrEnd,
+                    title: AppStrings.GameBoard.skipChoice,
+                    subtitle: AppStrings.GameBoard.optionalChoice,
+                    iconText: "跳",
+                    symbolName: "forward.end",
+                    isSelectable: canResolve
+                ),
+                .direct(choiceId: choice.choiceId, resolution: .skip)
+            )
+        ]
     }
 
     private func rewardToken(
@@ -5600,7 +5863,40 @@ final class GameBoardViewModel: ObservableObject {
                 return slot.content.hasFish || slot.content == .empty
             case .slot(.hatchEgg):
                 return resourceAmount(.egg, in: slot) > 0
-            case .discardCard:
+            case .slot(.scatterSchoolSource):
+                return resourceAmount(.school, in: slot) > 0
+            case .slot(.scatterSchoolYoungTarget):
+                guard let playerState = state.playerGameStates[requirement.ownerPlayerId] else {
+                    return false
+                }
+                return scatterSchoolYoungTargetIsLegal(
+                    slot,
+                    for: choice,
+                    playerState: playerState
+                )
+            case .slot(.consumeFishConsumer):
+                return consumeFishConsumerIsLegal(slot, for: choice)
+            case .slot(.freePlayTarget):
+                guard let cardId = choice.playFishForFreeProgress?.selectedCardId,
+                      let card = cardsById[cardId]
+                else {
+                    return false
+                }
+                return freePlayTargetIsLegal(slot.address, for: choice)
+                    && playFishSlotPreview(for: slot, card: card).isSelectable
+            case .slot(.playFishFromHandTarget):
+                guard let cardId = choice.playFishFromHandProgress?.selectedCardId,
+                      let card = cardsById[cardId]
+                else {
+                    return false
+                }
+                return playFishFromHandTargetIsLegal(slot, card: card, for: choice)
+            case .fish,
+                 .visibleFish,
+                 .handCard,
+                 .coralReef,
+                 .sourceTargetSlotPair,
+                 .discardCard:
                 return false
             }
         }
@@ -5643,11 +5939,32 @@ final class GameBoardViewModel: ObservableObject {
                 return AppStrings.GameBoard.choosePlaceYoungTarget
             case .slot(.hatchEgg):
                 return AppStrings.GameBoard.chooseHatchEggTarget
+            case .slot(.scatterSchoolSource):
+                return AppStrings.GameBoard.scatterSchoolSource
+            case .slot(.scatterSchoolYoungTarget):
+                return AppStrings.GameBoard.scatterSchoolYoungTarget
+            case .slot(.consumeFishConsumer):
+                return AppStrings.GameBoard.consumeFishConsumer
+            case .slot(.freePlayTarget):
+                return AppStrings.GameBoard.playFishForFreeTarget
+            case .slot(.playFishFromHandTarget):
+                return AppStrings.GameBoard.playFishFromHandTarget
             case .discardCard:
                 return state.playerGameStates[requirement.ownerPlayerId]?.discardPile.isEmpty == true
                     ? AppStrings.GameBoard.discardPileEmptyDrawHint
                     : AppStrings.GameBoard.chooseDiscardCardToRecover
+            case .handCard:
+                return stagedSelectionInstructionText(for: choice) ?? AppStrings.GameBoard.chooseOption
+            case .fish,
+                 .visibleFish,
+                 .coralReef,
+                 .sourceTargetSlotPair:
+                return stagedSelectionInstructionText(for: choice)
             }
+        }
+
+        if let stagedText = stagedSelectionInstructionText(for: choice) {
+            return stagedText
         }
 
         switch choice.kind {
@@ -5696,6 +6013,48 @@ final class GameBoardViewModel: ObservableObject {
              .placeholder,
              .unsupported:
             return nil
+        }
+    }
+
+    private func stagedSelectionInstructionText(for choice: PendingChoice) -> String? {
+        guard let stage = choice.v2PendingEffectSet.available.first?.metadata.stagedSelection?.stage else {
+            return nil
+        }
+        return instructionText(for: stage)
+    }
+
+    private func instructionText(for stage: EffectSelectionStage) -> String {
+        switch stage {
+        case .selectTargetSlot:
+            return AppStrings.GameBoard.chooseLeftTarget
+        case .selectDiscardCard:
+            return AppStrings.GameBoard.chooseDiscardCardToRecover
+        case .selectMoveSource:
+            return AppStrings.GameBoard.chooseSource
+        case .selectMoveTarget:
+            return AppStrings.GameBoard.chooseTarget
+        case .selectCoralPaymentSource:
+            return AppStrings.GameBoard.chooseCoralPayment
+        case .selectCoralPaymentCard:
+            return AppStrings.GameBoard.chooseCoralDiscardCard
+        case .selectScatterSchoolSource:
+            return AppStrings.GameBoard.scatterSchoolSource
+        case .selectScatterSchoolYoungTarget:
+            return AppStrings.GameBoard.scatterSchoolYoungTarget
+        case .selectConsumerFish:
+            return AppStrings.GameBoard.consumeFishConsumer
+        case .selectConsumedHandFish:
+            return AppStrings.GameBoard.consumeFishHandCard
+        case .selectFreePlayHandFish:
+            return AppStrings.GameBoard.playFishForFreeHandCard
+        case .selectFreePlayTargetSlot:
+            return AppStrings.GameBoard.playFishForFreeTarget
+        case .selectPlayFromHandFish:
+            return AppStrings.GameBoard.playFishFromHandHandCard
+        case .selectPlayFromHandTargetSlot:
+            return AppStrings.GameBoard.playFishFromHandTarget
+        case .selectPlayFromHandPayment:
+            return AppStrings.GameBoard.playFishFromHandPayment
         }
     }
 
@@ -5778,6 +6137,10 @@ final class GameBoardViewModel: ObservableObject {
             case .playFishFromHandPayment:
                 return AppStrings.GameBoard.playFishFromHandPayment
             }
+        }
+
+        if let stagedText = stagedSelectionInstructionText(for: choice) {
+            return stagedText
         }
 
         switch choice.kind {

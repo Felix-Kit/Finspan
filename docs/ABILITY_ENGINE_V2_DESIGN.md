@@ -2,7 +2,7 @@
 
 Last updated: 2026-06-13.
 
-This document describes the Ability Engine v2 core migration and Cleanup Passes 1-2.
+This document describes the Ability Engine v2 core migration and Cleanup Passes 1-3A.
 It is an architecture consolidation pass, not a rules expansion.
 
 ## Current Coverage Baseline
@@ -36,8 +36,11 @@ tools can start reading a unified execution shape.
 Cleanup Pass 1 makes `PendingEffectSet` the primary pending action display
 model for `GameBoardViewModel`. Cleanup Pass 2 adds `PendingEffectIntent` as the
 generic resolve / skip intent model and bridges it back to existing
-`PendingChoiceResolution` values. Legacy `PendingChoice` still exists as the
-compatibility shell for command payloads and complex target-selection workflows.
+`PendingChoiceResolution` values. Cleanup Pass 3A extends `EffectNodeMetadata`
+so reward tokens, payment summaries, target requirements, and staged prompt
+requirements can be described by v2 metadata before legacy resolution is
+removed. Legacy `PendingChoice` still exists as the compatibility shell for
+command payloads and staged selection payloads.
 
 ## Unified Execution Shape
 
@@ -183,12 +186,8 @@ Migrated target requirement paths:
 
 Still legacy / deferred staged flows:
 
-- reward token generation
-- coral payment
-- scatter school staged source / target selection
-- consume-from-hand staged selection
-- free-play / paid-play staged hand-card and target selection
-- play-from-hand target + payment combo
+- native engine resolution for reward token choices
+- full staged selection payload resolution
 - native `PlayerCommand` support for effect-node resolution
 
 The resulting flow is:
@@ -201,6 +200,61 @@ This keeps gameplay unchanged while letting the UI carry `executionId`,
 `effectNodeId`, `sourcePlayerId`, and `targetPlayerId` through the action layer.
 Those ids remain lightweight trace hooks only; v2.1 full replay, debug timeline,
 and graph viewer are not implemented.
+
+## Cleanup Pass 3A Boundary
+
+Cleanup Pass 3A moves the description layer for complex prompts into
+`EffectNodeMetadata` while keeping the existing engine command path:
+
+```text
+EffectNode -> metadata -> ViewModel prompt / reward token -> PendingChoiceResolution -> GameEngine
+```
+
+New metadata fields:
+
+- `targetRequirement`
+- `paymentRequirement`
+- `resourceRequirement`
+- `rewardTokenRequirement`
+- `stagedSelection`
+
+Reward token display now starts from v2 metadata for:
+
+- draw fish
+- recover-from-discard-or-draw
+- place egg
+- place young
+- hatch egg
+- move young / school
+- gain coral and coral payment token summaries
+- scatter school
+- consume fish from hand
+- play fish for free
+- play fish from hand
+
+Staged prompt metadata now describes:
+
+- scatter school source and young target selection
+- consume-from-hand consumer fish and hand fish selection
+- free-play hand fish and target slot selection
+- paid play hand fish, target slot, and payment stages
+- coral payment source / discard-card stages
+
+This pass deliberately does not change how those choices resolve. The ViewModel
+still maps selections to existing `PendingChoiceResolution` values, and
+`GameEngine` validation remains the source of truth. Native
+`PlayerCommand.resolveEffectNode` / `skipEffectNode` support is deferred to a
+later cleanup pass.
+
+Still legacy / deferred after Pass 3A:
+
+- staged selection payloads still use `RewardSelectionMode`
+- coral payment source selection still resolves through legacy coral
+  `PendingChoiceResolution`
+- scatter / consume / free-play / paid-play staged choices still use legacy
+  staged progress fields
+- reward pool token actions still dispatch legacy resolutions
+- v2.1 full replay, debug timeline, and graph viewer are not implemented
 
 ## Behavior Guarantees
 
@@ -217,10 +271,8 @@ This pass must not change gameplay results:
 
 ## Next Steps
 
-- Move reward pool token generation and remaining staged target prompts to v2
-  target requirement metadata.
-- Teach engine resolution to accept effect-node choices directly instead of
-  routing through the compatibility adapter.
+- Add native effect-node resolve / skip engine entry points instead of routing
+  through the compatibility adapter.
 - Add v2.1 trace / replay / debug timeline using the reserved ids.
 - Remove legacy step-specific pending fields only after v2 choices are fully
   authoritative and tested.

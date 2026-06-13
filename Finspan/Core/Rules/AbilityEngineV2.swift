@@ -62,6 +62,11 @@ struct EffectNodeMetadata: Codable, Equatable, Sendable {
     var debugDescription: String
     var legacyChoiceKind: PendingChoiceKind?
     var decisionIndex: Int
+    var targetRequirement: EffectTargetRequirement? = nil
+    var paymentRequirement: EffectPaymentRequirement? = nil
+    var resourceRequirement: EffectResourceRequirement? = nil
+    var rewardTokenRequirement: EffectRewardTokenRequirement? = nil
+    var stagedSelection: EffectStagedSelectionRequirement? = nil
 }
 
 struct PendingEffectSet: Codable, Equatable, Sendable {
@@ -155,17 +160,146 @@ struct EffectTargetRequirement: Codable, Equatable, Sendable {
     var ownerPlayerId: PlayerID
     var effectNodeId: EffectNodeId
     var debugLabel: String
+    var allowedZones: [OceanZone]? = nil
+    var allowedDiveSites: [DiveSite]? = nil
+    var filters: [EffectTargetFilter] = []
+    var minCount: Int = 1
+    var maxCount: Int = 1
 }
 
 enum EffectTargetKind: Codable, Equatable, Sendable {
     case slot(EffectSlotTargetKind)
+    case fish
+    case visibleFish
+    case handCard
     case discardCard
+    case coralReef
+    case sourceTargetSlotPair
 }
 
 enum EffectSlotTargetKind: String, Codable, Equatable, Sendable {
     case placeEgg
     case placeYoung
     case hatchEgg
+    case scatterSchoolSource
+    case scatterSchoolYoungTarget
+    case consumeFishConsumer
+    case freePlayTarget
+    case playFishFromHandTarget
+}
+
+enum EffectTargetFilter: Codable, Equatable, Sendable {
+    case hasVisibleFish
+    case hasEgg
+    case hasSchool
+    case canAcceptEgg
+    case canAcceptYoung
+    case canHatchEgg
+    case canScatterSchoolYoung
+    case canConsumeHandFish
+    case canPlaySelectedFish
+    case matchesFishFilter(String)
+}
+
+struct EffectPaymentRequirement: Codable, Equatable, Sendable {
+    var paymentKind: EffectPaymentKind
+    var allowedSources: [EffectPaymentSourceKind]
+    var requiredResources: [EffectRequiredPaymentResource]
+    var isOptional: Bool
+    var costWaived: Bool
+    var debugLabel: String
+}
+
+enum EffectPaymentKind: Codable, Equatable, Sendable {
+    case coral
+    case playFish
+    case freePlay
+}
+
+enum EffectPaymentSourceKind: Codable, Equatable, Sendable {
+    case egg
+    case young
+    case handCard
+    case discardCard
+    case coralReef
+    case waivedCost
+}
+
+struct EffectRequiredPaymentResource: Codable, Equatable, Sendable {
+    var kind: ResourceKind?
+    var count: Int
+    var source: EffectPaymentSourceKind
+}
+
+struct EffectResourceRequirement: Codable, Equatable, Sendable {
+    var resourceKind: ResourceKind
+    var ownerPlayerId: PlayerID
+    var minCount: Int
+    var maxCount: Int
+    var source: EffectResourceSource
+}
+
+enum EffectResourceSource: Codable, Equatable, Sendable {
+    case oceanSlot
+    case coralReef
+}
+
+struct EffectRewardTokenRequirement: Codable, Equatable, Sendable {
+    var tokenKind: EffectRewardTokenKind
+    var count: Int
+    var source: EffectRewardTokenSource
+    var isSelectable: Bool
+    var debugLabel: String
+}
+
+enum EffectRewardTokenKind: Codable, Equatable, Sendable {
+    case drawFish
+    case recoverFromDiscardOrDraw
+    case placeEgg
+    case placeYoung
+    case hatchEgg
+    case moveYoungOrSchool
+    case gainCoral
+    case scatterSchool
+    case consumeFishFromHand
+    case playFishForFree
+    case playFishFromHand
+    case skipOrEnd
+    case unsupported
+}
+
+enum EffectRewardTokenSource: Codable, Equatable, Sendable {
+    case ability
+    case compoundPool
+    case printedDiveReward
+    case coralPayment
+    case stagedSelection
+    case legacyFallback
+}
+
+struct EffectStagedSelectionRequirement: Codable, Equatable, Sendable {
+    var stage: EffectSelectionStage
+    var nextStageHint: EffectSelectionStage?
+    var canResolveWithCurrentPayload: Bool
+    var debugLabel: String
+}
+
+enum EffectSelectionStage: Codable, Equatable, Sendable {
+    case selectTargetSlot
+    case selectDiscardCard
+    case selectMoveSource
+    case selectMoveTarget
+    case selectCoralPaymentSource
+    case selectCoralPaymentCard
+    case selectScatterSchoolSource
+    case selectScatterSchoolYoungTarget
+    case selectConsumerFish
+    case selectConsumedHandFish
+    case selectFreePlayHandFish
+    case selectFreePlayTargetSlot
+    case selectPlayFromHandFish
+    case selectPlayFromHandTargetSlot
+    case selectPlayFromHandPayment
 }
 
 enum PendingEffectIntentAdapterError: Equatable, Error {
@@ -312,6 +446,12 @@ enum AbilityEngineV2Adapter {
         for node: EffectNode,
         effectSet: PendingEffectSet
     ) -> EffectTargetRequirement? {
+        if let targetRequirement = node.metadata.targetRequirement {
+            var requirement = targetRequirement
+            requirement.ownerPlayerId = effectSet.targetPlayerId ?? effectSet.activePlayerId
+            return requirement
+        }
+
         let ownerPlayerId = effectSet.targetPlayerId ?? effectSet.activePlayerId
         switch node.effect {
         case .placeEgg:
@@ -354,6 +494,18 @@ enum AbilityEngineV2Adapter {
              .unsupported:
             return nil
         }
+    }
+
+    nonisolated static func rewardTokenRequirement(for node: EffectNode) -> EffectRewardTokenRequirement? {
+        node.metadata.rewardTokenRequirement
+    }
+
+    nonisolated static func paymentRequirement(for node: EffectNode) -> EffectPaymentRequirement? {
+        node.metadata.paymentRequirement
+    }
+
+    nonisolated static func stagedSelectionRequirement(for node: EffectNode) -> EffectStagedSelectionRequirement? {
+        node.metadata.stagedSelection
     }
 
     nonisolated private static func legacyResolution(
@@ -403,6 +555,7 @@ enum AbilityEngineV2Adapter {
                 ability: ability,
                 conditionalBonus: conditionalBonus,
                 executionId: executionId,
+                sourcePlayerId: sourcePlayerId,
                 sourceAddress: sourceAddress
             )
         }
@@ -414,6 +567,7 @@ enum AbilityEngineV2Adapter {
             for: ability.effects,
             prefix: "effect",
             scope: scope,
+            ownerPlayerId: sourcePlayerId,
             sourceAddress: sourceAddress,
             dependencies: ability.canResolveInAnyOrder ? [] : nil,
             optionality: ability.isOptional ? .optional : .required,
@@ -430,12 +584,14 @@ enum AbilityEngineV2Adapter {
         ability: AbilityDefinition,
         conditionalBonus: ConditionalBonusAbilityDefinition,
         executionId: AbilityExecutionId,
+        sourcePlayerId: PlayerID,
         sourceAddress: OceanSlotAddress?
     ) -> EffectGraph {
         let baseNodes = nodes(
             for: conditionalBonus.baseEffects,
             prefix: "base",
             scope: .sourcePlayer,
+            ownerPlayerId: sourcePlayerId,
             sourceAddress: sourceAddress,
             dependencies: conditionalBonus.baseCanResolveInAnyOrder ? [] : nil,
             optionality: .optional,
@@ -446,6 +602,7 @@ enum AbilityEngineV2Adapter {
             for: conditionalBonus.bonusEffects,
             prefix: "bonus",
             scope: .sourcePlayer,
+            ownerPlayerId: sourcePlayerId,
             sourceAddress: sourceAddress,
             conditions: [
                 .sourceFishLocated,
@@ -471,6 +628,7 @@ enum AbilityEngineV2Adapter {
         for effects: [AbilityEffectUnit],
         prefix: String,
         scope: EffectScope,
+        ownerPlayerId: PlayerID,
         sourceAddress: OceanSlotAddress?,
         conditions: [EffectCondition] = [],
         dependencies explicitDependencies: [EffectNodeId]?,
@@ -489,12 +647,15 @@ enum AbilityEngineV2Adapter {
                 conditions: conditions + sourceConditions(for: effect),
                 dependencies: dependencies,
                 optionality: optionality,
-                metadata: EffectNodeMetadata(
+                metadata: metadata(
+                    for: effect,
                     sourceAddress: sourceAddress,
-                    debugLabel: effectKey(effect),
+                    ownerPlayerId: ownerPlayerId,
+                    effectNodeId: nodeId,
                     debugDescription: "\(prefix) effect \(index): \(effectKey(effect))",
                     legacyChoiceKind: pendingChoiceKind(for: effect),
-                    decisionIndex: decisionOffset + index
+                    decisionIndex: decisionOffset + index,
+                    stagedSelection: nil
                 )
             )
         }
@@ -605,6 +766,7 @@ enum AbilityEngineV2Adapter {
             scope = .sourcePlayer
         }
 
+        let stagedSelection = stagedSelectionRequirement(for: choice, effect: effect)
         return EffectNode(
             id: id,
             effect: effect,
@@ -612,13 +774,372 @@ enum AbilityEngineV2Adapter {
             conditions: sourceConditions(for: effect),
             dependencies: [],
             optionality: choice.isOptional ? .optional : .required,
-            metadata: EffectNodeMetadata(
+            metadata: metadata(
+                for: effect,
                 sourceAddress: sourceAddress(for: choice),
-                debugLabel: effectKey(effect),
+                ownerPlayerId: choice.playerId,
+                effectNodeId: id,
                 debugDescription: "Legacy pending choice \(choice.choiceId): \(effectKey(effect))",
                 legacyChoiceKind: choice.kind,
-                decisionIndex: decisionIndex
+                decisionIndex: decisionIndex,
+                stagedSelection: stagedSelection
             )
+        )
+    }
+
+    nonisolated private static func metadata(
+        for effect: AbilityEffectUnit,
+        sourceAddress: OceanSlotAddress?,
+        ownerPlayerId: PlayerID,
+        effectNodeId: EffectNodeId,
+        debugDescription: String,
+        legacyChoiceKind: PendingChoiceKind?,
+        decisionIndex: Int,
+        stagedSelection: EffectStagedSelectionRequirement?
+    ) -> EffectNodeMetadata {
+        let debugLabel = effectKey(effect)
+        return EffectNodeMetadata(
+            sourceAddress: sourceAddress,
+            debugLabel: debugLabel,
+            debugDescription: debugDescription,
+            legacyChoiceKind: legacyChoiceKind,
+            decisionIndex: decisionIndex,
+            targetRequirement: targetRequirement(
+                for: effect,
+                ownerPlayerId: ownerPlayerId,
+                effectNodeId: effectNodeId,
+                debugLabel: debugLabel,
+                stagedSelection: stagedSelection
+            ),
+            paymentRequirement: paymentRequirement(for: effect, stagedSelection: stagedSelection, debugLabel: debugLabel),
+            resourceRequirement: resourceRequirement(for: effect, ownerPlayerId: ownerPlayerId),
+            rewardTokenRequirement: rewardTokenRequirement(for: effect, stagedSelection: stagedSelection, debugLabel: debugLabel),
+            stagedSelection: stagedSelection
+        )
+    }
+
+    nonisolated private static func targetRequirement(
+        for effect: AbilityEffectUnit,
+        ownerPlayerId: PlayerID,
+        effectNodeId: EffectNodeId,
+        debugLabel: String,
+        stagedSelection: EffectStagedSelectionRequirement?
+    ) -> EffectTargetRequirement? {
+        if let stage = stagedSelection?.stage {
+            switch stage {
+            case .selectTargetSlot:
+                return EffectTargetRequirement(
+                    kind: .slot(slotTargetKind(for: effect) ?? .placeEgg),
+                    ownerPlayerId: ownerPlayerId,
+                    effectNodeId: effectNodeId,
+                    debugLabel: debugLabel
+                )
+            case .selectDiscardCard:
+                return EffectTargetRequirement(
+                    kind: .discardCard,
+                    ownerPlayerId: ownerPlayerId,
+                    effectNodeId: effectNodeId,
+                    debugLabel: debugLabel
+                )
+            case .selectScatterSchoolSource:
+                return EffectTargetRequirement(
+                    kind: .slot(.scatterSchoolSource),
+                    ownerPlayerId: ownerPlayerId,
+                    effectNodeId: effectNodeId,
+                    debugLabel: debugLabel,
+                    filters: [.hasSchool]
+                )
+            case .selectScatterSchoolYoungTarget:
+                return EffectTargetRequirement(
+                    kind: .slot(.scatterSchoolYoungTarget),
+                    ownerPlayerId: ownerPlayerId,
+                    effectNodeId: effectNodeId,
+                    debugLabel: debugLabel,
+                    filters: [.canScatterSchoolYoung]
+                )
+            case .selectConsumerFish:
+                return EffectTargetRequirement(
+                    kind: .slot(.consumeFishConsumer),
+                    ownerPlayerId: ownerPlayerId,
+                    effectNodeId: effectNodeId,
+                    debugLabel: debugLabel,
+                    filters: [.canConsumeHandFish]
+                )
+            case .selectConsumedHandFish:
+                return EffectTargetRequirement(
+                    kind: .handCard,
+                    ownerPlayerId: ownerPlayerId,
+                    effectNodeId: effectNodeId,
+                    debugLabel: debugLabel
+                )
+            case .selectFreePlayHandFish:
+                return EffectTargetRequirement(
+                    kind: .handCard,
+                    ownerPlayerId: ownerPlayerId,
+                    effectNodeId: effectNodeId,
+                    debugLabel: debugLabel,
+                    filters: [.matchesFishFilter(effectKey(effect))]
+                )
+            case .selectFreePlayTargetSlot:
+                return EffectTargetRequirement(
+                    kind: .slot(.freePlayTarget),
+                    ownerPlayerId: ownerPlayerId,
+                    effectNodeId: effectNodeId,
+                    debugLabel: debugLabel,
+                    filters: [.canPlaySelectedFish]
+                )
+            case .selectPlayFromHandFish:
+                return EffectTargetRequirement(
+                    kind: .handCard,
+                    ownerPlayerId: ownerPlayerId,
+                    effectNodeId: effectNodeId,
+                    debugLabel: debugLabel,
+                    filters: [.matchesFishFilter(effectKey(effect))]
+                )
+            case .selectPlayFromHandTargetSlot:
+                return EffectTargetRequirement(
+                    kind: .slot(.playFishFromHandTarget),
+                    ownerPlayerId: ownerPlayerId,
+                    effectNodeId: effectNodeId,
+                    debugLabel: debugLabel,
+                    filters: [.canPlaySelectedFish]
+                )
+            case .selectCoralPaymentSource,
+                 .selectCoralPaymentCard,
+                 .selectMoveSource,
+                 .selectMoveTarget,
+                 .selectPlayFromHandPayment:
+                return nil
+            }
+        }
+
+        guard let slotKind = slotTargetKind(for: effect) else {
+            if case .recoverFromDiscardOrDraw = effect {
+                return EffectTargetRequirement(
+                    kind: .discardCard,
+                    ownerPlayerId: ownerPlayerId,
+                    effectNodeId: effectNodeId,
+                    debugLabel: debugLabel
+                )
+            }
+            return nil
+        }
+        return EffectTargetRequirement(
+            kind: .slot(slotKind),
+            ownerPlayerId: ownerPlayerId,
+            effectNodeId: effectNodeId,
+            debugLabel: debugLabel
+        )
+    }
+
+    nonisolated private static func slotTargetKind(for effect: AbilityEffectUnit) -> EffectSlotTargetKind? {
+        switch effect {
+        case .placeEgg:
+            return .placeEgg
+        case .placeYoung:
+            return .placeYoung
+        case .hatchEgg:
+            return .hatchEgg
+        default:
+            return nil
+        }
+    }
+
+    nonisolated private static func paymentRequirement(
+        for effect: AbilityEffectUnit,
+        stagedSelection: EffectStagedSelectionRequirement?,
+        debugLabel: String
+    ) -> EffectPaymentRequirement? {
+        switch effect {
+        case .gainCoral:
+            guard let stage = stagedSelection?.stage else {
+                return nil
+            }
+            switch stage {
+            case .selectCoralPaymentSource,
+                 .selectCoralPaymentCard:
+                break
+            default:
+                return nil
+            }
+            return EffectPaymentRequirement(
+                paymentKind: .coral,
+                allowedSources: [.egg, .young, .handCard],
+                requiredResources: [
+                    EffectRequiredPaymentResource(kind: .egg, count: 1, source: .egg),
+                    EffectRequiredPaymentResource(kind: .young, count: 1, source: .young),
+                    EffectRequiredPaymentResource(kind: nil, count: 1, source: .handCard)
+                ],
+                isOptional: true,
+                costWaived: false,
+                debugLabel: debugLabel
+            )
+        case .playFishForFree:
+            return EffectPaymentRequirement(
+                paymentKind: .freePlay,
+                allowedSources: [.waivedCost],
+                requiredResources: [],
+                isOptional: true,
+                costWaived: true,
+                debugLabel: debugLabel
+            )
+        case .playFishFromHand:
+            return EffectPaymentRequirement(
+                paymentKind: .playFish,
+                allowedSources: [.egg, .young, .handCard],
+                requiredResources: [],
+                isOptional: false,
+                costWaived: false,
+                debugLabel: debugLabel
+            )
+        default:
+            return nil
+        }
+    }
+
+    nonisolated private static func resourceRequirement(
+        for effect: AbilityEffectUnit,
+        ownerPlayerId: PlayerID
+    ) -> EffectResourceRequirement? {
+        switch effect {
+        case .placeEgg:
+            return EffectResourceRequirement(resourceKind: .egg, ownerPlayerId: ownerPlayerId, minCount: 1, maxCount: 1, source: .oceanSlot)
+        case .placeYoung:
+            return EffectResourceRequirement(resourceKind: .young, ownerPlayerId: ownerPlayerId, minCount: 1, maxCount: 1, source: .oceanSlot)
+        case .hatchEgg:
+            return EffectResourceRequirement(resourceKind: .egg, ownerPlayerId: ownerPlayerId, minCount: 1, maxCount: 1, source: .oceanSlot)
+        case .moveYoungOrSchool:
+            return EffectResourceRequirement(resourceKind: .young, ownerPlayerId: ownerPlayerId, minCount: 1, maxCount: 1, source: .oceanSlot)
+        default:
+            return nil
+        }
+    }
+
+    nonisolated private static func rewardTokenRequirement(
+        for effect: AbilityEffectUnit,
+        stagedSelection: EffectStagedSelectionRequirement?,
+        debugLabel: String
+    ) -> EffectRewardTokenRequirement? {
+        let tokenKind: EffectRewardTokenKind
+        switch effect {
+        case .drawFish:
+            tokenKind = .drawFish
+        case .recoverFromDiscardOrDraw:
+            tokenKind = .recoverFromDiscardOrDraw
+        case .placeEgg,
+             .placeEggOnMatchingFish:
+            tokenKind = .placeEgg
+        case .placeYoung:
+            tokenKind = .placeYoung
+        case .hatchEgg:
+            tokenKind = .hatchEgg
+        case .moveYoungOrSchool:
+            tokenKind = .moveYoungOrSchool
+        case .gainCoral:
+            tokenKind = .gainCoral
+        case .scatterSchool:
+            tokenKind = .scatterSchool
+        case .consumeFishFromHand:
+            tokenKind = .consumeFishFromHand
+        case .playFishForFree:
+            tokenKind = .playFishForFree
+        case .playFishFromHand:
+            tokenKind = .playFishFromHand
+        case .gameEndScore:
+            return nil
+        case .unsupported:
+            tokenKind = .unsupported
+        }
+        return EffectRewardTokenRequirement(
+            tokenKind: tokenKind,
+            count: effectCount(effect),
+            source: stagedSelection.map { _ in EffectRewardTokenSource.stagedSelection } ?? .ability,
+            isSelectable: true,
+            debugLabel: debugLabel
+        )
+    }
+
+    nonisolated private static func stagedSelectionRequirement(
+        for choice: PendingChoice,
+        effect: AbilityEffectUnit
+    ) -> EffectStagedSelectionRequirement? {
+        guard let expectedInput = choice.expectedInput else {
+            return nil
+        }
+        let stage: EffectSelectionStage?
+        let nextStageHint: EffectSelectionStage?
+        let canResolveWithCurrentPayload: Bool
+        switch expectedInput {
+        case .none,
+             .abilityEffectSelection,
+             .count:
+            return nil
+        case .targetSlot,
+             .matchingEggTarget:
+            stage = .selectTargetSlot
+            nextStageHint = nil
+            canResolveWithCurrentPayload = false
+        case .cardSelection:
+            stage = .selectDiscardCard
+            nextStageHint = nil
+            canResolveWithCurrentPayload = false
+        case .sourceAndTargetSlots:
+            stage = .selectMoveSource
+            nextStageHint = .selectMoveTarget
+            canResolveWithCurrentPayload = false
+        case .coralPayment:
+            stage = .selectCoralPaymentSource
+            nextStageHint = .selectCoralPaymentCard
+            canResolveWithCurrentPayload = false
+        case .coralPlacement:
+            stage = .selectTargetSlot
+            nextStageHint = nil
+            canResolveWithCurrentPayload = false
+        case .scatterSchoolSource:
+            stage = .selectScatterSchoolSource
+            nextStageHint = .selectScatterSchoolYoungTarget
+            canResolveWithCurrentPayload = false
+        case .scatterSchoolYoungTarget:
+            stage = .selectScatterSchoolYoungTarget
+            nextStageHint = nil
+            canResolveWithCurrentPayload = false
+        case .consumeFishConsumer:
+            stage = .selectConsumerFish
+            nextStageHint = .selectConsumedHandFish
+            canResolveWithCurrentPayload = false
+        case .consumeFishHandCard:
+            stage = .selectConsumedHandFish
+            nextStageHint = nil
+            canResolveWithCurrentPayload = false
+        case .freePlayHandCard:
+            stage = .selectFreePlayHandFish
+            nextStageHint = .selectFreePlayTargetSlot
+            canResolveWithCurrentPayload = false
+        case .freePlayTargetSlot:
+            stage = .selectFreePlayTargetSlot
+            nextStageHint = nil
+            canResolveWithCurrentPayload = false
+        case .playFishFromHandCard:
+            stage = .selectPlayFromHandFish
+            nextStageHint = .selectPlayFromHandTargetSlot
+            canResolveWithCurrentPayload = false
+        case .playFishFromHandTargetSlot:
+            stage = .selectPlayFromHandTargetSlot
+            nextStageHint = .selectPlayFromHandPayment
+            canResolveWithCurrentPayload = false
+        case .playFishFromHandPayment:
+            stage = .selectPlayFromHandPayment
+            nextStageHint = nil
+            canResolveWithCurrentPayload = true
+        }
+        guard let stage else {
+            return nil
+        }
+        return EffectStagedSelectionRequirement(
+            stage: stage,
+            nextStageHint: nextStageHint,
+            canResolveWithCurrentPayload: canResolveWithCurrentPayload,
+            debugLabel: "\(effectKey(effect)):\(stage)"
         )
     }
 
