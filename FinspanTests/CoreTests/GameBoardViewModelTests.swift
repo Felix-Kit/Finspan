@@ -2163,6 +2163,9 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(
             pendingChoice?.progressLines,
             [
+                "\(AppStrings.GameBoard.abilityEngineV2Available)：2",
+                "\(AppStrings.GameBoard.abilityEngineV2Completed)：0",
+                "\(AppStrings.GameBoard.abilityEngineV2Skipped)：0",
                 AppStrings.GameBoard.compoundAbilityProgressText(
                     title: AppStrings.GameBoard.placeEggAbilityAction,
                     completedCount: 0,
@@ -2184,6 +2187,202 @@ final class GameBoardViewModelTests: XCTestCase {
                 AppStrings.GameBoard.skipChoice
             ]
         )
+    }
+
+    func testPendingEffectSetAvailableGeneratesPrimaryActionChoices() {
+        var choice = pendingChoice(kind: .unsupported)
+        choice.isOptional = false
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-v2-draw",
+            sourceCardId: "fish-30",
+            sourceAbilityId: "ability-fish-30",
+            available: [
+                effectNode(id: "draw-node", effect: .drawFish(count: 2), legacyKind: .drawFish)
+            ]
+        )
+        let service = makeService(hand: ["starter-fish-1"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let pendingChoice = viewModel.pendingChoices[0]
+
+        XCTAssertEqual(pendingChoice.actions.map(\.title), [AppStrings.GameBoard.drawFishCard(count: 2)])
+        XCTAssertEqual(pendingChoice.actions.map(\.effectNodeId), ["draw-node"])
+    }
+
+    func testAllPlayersPendingEffectSetShowsCurrentActiveTargetPlayer() {
+        var choice = pendingChoice(kind: .drawFish)
+        choice.playerId = "player-2"
+        choice.allPlayersProgress = AllPlayersAbilityProgress(
+            abilityId: "fixture.allPlayers.draw",
+            sourcePlayerId: "player-1",
+            sourceCardId: "base.main.050",
+            sourceAddress: Self.slotAddress,
+            baseChoiceId: choice.choiceId,
+            currentTargetPlayerId: "player-2",
+            remainingPlayerIds: ["player-3"]
+        )
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-all-players",
+            sourceCardId: "base.main.050",
+            sourceAbilityId: "fixture.allPlayers.draw",
+            sourcePlayerId: "player-1",
+            activePlayerId: "player-2",
+            targetPlayerId: "player-2",
+            available: [
+                effectNode(id: "all-draw", effect: .drawFish(count: 1), scope: .targetPlayer("player-2"), legacyKind: .drawFish)
+            ]
+        )
+        let service = makeService(
+            hand: ["starter-fish-1"],
+            pendingChoices: [choice.choiceId: choice],
+            additionalPlayers: [
+                RoomPlayer(playerId: "player-2", displayName: "玩家 2", color: .green),
+                RoomPlayer(playerId: "player-3", displayName: "玩家 3", color: .purple)
+            ]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let pendingChoice = viewModel.pendingChoices[0]
+
+        XCTAssertTrue(pendingChoice.progressLines.contains("\(AppStrings.GameBoard.pendingChoicePlayer)：玩家 2"))
+        XCTAssertEqual(pendingChoice.actions.first?.effectNodeId, "all-draw")
+    }
+
+    func testCompoundPendingEffectSetShowsMultipleAvailableEffects() {
+        var choice = compoundAbilityPendingChoice()
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-compound",
+            sourceCardId: "fish-31",
+            sourceAbilityId: "sample-fish-b-if-activated",
+            available: [
+                effectNode(id: "compound-egg", effect: .placeEgg(count: 1), legacyKind: .compoundAbility),
+                effectNode(id: "compound-hatch", effect: .hatchEgg(count: 1), legacyKind: .compoundAbility)
+            ]
+        )
+        let service = makeService(hand: ["starter-fish-1"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        let pendingChoice = viewModel.pendingChoices[0]
+
+        XCTAssertEqual(
+            pendingChoice.actions.map(\.action),
+            [.choosePlaceEggAbilityEffect, .chooseHatchEggAbilityEffect, .finishAbility, .skip]
+        )
+        XCTAssertEqual(pendingChoice.actions.prefix(2).map(\.effectNodeId), ["compound-egg", "compound-hatch"])
+    }
+
+    func testColoredCoralConditionalPendingEffectSetControlsBaseAndBonusAvailability() {
+        var baseChoice = pendingChoice(kind: .hatchEgg)
+        baseChoice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-conditional-base",
+            sourceCardId: "sr.main.138",
+            sourceAbilityId: "fixture.conditional",
+            available: [
+                effectNode(id: "base-hatch", effect: .hatchEgg(count: 1), legacyKind: .hatchEgg)
+            ]
+        )
+        var bonusChoice = pendingChoice(kind: .drawFish)
+        bonusChoice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-conditional-bonus",
+            sourceCardId: "sr.main.138",
+            sourceAbilityId: "fixture.conditional",
+            available: [
+                effectNode(
+                    id: "bonus-draw",
+                    effect: .drawFish(count: 1),
+                    conditions: [.sourceDiveSiteHasColoredCoral(color: .blue, minimum: 3)],
+                    legacyKind: .drawFish
+                )
+            ],
+            completed: [
+                CompletedEffectNode(
+                    effectNodeId: "base-hatch",
+                    effect: .hatchEgg(count: 1),
+                    sourcePlayerId: "player-1",
+                    targetPlayerId: "player-1",
+                    decisionIndex: 0,
+                    debugLabel: "base handled"
+                )
+            ]
+        )
+        var blockedChoice = pendingChoice(kind: .drawFish)
+        blockedChoice.choiceId = "choice-conditional-blocked"
+        blockedChoice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-conditional-blocked",
+            sourceCardId: "sr.main.138",
+            sourceAbilityId: "fixture.conditional",
+            available: [],
+            blocked: [
+                BlockedEffectNode(
+                    node: effectNode(
+                        id: "blocked-bonus-draw",
+                        effect: .drawFish(count: 1),
+                        conditions: [.sourceDiveSiteHasColoredCoral(color: .blue, minimum: 3)],
+                        legacyKind: .drawFish
+                    ),
+                    reason: .sourceConditionNotMet,
+                    debugDescription: "condition not met"
+                )
+            ]
+        )
+        let service = makeService(
+            hand: ["starter-fish-1"],
+            pendingChoices: [
+                baseChoice.choiceId: baseChoice,
+                bonusChoice.choiceId: bonusChoice,
+                blockedChoice.choiceId: blockedChoice
+            ]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        let choices = Dictionary(uniqueKeysWithValues: viewModel.pendingChoices.map { ($0.choiceId, $0) })
+
+        XCTAssertEqual(choices[baseChoice.choiceId]?.progressLines.first, "\(AppStrings.GameBoard.abilityEngineV2Available)：1")
+        XCTAssertEqual(choices[bonusChoice.choiceId]?.actions.first?.effectNodeId, "bonus-draw")
+        XCTAssertEqual(choices[blockedChoice.choiceId]?.actions.map(\.title), [AppStrings.GameBoard.skipChoice])
+    }
+
+    func testBlackmouthAndGameEndPendingEffectSetsUseGenericProgressSummary() {
+        var blackmouthChoice = pendingChoice(kind: .playFishForFree)
+        blackmouthChoice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-blackmouth",
+            sourceCardId: "sr.main.141",
+            sourceAbilityId: "fixture.blackmouth",
+            available: [
+                effectNode(
+                    id: "blackmouth-free-play",
+                    effect: .playFishForFree(
+                        filter: .any,
+                        placement: .sameDiveSiteAsSource,
+                        sourceCondition: .sourceDiveSiteHasNoCoral,
+                        count: 1
+                    ),
+                    conditions: [.sourceFishLocated, .sourceFishVisible, .sourceDiveSiteHasNoCoral],
+                    legacyKind: .playFishForFree
+                )
+            ]
+        )
+        var gameEndChoice = pendingChoice(kind: .consumeFishFromHand, source: .endGameAbility("base.main.117"))
+        gameEndChoice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-game-end",
+            sourceCardId: "base.main.117",
+            sourceAbilityId: "fixture.gameEnd",
+            trigger: .gameEnd,
+            available: [
+                effectNode(id: "game-end-consume", effect: .consumeFishFromHand(count: 1), legacyKind: .consumeFishFromHand)
+            ]
+        )
+        let service = makeService(
+            hand: ["starter-fish-1"],
+            pendingChoices: [
+                blackmouthChoice.choiceId: blackmouthChoice,
+                gameEndChoice.choiceId: gameEndChoice
+            ]
+        )
+        let viewModel = GameBoardViewModel(roomService: service)
+        let choices = Dictionary(uniqueKeysWithValues: viewModel.pendingChoices.map { ($0.choiceId, $0) })
+
+        XCTAssertTrue(choices[blackmouthChoice.choiceId]?.progressLines.contains("\(AppStrings.GameBoard.abilityEngineV2Available)：1") ?? false)
+        XCTAssertTrue(choices[gameEndChoice.choiceId]?.progressLines.contains("\(AppStrings.GameBoard.abilityEngineV2Available)：1") ?? false)
     }
 
     func testChoosingCompoundPlaceEggAndHatchEggSubeffectsBuildsResolveCommands() {
@@ -4245,6 +4444,64 @@ final class GameBoardViewModelTests: XCTestCase {
              .unsupported:
             return .none
         }
+    }
+
+    private func effectNode(
+        id: EffectNodeId,
+        effect: AbilityEffectUnit,
+        scope: EffectScope = .sourcePlayer,
+        conditions: [EffectCondition] = [],
+        dependencies: [EffectNodeId] = [],
+        legacyKind: PendingChoiceKind
+    ) -> EffectNode {
+        EffectNode(
+            id: id,
+            effect: effect,
+            scope: scope,
+            conditions: conditions,
+            dependencies: dependencies,
+            optionality: .optional,
+            metadata: EffectNodeMetadata(
+                sourceAddress: Self.slotAddress,
+                debugLabel: id,
+                debugDescription: "test node \(id)",
+                legacyChoiceKind: legacyKind,
+                decisionIndex: 0
+            )
+        )
+    }
+
+    private func pendingEffectSet(
+        executionId: AbilityExecutionId,
+        sourceCardId: CardID,
+        sourceAbilityId: AbilityID?,
+        sourcePlayerId: PlayerID = "player-1",
+        activePlayerId: PlayerID = "player-1",
+        targetPlayerId: PlayerID? = "player-1",
+        trigger: AbilityTrigger? = .ifActivated,
+        available: [EffectNode],
+        blocked: [BlockedEffectNode] = [],
+        completed: [CompletedEffectNode] = [],
+        skipped: [SkippedEffectNode] = []
+    ) -> PendingEffectSet {
+        PendingEffectSet(
+            executionId: executionId,
+            sourceCardId: sourceCardId,
+            sourceAbilityId: sourceAbilityId,
+            sourcePlayerId: sourcePlayerId,
+            activePlayerId: activePlayerId,
+            targetPlayerId: targetPlayerId,
+            trigger: trigger,
+            decisionIndex: completed.count + skipped.count,
+            parentExecutionId: nil,
+            graph: nil,
+            available: available,
+            blocked: blocked,
+            completed: completed,
+            skipped: skipped,
+            debugLabel: executionId,
+            debugDescription: "test pending effect set \(executionId)"
+        )
     }
 
     private func oceanSlot(

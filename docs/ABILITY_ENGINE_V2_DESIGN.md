@@ -2,8 +2,8 @@
 
 Last updated: 2026-06-13.
 
-This document describes the Ability Engine v2 core migration. It is an
-architecture consolidation pass, not a rules expansion.
+This document describes the Ability Engine v2 core migration and Cleanup Pass 1.
+It is an architecture consolidation pass, not a rules expansion.
 
 ## Current Coverage Baseline
 
@@ -32,6 +32,10 @@ The current pass keeps behavior unchanged. It introduces a bridge from legacy
 `PendingChoice` into `PendingEffectSet`, so existing command validation and
 reducers continue to produce the same game results while UI and future debug
 tools can start reading a unified execution shape.
+
+Cleanup Pass 1 makes `PendingEffectSet` the primary pending action display
+model for `GameBoardViewModel`. Legacy `PendingChoice` still exists as the
+compatibility shell for command payloads and target-selection workflows.
 
 ## Unified Execution Shape
 
@@ -106,6 +110,39 @@ Legacy fields such as `compoundAbilityProgress`, `allPlayersProgress`, and
 cleanup can remove step-specific fields once `PendingEffectSet` fully drives
 resolution and UI.
 
+## Cleanup Pass 1 Boundary
+
+`GameBoardViewModel` now consumes `PendingEffectSet` first for the generic
+pending action panel:
+
+- available effect nodes become the primary source for basic pending action
+  buttons such as draw, compound draw/recover, place egg, place young, and hatch
+- AllPlayers pending state displays the active target player from v2 target
+  player metadata
+- progress summary reads available / completed / skipped counts from
+  `PendingEffectSet`
+- each v2-derived action carries an `effectNodeId` for future trace / replay
+
+Legacy `PendingChoice` fields are still used for:
+
+- `kind` and `expectedInput` target-selection prompts
+- reward pool token generation
+- source / target slot selection
+- coral payment selection
+- scatter school, consume-from-hand, free-play, and play-from-hand staged target
+  flows
+- the final `PendingChoiceResolution` payload sent through existing commands
+
+The synchronization is one-way in this pass:
+
+```text
+legacy PendingChoice / optional stored PendingEffectSet -> v2PendingEffectSet -> ViewModel action display
+```
+
+The engine still resolves existing `PendingChoiceResolution` values. Direct
+`resolve effect node` / `skip effect node` commands are intentionally deferred
+until a later v2 cleanup pass.
+
 ## Behavior Guarantees
 
 This pass must not change gameplay results:
@@ -121,7 +158,8 @@ This pass must not change gameplay results:
 
 ## Next Steps
 
-- Move more ViewModel action construction to `PendingEffectSet.available`.
+- Move reward pool token generation and target prompts to v2 target requirement
+  metadata.
 - Teach engine resolution to accept effect-node choices directly.
 - Add v2.1 trace / replay / debug timeline using the reserved ids.
 - Remove legacy step-specific pending fields only after v2 choices are fully

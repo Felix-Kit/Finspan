@@ -17,8 +17,15 @@ struct PendingChoice: Identifiable, Codable, Equatable, Sendable {
     var playFishForFreeProgress: PlayFishForFreeProgress? = nil
     var playFishFromHandProgress: PlayFishFromHandProgress? = nil
     var selectedAbilityEffect: AbilityEffectUnit? = nil
+    // Legacy execution progress retained as the compatibility shell for engine
+    // resolution. View models should prefer `v2PendingEffectSet` for generic
+    // pending action display and fall back to these fields only for target
+    // selection flows that still need legacy `PendingChoiceResolution` payloads.
     var allPlayersProgress: AllPlayersAbilityProgress? = nil
     var conditionalBonusProgress: ConditionalBonusAbilityProgress? = nil
+    // Ability Engine v2 bridge. When present, this is the canonical pending
+    // action description for UI display; when absent, `AbilityEngineV2Adapter`
+    // derives the same shape from the legacy fields above.
     var pendingEffectSet: PendingEffectSet? = nil
     var createdAtSequence: EventID
 

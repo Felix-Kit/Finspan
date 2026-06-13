@@ -102,6 +102,8 @@
 - Fish A / Fish B / Fish C sample ability 已迁移到 registry / resolver 模型。
 - 当前 runtime JSON 中 215 张真实鱼牌能力已全部映射。
 - Ability Engine v2 core bridge 已开始接入：`PendingChoice` 可通过 `v2PendingEffectSet` 暴露统一的 execution / effect-node 状态。
+- Ability Engine v2 Cleanup Pass 1 已完成：`GameBoardViewModel` 的 pending action 按钮和通用进度摘要优先读取 `PendingEffectSet.available` / completed / skipped。
+- legacy `PendingChoice` 仍保留为 compatibility shell，继续承载 reward pool、target selection 和现有 `PendingChoiceResolution` 命令。
 - v2 当前是 adapter / consolidation 层，不改变既有玩法结果，也不实现完整 replay / debug timeline。
 - 未来 runtime JSON 新增或变更的未知能力仍应保持可表示、可跳过，不应导致崩溃。
 
@@ -129,8 +131,8 @@
 
 ### 规则与功能
 
-- Ability Engine v2 Core consolidation：继续把 UI 行动构造迁移到 `PendingEffectSet.available`。
-- GameBoardViewModel pending UI stabilization：减少 ViewModel 对具体 ability type / step order 的依赖。
+- Ability Engine v2 cleanup：继续把 reward pool token generation、target prompts 和 skip / resolve 入口迁移到 effect-node model。
+- GameBoardViewModel pending UI stabilization：继续减少 ViewModel 对具体 ability type / step order 的依赖。
 - `recoverFromDiscardOrDraw` 与弃牌堆选择模式联动。
 - S&R achievements。
 - Side B weekly bonus +3。
@@ -142,6 +144,6 @@
 
 ## 当前建议下一步
 
-1. 先推进 Ability Engine v2 Core consolidation，把更多 pending UI 读取迁移到 `PendingEffectSet`。
+1. 先推进 Ability Engine v2 cleanup，把 reward pool 和 target selection 继续迁移到 `PendingEffectSet` / effect-node model。
 2. 再推进 `recoverFromDiscardOrDraw` 与弃牌堆选择模式联动。
 3. 之后修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。
