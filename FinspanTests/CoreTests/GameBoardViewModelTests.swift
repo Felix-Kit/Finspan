@@ -2403,14 +2403,16 @@ final class GameBoardViewModelTests: XCTestCase {
 
         viewModel.performPendingChoiceAction(action)
 
-        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
-            return XCTFail("Expected resolvePendingChoice command.")
+        guard case let .resolveEffectNode(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolveEffectNode command.")
         }
         XCTAssertEqual(action.effectNodeId, "draw-node")
         XCTAssertEqual(action.intent?.executionId, "exec-v2-draw")
         XCTAssertEqual(action.intent?.effectNodeId, "draw-node")
         XCTAssertEqual(action.intent?.targetPlayerId, "player-1")
-        XCTAssertEqual(payload.resolution, .draw(count: 2))
+        XCTAssertEqual(payload.executionId, "exec-v2-draw")
+        XCTAssertEqual(payload.effectNodeId, "draw-node")
+        XCTAssertEqual(payload.payload, .none)
     }
 
     func testPendingEffectIntentRejectsUnavailableEffectNode() {
@@ -2462,11 +2464,12 @@ final class GameBoardViewModelTests: XCTestCase {
 
         viewModel.performPendingChoiceAction(skipAction)
 
-        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
-            return XCTFail("Expected resolvePendingChoice command.")
+        guard case let .skipEffectNode(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected skipEffectNode command.")
         }
         XCTAssertEqual(skipAction.intent?.effectNodeId, "draw-node")
-        XCTAssertEqual(payload.resolution, .skip)
+        XCTAssertEqual(payload.executionId, "exec-v2-skip")
+        XCTAssertEqual(payload.effectNodeId, "draw-node")
     }
 
     func testPendingEffectIntentSkipRemainingMapsToCompoundFinishAbility() throws {
@@ -2485,11 +2488,11 @@ final class GameBoardViewModelTests: XCTestCase {
 
         viewModel.performPendingChoiceAction(finishAction)
 
-        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
-            return XCTFail("Expected resolvePendingChoice command.")
+        guard case let .skipEffectExecution(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected skipEffectExecution command.")
         }
         XCTAssertNil(finishAction.intent?.effectNodeId)
-        XCTAssertEqual(payload.resolution, .finishAbility)
+        XCTAssertEqual(payload.executionId, "exec-compound")
     }
 
     func testGenericTargetRequirementBuildsSimpleSlotTargetsAndIntent() throws {
@@ -2508,10 +2511,12 @@ final class GameBoardViewModelTests: XCTestCase {
 
         viewModel.resolvePendingChoice(choice.choiceId, target: target)
 
-        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
-            return XCTFail("Expected resolvePendingChoice command.")
+        guard case let .resolveEffectNode(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolveEffectNode command.")
         }
-        XCTAssertEqual(payload.resolution, .chooseTarget(target))
+        XCTAssertEqual(payload.executionId, "exec-place-egg")
+        XCTAssertEqual(payload.effectNodeId, "egg-node")
+        XCTAssertEqual(payload.payload, .targetSlot(target))
     }
 
     func testAllPlayersPendingEffectIntentUsesCurrentTargetPlayer() {
@@ -2548,13 +2553,13 @@ final class GameBoardViewModelTests: XCTestCase {
         viewModel.performPendingChoiceAction(.chooseHatchEggAbilityEffect, for: choice.choiceId)
 
         guard service.submittedCommands.count == 2,
-              case let .resolvePendingChoice(placePayload) = service.submittedCommands[0].payload,
-              case let .resolvePendingChoice(hatchPayload) = service.submittedCommands[1].payload
+              case let .resolveEffectNode(placePayload) = service.submittedCommands[0].payload,
+              case let .resolveEffectNode(hatchPayload) = service.submittedCommands[1].payload
         else {
-            return XCTFail("Expected resolvePendingChoice commands.")
+            return XCTFail("Expected resolveEffectNode commands.")
         }
-        XCTAssertEqual(placePayload.resolution, .chooseAbilityEffect(.placeEgg(count: 1)))
-        XCTAssertEqual(hatchPayload.resolution, .chooseAbilityEffect(.hatchEgg(count: 1)))
+        XCTAssertEqual(placePayload.payload, .none)
+        XCTAssertEqual(hatchPayload.payload, .none)
     }
 
     func testFinishingCompoundAbilityBuildsFinishAbilityCommand() {
@@ -2564,10 +2569,10 @@ final class GameBoardViewModelTests: XCTestCase {
 
         viewModel.performPendingChoiceAction(.finishAbility, for: choice.choiceId)
 
-        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
-            return XCTFail("Expected resolvePendingChoice command.")
+        guard case let .skipEffectExecution(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected skipEffectExecution command.")
         }
-        XCTAssertEqual(payload.resolution, .finishAbility)
+        XCTAssertFalse(payload.executionId.isEmpty)
     }
 
     func testAbilityPendingChoiceBlocksSelectingNewHandCard() {
@@ -2626,14 +2631,13 @@ final class GameBoardViewModelTests: XCTestCase {
 
         viewModel.skipPendingChoice(choice.choiceId)
 
-        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
-            return XCTFail("Expected resolvePendingChoice command.")
+        guard case let .skipEffectExecution(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected skipEffectExecution command.")
         }
 
         XCTAssertEqual(service.submittedCommands.last?.playerId, "player-1")
         XCTAssertEqual(service.submittedCommands.last?.roomId, "room-1")
-        XCTAssertEqual(payload.choiceId, choice.choiceId)
-        XCTAssertEqual(payload.resolution, .skip)
+        XCTAssertFalse(payload.executionId.isEmpty)
     }
 
     func testBlockingPendingChoicePreventsPlayFishAndDiveSubmission() {
@@ -3564,6 +3568,21 @@ final class GameBoardViewModelTests: XCTestCase {
             .selectScatterSchoolSource
         )
         XCTAssertEqual(viewModel.rewardPoolViewState.instructionText, AppStrings.GameBoard.scatterSchoolSource)
+    }
+
+    func testViewModelFallsBackToLegacyResolutionForStagedScatterIntent() {
+        let choice = scatterSchoolPendingChoice()
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+
+        viewModel.resolvePendingChoice(choice.choiceId, target: source)
+
+        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected staged scatter to fall back to resolvePendingChoice.")
+        }
+        XCTAssertEqual(payload.choiceId, choice.choiceId)
+        XCTAssertEqual(payload.resolution, .chooseScatterSchoolSource(source))
     }
 
     func testMoveYoungOrSchoolPendingChoiceGeneratesMoveRewardToken() {

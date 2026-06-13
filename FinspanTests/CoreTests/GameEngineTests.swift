@@ -84,6 +84,293 @@ final class GameEngineTests: XCTestCase {
         }
     }
 
+    func testResolveEffectNodeDrawEmitsPendingChoiceResolvedEvent() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        state.deckState.fishDrawPile = ["fish-2", "fish-3"]
+        var choice = pendingChoice(kind: .drawFish, isOptional: false)
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-draw",
+            sourceCardId: "fish-30",
+            sourceAbilityId: "fixture.draw",
+            available: [
+                effectNode(id: "draw-node", effect: .drawFish(count: 1), legacyKind: .drawFish)
+            ]
+        )
+        state.pendingChoices[choice.choiceId] = choice
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveEffectNodeCommand(
+                commandId: "native-draw",
+                executionId: "exec-draw",
+                effectNodeId: "draw-node"
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(resolved) = drafts.first else {
+            return XCTFail("Expected pendingChoiceResolved draft.")
+        }
+        XCTAssertEqual(resolved.choiceId, choice.choiceId)
+        XCTAssertEqual(resolved.resolution, .draw(count: 1))
+        XCTAssertEqual(resolved.appliedEffects, [.drawFish(playerId: "player-1", cardIds: ["fish-2"])])
+    }
+
+    func testResolveEffectNodeRejectsStaleEffectNodeId() {
+        let engine = GameEngine()
+        var state = playFishState()
+        var choice = pendingChoice(kind: .drawFish)
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-draw",
+            sourceCardId: "fish-30",
+            sourceAbilityId: "fixture.draw",
+            available: [
+                effectNode(id: "draw-node", effect: .drawFish(count: 1), legacyKind: .drawFish)
+            ]
+        )
+        state.pendingChoices[choice.choiceId] = choice
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: resolveEffectNodeCommand(
+                    commandId: "native-stale-node",
+                    executionId: "exec-draw",
+                    effectNodeId: "stale-node"
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .invalidPendingChoiceResolution(choice.choiceId))
+        }
+    }
+
+    func testResolveEffectNodeRejectsExecutionIdMismatch() {
+        let engine = GameEngine()
+        var state = playFishState()
+        var choice = pendingChoice(kind: .drawFish)
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-draw",
+            sourceCardId: "fish-30",
+            sourceAbilityId: "fixture.draw",
+            available: [
+                effectNode(id: "draw-node", effect: .drawFish(count: 1), legacyKind: .drawFish)
+            ]
+        )
+        state.pendingChoices[choice.choiceId] = choice
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: resolveEffectNodeCommand(
+                    commandId: "native-missing-exec",
+                    executionId: "missing-exec",
+                    effectNodeId: "draw-node"
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .invalidPendingChoiceResolution("missing-exec"))
+        }
+    }
+
+    func testSkipEffectNodeEmitsSkipResolution() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        var choice = pendingChoice(kind: .drawFish)
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-skip",
+            sourceCardId: "fish-30",
+            sourceAbilityId: "fixture.draw",
+            available: [
+                effectNode(id: "draw-node", effect: .drawFish(count: 1), legacyKind: .drawFish)
+            ]
+        )
+        state.pendingChoices[choice.choiceId] = choice
+
+        let drafts = try engine.makeEventDrafts(
+            for: skipEffectNodeCommand(
+                commandId: "native-skip",
+                executionId: "exec-skip",
+                effectNodeId: "draw-node"
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(resolved) = drafts.first else {
+            return XCTFail("Expected pendingChoiceResolved draft.")
+        }
+        XCTAssertEqual(resolved.choiceId, choice.choiceId)
+        XCTAssertEqual(resolved.resolution, .skip)
+        XCTAssertEqual(resolved.appliedEffects, [.none])
+    }
+
+    func testSkipEffectExecutionFinishesCompoundWithoutRollback() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        var choice = compoundAbilityChoice(
+            choiceId: "compound-choice",
+            ability: AbilityDefinition(
+                abilityId: "fixture.compound",
+                trigger: .ifActivated,
+                effects: [.placeEgg(count: 1), .hatchEgg(count: 1)],
+                canResolveInAnyOrder: true,
+                isOptional: true
+            )
+        )
+        choice.compoundAbilityProgress?.completedEffects = [.placeEgg(count: 1)]
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-compound",
+            sourceCardId: "fixture.source",
+            sourceAbilityId: "fixture.compound",
+            available: [
+                effectNode(id: "hatch-node", effect: .hatchEgg(count: 1), legacyKind: .compoundAbility)
+            ],
+            completed: [
+                CompletedEffectNode(
+                    effectNodeId: "egg-node",
+                    effect: .placeEgg(count: 1),
+                    sourcePlayerId: "player-1",
+                    targetPlayerId: "player-1",
+                    decisionIndex: 0,
+                    debugLabel: "place egg"
+                )
+            ]
+        )
+        state.pendingChoices[choice.choiceId] = choice
+
+        let drafts = try engine.makeEventDrafts(
+            for: skipEffectExecutionCommand(commandId: "native-skip-remaining", executionId: "exec-compound"),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(resolved) = drafts.first else {
+            return XCTFail("Expected pendingChoiceResolved draft.")
+        }
+        XCTAssertEqual(resolved.resolution, .finishAbility)
+        XCTAssertEqual(resolved.appliedEffects, [.none])
+    }
+
+    func testAllPlayersSkipEffectNodeCreatesNextTargetChoice() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        let ability = AbilityDefinition(
+            abilityId: "fixture.allPlayers.draw",
+            trigger: .ifActivated,
+            effects: [.drawFish(count: 1)],
+            isOptional: true,
+            appliesToAllPlayers: true
+        )
+        var choice = PendingChoice(
+            choiceId: "all-players-choice",
+            playerId: "player-1",
+            source: .fishAbility("fish-30"),
+            kind: .drawFish,
+            options: [],
+            expectedInput: .none,
+            isOptional: true,
+            abilityDefinition: ability,
+            allPlayersProgress: AllPlayersAbilityProgress(
+                abilityId: ability.abilityId,
+                sourcePlayerId: "player-1",
+                sourceCardId: "fish-30",
+                sourceAddress: OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0),
+                baseChoiceId: "all-players-choice",
+                currentTargetPlayerId: "player-1",
+                remainingPlayerIds: ["player-2"]
+            ),
+            createdAtSequence: 9
+        )
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-all",
+            sourceCardId: "fish-30",
+            sourceAbilityId: ability.abilityId,
+            sourcePlayerId: "player-1",
+            activePlayerId: "player-1",
+            targetPlayerId: "player-1",
+            available: [
+                effectNode(id: "all-draw", effect: .drawFish(count: 1), scope: .targetPlayer("player-1"), legacyKind: .drawFish)
+            ]
+        )
+        state.pendingChoices[choice.choiceId] = choice
+
+        let drafts = try engine.makeEventDrafts(
+            for: skipEffectNodeCommand(
+                commandId: "native-all-skip",
+                executionId: "exec-all",
+                effectNodeId: "all-draw"
+            ),
+            in: state
+        )
+
+        guard drafts.count >= 2,
+              case let .pendingChoiceCreated(nextChoice) = drafts[1]
+        else {
+            return XCTFail("Expected next all-players choice.")
+        }
+        XCTAssertEqual(nextChoice.playerId, "player-2")
+        XCTAssertEqual(nextChoice.allPlayersProgress?.skippedPlayerIds, ["player-1"])
+        XCTAssertEqual(nextChoice.allPlayersProgress?.currentTargetPlayerId, "player-2")
+    }
+
+    func testGameEndSkipEffectNodeMarksSourceHandled() throws {
+        let engine = GameEngine(cardCatalog: gameEndAbilityCatalog())
+        var state = gameEndAbilityState(cardIds: ["sr.gameEnd.anyCoral"])
+        let source = gameEndAbilitySource(cardId: "sr.gameEnd.anyCoral", abilityId: SharksAndReefsAbilityIDs.anyCoralTwiceGameEnd)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: activateGameEndAbilityCommand(commandId: "activate-native-game-end", source: source),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+        let choice = try XCTUnwrap(state.pendingChoices.values.first)
+        let effectSet = choice.v2PendingEffectSet
+        let node = try XCTUnwrap(effectSet.available.first)
+
+        let drafts = try engine.makeEventDrafts(
+            for: skipEffectNodeCommand(
+                commandId: "native-game-end-skip",
+                playerId: choice.playerId,
+                executionId: effectSet.executionId,
+                effectNodeId: node.id,
+                sourcePlayerId: effectSet.sourcePlayerId,
+                targetPlayerId: effectSet.targetPlayerId
+            ),
+            in: state
+        )
+
+        XCTAssertTrue(drafts.contains(.gameEndAbilityActivated(GameEndAbilityActivatedEvent(source: source))))
+    }
+
+    func testResolveEffectNodeStagedScatterFallsBackToLegacyOnly() {
+        let engine = GameEngine()
+        var state = playFishState()
+        var choice = scatterSchoolPendingChoice()
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-scatter",
+            sourceCardId: "fish-30",
+            sourceAbilityId: "fixture.scatter",
+            available: [
+                effectNode(id: "scatter-node", effect: .scatterSchool(count: 1), legacyKind: .scatterSchool)
+            ]
+        )
+        state.pendingChoices[choice.choiceId] = choice
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: resolveEffectNodeCommand(
+                    commandId: "native-scatter",
+                    executionId: "exec-scatter",
+                    effectNodeId: "scatter-node",
+                    payload: .targetSlot(OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0))
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .invalidPendingChoiceResolution(choice.choiceId))
+        }
+    }
+
     func testPlayFishAutomaticallyAdvancesActivePlayer() throws {
         let engine = GameEngine()
         let state = playFishState()
@@ -7808,6 +8095,75 @@ final class GameEngineTests: XCTestCase {
         )
     }
 
+    private func resolveEffectNodeCommand(
+        commandId: CommandID,
+        playerId: PlayerID = "player-1",
+        executionId: AbilityExecutionId,
+        effectNodeId: EffectNodeId,
+        sourcePlayerId: PlayerID = "player-1",
+        targetPlayerId: PlayerID? = "player-1",
+        payload: EffectResolutionPayload = .none
+    ) -> PlayerCommand {
+        PlayerCommand(
+            commandId: commandId,
+            playerId: playerId,
+            roomId: roomId,
+            payload: .resolveEffectNode(
+                ResolveEffectNodeCommand(
+                    executionId: executionId,
+                    effectNodeId: effectNodeId,
+                    sourcePlayerId: sourcePlayerId,
+                    targetPlayerId: targetPlayerId,
+                    payload: payload
+                )
+            )
+        )
+    }
+
+    private func skipEffectNodeCommand(
+        commandId: CommandID,
+        playerId: PlayerID = "player-1",
+        executionId: AbilityExecutionId,
+        effectNodeId: EffectNodeId,
+        sourcePlayerId: PlayerID = "player-1",
+        targetPlayerId: PlayerID? = "player-1"
+    ) -> PlayerCommand {
+        PlayerCommand(
+            commandId: commandId,
+            playerId: playerId,
+            roomId: roomId,
+            payload: .skipEffectNode(
+                SkipEffectNodeCommand(
+                    executionId: executionId,
+                    effectNodeId: effectNodeId,
+                    sourcePlayerId: sourcePlayerId,
+                    targetPlayerId: targetPlayerId
+                )
+            )
+        )
+    }
+
+    private func skipEffectExecutionCommand(
+        commandId: CommandID,
+        playerId: PlayerID = "player-1",
+        executionId: AbilityExecutionId,
+        sourcePlayerId: PlayerID = "player-1",
+        targetPlayerId: PlayerID? = "player-1"
+    ) -> PlayerCommand {
+        PlayerCommand(
+            commandId: commandId,
+            playerId: playerId,
+            roomId: roomId,
+            payload: .skipEffectExecution(
+                SkipEffectExecutionCommand(
+                    executionId: executionId,
+                    sourcePlayerId: sourcePlayerId,
+                    targetPlayerId: targetPlayerId
+                )
+            )
+        )
+    }
+
     private func blueLanternfishPlayState(deck: [CardID]) -> GameState {
         var state = playFishState()
         state.playerGameStates["player-1"]?.hand = [
@@ -7883,6 +8239,60 @@ final class GameEngineTests: XCTestCase {
             expectedInput: expectedInput(for: kind),
             isOptional: isOptional,
             createdAtSequence: 9
+        )
+    }
+
+    private func effectNode(
+        id: EffectNodeId,
+        effect: AbilityEffectUnit,
+        scope: EffectScope = .sourcePlayer,
+        legacyKind: PendingChoiceKind
+    ) -> EffectNode {
+        EffectNode(
+            id: id,
+            effect: effect,
+            scope: scope,
+            conditions: [],
+            dependencies: [],
+            optionality: .optional,
+            metadata: EffectNodeMetadata(
+                sourceAddress: nil,
+                debugLabel: id,
+                debugDescription: id,
+                legacyChoiceKind: legacyKind,
+                decisionIndex: 0
+            )
+        )
+    }
+
+    private func pendingEffectSet(
+        executionId: AbilityExecutionId,
+        sourceCardId: CardID,
+        sourceAbilityId: AbilityID?,
+        sourcePlayerId: PlayerID = "player-1",
+        activePlayerId: PlayerID = "player-1",
+        targetPlayerId: PlayerID? = "player-1",
+        available: [EffectNode],
+        completed: [CompletedEffectNode] = [],
+        skipped: [SkippedEffectNode] = []
+    ) -> PendingEffectSet {
+        PendingEffectSet(
+            executionId: executionId,
+            sourceCardId: sourceCardId,
+            sourceAbilityId: sourceAbilityId,
+            sourcePlayerId: sourcePlayerId,
+            activePlayerId: activePlayerId,
+            targetPlayerId: targetPlayerId,
+            trigger: .ifActivated,
+            decisionIndex: 0,
+            parentExecutionId: nil,
+            graph: nil,
+            available: available,
+            blocked: [],
+            completed: completed,
+            skipped: skipped,
+            debugLabel: executionId,
+            debugDescription: executionId
         )
     }
 

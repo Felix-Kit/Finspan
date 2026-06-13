@@ -49,6 +49,12 @@ struct GameEngine {
             try validateDive(payload, playerId: command.playerId, in: state)
         case let .resolvePendingChoice(payload):
             try validateResolvePendingChoice(payload, playerId: command.playerId, in: state)
+        case let .resolveEffectNode(payload):
+            try validateResolveEffectNode(payload, playerId: command.playerId, in: state)
+        case let .skipEffectNode(payload):
+            try validateSkipEffectNode(payload, playerId: command.playerId, in: state)
+        case let .skipEffectExecution(payload):
+            try validateSkipEffectExecution(payload, playerId: command.playerId, in: state)
         case let .activateGameEndAbility(payload):
             try validateActivateGameEndAbility(payload, playerId: command.playerId, in: state)
         case .finishGameEndAbilities:
@@ -69,7 +75,7 @@ struct GameEngine {
         in state: GameState
     ) throws -> [DomainEventDraft] {
         try validate(command: command, in: state)
-        return makeEventDrafts(from: command, in: state)
+        return try makeEventDrafts(from: command, in: state)
     }
 
     func reduce(state: GameState, event: GameEvent) -> GameState {
@@ -163,7 +169,7 @@ struct GameEngine {
         return nextState
     }
 
-    private func makeEventDrafts(from command: PlayerCommand, in state: GameState) -> [DomainEventDraft] {
+    private func makeEventDrafts(from command: PlayerCommand, in state: GameState) throws -> [DomainEventDraft] {
         switch command.payload {
         case let .createRoom(payload):
             return [.roomCreated(
@@ -269,50 +275,16 @@ struct GameEngine {
             }
             return [diverMoved, .pendingChoiceCreated(firstChoice)]
         case let .resolvePendingChoice(payload):
-            let queueProgress = diveQueueProgressAfterResolving(payload, in: state)
-            let nonQueueNextChoice = nonQueueCompoundChoiceAfterResolving(payload, in: state)
-            let resolvedChoice = state.pendingChoices[payload.choiceId]
-            var drafts: [DomainEventDraft] = [
-                .pendingChoiceResolved(
-                    PendingChoiceResolvedEvent(
-                        choiceId: payload.choiceId,
-                        playerId: command.playerId,
-                        resolution: payload.resolution,
-                        appliedEffects: appliedEffects(
-                            for: payload,
-                            playerId: command.playerId,
-                            in: state
-                        ),
-                        diveQueueUpdate: queueProgress.update
-                    )
-                )
-            ]
-            if let nextChoice = queueProgress.nextChoice {
-                drafts.append(.pendingChoiceCreated(nextChoice))
-                return drafts
-            }
-            if let nextChoice = nonQueueNextChoice {
-                if shouldMarkGameEndSourceBeforeNextChoice(payload),
-                   let source = gameEndAbilitySource(for: resolvedChoice) {
-                    drafts.append(.gameEndAbilityActivated(GameEndAbilityActivatedEvent(source: source)))
-                }
-                drafts.append(.pendingChoiceCreated(nextChoice))
-                return drafts
-            }
-            if let source = gameEndAbilitySource(for: resolvedChoice) {
-                drafts.append(.gameEndAbilityActivated(GameEndAbilityActivatedEvent(source: source)))
-            }
-            let completionActorPlayerId = resolvedChoice?.allPlayersProgress?.sourcePlayerId ?? command.playerId
-            if shouldAdvanceTurnAfterResolving(payload, playerId: completionActorPlayerId, in: state) {
-                drafts.append(
-                    contentsOf: actionCompletionDrafts(
-                        afterApplying: drafts,
-                        actorPlayerId: completionActorPlayerId,
-                        in: state
-                    )
-                )
-            }
-            return drafts
+            return pendingChoiceResolvedDrafts(for: payload, command: command, in: state)
+        case let .resolveEffectNode(payload):
+            let legacyPayload = try nativeResolvePendingChoiceCommand(for: payload, in: state)
+            return pendingChoiceResolvedDrafts(for: legacyPayload, command: command, in: state)
+        case let .skipEffectNode(payload):
+            let legacyPayload = try nativeSkipPendingChoiceCommand(for: payload, in: state)
+            return pendingChoiceResolvedDrafts(for: legacyPayload, command: command, in: state)
+        case let .skipEffectExecution(payload):
+            let legacyPayload = try nativeSkipExecutionPendingChoiceCommand(for: payload, in: state)
+            return pendingChoiceResolvedDrafts(for: legacyPayload, command: command, in: state)
         case let .chooseAbilityOption(payload):
             return [.abilityOptionChosen(
                 AbilityOptionChosenEvent(
@@ -343,6 +315,57 @@ struct GameEngine {
         case .endTurn:
             return []
         }
+    }
+
+    private func pendingChoiceResolvedDrafts(
+        for payload: ResolvePendingChoiceCommand,
+        command: PlayerCommand,
+        in state: GameState
+    ) -> [DomainEventDraft] {
+        let queueProgress = diveQueueProgressAfterResolving(payload, in: state)
+        let nonQueueNextChoice = nonQueueCompoundChoiceAfterResolving(payload, in: state)
+        let resolvedChoice = state.pendingChoices[payload.choiceId]
+        var drafts: [DomainEventDraft] = [
+            .pendingChoiceResolved(
+                PendingChoiceResolvedEvent(
+                    choiceId: payload.choiceId,
+                    playerId: command.playerId,
+                    resolution: payload.resolution,
+                    appliedEffects: appliedEffects(
+                        for: payload,
+                        playerId: command.playerId,
+                        in: state
+                    ),
+                    diveQueueUpdate: queueProgress.update
+                )
+            )
+        ]
+        if let nextChoice = queueProgress.nextChoice {
+            drafts.append(.pendingChoiceCreated(nextChoice))
+            return drafts
+        }
+        if let nextChoice = nonQueueNextChoice {
+            if shouldMarkGameEndSourceBeforeNextChoice(payload),
+               let source = gameEndAbilitySource(for: resolvedChoice) {
+                drafts.append(.gameEndAbilityActivated(GameEndAbilityActivatedEvent(source: source)))
+            }
+            drafts.append(.pendingChoiceCreated(nextChoice))
+            return drafts
+        }
+        if let source = gameEndAbilitySource(for: resolvedChoice) {
+            drafts.append(.gameEndAbilityActivated(GameEndAbilityActivatedEvent(source: source)))
+        }
+        let completionActorPlayerId = resolvedChoice?.allPlayersProgress?.sourcePlayerId ?? command.playerId
+        if shouldAdvanceTurnAfterResolving(payload, playerId: completionActorPlayerId, in: state) {
+            drafts.append(
+                contentsOf: actionCompletionDrafts(
+                    afterApplying: drafts,
+                    actorPlayerId: completionActorPlayerId,
+                    in: state
+                )
+            )
+        }
+        return drafts
     }
 
     private func nextPlayer(after playerId: PlayerID, in players: [Player]) -> Player? {
@@ -821,6 +844,104 @@ struct GameEngine {
                 throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
             }
         }
+    }
+
+    private func validateResolveEffectNode(
+        _ payload: ResolveEffectNodeCommand,
+        playerId: PlayerID,
+        in state: GameState
+    ) throws {
+        let legacyPayload = try nativeResolvePendingChoiceCommand(for: payload, in: state)
+        try validateResolvePendingChoice(legacyPayload, playerId: playerId, in: state)
+    }
+
+    private func validateSkipEffectNode(
+        _ payload: SkipEffectNodeCommand,
+        playerId: PlayerID,
+        in state: GameState
+    ) throws {
+        let legacyPayload = try nativeSkipPendingChoiceCommand(for: payload, in: state)
+        try validateResolvePendingChoice(legacyPayload, playerId: playerId, in: state)
+    }
+
+    private func validateSkipEffectExecution(
+        _ payload: SkipEffectExecutionCommand,
+        playerId: PlayerID,
+        in state: GameState
+    ) throws {
+        let legacyPayload = try nativeSkipExecutionPendingChoiceCommand(for: payload, in: state)
+        try validateResolvePendingChoice(legacyPayload, playerId: playerId, in: state)
+    }
+
+    private func nativeResolvePendingChoiceCommand(
+        for payload: ResolveEffectNodeCommand,
+        in state: GameState
+    ) throws -> ResolvePendingChoiceCommand {
+        let intent = PendingEffectIntent.resolveEffect(
+            executionId: payload.executionId,
+            effectNodeId: payload.effectNodeId,
+            sourcePlayerId: payload.sourcePlayerId,
+            targetPlayerId: payload.targetPlayerId,
+            payload: payload.payload
+        )
+        return try nativePendingChoiceCommand(for: intent, in: state)
+    }
+
+    private func nativeSkipPendingChoiceCommand(
+        for payload: SkipEffectNodeCommand,
+        in state: GameState
+    ) throws -> ResolvePendingChoiceCommand {
+        let intent = PendingEffectIntent.skipEffect(
+            executionId: payload.executionId,
+            effectNodeId: payload.effectNodeId,
+            sourcePlayerId: payload.sourcePlayerId,
+            targetPlayerId: payload.targetPlayerId
+        )
+        return try nativePendingChoiceCommand(for: intent, in: state)
+    }
+
+    private func nativeSkipExecutionPendingChoiceCommand(
+        for payload: SkipEffectExecutionCommand,
+        in state: GameState
+    ) throws -> ResolvePendingChoiceCommand {
+        let intent = PendingEffectIntent.skipRemaining(
+            executionId: payload.executionId,
+            sourcePlayerId: payload.sourcePlayerId,
+            targetPlayerId: payload.targetPlayerId
+        )
+        return try nativePendingChoiceCommand(for: intent, in: state)
+    }
+
+    private func nativePendingChoiceCommand(
+        for intent: PendingEffectIntent,
+        in state: GameState
+    ) throws -> ResolvePendingChoiceCommand {
+        guard let choice = pendingChoice(forExecutionId: intent.executionId, in: state) else {
+            throw CommandValidationError.invalidPendingChoiceResolution(intent.executionId)
+        }
+        let effectSet = choice.v2PendingEffectSet
+        guard intent.sourcePlayerId == effectSet.sourcePlayerId,
+              intent.targetPlayerId == effectSet.targetPlayerId
+        else {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+        do {
+            return ResolvePendingChoiceCommand(
+                choiceId: choice.choiceId,
+                resolution: try AbilityEngineV2Adapter.nativeResolution(for: intent, in: choice)
+            )
+        } catch is PendingEffectIntentAdapterError {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+    }
+
+    private func pendingChoice(
+        forExecutionId executionId: AbilityExecutionId,
+        in state: GameState
+    ) -> PendingChoice? {
+        state.pendingChoices.values
+            .sorted { $0.choiceId < $1.choiceId }
+            .first { $0.v2PendingEffectSet.executionId == executionId }
     }
 
     private func validateActivateGameEndAbility(

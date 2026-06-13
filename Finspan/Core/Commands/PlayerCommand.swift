@@ -30,6 +30,9 @@ enum PlayerCommandPayload: Codable, Equatable, Sendable {
     case playFish(PlayFishCommand)
     case dive(DiveCommand)
     case resolvePendingChoice(ResolvePendingChoiceCommand)
+    case resolveEffectNode(ResolveEffectNodeCommand)
+    case skipEffectNode(SkipEffectNodeCommand)
+    case skipEffectExecution(SkipEffectExecutionCommand)
     case activateGameEndAbility(ActivateGameEndAbilityCommand)
     case finishGameEndAbilities(FinishGameEndAbilitiesCommand)
     case chooseAbilityOption(ChooseAbilityOptionCommand)
@@ -109,6 +112,27 @@ struct DiveCommand: Codable, Equatable, Sendable {
 struct ResolvePendingChoiceCommand: Codable, Equatable, Sendable {
     var choiceId: PendingChoiceID
     var resolution: PendingChoiceResolution
+}
+
+struct ResolveEffectNodeCommand: Codable, Equatable, Sendable {
+    var executionId: AbilityExecutionId
+    var effectNodeId: EffectNodeId
+    var sourcePlayerId: PlayerID
+    var targetPlayerId: PlayerID?
+    var payload: EffectResolutionPayload
+}
+
+struct SkipEffectNodeCommand: Codable, Equatable, Sendable {
+    var executionId: AbilityExecutionId
+    var effectNodeId: EffectNodeId
+    var sourcePlayerId: PlayerID
+    var targetPlayerId: PlayerID?
+}
+
+struct SkipEffectExecutionCommand: Codable, Equatable, Sendable {
+    var executionId: AbilityExecutionId
+    var sourcePlayerId: PlayerID
+    var targetPlayerId: PlayerID?
 }
 
 struct ActivateGameEndAbilityCommand: Codable, Equatable, Sendable {

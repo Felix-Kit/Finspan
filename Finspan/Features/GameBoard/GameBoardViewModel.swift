@@ -3228,11 +3228,79 @@ final class GameBoardViewModel: ObservableObject {
             errorMessage = AppStrings.GameBoard.pendingChoiceNotFound
             return
         }
+        if canSubmitNativePendingEffectIntent(intent, in: choice) {
+            submitNativePendingEffectIntent(intent, for: choice)
+            return
+        }
         do {
             let resolution = try AbilityEngineV2Adapter.legacyResolution(for: intent, in: choice)
             resolvePendingChoice(choiceId, resolution: resolution)
         } catch {
             errorMessage = AppStrings.GameBoard.pendingChoiceNoLongerAvailable
+        }
+    }
+
+    private func canSubmitNativePendingEffectIntent(
+        _ intent: PendingEffectIntent,
+        in choice: PendingChoice
+    ) -> Bool {
+        (try? AbilityEngineV2Adapter.nativeResolution(for: intent, in: choice)) != nil
+    }
+
+    private func submitNativePendingEffectIntent(
+        _ intent: PendingEffectIntent,
+        for choice: PendingChoice
+    ) {
+        guard let roomId = state.roomId ?? roomService.gameRoom?.roomId else {
+            errorMessage = AppStrings.GameBoard.noActiveRoom
+            return
+        }
+
+        let payload: PlayerCommandPayload
+        switch intent {
+        case let .resolveEffect(executionId, effectNodeId, sourcePlayerId, targetPlayerId, resolutionPayload):
+            payload = .resolveEffectNode(
+                ResolveEffectNodeCommand(
+                    executionId: executionId,
+                    effectNodeId: effectNodeId,
+                    sourcePlayerId: sourcePlayerId,
+                    targetPlayerId: targetPlayerId,
+                    payload: resolutionPayload
+                )
+            )
+        case let .skipEffect(executionId, effectNodeId, sourcePlayerId, targetPlayerId):
+            payload = .skipEffectNode(
+                SkipEffectNodeCommand(
+                    executionId: executionId,
+                    effectNodeId: effectNodeId,
+                    sourcePlayerId: sourcePlayerId,
+                    targetPlayerId: targetPlayerId
+                )
+            )
+        case let .skipRemaining(executionId, sourcePlayerId, targetPlayerId):
+            payload = .skipEffectExecution(
+                SkipEffectExecutionCommand(
+                    executionId: executionId,
+                    sourcePlayerId: sourcePlayerId,
+                    targetPlayerId: targetPlayerId
+                )
+            )
+        }
+
+        do {
+            _ = try roomService.submit(
+                PlayerCommand(
+                    commandId: nextCommandId(),
+                    playerId: choice.playerId,
+                    roomId: roomId,
+                    payload: payload
+                )
+            )
+            errorMessage = nil
+            refresh()
+        } catch {
+            errorMessage = localizedErrorMessage(for: error)
+            refresh()
         }
     }
 

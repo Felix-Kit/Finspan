@@ -119,16 +119,17 @@
 
 ## 下一阶段计划
 
-### P0 Ability Engine v2 cleanup / PendingEffectSet + PendingEffectIntent + metadata
+### P0 Ability Engine v2 cleanup / native effect-node resolve
 
 - 继续让 ViewModel 和 action panel 优先读取 `PendingEffectSet.available`、blocked、completed、skipped。
 - 保持 reward pool token generation、复杂 staged target requirement summary、payment summary 优先读取 v2 metadata。
-- 保留 legacy `PendingChoice` adapter，等 v2 choices 完全稳定后再清理 step-specific fields。
+- 已新增 `resolveEffectNode` / `skipEffectNode` / `skipEffectExecution` command；安全的 draw、recover、egg / young / hatch target、simple compound selection、skip 和 skip remaining 可原生进入 engine。
+- 保留 legacy `PendingChoice` adapter，等复杂 staged payload 完全迁移后再清理 step-specific fields。
 
-### P1 Native effect-node resolve / skip engine entry
+### P1 Complete staged payload native migration
 
-- 逐步新增 native resolve effect node / skip effect node engine 入口。
-- 减少 adapter 对 legacy `PendingChoiceResolution` 的依赖。
+- 逐步迁移 scatter school、consume-from-hand、free-play、paid-play、coral payment、reward token action resolution。
+- 减少 staged flow 对 legacy `PendingChoiceResolution` 的依赖。
 - 继续保持既有规则结果和 deterministic command / event / reducer 流程。
 
 ### P2 GameBoardViewModel pending UI stabilization

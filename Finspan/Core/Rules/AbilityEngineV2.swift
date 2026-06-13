@@ -442,6 +442,35 @@ enum AbilityEngineV2Adapter {
         }
     }
 
+    nonisolated static func nativeResolution(
+        for intent: PendingEffectIntent,
+        in choice: PendingChoice
+    ) throws -> PendingChoiceResolution {
+        let effectSet = choice.v2PendingEffectSet
+        guard intent.executionId == effectSet.executionId else {
+            throw PendingEffectIntentAdapterError.executionMismatch
+        }
+
+        switch intent {
+        case let .skipEffect(_, effectNodeId, _, _):
+            guard effectSet.available.contains(where: { $0.id == effectNodeId }) else {
+                throw PendingEffectIntentAdapterError.unavailableEffectNode(effectNodeId)
+            }
+            return .skip
+        case .skipRemaining:
+            return choice.kind == .compoundAbility ? .finishAbility : .skip
+        case let .resolveEffect(_, effectNodeId, _, _, payload):
+            guard let node = effectSet.available.first(where: { $0.id == effectNodeId }) else {
+                throw PendingEffectIntentAdapterError.unavailableEffectNode(effectNodeId)
+            }
+            let resolution = try legacyResolution(for: node.effect, payload: payload, choice: choice)
+            guard nativeResolutionIsSupported(resolution, for: node.effect, choice: choice) else {
+                throw PendingEffectIntentAdapterError.unsupportedPayload
+            }
+            return resolution
+        }
+    }
+
     nonisolated static func targetRequirement(
         for node: EffectNode,
         effectSet: PendingEffectSet
@@ -538,8 +567,141 @@ enum AbilityEngineV2Adapter {
             return choice.kind == .compoundAbility
                 ? .chooseAbilityEffect(effectWithCount(effect, count: 1))
                 : .chooseTarget(address)
+        case (.scatterSchool, let .targetSlot(address)):
+            switch choice.expectedInput {
+            case .scatterSchoolSource:
+                return .chooseScatterSchoolSource(address)
+            case .scatterSchoolTargets:
+                return .placeScatterSchoolYoung(address)
+            case .none,
+                 .targetSlot,
+                 .cardSelection,
+                 .sourceAndTargetSlots,
+                 .coralPayment,
+                 .matchingEggTarget,
+                 .consumeFishConsumer,
+                 .consumeFishHandCard,
+                 .freePlayHandCard,
+                 .freePlayTargetSlot,
+                 .playFishFromHandCard,
+                 .playFishFromHandTargetSlot,
+                 .playFishFromHandPayment,
+                 .abilityEffectSelection,
+                 .count(_):
+                throw PendingEffectIntentAdapterError.unsupportedPayload
+            }
+        case (.consumeFishFromHand, let .targetSlot(address)):
+            guard choice.expectedInput == .consumeFishConsumer else {
+                throw PendingEffectIntentAdapterError.unsupportedPayload
+            }
+            return .chooseConsumeFishConsumer(address)
+        case (.consumeFishFromHand, let .selectedCard(cardId)):
+            guard choice.expectedInput == .consumeFishHandCard else {
+                throw PendingEffectIntentAdapterError.unsupportedPayload
+            }
+            return .consumeFishFromHand(cardId)
+        case (.playFishForFree, let .selectedCard(cardId)):
+            guard choice.expectedInput == .freePlayHandCard else {
+                throw PendingEffectIntentAdapterError.unsupportedPayload
+            }
+            return .chooseFreePlayFish(cardId)
+        case (.playFishForFree, let .targetSlot(address)):
+            guard choice.expectedInput == .freePlayTargetSlot,
+                  let cardId = choice.playFishForFreeProgress?.selectedCardId
+            else {
+                throw PendingEffectIntentAdapterError.unsupportedPayload
+            }
+            return .playFishForFree(cardId: cardId, targetSlot: address)
+        case (.playFishFromHand, let .selectedCard(cardId)):
+            guard choice.expectedInput == .playFishFromHandCard else {
+                throw PendingEffectIntentAdapterError.unsupportedPayload
+            }
+            return .choosePlayFishFromHand(cardId)
+        case (.playFishFromHand, let .targetSlot(address)):
+            guard choice.expectedInput == .playFishFromHandTargetSlot else {
+                throw PendingEffectIntentAdapterError.unsupportedPayload
+            }
+            return .choosePlayFishFromHandTarget(address)
+        case (.playFishFromHand, let .payment(payment)):
+            guard choice.expectedInput == .playFishFromHandPayment,
+                  let progress = choice.playFishFromHandProgress,
+                  let cardId = progress.selectedCardId,
+                  let targetSlot = progress.targetSlot
+            else {
+                throw PendingEffectIntentAdapterError.unsupportedPayload
+            }
+            return .playFishFromHand(cardId: cardId, targetSlot: targetSlot, payment: payment)
         default:
             throw PendingEffectIntentAdapterError.unsupportedPayload
+        }
+    }
+
+    nonisolated private static func nativeResolutionIsSupported(
+        _ resolution: PendingChoiceResolution,
+        for effect: AbilityEffectUnit,
+        choice: PendingChoice
+    ) -> Bool {
+        switch resolution {
+        case .skip,
+             .draw,
+             .recoverCard,
+             .drawFromDeck,
+             .finishAbility:
+            return true
+        case .chooseTarget:
+            switch effect {
+            case .placeEgg,
+                 .placeYoung,
+                 .hatchEgg:
+                return choice.kind != .compoundAbility
+            case .drawFish,
+                 .moveYoungOrSchool,
+                 .recoverFromDiscardOrDraw,
+                 .gameEndScore,
+                 .placeEggOnMatchingFish,
+                 .playFishFromHand,
+                 .gainCoral,
+                 .scatterSchool,
+                 .consumeFishFromHand,
+                 .playFishForFree,
+                 .unsupported:
+                return false
+            }
+        case .chooseAbilityEffect:
+            switch effect {
+            case .drawFish,
+                 .recoverFromDiscardOrDraw,
+                 .placeEgg,
+                 .placeYoung,
+                 .hatchEgg:
+                return choice.kind == .compoundAbility
+            case .moveYoungOrSchool,
+                 .gameEndScore,
+                 .placeEggOnMatchingFish,
+                 .playFishFromHand,
+                 .gainCoral,
+                 .scatterSchool,
+                 .consumeFishFromHand,
+                 .playFishForFree,
+                 .unsupported:
+                return false
+            }
+        case .moveResource,
+             .gainCoralWithEgg,
+             .gainCoralWithYoung,
+             .gainCoralByDiscard,
+             .gainCoralFromAbility,
+             .chooseScatterSchoolSource,
+             .placeScatterSchoolYoung,
+             .chooseConsumeFishConsumer,
+             .consumeFishFromHand,
+             .chooseFreePlayFish,
+             .playFishForFree,
+             .choosePlayFishFromHand,
+             .choosePlayFishFromHandTarget,
+             .playFishFromHand,
+             .chooseOption:
+            return false
         }
     }
 
