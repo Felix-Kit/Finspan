@@ -118,22 +118,22 @@
 - Ability Engine v2 Cleanup Pass 3B 已完成：`resolveEffectNode` / `skipEffectNode` / `skipEffectExecution` command 已接入，安全的 simple effects 可原生进入 engine。
 - Ability Engine v2 Cleanup Pass 4 已完成：scatter school、consume-from-hand、free-play / paid-play final payload、coral payment 和 draw reward token action 已迁到 native effect-node payload；legacy adapter 仍保留为 compatibility shell。
 - Ability Engine v2 Cleanup Pass 5 已完成：move young / school source-target payload 和 compound reward-token action selection 已迁到 native effect-node payload；legacy adapter 边界进一步缩小。
+- Ability Engine v2 Completion Audit 已完成：v2 Core 可以标记为 complete；legacy `PendingChoice` / `PendingChoiceResolvedEvent` / `resolvePendingChoice` 仍保留为 compatibility shell 和 saved-state fallback。
 - v2 预留 trace / replay 字段，但本阶段不实现完整 replay、timeline 或 debug UI。
 
 ## 下一阶段计划
 
-### P0 Ability Engine v2 final consolidation
+### P0 Ability Engine v2 Core complete / compatibility audit
 
-- 继续让 ViewModel 和 action panel 优先读取 `PendingEffectSet.available`、blocked、completed、skipped。
-- 保持 reward pool token generation、复杂 staged target requirement summary、payment summary 优先读取 v2 metadata。
-- 已新增 `resolveEffectNode` / `skipEffectNode` / `skipEffectExecution` command；draw、recover、egg / young / hatch target、simple compound selection、skip、skip remaining、scatter school、consume-from-hand、free-play / paid-play final payload、coral payment、move young / school 和主要 compound reward-token action selection 可原生进入 engine。
-- 保留 legacy `PendingChoice` adapter，等 saved-state migration 完成后再清理 step-specific fields。
+- 已完成。保持 v2 Core complete 状态，不继续在本阶段扩展规则或删除 legacy compatibility shell。
+- `PendingEffectSet` / `PendingEffectIntent` / `EffectNodeMetadata` / native effect-node commands 是新游戏 pending action 的默认路径。
+- legacy `PendingChoice` adapter 保留到 saved-state migration 有明确方案后再清理。
 
-### P1 Saved-state migration and legacy field cleanup
+### P1 `recoverFromDiscardOrDraw` discard-pile selection UI
 
-- 为旧 active room / saved local room 中的 legacy pending-choice payload 制定迁移策略。
-- 标记 move / reward-token / scatter / consume / play / coral payment 的 legacy staged progress fields 为 cleanup candidates，等待 saved-state migration 后删除。
-- 继续保持既有规则结果和 deterministic command / event / reducer 流程。
+- 弃牌堆只读详情升级为可选择模式。
+- pending choice 进入弃牌选择模式。
+- 弃牌为空时 fallback draw deck。
 
 ### P2 GameBoardViewModel pending UI stabilization
 
@@ -141,13 +141,7 @@
 - 减少 ViewModel 对 ability type、step index 和特殊 pipeline 的判断。
 - 保持 UI 小步稳定，不做大规模卡牌 UI 重构。
 
-### P3 `recoverFromDiscardOrDraw`
-
-- 弃牌堆只读详情升级为可选择模式。
-- pending choice 进入弃牌选择模式。
-- 弃牌为空时 fallback draw deck。
-
-### P4 当前 UI 修复
+### P3 当前 UI 修复
 
 - 去掉底部白色背景条。
 - 手牌居中。
@@ -156,7 +150,7 @@
 - 右侧行动玩家摘要精简。
 - 顶部行动摘要 toast 化。
 
-### P5 BoardLayout 和真实背景板
+### P4 BoardLayout 和真实背景板
 
 - 从 AI / Figma 标注 SVG rect。
 - 生成 `BoardLayout.json`。
@@ -164,7 +158,7 @@
 - debug overlay。
 - 后续逐步迁移 slot / coral reef / diver area。
 
-### P6 S&R 成就和周目标
+### P5 S&R 成就和周目标
 
 - S&R achievement tiles。
 - Side A / Side B。
@@ -172,13 +166,19 @@
 - 最高分 +3。
 - 第 4 周 GAME END 说明格。
 
-### P7 多玩家 / 联机 / 产品化
+### P6 多玩家 / 联机 / 产品化
 
 - 点击对手头像查看 board。
 - 本地多人完整流程。
 - 局域网联机。
 - reconnect / 房间恢复。
 - App icon / launch screen / debug menu。
+
+### P7 Saved-state migration / legacy cleanup
+
+- 为旧 active room / saved local room 中的 legacy pending-choice payload 制定迁移策略。
+- 标记 move / reward-token / scatter / consume / play / coral payment 的 legacy staged progress fields 为 cleanup candidates，等待 saved-state migration 后删除。
+- 继续保持既有规则结果和 deterministic command / event / reducer 流程。
 
 ### P8 v2.1 trace / replay / debug timeline
 

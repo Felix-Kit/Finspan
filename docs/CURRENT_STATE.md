@@ -108,8 +108,9 @@
 - Ability Engine v2 Cleanup Pass 3B 已完成：新增 `resolveEffectNode` / `skipEffectNode` / `skipEffectExecution` command，安全的简单 resolve / skip 现在可原生进入 `GameEngine`，复杂 staged payload 继续 fallback 到 legacy `PendingChoiceResolution`。
 - Ability Engine v2 Cleanup Pass 4 已完成：scatter school、consume-from-hand、free-play / paid-play final payload、coral payment 和 draw reward token action 已能通过 native effect-node payload 进入 engine；legacy `PendingChoiceResolution` 仍作为 reducer/event compatibility shell。
 - Ability Engine v2 Cleanup Pass 5 已完成：move young / school source-target flow 已迁到 native `EffectMoveResourcePayload`，compound reward-token action selection 已迁到 native `EffectRewardTokenPayload` intent。
+- Ability Engine v2 Completion Audit 已完成：v2 Core 可以标记为 complete。新游戏 pending actions 默认通过 `PendingEffectSet` / `PendingEffectIntent` / `EffectNodeMetadata` / native effect-node command 进入 engine。
 - legacy `PendingChoice` 仍保留为 compatibility shell，继续承载 saved-state compatibility、`PendingChoiceResolvedEvent` reducer shell、follow-up target / payment / discard-selection choices 和现有 `PendingChoiceResolution` fallback。
-- v2 当前是 adapter / consolidation 层，不改变既有玩法结果，也不实现完整 replay / debug timeline。
+- v2 Core complete 不代表删除 legacy：saved-state migration、legacy field cleanup、native effect-node event 替换和 v2.1 replay / debug timeline 仍后置。
 - 未来 runtime JSON 新增或变更的未知能力仍应保持可表示、可跳过，不应导致崩溃。
 
 ### 卡牌素材与牌面渲染
@@ -136,7 +137,7 @@
 
 ### 规则与功能
 
-- Ability Engine v2 cleanup：下一步进入 saved-state migration 和 legacy field cleanup 规划；legacy adapter 继续保持行为稳定，直到旧本地房间和旧 pending-choice payload 有明确迁移路径。
+- Ability Engine v2 saved-state migration / legacy cleanup 后置：当前不是正式发布阶段，legacy adapter 继续保持行为稳定，直到旧本地房间和旧 pending-choice payload 有明确迁移路径。
 - GameBoardViewModel pending UI stabilization：继续减少 ViewModel 对具体 ability type / step order 的依赖。
 - `recoverFromDiscardOrDraw` 与弃牌堆选择模式联动。
 - S&R achievements。
@@ -149,6 +150,6 @@
 
 ## 当前建议下一步
 
-1. 先推进 Ability Engine v2 saved-state migration / legacy field cleanup 规划，同时继续保留 legacy adapter 作为回退。
-2. 再推进 `recoverFromDiscardOrDraw` 与弃牌堆选择模式联动。
+1. 先推进 `recoverFromDiscardOrDraw` 与弃牌堆选择模式联动。
+2. 再稳定 GameBoardViewModel pending UI。
 3. 之后修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。

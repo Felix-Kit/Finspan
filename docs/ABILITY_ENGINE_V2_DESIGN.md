@@ -433,6 +433,81 @@ Blocked By Future Work:
 Cleanup Pass 5 still does not implement v2.1 replay, a debug timeline, or a
 graph viewer.
 
+## Completion Audit
+
+Ability Engine v2 Core is complete as of the completion audit on 2026-06-14.
+This means the core execution model is complete, not that every legacy
+compatibility type has been deleted.
+
+Completion criteria met:
+
+- Runtime ability coverage remains 215 mapped / 0 unsupported.
+- GAME END remaining unsupported remains 0.
+- New-game pending actions default to `PendingEffectSet`,
+  `PendingEffectIntent`, `EffectNodeMetadata`, and native
+  `resolveEffectNode` / `skipEffectNode` / `skipEffectExecution` commands.
+- Major staged payloads are native: scatter, consume-from-hand, free-play /
+  paid-play final payload, coral payment, move young / school, and reward-token
+  selection.
+- `PendingChoice` remains only as the compatibility shell for persisted state,
+  existing reducer flow, and fallback command support.
+- `PendingChoiceResolvedEvent` remains only as the reducer/event compatibility
+  shell.
+- Old `resolvePendingChoice` remains only as fallback / saved-state
+  compatibility and for explicit legacy regression tests.
+- v2.1 replay / timeline / graph viewer are intentionally not implemented.
+- Gameplay results are unchanged.
+
+New-game native path:
+
+- `PendingChoice.v2PendingEffectSet` exposes active effect nodes.
+- `GameBoardViewModel` builds primary pending actions from
+  `PendingEffectSet.available`.
+- v2 actions carry `executionId`, `effectNodeId`, `sourcePlayerId`, and
+  `targetPlayerId`.
+- ViewModel staged selections construct native payloads when complete:
+  `EffectScatterSchoolPayload`, `EffectConsumeFishFromHandPayload`,
+  `EffectPlayCardPayload`, `EffectCoralPaymentPayload`,
+  `EffectMoveResourcePayload`, and `EffectRewardTokenPayload`.
+- Engine validates native effect-node commands before mapping them through the
+  current reducer event shell.
+
+Compatibility fallback:
+
+- `resolvePendingChoice` command remains for old callers, old tests, and local
+  room snapshots that may contain legacy pending-choice state.
+- `PendingChoiceResolution` remains the shared reducer payload while event
+  compatibility is preserved.
+- `compoundAbilityProgress`, `allPlayersProgress`, and
+  `conditionalBonusProgress` remain as persisted compatibility fields and as
+  bridge data used by `v2PendingEffectSet`.
+- Follow-up target / payment / discard-selection choices are still represented
+  as current pending choices after native reward-token selection.
+
+Still required at runtime:
+
+- `PendingChoiceResolvedEvent` is still the reducer event used to apply pending
+  choice effects.
+- Legacy pending progress fields are still used to rebuild v2 pending sets and
+  to keep old local-room snapshots readable.
+- `resolvePendingChoice` must remain accepted until saved-state migration has a
+  clear strategy.
+
+Safe cleanup candidates:
+
+- Direct legacy move young / school dispatch now covered by
+  `EffectMoveResourcePayload`.
+- Legacy reward-token selection dispatch now covered by
+  `EffectRewardTokenPayload`.
+- Scatter, consume, play, and coral payment staged progress dispatch paths now
+  covered by Pass 4 native payloads.
+
+Blocked by saved-state migration:
+
+- Removing legacy pending progress fields from persisted `PendingChoice`.
+- Replacing `PendingChoiceResolvedEvent` with a native effect-node event.
+- Removing `resolvePendingChoice` from the accepted command set.
+
 ## Behavior Guarantees
 
 This pass must not change gameplay results:
@@ -448,9 +523,9 @@ This pass must not change gameplay results:
 
 ## Next Steps
 
-- Plan saved-state migration and legacy field cleanup now that the remaining
-  low-risk staged payloads have native effect-node entry points.
-- Stabilize GameBoardViewModel pending UI around v2 metadata and native payloads.
-- Add v2.1 trace / replay / debug timeline using the reserved ids.
-- Remove legacy step-specific pending fields only after v2 choices are fully
-  authoritative and saved-state compatibility has a migration path.
+- Resume product work outside the v2 core migration: prioritize
+  `recoverFromDiscardOrDraw` discard-pile selection UI, then pending UI
+  stabilization and UI polish.
+- Keep saved-state migration / legacy cleanup as a later compatibility pass.
+- Add v2.1 trace / replay / debug timeline only after product-facing pending
+  UI work is stable.

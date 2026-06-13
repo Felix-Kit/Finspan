@@ -6,7 +6,7 @@ final class GameBoardViewModelTests: XCTestCase {
     func testSubmitPlayFishBuildsPlayerCommandFromSelection() {
         let slotAddress = Self.slotAddress
         let service = makeService(hand: ["starter-fish-1"])
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
 
         viewModel.selectCard("starter-fish-1")
         viewModel.selectTargetSlot(slotAddress)
@@ -41,14 +41,14 @@ final class GameBoardViewModelTests: XCTestCase {
 
     func testTopBarViewStateShowsCurrentWeek() {
         let service = makeService(hand: [], currentWeek: 1)
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
 
         XCTAssertEqual(viewModel.topBarViewState.weekText, "第 1 周")
     }
 
     func testTopBarViewStateShowsActivePlayerAndDivers() {
         let service = makeService(hand: [], availableDivers: 4)
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
 
         XCTAssertEqual(viewModel.topBarViewState.activePlayerText, "当前：玩家 1")
         XCTAssertEqual(viewModel.topBarViewState.diverText, "潜水员 4 / 6")
@@ -2156,7 +2156,7 @@ final class GameBoardViewModelTests: XCTestCase {
     func testCompoundAbilityPendingChoiceShowsProgressAndActions() {
         let choice = compoundAbilityPendingChoice()
         let service = makeService(hand: ["starter-fish-1"], pendingChoices: [choice.choiceId: choice])
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
         let pendingChoice = viewModel.pendingChoices.first
 
         XCTAssertEqual(pendingChoice?.title, AppStrings.GameBoard.triggeringFishAbility(cardName: "Fish B"))
@@ -2544,13 +2544,16 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(action.intent?.targetPlayerId, "player-2")
     }
 
-    func testChoosingCompoundPlaceEggAndHatchEggSubeffectsBuildsResolveCommands() {
+    func testChoosingCompoundPlaceEggAndHatchEggSubeffectsBuildsResolveCommands() throws {
         let choice = compoundAbilityPendingChoice()
         let service = makeService(hand: ["starter-fish-1"], pendingChoices: [choice.choiceId: choice])
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+        let rewards = viewModel.rewardPoolViewState.rewards
+        let placeToken = try XCTUnwrap(rewards.first { $0.kind == .compoundPlaceEgg })
+        let hatchToken = try XCTUnwrap(rewards.first { $0.kind == .compoundHatchEgg })
 
-        viewModel.performPendingChoiceAction(.choosePlaceEggAbilityEffect, for: choice.choiceId)
-        viewModel.performPendingChoiceAction(.chooseHatchEggAbilityEffect, for: choice.choiceId)
+        viewModel.selectRewardToken(placeToken.id)
+        viewModel.selectRewardToken(hatchToken.id)
 
         guard service.submittedCommands.count == 2,
               case let .resolveEffectNode(placePayload) = service.submittedCommands[0].payload,
@@ -2558,8 +2561,8 @@ final class GameBoardViewModelTests: XCTestCase {
         else {
             return XCTFail("Expected resolveEffectNode commands.")
         }
-        XCTAssertEqual(placePayload.payload, .none)
-        XCTAssertEqual(hatchPayload.payload, .none)
+        XCTAssertEqual(placePayload.payload, .rewardToken(EffectRewardTokenPayload(tokenKind: .placeEgg, count: 1)))
+        XCTAssertEqual(hatchPayload.payload, .rewardToken(EffectRewardTokenPayload(tokenKind: .hatchEgg, count: 1)))
     }
 
     func testFinishingCompoundAbilityBuildsFinishAbilityCommand() {
@@ -3604,7 +3607,7 @@ final class GameBoardViewModelTests: XCTestCase {
             pendingChoices: [choice.choiceId: choice],
             coralReefs: CoralReefState.sharksAndReefsInitial
         )
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
 
         let rewardPool = viewModel.rewardPoolViewState
 
@@ -3700,7 +3703,7 @@ final class GameBoardViewModelTests: XCTestCase {
             pendingChoices: [choice.choiceId: choice],
             coralReefs: CoralReefState.sharksAndReefsInitial
         )
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
 
         XCTAssertEqual(
             viewModel.rewardPoolViewState.rewards.map(\.title),
@@ -3719,14 +3722,33 @@ final class GameBoardViewModelTests: XCTestCase {
     }
 
     func testSelectingCoralEggRewardTokenThenSourceBuildsGainCoralCommand() throws {
-        let choice = pendingChoice(kind: .gainCoral, source: .coralReef(.blue))
+        var choice = pendingChoice(kind: .gainCoral, source: .coralReef(.blue))
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-coral-payment",
+            sourceCardId: "fish-2",
+            sourceAbilityId: "fixture-coral-payment",
+            available: [
+                effectNode(
+                    id: "gain-coral-payment",
+                    effect: .gainCoral(selector: .blue, count: 1),
+                    legacyKind: .gainCoral,
+                    paymentRequirement: coralPaymentRequirement(debugLabel: "gain-coral-payment"),
+                    rewardTokenRequirement: rewardRequirement(.gainCoral, source: .coralPayment, debugLabel: "gain-coral-payment"),
+                    stagedSelection: stagedRequirement(.selectCoralPaymentSource, debugLabel: "gain-coral-payment")
+                )
+            ]
+        )
         let service = makeService(
             hand: ["fish-2"],
             pendingChoices: [choice.choiceId: choice],
             coralReefs: CoralReefState.sharksAndReefsInitial
         )
-        let viewModel = GameBoardViewModel(roomService: service)
-        let token = try XCTUnwrap(viewModel.rewardPoolViewState.rewards.first { $0.title == AppStrings.GameBoard.payOneEgg })
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+        let rewards = viewModel.rewardPoolViewState.rewards
+        let token = try XCTUnwrap(
+            rewards.first { $0.title == AppStrings.GameBoard.payOneEgg },
+            "Rewards: \(rewards)"
+        )
 
         viewModel.selectRewardToken(token.id)
 
@@ -3740,37 +3762,50 @@ final class GameBoardViewModelTests: XCTestCase {
 
         viewModel.selectTargetSlot(Self.resourceSourceAddress)
 
-        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
-            return XCTFail("Expected resolvePendingChoice command.")
+        guard case let .resolveEffectNode(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolveEffectNode command.")
         }
-        XCTAssertEqual(payload.choiceId, choice.choiceId)
-        XCTAssertEqual(payload.resolution, .gainCoralWithEgg(source: Self.resourceSourceAddress))
+        XCTAssertEqual(payload.payload, .coralPayment(EffectCoralPaymentPayload(payment: .egg(source: Self.resourceSourceAddress))))
     }
 
     func testSelectingCoralDiscardRewardTokenThenHandCardBuildsGainCoralCommand() throws {
-        let choice = pendingChoice(kind: .gainCoral, source: .coralReef(.blue))
+        var choice = pendingChoice(kind: .gainCoral, source: .coralReef(.blue))
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-coral-payment",
+            sourceCardId: "fish-2",
+            sourceAbilityId: "fixture-coral-payment",
+            available: [
+                effectNode(
+                    id: "gain-coral-payment",
+                    effect: .gainCoral(selector: .blue, count: 1),
+                    legacyKind: .gainCoral,
+                    paymentRequirement: coralPaymentRequirement(debugLabel: "gain-coral-payment"),
+                    rewardTokenRequirement: rewardRequirement(.gainCoral, source: .coralPayment, debugLabel: "gain-coral-payment"),
+                    stagedSelection: stagedRequirement(.selectCoralPaymentCard, debugLabel: "gain-coral-payment")
+                )
+            ]
+        )
         let service = makeService(
             hand: ["fish-2"],
             pendingChoices: [choice.choiceId: choice],
             coralReefs: CoralReefState.sharksAndReefsInitial
         )
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
         let token = try XCTUnwrap(viewModel.rewardPoolViewState.rewards.first { $0.title == AppStrings.GameBoard.discardOneHandCard })
 
         viewModel.selectRewardToken(token.id)
         viewModel.selectHandCard("fish-2")
 
-        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
-            return XCTFail("Expected resolvePendingChoice command.")
+        guard case let .resolveEffectNode(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolveEffectNode command.")
         }
-        XCTAssertEqual(payload.choiceId, choice.choiceId)
-        XCTAssertEqual(payload.resolution, .gainCoralByDiscard(cardId: "fish-2"))
+        XCTAssertEqual(payload.payload, .coralPayment(EffectCoralPaymentPayload(payment: .discard(cardId: "fish-2"))))
     }
 
     func testScatterSchoolPendingChoiceShowsSourceRewardTokenAndHighlightsSchoolSource() throws {
         let choice = scatterSchoolPendingChoice()
         let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
         let token = try XCTUnwrap(viewModel.rewardPoolViewState.rewards.first)
 
         XCTAssertEqual(viewModel.rewardPoolViewState.rewards.map(\.kind), [.scatterSchool])
@@ -3786,20 +3821,36 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertTrue(service.submittedCommands.isEmpty)
     }
 
-    func testSelectingScatterSchoolSourceBuildsResolveCommand() throws {
-        let choice = scatterSchoolPendingChoice()
+    func testSelectingScatterSchoolSourceEntersTargetSelectionWithoutLegacyCommand() throws {
+        var choice = scatterSchoolPendingChoice()
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-scatter-school",
+            sourceCardId: "fish-30",
+            sourceAbilityId: "fixture-scatter-school",
+            available: [
+                effectNode(
+                    id: "scatter-school",
+                    effect: .scatterSchool(count: 1),
+                    legacyKind: .scatterSchool,
+                    targetRequirement: targetRequirement(.scatterSchoolSource, effectNodeId: "scatter-school", debugLabel: "scatter-school"),
+                    rewardTokenRequirement: rewardRequirement(.scatterSchool, source: .stagedSelection, debugLabel: "scatter-school"),
+                    stagedSelection: stagedRequirement(
+                        .selectScatterSchoolSource,
+                        nextStageHint: .selectScatterSchoolYoungTarget,
+                        debugLabel: "scatter-school"
+                    )
+                )
+            ]
+        )
         let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
         let token = try XCTUnwrap(viewModel.rewardPoolViewState.rewards.first)
 
         viewModel.selectRewardToken(token.id)
         viewModel.selectTargetSlot(Self.resourceSourceAddress)
 
-        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
-            return XCTFail("Expected resolvePendingChoice command.")
-        }
-        XCTAssertEqual(payload.choiceId, choice.choiceId)
-        XCTAssertEqual(payload.resolution, .chooseScatterSchoolSource(Self.resourceSourceAddress))
+        XCTAssertTrue(service.submittedCommands.isEmpty)
+        XCTAssertEqual(viewModel.rewardPoolViewState.instructionText, AppStrings.GameBoard.scatterSchoolYoungTarget)
     }
 
     func testScatterSchoolYoungProgressShowsTargetRewardAndRejectsUsedTargetHighlight() throws {
@@ -3813,7 +3864,7 @@ final class GameBoardViewModelTests: XCTestCase {
             )
         )
         let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
         let token = try XCTUnwrap(viewModel.rewardPoolViewState.rewards.first)
 
         XCTAssertEqual(token.title, AppStrings.GameBoard.scatterSchoolYoungTarget)
@@ -3824,8 +3875,8 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertTrue(oceanSlot(in: viewModel, address: Self.forageTargetAddress).isHighlightedByRewardSelection)
     }
 
-    func testSelectingScatterSchoolYoungTargetBuildsResolveCommand() throws {
-        let choice = scatterSchoolPendingChoice(
+    func testSelectingScatterSchoolYoungTargetAccumulatesUntilPayloadIsComplete() throws {
+        var choice = scatterSchoolPendingChoice(
             expectedInput: .scatterSchoolYoungTarget,
             progress: ScatterSchoolProgress(
                 sourceSlot: Self.resourceSourceAddress,
@@ -3834,18 +3885,74 @@ final class GameBoardViewModelTests: XCTestCase {
                 requiresSchoolSource: true
             )
         )
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-scatter-school",
+            sourceCardId: "fish-30",
+            sourceAbilityId: "fixture-scatter-school",
+            available: [
+                effectNode(
+                    id: "scatter-school",
+                    effect: .scatterSchool(count: 1),
+                    legacyKind: .scatterSchool,
+                    targetRequirement: targetRequirement(.scatterSchoolYoungTarget, effectNodeId: "scatter-school", debugLabel: "scatter-school"),
+                    rewardTokenRequirement: rewardRequirement(.scatterSchool, source: .stagedSelection, debugLabel: "scatter-school"),
+                    stagedSelection: stagedRequirement(.selectScatterSchoolYoungTarget, debugLabel: "scatter-school")
+                )
+            ]
+        )
         let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
         let token = try XCTUnwrap(viewModel.rewardPoolViewState.rewards.first)
 
         viewModel.selectRewardToken(token.id)
         viewModel.selectTargetSlot(Self.forageTargetAddress)
 
-        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
-            return XCTFail("Expected resolvePendingChoice command.")
+        XCTAssertTrue(service.submittedCommands.isEmpty)
+        XCTAssertEqual(viewModel.rewardPoolViewState.instructionText, AppStrings.GameBoard.scatterSchoolYoungTarget)
+    }
+
+    func testSelectingScatterSchoolTargetsBuildsNativeScatterPayload() throws {
+        var choice = scatterSchoolPendingChoice()
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-scatter-school",
+            sourceCardId: "fish-30",
+            sourceAbilityId: "fixture-scatter-school",
+            available: [
+                effectNode(
+                    id: "scatter-school",
+                    effect: .scatterSchool(count: 1),
+                    legacyKind: .scatterSchool,
+                    targetRequirement: targetRequirement(.scatterSchoolSource, effectNodeId: "scatter-school", debugLabel: "scatter-school"),
+                    rewardTokenRequirement: rewardRequirement(.scatterSchool, source: .stagedSelection, debugLabel: "scatter-school"),
+                    stagedSelection: stagedRequirement(
+                        .selectScatterSchoolSource,
+                        nextStageHint: .selectScatterSchoolYoungTarget,
+                        debugLabel: "scatter-school"
+                    )
+                )
+            ]
+        )
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+        let token = try XCTUnwrap(viewModel.rewardPoolViewState.rewards.first)
+        let targets = [
+            Self.slotAddress,
+            Self.blueTwilightSlotAddress,
+            Self.forageTargetAddress,
+            Self.forageYoungAddress
+        ]
+
+        viewModel.selectRewardToken(token.id)
+        viewModel.selectTargetSlot(Self.resourceSourceAddress)
+        targets.forEach { viewModel.selectTargetSlot($0) }
+
+        guard case let .resolveEffectNode(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolveEffectNode command.")
         }
-        XCTAssertEqual(payload.choiceId, choice.choiceId)
-        XCTAssertEqual(payload.resolution, .placeScatterSchoolYoung(Self.forageTargetAddress))
+        XCTAssertEqual(
+            payload.payload,
+            .scatterSchool(EffectScatterSchoolPayload(source: Self.resourceSourceAddress, targets: targets))
+        )
     }
 
     func testScatterSchoolWithoutSchoolShowsSingleYoungTargetReward() throws {
@@ -3916,11 +4023,18 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertTrue(service.submittedCommands.isEmpty)
         viewModel.selectHandCard("consume.short")
 
-        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
-            return XCTFail("Expected resolvePendingChoice command.")
+        guard case let .resolveEffectNode(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolveEffectNode command.")
         }
-        XCTAssertEqual(payload.choiceId, choice.choiceId)
-        XCTAssertEqual(payload.resolution, .consumeFishFromHand("consume.short"))
+        XCTAssertEqual(
+            payload.payload,
+            .consumeFishFromHand(
+                EffectConsumeFishFromHandPayload(
+                    consumerSlot: Self.slotAddress,
+                    consumedCardId: "consume.short"
+                )
+            )
+        )
     }
 
     func testPlayFishForFreeShowsHandRewardTokenAndFiltersHandCards() throws {
@@ -3948,9 +4062,36 @@ final class GameBoardViewModelTests: XCTestCase {
     }
 
     func testPlayFishForFreeTargetStepHighlightsLegalSlotAndBuildsResolveCommand() throws {
-        let choice = playFishForFreePendingChoice(
+        var choice = playFishForFreePendingChoice(
             expectedInput: .freePlayTargetSlot,
             progress: PlayFishForFreeProgress(selectedCardId: "free.sunlight")
+        )
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-play-fish-for-free",
+            sourceCardId: "free.sunlight",
+            sourceAbilityId: "fixture-play-fish-for-free",
+            available: [
+                effectNode(
+                    id: "play-fish-for-free",
+                    effect: .playFishForFree(filter: .any, placement: .any, sourceCondition: .none, count: 1),
+                    legacyKind: .playFishForFree,
+                    targetRequirement: targetRequirement(.freePlayTarget, effectNodeId: "play-fish-for-free", debugLabel: "play-fish-for-free"),
+                    paymentRequirement: EffectPaymentRequirement(
+                        paymentKind: .freePlay,
+                        allowedSources: [.waivedCost],
+                        requiredResources: [],
+                        isOptional: false,
+                        costWaived: true,
+                        debugLabel: "play-fish-for-free"
+                    ),
+                    rewardTokenRequirement: rewardRequirement(.playFishForFree, source: .stagedSelection, debugLabel: "play-fish-for-free"),
+                    stagedSelection: stagedRequirement(
+                        .selectFreePlayTargetSlot,
+                        canResolveWithCurrentPayload: true,
+                        debugLabel: "play-fish-for-free"
+                    )
+                )
+            ]
         )
         let service = makeService(
             hand: ["free.sunlight"],
@@ -3971,11 +4112,20 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertTrue(service.submittedCommands.isEmpty)
         viewModel.selectTargetSlot(Self.slotAddress)
 
-        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
-            return XCTFail("Expected resolvePendingChoice command.")
+        guard case let .resolveEffectNode(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolveEffectNode command.")
         }
-        XCTAssertEqual(payload.choiceId, choice.choiceId)
-        XCTAssertEqual(payload.resolution, .playFishForFree(cardId: "free.sunlight", targetSlot: Self.slotAddress))
+        XCTAssertEqual(
+            payload.payload,
+            .playCard(
+                EffectPlayCardPayload(
+                    cardId: "free.sunlight",
+                    targetSlot: Self.slotAddress,
+                    payment: .empty,
+                    coverTarget: nil
+                )
+            )
+        )
     }
 
     func testCompoundAbilityPendingChoiceGeneratesRemainingRewardTokens() {
@@ -4043,7 +4193,7 @@ final class GameBoardViewModelTests: XCTestCase {
     func testSelectingMoveRewardTokenEntersMoveSourceSelectionMode() {
         let choice = pendingChoice(kind: .moveYoungOrSchool)
         let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
         let token = viewModel.rewardPoolViewState.rewards[0]
 
         viewModel.selectRewardToken(token.id)
@@ -4057,45 +4207,82 @@ final class GameBoardViewModelTests: XCTestCase {
         )
     }
 
+    func testSelectingMoveRewardTokenSourceAndTargetBuildsNativeMovePayload() {
+        let choice = pendingChoice(kind: .moveYoungOrSchool)
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+        let token = viewModel.rewardPoolViewState.rewards[0]
+
+        viewModel.selectRewardToken(token.id)
+        viewModel.selectTargetSlot(Self.resourceSourceAddress)
+        viewModel.selectTargetSlot(Self.blueTwilightSlotAddress)
+
+        guard case let .resolveEffectNode(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolveEffectNode command.")
+        }
+        XCTAssertEqual(
+            payload.payload,
+            .moveResource(
+                EffectMoveResourcePayload(
+                    sourceSlot: Self.resourceSourceAddress,
+                    targetSlot: Self.blueTwilightSlotAddress,
+                    resourceKind: .young
+                )
+            )
+        )
+    }
+
     func testClickingDrawRewardTokenBuildsDrawResolveCommand() {
         let choice = pendingChoice(kind: .drawFish)
         let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
         let token = viewModel.rewardPoolViewState.rewards[0]
 
         XCTAssertEqual(token.title, AppStrings.GameBoard.drawFishCard(count: 1))
         viewModel.selectRewardToken(token.id)
 
-        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
-            return XCTFail("Expected resolvePendingChoice command.")
+        guard case let .resolveEffectNode(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolveEffectNode command.")
         }
-        XCTAssertEqual(payload.choiceId, choice.choiceId)
-        XCTAssertEqual(payload.resolution, .draw(count: 1))
+        XCTAssertEqual(payload.payload, .rewardToken(EffectRewardTokenPayload(tokenKind: .drawFish, count: 1)))
     }
 
-    func testDrawFourPendingChoiceGeneratesDrawFourRewardTokenAndCommand() {
-        let choice = abilityPendingChoice(
-            cardId: "base.starter.127",
+    func testDrawFourPendingChoiceGeneratesDrawFourRewardTokenAndCommand() throws {
+        var choice = abilityPendingChoice(
+            cardId: "fish-30",
             kind: .drawFish,
             drawCount: 4
+        )
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-draw-four",
+            sourceCardId: "fish-30",
+            sourceAbilityId: "ability-fish-30",
+            available: [
+                effectNode(
+                    id: "draw-four",
+                    effect: .drawFish(count: 4),
+                    legacyKind: .drawFish,
+                    rewardTokenRequirement: rewardRequirement(.drawFish, count: 4, debugLabel: "draw-four")
+                )
+            ]
         )
         let service = makeService(
             hand: ["fish-2"],
             pendingChoices: [choice.choiceId: choice],
-            fishDrawPile: ["base.main.001", "base.main.002", "base.main.003", "base.main.004"]
+            fishDrawPile: ["fish-3", "fish-4", "fish-5", "fish-6"]
         )
-        let viewModel = GameBoardViewModel(roomService: service)
-        let token = viewModel.rewardPoolViewState.rewards[0]
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+        let rewards = viewModel.rewardPoolViewState.rewards
+        let token = try XCTUnwrap(rewards.first, "Rewards: \(rewards)")
 
         XCTAssertEqual(token.title, AppStrings.GameBoard.drawFishCard(count: 4))
 
         viewModel.selectRewardToken(token.id)
 
-        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
-            return XCTFail("Expected resolvePendingChoice command.")
+        guard case let .resolveEffectNode(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolveEffectNode command.")
         }
-        XCTAssertEqual(payload.choiceId, choice.choiceId)
-        XCTAssertEqual(payload.resolution, .draw(count: 4))
+        XCTAssertEqual(payload.payload, .rewardToken(EffectRewardTokenPayload(tokenKind: .drawFish, count: 4)))
     }
 
     func testRecoverRewardTokenDrawsFromDeckWhenDiscardPileIsEmpty() {
@@ -4106,7 +4293,7 @@ final class GameBoardViewModelTests: XCTestCase {
             discardPile: [],
             fishDrawPile: ["fish-9"]
         )
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
         let token = viewModel.rewardPoolViewState.rewards[0]
 
         XCTAssertEqual(token.kind, .recoverFromDiscardOrDraw)
@@ -4114,10 +4301,10 @@ final class GameBoardViewModelTests: XCTestCase {
 
         viewModel.selectRewardToken(token.id)
 
-        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
-            return XCTFail("Expected resolvePendingChoice command.")
+        guard case let .resolveEffectNode(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolveEffectNode command.")
         }
-        XCTAssertEqual(payload.resolution, .drawFromDeck)
+        XCTAssertEqual(payload.payload, .none)
     }
 
     func testRecoverRewardTokenRecoversDiscardCardWhenDiscardPileHasCards() {
@@ -4127,7 +4314,7 @@ final class GameBoardViewModelTests: XCTestCase {
             pendingChoices: [choice.choiceId: choice],
             discardPile: ["fish-9"]
         )
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
         let token = viewModel.rewardPoolViewState.rewards[0]
 
         XCTAssertEqual(token.kind, .recoverFromDiscardOrDraw)
@@ -4135,10 +4322,10 @@ final class GameBoardViewModelTests: XCTestCase {
 
         viewModel.selectRewardToken(token.id)
 
-        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
-            return XCTFail("Expected resolvePendingChoice command.")
+        guard case let .resolveEffectNode(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolveEffectNode command.")
         }
-        XCTAssertEqual(payload.resolution, .recoverCard("fish-9"))
+        XCTAssertEqual(payload.payload, .selectedDiscardCard("fish-9"))
     }
 
     func testClickingEndAbilityRewardTokenBuildsFinishAbilityCommand() throws {
@@ -4578,7 +4765,7 @@ final class GameBoardViewModelTests: XCTestCase {
         return PendingChoice(
             choiceId: "choice-scatter-school",
             playerId: "player-1",
-            source: .fishAbility("fixture.scatter"),
+            source: .fishAbility("fish-30"),
             kind: .scatterSchool,
             options: [],
             expectedInput: expectedInput,
@@ -4631,7 +4818,7 @@ final class GameBoardViewModelTests: XCTestCase {
         return PendingChoice(
             choiceId: "choice-play-fish-for-free",
             playerId: "player-1",
-            source: .fishAbility("fixture.free"),
+            source: .fishAbility("free.sunlight"),
             kind: .playFishForFree,
             options: [],
             expectedInput: expectedInput,
@@ -4773,7 +4960,11 @@ final class GameBoardViewModelTests: XCTestCase {
         scope: EffectScope = .sourcePlayer,
         conditions: [EffectCondition] = [],
         dependencies: [EffectNodeId] = [],
-        legacyKind: PendingChoiceKind
+        legacyKind: PendingChoiceKind,
+        targetRequirement: EffectTargetRequirement? = nil,
+        paymentRequirement: EffectPaymentRequirement? = nil,
+        rewardTokenRequirement: EffectRewardTokenRequirement? = nil,
+        stagedSelection: EffectStagedSelectionRequirement? = nil
     ) -> EffectNode {
         EffectNode(
             id: id,
@@ -4787,8 +4978,66 @@ final class GameBoardViewModelTests: XCTestCase {
                 debugLabel: id,
                 debugDescription: "test node \(id)",
                 legacyChoiceKind: legacyKind,
-                decisionIndex: 0
+                decisionIndex: 0,
+                targetRequirement: targetRequirement,
+                paymentRequirement: paymentRequirement,
+                resourceRequirement: nil,
+                rewardTokenRequirement: rewardTokenRequirement,
+                stagedSelection: stagedSelection
             )
+        )
+    }
+
+    private func rewardRequirement(
+        _ kind: EffectRewardTokenKind,
+        count: Int = 1,
+        source: EffectRewardTokenSource = .ability,
+        debugLabel: String
+    ) -> EffectRewardTokenRequirement {
+        EffectRewardTokenRequirement(
+            tokenKind: kind,
+            count: count,
+            source: source,
+            isSelectable: true,
+            debugLabel: debugLabel
+        )
+    }
+
+    private func stagedRequirement(
+        _ stage: EffectSelectionStage,
+        nextStageHint: EffectSelectionStage? = nil,
+        canResolveWithCurrentPayload: Bool = false,
+        debugLabel: String
+    ) -> EffectStagedSelectionRequirement {
+        EffectStagedSelectionRequirement(
+            stage: stage,
+            nextStageHint: nextStageHint,
+            canResolveWithCurrentPayload: canResolveWithCurrentPayload,
+            debugLabel: debugLabel
+        )
+    }
+
+    private func targetRequirement(
+        _ kind: EffectSlotTargetKind,
+        effectNodeId: EffectNodeId,
+        debugLabel: String
+    ) -> EffectTargetRequirement {
+        EffectTargetRequirement(
+            kind: .slot(kind),
+            ownerPlayerId: "player-1",
+            effectNodeId: effectNodeId,
+            debugLabel: debugLabel
+        )
+    }
+
+    private func coralPaymentRequirement(debugLabel: String) -> EffectPaymentRequirement {
+        EffectPaymentRequirement(
+            paymentKind: .coral,
+            allowedSources: [.egg, .young, .handCard],
+            requiredResources: [],
+            isOptional: true,
+            costWaived: false,
+            debugLabel: debugLabel
         )
     }
 

@@ -597,6 +597,9 @@ final class GameEngineTests: XCTestCase {
     func testResolveEffectNodeRewardTokenSelectsCompoundEffectNatively() throws {
         let engine = GameEngine()
         var state = playFishState()
+        let eggTarget = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+        setContent(.fishCard("fish-30"), at: eggTarget, in: &state)
+        setResources([], at: eggTarget, in: &state)
         let ability = AbilityDefinition(
             abilityId: "fixture.reward-token",
             trigger: .ifActivated,
