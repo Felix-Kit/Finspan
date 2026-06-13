@@ -83,6 +83,97 @@ struct PendingEffectSet: Codable, Equatable, Sendable {
     var debugDescription: String
 }
 
+enum PendingEffectIntent: Codable, Equatable, Sendable {
+    case resolveEffect(
+        executionId: AbilityExecutionId,
+        effectNodeId: EffectNodeId,
+        sourcePlayerId: PlayerID,
+        targetPlayerId: PlayerID?,
+        payload: EffectResolutionPayload
+    )
+    case skipEffect(
+        executionId: AbilityExecutionId,
+        effectNodeId: EffectNodeId,
+        sourcePlayerId: PlayerID,
+        targetPlayerId: PlayerID?
+    )
+    case skipRemaining(
+        executionId: AbilityExecutionId,
+        sourcePlayerId: PlayerID,
+        targetPlayerId: PlayerID?
+    )
+
+    nonisolated var executionId: AbilityExecutionId {
+        switch self {
+        case let .resolveEffect(executionId, _, _, _, _),
+             let .skipEffect(executionId, _, _, _),
+             let .skipRemaining(executionId, _, _):
+            return executionId
+        }
+    }
+
+    nonisolated var effectNodeId: EffectNodeId? {
+        switch self {
+        case let .resolveEffect(_, effectNodeId, _, _, _),
+             let .skipEffect(_, effectNodeId, _, _):
+            return effectNodeId
+        case .skipRemaining:
+            return nil
+        }
+    }
+
+    nonisolated var sourcePlayerId: PlayerID {
+        switch self {
+        case let .resolveEffect(_, _, sourcePlayerId, _, _),
+             let .skipEffect(_, _, sourcePlayerId, _),
+             let .skipRemaining(_, sourcePlayerId, _):
+            return sourcePlayerId
+        }
+    }
+
+    nonisolated var targetPlayerId: PlayerID? {
+        switch self {
+        case let .resolveEffect(_, _, _, targetPlayerId, _),
+             let .skipEffect(_, _, _, targetPlayerId),
+             let .skipRemaining(_, _, targetPlayerId):
+            return targetPlayerId
+        }
+    }
+}
+
+enum EffectResolutionPayload: Codable, Equatable, Sendable {
+    case none
+    case targetSlot(OceanSlotAddress)
+    case selectedCard(CardID)
+    case selectedDiscardCard(CardID)
+    case payment(PlayFishPayment)
+    case resourceSource(OceanSlotAddress)
+}
+
+struct EffectTargetRequirement: Codable, Equatable, Sendable {
+    var kind: EffectTargetKind
+    var ownerPlayerId: PlayerID
+    var effectNodeId: EffectNodeId
+    var debugLabel: String
+}
+
+enum EffectTargetKind: Codable, Equatable, Sendable {
+    case slot(EffectSlotTargetKind)
+    case discardCard
+}
+
+enum EffectSlotTargetKind: String, Codable, Equatable, Sendable {
+    case placeEgg
+    case placeYoung
+    case hatchEgg
+}
+
+enum PendingEffectIntentAdapterError: Equatable, Error {
+    case executionMismatch
+    case unavailableEffectNode(EffectNodeId)
+    case unsupportedPayload
+}
+
 struct BlockedEffectNode: Codable, Equatable, Sendable {
     var node: EffectNode
     var reason: BlockedEffectReason
@@ -190,6 +281,114 @@ enum AbilityEngineV2Adapter {
             debugLabel: choice.abilityDefinition?.displayText ?? "\(choice.kind)",
             debugDescription: "PendingEffectSet bridged from legacy PendingChoice \(choice.choiceId)"
         )
+    }
+
+    nonisolated static func legacyResolution(
+        for intent: PendingEffectIntent,
+        in choice: PendingChoice
+    ) throws -> PendingChoiceResolution {
+        let effectSet = choice.v2PendingEffectSet
+        guard intent.executionId == effectSet.executionId else {
+            throw PendingEffectIntentAdapterError.executionMismatch
+        }
+
+        switch intent {
+        case let .skipEffect(_, effectNodeId, _, _):
+            guard effectSet.available.contains(where: { $0.id == effectNodeId }) else {
+                throw PendingEffectIntentAdapterError.unavailableEffectNode(effectNodeId)
+            }
+            return .skip
+        case .skipRemaining:
+            return choice.kind == .compoundAbility ? .finishAbility : .skip
+        case let .resolveEffect(_, effectNodeId, _, _, payload):
+            guard let node = effectSet.available.first(where: { $0.id == effectNodeId }) else {
+                throw PendingEffectIntentAdapterError.unavailableEffectNode(effectNodeId)
+            }
+            return try legacyResolution(for: node.effect, payload: payload, choice: choice)
+        }
+    }
+
+    nonisolated static func targetRequirement(
+        for node: EffectNode,
+        effectSet: PendingEffectSet
+    ) -> EffectTargetRequirement? {
+        let ownerPlayerId = effectSet.targetPlayerId ?? effectSet.activePlayerId
+        switch node.effect {
+        case .placeEgg:
+            return EffectTargetRequirement(
+                kind: .slot(.placeEgg),
+                ownerPlayerId: ownerPlayerId,
+                effectNodeId: node.id,
+                debugLabel: node.metadata.debugLabel
+            )
+        case .placeYoung:
+            return EffectTargetRequirement(
+                kind: .slot(.placeYoung),
+                ownerPlayerId: ownerPlayerId,
+                effectNodeId: node.id,
+                debugLabel: node.metadata.debugLabel
+            )
+        case .hatchEgg:
+            return EffectTargetRequirement(
+                kind: .slot(.hatchEgg),
+                ownerPlayerId: ownerPlayerId,
+                effectNodeId: node.id,
+                debugLabel: node.metadata.debugLabel
+            )
+        case .recoverFromDiscardOrDraw:
+            return EffectTargetRequirement(
+                kind: .discardCard,
+                ownerPlayerId: ownerPlayerId,
+                effectNodeId: node.id,
+                debugLabel: node.metadata.debugLabel
+            )
+        case .drawFish,
+             .moveYoungOrSchool,
+             .gameEndScore,
+             .placeEggOnMatchingFish,
+             .playFishFromHand,
+             .gainCoral,
+             .scatterSchool,
+             .consumeFishFromHand,
+             .playFishForFree,
+             .unsupported:
+            return nil
+        }
+    }
+
+    nonisolated private static func legacyResolution(
+        for effect: AbilityEffectUnit,
+        payload: EffectResolutionPayload,
+        choice: PendingChoice
+    ) throws -> PendingChoiceResolution {
+        switch (effect, payload) {
+        case let (.drawFish(count), .none):
+            return choice.kind == .compoundAbility
+                ? .chooseAbilityEffect(.drawFish(count: 1))
+                : .draw(count: count)
+        case (.recoverFromDiscardOrDraw, .none):
+            return choice.kind == .compoundAbility
+                ? .chooseAbilityEffect(.recoverFromDiscardOrDraw(count: 1))
+                : .drawFromDeck
+        case let (.recoverFromDiscardOrDraw, .selectedDiscardCard(cardId)):
+            return choice.kind == .compoundAbility
+                ? .chooseAbilityEffect(.recoverFromDiscardOrDraw(count: 1))
+                : .recoverCard(cardId)
+        case (.placeEgg, .none):
+            return .chooseAbilityEffect(.placeEgg(count: 1))
+        case (.placeYoung, .none):
+            return .chooseAbilityEffect(.placeYoung(count: 1))
+        case (.hatchEgg, .none):
+            return .chooseAbilityEffect(.hatchEgg(count: 1))
+        case (.placeEgg, let .targetSlot(address)),
+             (.placeYoung, let .targetSlot(address)),
+             (.hatchEgg, let .targetSlot(address)):
+            return choice.kind == .compoundAbility
+                ? .chooseAbilityEffect(effectWithCount(effect, count: 1))
+                : .chooseTarget(address)
+        default:
+            throw PendingEffectIntentAdapterError.unsupportedPayload
+        }
     }
 
     nonisolated private static func effectGraph(
@@ -723,7 +922,7 @@ enum AbilityEngineV2Adapter {
 }
 
 extension PendingChoice {
-    var v2PendingEffectSet: PendingEffectSet {
+    nonisolated var v2PendingEffectSet: PendingEffectSet {
         pendingEffectSet ?? AbilityEngineV2Adapter.pendingEffectSet(for: self)
     }
 }

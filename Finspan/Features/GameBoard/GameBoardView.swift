@@ -1922,7 +1922,7 @@ struct GameBoardView: View {
                 ForEach(choice.actions) { action in
                     if action.action == .skip {
                         Button {
-                            viewModel.performPendingChoiceAction(action.action, for: choice.choiceId)
+                            viewModel.performPendingChoiceAction(action)
                         } label: {
                             Text(action.title)
                                 .frame(maxWidth: .infinity)
@@ -1931,7 +1931,7 @@ struct GameBoardView: View {
                         .disabled(!action.isEnabled)
                     } else {
                         Button {
-                            viewModel.performPendingChoiceAction(action.action, for: choice.choiceId)
+                            viewModel.performPendingChoiceAction(action)
                         } label: {
                             Text(action.title)
                                 .frame(maxWidth: .infinity)

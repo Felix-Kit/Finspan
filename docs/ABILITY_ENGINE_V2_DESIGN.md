@@ -2,7 +2,7 @@
 
 Last updated: 2026-06-13.
 
-This document describes the Ability Engine v2 core migration and Cleanup Pass 1.
+This document describes the Ability Engine v2 core migration and Cleanup Passes 1-2.
 It is an architecture consolidation pass, not a rules expansion.
 
 ## Current Coverage Baseline
@@ -34,8 +34,10 @@ reducers continue to produce the same game results while UI and future debug
 tools can start reading a unified execution shape.
 
 Cleanup Pass 1 makes `PendingEffectSet` the primary pending action display
-model for `GameBoardViewModel`. Legacy `PendingChoice` still exists as the
-compatibility shell for command payloads and target-selection workflows.
+model for `GameBoardViewModel`. Cleanup Pass 2 adds `PendingEffectIntent` as the
+generic resolve / skip intent model and bridges it back to existing
+`PendingChoiceResolution` values. Legacy `PendingChoice` still exists as the
+compatibility shell for command payloads and complex target-selection workflows.
 
 ## Unified Execution Shape
 
@@ -143,6 +145,63 @@ The engine still resolves existing `PendingChoiceResolution` values. Direct
 `resolve effect node` / `skip effect node` commands are intentionally deferred
 until a later v2 cleanup pass.
 
+## Cleanup Pass 2 Boundary
+
+Cleanup Pass 2 introduces `PendingEffectIntent`, an effect-node based intent
+layer for pending actions:
+
+- `resolveEffect(executionId:effectNodeId:payload:)`
+- `skipEffect(executionId:effectNodeId:)`
+- `skipRemaining(executionId:)`
+
+`GameBoardViewModel` now carries these intents on v2-derived pending action
+buttons and on the right action panel's primary action. When the user taps an
+action, the ViewModel validates the intent against the current
+`PendingEffectSet.available` nodes, then uses `AbilityEngineV2Adapter` to map
+the intent to the existing `PendingChoiceResolution` command payload.
+
+The adapter is intentionally thin. It does not own rule semantics; it only
+checks that the referenced execution / effect node is still available and maps
+safe v2 intents to existing engine-supported resolutions.
+
+Migrated resolve / skip paths:
+
+- draw fish
+- recover-from-discard-or-draw deck fallback
+- recover discard card selection
+- place egg / place young / hatch target-slot selection for simple choices
+- compound effect selection for draw / recover / place egg / place young / hatch
+- single-effect skip
+- compound skip remaining
+
+Migrated target requirement paths:
+
+- `placeEgg`
+- `placeYoung`
+- `hatchEgg`
+- `recoverFromDiscardOrDraw` discard-card selection
+
+Still legacy / deferred staged flows:
+
+- reward token generation
+- coral payment
+- scatter school staged source / target selection
+- consume-from-hand staged selection
+- free-play / paid-play staged hand-card and target selection
+- play-from-hand target + payment combo
+- native `PlayerCommand` support for effect-node resolution
+
+The resulting flow is:
+
+```text
+PendingEffectSet.available -> PendingEffectIntent -> adapter -> PendingChoiceResolution -> GameEngine
+```
+
+This keeps gameplay unchanged while letting the UI carry `executionId`,
+`effectNodeId`, `sourcePlayerId`, and `targetPlayerId` through the action layer.
+Those ids remain lightweight trace hooks only; v2.1 full replay, debug timeline,
+and graph viewer are not implemented.
+
 ## Behavior Guarantees
 
 This pass must not change gameplay results:
@@ -158,9 +217,10 @@ This pass must not change gameplay results:
 
 ## Next Steps
 
-- Move reward pool token generation and target prompts to v2 target requirement
-  metadata.
-- Teach engine resolution to accept effect-node choices directly.
+- Move reward pool token generation and remaining staged target prompts to v2
+  target requirement metadata.
+- Teach engine resolution to accept effect-node choices directly instead of
+  routing through the compatibility adapter.
 - Add v2.1 trace / replay / debug timeline using the reserved ids.
 - Remove legacy step-specific pending fields only after v2 choices are fully
   authoritative and tested.

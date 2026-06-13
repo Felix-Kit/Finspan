@@ -385,6 +385,7 @@ struct RightActionPanelViewState: Equatable {
     let actionKind: RightActionPanelActionKind
     let pendingChoiceId: PendingChoiceID?
     let primaryPendingChoiceAction: PendingChoiceAction?
+    var primaryPendingEffectIntent: PendingEffectIntent? = nil
 }
 
 enum RightSidePanelPresentation: String, Equatable {
@@ -756,6 +757,7 @@ struct PendingChoiceActionViewData: Identifiable, Equatable {
     let title: String
     let isEnabled: Bool
     var effectNodeId: EffectNodeId? = nil
+    var intent: PendingEffectIntent? = nil
 }
 
 struct WeeklyAchievementResultViewData: Identifiable, Equatable {
@@ -928,6 +930,7 @@ private struct PendingEffectActionChoice: Equatable {
     var effectNodeId: EffectNodeId
     var action: PendingChoiceAction
     var title: String
+    var intent: PendingEffectIntent
 }
 
 @MainActor
@@ -1113,7 +1116,8 @@ final class GameBoardViewModel: ObservableObject {
                 warningText: choice.canResolve ? nil : AppStrings.GameBoard.resolveCurrentRewardFirst,
                 actionKind: rightActionKind(for: choice),
                 pendingChoiceId: choice.choiceId,
-                primaryPendingChoiceAction: action?.action
+                primaryPendingChoiceAction: action?.action,
+                primaryPendingEffectIntent: action?.intent
             )
         }
 
@@ -2814,13 +2818,17 @@ final class GameBoardViewModel: ObservableObject {
         case .pendingChoice,
              .rewardSelection,
              .moveResource:
-            guard let choiceId = viewState.pendingChoiceId,
-                  let action = viewState.primaryPendingChoiceAction
-            else {
+            guard let choiceId = viewState.pendingChoiceId else {
                 errorMessage = viewState.warningText ?? AppStrings.GameBoard.chooseRewardToken
                 return
             }
-            performPendingChoiceAction(action, for: choiceId)
+            if let intent = viewState.primaryPendingEffectIntent {
+                performPendingEffectIntent(intent, for: choiceId)
+            } else if let action = viewState.primaryPendingChoiceAction {
+                performPendingChoiceAction(action, for: choiceId)
+            } else {
+                errorMessage = viewState.warningText ?? AppStrings.GameBoard.chooseRewardToken
+            }
         case .unsupported where state.phase == .endGamePending:
             finishGameEndAbilities()
         case .unsupported:
@@ -3061,7 +3069,11 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     func skipPendingChoice(_ choiceId: PendingChoiceID) {
-        resolvePendingChoice(choiceId, resolution: .skip)
+        if let intent = skipPendingEffectIntent(for: choiceId) {
+            performPendingEffectIntent(intent, for: choiceId)
+        } else {
+            resolvePendingChoice(choiceId, resolution: .skip)
+        }
     }
 
     func activateGameEndAbility(_ source: GameEndAbilitySource) {
@@ -3110,6 +3122,11 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     func performPendingChoiceAction(_ action: PendingChoiceAction, for choiceId: PendingChoiceID) {
+        if let intent = pendingEffectIntent(for: action, choiceId: choiceId) {
+            performPendingEffectIntent(intent, for: choiceId)
+            return
+        }
+
         switch action {
         case .drawFish:
             let count = state.pendingChoices[choiceId].map(drawCount(for:)) ?? 1
@@ -3135,12 +3152,28 @@ final class GameBoardViewModel: ObservableObject {
         }
     }
 
+    func performPendingChoiceAction(_ action: PendingChoiceActionViewData) {
+        if let intent = action.intent {
+            performPendingEffectIntent(intent, for: action.choiceId)
+        } else {
+            performPendingChoiceAction(action.action, for: action.choiceId)
+        }
+    }
+
     func resolvePendingChoice(_ choiceId: PendingChoiceID, target: OceanSlotAddress) {
-        resolvePendingChoice(choiceId, resolution: .chooseTarget(target))
+        if let intent = targetPendingEffectIntent(choiceId: choiceId, target: target) {
+            performPendingEffectIntent(intent, for: choiceId)
+        } else {
+            resolvePendingChoice(choiceId, resolution: .chooseTarget(target))
+        }
     }
 
     func resolvePendingChoice(_ choiceId: PendingChoiceID, recoverCardId: CardID) {
-        resolvePendingChoice(choiceId, resolution: .recoverCard(recoverCardId))
+        if let intent = discardCardPendingEffectIntent(choiceId: choiceId, cardId: recoverCardId) {
+            performPendingEffectIntent(intent, for: choiceId)
+        } else {
+            resolvePendingChoice(choiceId, resolution: .recoverCard(recoverCardId))
+        }
     }
 
     func resolvePendingChoice(
@@ -3184,6 +3217,22 @@ final class GameBoardViewModel: ObservableObject {
         } catch {
             errorMessage = localizedErrorMessage(for: error)
             refresh()
+        }
+    }
+
+    private func performPendingEffectIntent(
+        _ intent: PendingEffectIntent,
+        for choiceId: PendingChoiceID
+    ) {
+        guard let choice = state.pendingChoices[choiceId] else {
+            errorMessage = AppStrings.GameBoard.pendingChoiceNotFound
+            return
+        }
+        do {
+            let resolution = try AbilityEngineV2Adapter.legacyResolution(for: intent, in: choice)
+            resolvePendingChoice(choiceId, resolution: resolution)
+        } catch {
+            errorMessage = AppStrings.GameBoard.pendingChoiceNoLongerAvailable
         }
     }
 
@@ -4404,19 +4453,22 @@ final class GameBoardViewModel: ObservableObject {
                     action: .finishAbility,
                     title: AppStrings.GameBoard.finishAbility,
                     isEnabled: canResolve && choice.isOptional,
-                    effectNodeId: nil
+                    effectNodeId: nil,
+                    intent: skipRemainingIntent(for: choice)
                 )
             )
         }
 
         if choice.isOptional {
+            let skipIntent = skipPendingEffectIntent(for: choice.choiceId)
             actions.append(
                 PendingChoiceActionViewData(
                     choiceId: choice.choiceId,
                     action: .skip,
                     title: AppStrings.GameBoard.skipChoice,
                     isEnabled: canResolve,
-                    effectNodeId: nil
+                    effectNodeId: skipIntent?.effectNodeId,
+                    intent: skipIntent
                 )
             )
         }
@@ -4432,8 +4484,34 @@ final class GameBoardViewModel: ObservableObject {
                 action: actionChoice.action,
                 title: actionChoice.title,
                 isEnabled: canResolve,
-                effectNodeId: actionChoice.effectNodeId
+                effectNodeId: actionChoice.effectNodeId,
+                intent: actionChoice.intent
             )
+        }
+    }
+
+    private func pendingEffectIntent(
+        for action: PendingChoiceAction,
+        choiceId: PendingChoiceID
+    ) -> PendingEffectIntent? {
+        guard let choice = state.pendingChoices[choiceId] else {
+            return nil
+        }
+        switch action {
+        case .skip:
+            return skipPendingEffectIntent(for: choiceId)
+        case .finishAbility:
+            return skipRemainingIntent(for: choice)
+        case .drawFish,
+             .drawFromDeck,
+             .chooseDrawAbilityEffect,
+             .chooseRecoverAbilityEffect,
+             .choosePlaceEggAbilityEffect,
+             .choosePlaceYoungAbilityEffect,
+             .chooseHatchEggAbilityEffect:
+            return pendingEffectActionChoices(for: choice).first { $0.action == action }?.intent
+        case .chooseTarget:
+            return nil
         }
     }
 
@@ -4457,14 +4535,16 @@ final class GameBoardViewModel: ObservableObject {
             return PendingEffectActionChoice(
                 effectNodeId: node.id,
                 action: choice.kind == .compoundAbility ? .chooseDrawAbilityEffect : .drawFish,
-                title: AppStrings.GameBoard.drawFishCard(count: count)
+                title: AppStrings.GameBoard.drawFishCard(count: count),
+                intent: resolveIntent(for: node, choice: choice, payload: .none)
             )
         case .recoverFromDiscardOrDraw:
             if choice.kind == .compoundAbility {
                 return PendingEffectActionChoice(
                     effectNodeId: node.id,
                     action: .chooseRecoverAbilityEffect,
-                    title: AppStrings.GameBoard.recoverOneFromDiscard
+                    title: AppStrings.GameBoard.recoverOneFromDiscard,
+                    intent: resolveIntent(for: node, choice: choice, payload: .none)
                 )
             }
             guard state.playerGameStates[choice.playerId]?.discardPile.isEmpty == true else {
@@ -4473,7 +4553,8 @@ final class GameBoardViewModel: ObservableObject {
             return PendingEffectActionChoice(
                 effectNodeId: node.id,
                 action: .drawFromDeck,
-                title: AppStrings.GameBoard.drawOneFishCard
+                title: AppStrings.GameBoard.drawOneFishCard,
+                intent: resolveIntent(for: node, choice: choice, payload: .none)
             )
         case .placeEgg:
             guard choice.kind == .compoundAbility else {
@@ -4482,7 +4563,8 @@ final class GameBoardViewModel: ObservableObject {
             return PendingEffectActionChoice(
                 effectNodeId: node.id,
                 action: .choosePlaceEggAbilityEffect,
-                title: AppStrings.GameBoard.placeEggAbilityAction
+                title: AppStrings.GameBoard.placeEggAbilityAction,
+                intent: resolveIntent(for: node, choice: choice, payload: .none)
             )
         case .placeYoung:
             guard choice.kind == .compoundAbility else {
@@ -4491,7 +4573,8 @@ final class GameBoardViewModel: ObservableObject {
             return PendingEffectActionChoice(
                 effectNodeId: node.id,
                 action: .choosePlaceYoungAbilityEffect,
-                title: AppStrings.GameBoard.placeYoungAbilityAction
+                title: AppStrings.GameBoard.placeYoungAbilityAction,
+                intent: resolveIntent(for: node, choice: choice, payload: .none)
             )
         case .hatchEgg:
             guard choice.kind == .compoundAbility else {
@@ -4500,7 +4583,8 @@ final class GameBoardViewModel: ObservableObject {
             return PendingEffectActionChoice(
                 effectNodeId: node.id,
                 action: .chooseHatchEggAbilityEffect,
-                title: AppStrings.GameBoard.hatchEggAbilityAction
+                title: AppStrings.GameBoard.hatchEggAbilityAction,
+                intent: resolveIntent(for: node, choice: choice, payload: .none)
             )
         case .moveYoungOrSchool,
              .gameEndScore,
@@ -4513,6 +4597,96 @@ final class GameBoardViewModel: ObservableObject {
              .unsupported:
             return nil
         }
+    }
+
+    private func resolveIntent(
+        for node: EffectNode,
+        choice: PendingChoice,
+        payload: EffectResolutionPayload
+    ) -> PendingEffectIntent {
+        let effectSet = choice.v2PendingEffectSet
+        return .resolveEffect(
+            executionId: effectSet.executionId,
+            effectNodeId: node.id,
+            sourcePlayerId: effectSet.sourcePlayerId,
+            targetPlayerId: effectSet.targetPlayerId,
+            payload: payload
+        )
+    }
+
+    private func skipPendingEffectIntent(for choiceId: PendingChoiceID) -> PendingEffectIntent? {
+        guard let choice = state.pendingChoices[choiceId] else {
+            return nil
+        }
+        let effectSet = choice.v2PendingEffectSet
+        guard let node = effectSet.available.first else {
+            return skipRemainingIntent(for: choice)
+        }
+        return .skipEffect(
+            executionId: effectSet.executionId,
+            effectNodeId: node.id,
+            sourcePlayerId: effectSet.sourcePlayerId,
+            targetPlayerId: effectSet.targetPlayerId
+        )
+    }
+
+    private func skipRemainingIntent(for choice: PendingChoice) -> PendingEffectIntent {
+        let effectSet = choice.v2PendingEffectSet
+        return .skipRemaining(
+            executionId: effectSet.executionId,
+            sourcePlayerId: effectSet.sourcePlayerId,
+            targetPlayerId: effectSet.targetPlayerId
+        )
+    }
+
+    private func targetPendingEffectIntent(
+        choiceId: PendingChoiceID,
+        target: OceanSlotAddress
+    ) -> PendingEffectIntent? {
+        guard let choice = state.pendingChoices[choiceId],
+              let requirement = simpleTargetRequirement(for: choice)
+        else {
+            return nil
+        }
+        guard case .slot = requirement.kind,
+              let node = choice.v2PendingEffectSet.available.first(where: { $0.id == requirement.effectNodeId })
+        else {
+            return nil
+        }
+        return resolveIntent(for: node, choice: choice, payload: .targetSlot(target))
+    }
+
+    private func discardCardPendingEffectIntent(
+        choiceId: PendingChoiceID,
+        cardId: CardID
+    ) -> PendingEffectIntent? {
+        guard let choice = state.pendingChoices[choiceId],
+              let requirement = simpleTargetRequirement(for: choice)
+        else {
+            return nil
+        }
+        guard requirement.kind == .discardCard,
+              let node = choice.v2PendingEffectSet.available.first(where: { $0.id == requirement.effectNodeId })
+        else {
+            return nil
+        }
+        return resolveIntent(for: node, choice: choice, payload: .selectedDiscardCard(cardId))
+    }
+
+    private func simpleTargetRequirement(for choice: PendingChoice) -> EffectTargetRequirement? {
+        let effectSet = choice.v2PendingEffectSet
+        return effectSet.available
+            .compactMap { AbilityEngineV2Adapter.targetRequirement(for: $0, effectSet: effectSet) }
+            .first { requirement in
+                switch requirement.kind {
+                case .slot(.placeEgg),
+                     .slot(.placeYoung),
+                     .slot(.hatchEgg):
+                    return true
+                case .discardCard:
+                    return choice.kind == .recoverFromDiscardOrDraw
+                }
+            }
     }
 
     private func legacyPendingChoiceActionButtons(
@@ -5308,8 +5482,11 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     func pendingChoiceTargets(for choice: PendingChoice) -> [PendingChoiceTargetViewData] {
-        guard let playerState = state.playerGameStates[choice.playerId],
-              choice.kind == .placeEgg
+        let requirement = simpleTargetRequirement(for: choice)
+        let ownerPlayerId = requirement?.ownerPlayerId ?? choice.playerId
+        guard let playerState = state.playerGameStates[ownerPlayerId],
+              requirement != nil
+                || choice.kind == .placeEgg
                 || choice.kind == .placeYoung
                 || choice.kind == .hatchEgg
                 || choice.kind == .placeEggOnMatchingFish
@@ -5325,7 +5502,7 @@ final class GameBoardViewModel: ObservableObject {
                 return diveSiteSortIndex(left.address.diveSite) < diveSiteSortIndex(right.address.diveSite)
             }
             .compactMap { slot in
-                guard pendingChoiceTargetIsLegal(slot, for: choice) else {
+                guard pendingChoiceTargetIsLegal(slot, for: choice, requirement: requirement) else {
                     return nil
                 }
                 return PendingChoiceTargetViewData(
@@ -5340,8 +5517,10 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     func pendingChoiceCardTargets(for choice: PendingChoice) -> [PendingChoiceCardTargetViewData] {
-        guard choice.kind == .recoverFromDiscardOrDraw,
-              let playerState = state.playerGameStates[choice.playerId]
+        let requirement = simpleTargetRequirement(for: choice)
+        let ownerPlayerId = requirement?.ownerPlayerId ?? choice.playerId
+        guard (requirement?.kind == .discardCard || choice.kind == .recoverFromDiscardOrDraw),
+              let playerState = state.playerGameStates[ownerPlayerId]
         else {
             return []
         }
@@ -5405,7 +5584,27 @@ final class GameBoardViewModel: ObservableObject {
         return max(diveSiteDistance, rowDistance)
     }
 
-    private func pendingChoiceTargetIsLegal(_ slot: OceanSlot, for choice: PendingChoice) -> Bool {
+    private func pendingChoiceTargetIsLegal(
+        _ slot: OceanSlot,
+        for choice: PendingChoice,
+        requirement: EffectTargetRequirement? = nil
+    ) -> Bool {
+        if let requirement {
+            guard slot.address.playerId == requirement.ownerPlayerId else {
+                return false
+            }
+            switch requirement.kind {
+            case .slot(.placeEgg):
+                return slot.content.hasFish && resourceAmount(.egg, in: slot) == 0
+            case .slot(.placeYoung):
+                return slot.content.hasFish || slot.content == .empty
+            case .slot(.hatchEgg):
+                return resourceAmount(.egg, in: slot) > 0
+            case .discardCard:
+                return false
+            }
+        }
+
         guard slot.address.playerId == choice.playerId else {
             return false
         }
@@ -5436,6 +5635,21 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     private func pendingChoiceTargetPrompt(for choice: PendingChoice) -> String? {
+        if let requirement = simpleTargetRequirement(for: choice) {
+            switch requirement.kind {
+            case .slot(.placeEgg):
+                return AppStrings.GameBoard.choosePlaceEggTarget
+            case .slot(.placeYoung):
+                return AppStrings.GameBoard.choosePlaceYoungTarget
+            case .slot(.hatchEgg):
+                return AppStrings.GameBoard.chooseHatchEggTarget
+            case .discardCard:
+                return state.playerGameStates[requirement.ownerPlayerId]?.discardPile.isEmpty == true
+                    ? AppStrings.GameBoard.discardPileEmptyDrawHint
+                    : AppStrings.GameBoard.chooseDiscardCardToRecover
+            }
+        }
+
         switch choice.kind {
         case .placeEgg:
             return AppStrings.GameBoard.choosePlaceEggTarget

@@ -2385,6 +2385,160 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertTrue(choices[gameEndChoice.choiceId]?.progressLines.contains("\(AppStrings.GameBoard.abilityEngineV2Available)：1") ?? false)
     }
 
+    func testPendingEffectIntentResolvesAvailableEffectNode() {
+        var choice = pendingChoice(kind: .drawFish)
+        choice.isOptional = false
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-v2-draw",
+            sourceCardId: "fish-30",
+            sourceAbilityId: "ability-fish-30",
+            available: [
+                effectNode(id: "draw-node", effect: .drawFish(count: 2), legacyKind: .drawFish)
+            ]
+        )
+        let service = makeService(hand: ["starter-fish-1"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+        let pendingChoice = viewModel.pendingChoices[0]
+        let action = pendingChoice.actions[0]
+
+        viewModel.performPendingChoiceAction(action)
+
+        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolvePendingChoice command.")
+        }
+        XCTAssertEqual(action.effectNodeId, "draw-node")
+        XCTAssertEqual(action.intent?.executionId, "exec-v2-draw")
+        XCTAssertEqual(action.intent?.effectNodeId, "draw-node")
+        XCTAssertEqual(action.intent?.targetPlayerId, "player-1")
+        XCTAssertEqual(payload.resolution, .draw(count: 2))
+    }
+
+    func testPendingEffectIntentRejectsUnavailableEffectNode() {
+        var choice = pendingChoice(kind: .drawFish)
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-v2-draw",
+            sourceCardId: "fish-30",
+            sourceAbilityId: "ability-fish-30",
+            available: [
+                effectNode(id: "draw-node", effect: .drawFish(count: 1), legacyKind: .drawFish)
+            ]
+        )
+        let service = makeService(hand: ["starter-fish-1"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+        let staleAction = PendingChoiceActionViewData(
+            choiceId: choice.choiceId,
+            action: .drawFish,
+            title: AppStrings.GameBoard.drawOneFishCard,
+            isEnabled: true,
+            effectNodeId: "stale-node",
+            intent: .resolveEffect(
+                executionId: "exec-v2-draw",
+                effectNodeId: "stale-node",
+                sourcePlayerId: "player-1",
+                targetPlayerId: "player-1",
+                payload: .none
+            )
+        )
+
+        viewModel.performPendingChoiceAction(staleAction)
+
+        XCTAssertTrue(service.submittedCommands.isEmpty)
+        XCTAssertEqual(viewModel.errorMessage, AppStrings.GameBoard.pendingChoiceNoLongerAvailable)
+    }
+
+    func testPendingEffectIntentSkipMapsToLegacySkip() throws {
+        var choice = pendingChoice(kind: .drawFish)
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-v2-skip",
+            sourceCardId: "fish-30",
+            sourceAbilityId: "ability-fish-30",
+            available: [
+                effectNode(id: "draw-node", effect: .drawFish(count: 1), legacyKind: .drawFish)
+            ]
+        )
+        let service = makeService(hand: ["starter-fish-1"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+        let skipAction = try XCTUnwrap(viewModel.pendingChoices[0].actions.first { $0.action == .skip })
+
+        viewModel.performPendingChoiceAction(skipAction)
+
+        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolvePendingChoice command.")
+        }
+        XCTAssertEqual(skipAction.intent?.effectNodeId, "draw-node")
+        XCTAssertEqual(payload.resolution, .skip)
+    }
+
+    func testPendingEffectIntentSkipRemainingMapsToCompoundFinishAbility() throws {
+        var choice = compoundAbilityPendingChoice()
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-compound",
+            sourceCardId: "fish-31",
+            sourceAbilityId: "sample-fish-b-if-activated",
+            available: [
+                effectNode(id: "compound-egg", effect: .placeEgg(count: 1), legacyKind: .compoundAbility)
+            ]
+        )
+        let service = makeService(hand: ["starter-fish-1"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+        let finishAction = try XCTUnwrap(viewModel.pendingChoices[0].actions.first { $0.action == .finishAbility })
+
+        viewModel.performPendingChoiceAction(finishAction)
+
+        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolvePendingChoice command.")
+        }
+        XCTAssertNil(finishAction.intent?.effectNodeId)
+        XCTAssertEqual(payload.resolution, .finishAbility)
+    }
+
+    func testGenericTargetRequirementBuildsSimpleSlotTargetsAndIntent() throws {
+        var choice = pendingChoice(kind: .placeEgg)
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-place-egg",
+            sourceCardId: "fish-31",
+            sourceAbilityId: "ability-place-egg",
+            available: [
+                effectNode(id: "egg-node", effect: .placeEgg(count: 1), legacyKind: .placeEgg)
+            ]
+        )
+        let service = makeService(hand: ["starter-fish-1"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+        let target = try XCTUnwrap(viewModel.pendingChoices[0].targets.first?.address)
+
+        viewModel.resolvePendingChoice(choice.choiceId, target: target)
+
+        guard case let .resolvePendingChoice(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolvePendingChoice command.")
+        }
+        XCTAssertEqual(payload.resolution, .chooseTarget(target))
+    }
+
+    func testAllPlayersPendingEffectIntentUsesCurrentTargetPlayer() {
+        var choice = pendingChoice(kind: .drawFish)
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-all-players",
+            sourceCardId: "fish-30",
+            sourceAbilityId: "fixture.allPlayers.draw",
+            sourcePlayerId: "player-1",
+            activePlayerId: "player-2",
+            targetPlayerId: "player-2",
+            available: [
+                effectNode(id: "all-draw", effect: .drawFish(count: 1), scope: .targetPlayer("player-2"), legacyKind: .drawFish)
+            ]
+        )
+        let service = makeService(
+            hand: ["starter-fish-1"],
+            pendingChoices: [choice.choiceId: choice],
+            additionalPlayers: [RoomPlayer(playerId: "player-2", displayName: "玩家 2", color: .green)]
+        )
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+        let action = viewModel.pendingChoices[0].actions[0]
+
+        XCTAssertEqual(action.intent?.sourcePlayerId, "player-1")
+        XCTAssertEqual(action.intent?.targetPlayerId, "player-2")
+    }
+
     func testChoosingCompoundPlaceEggAndHatchEggSubeffectsBuildsResolveCommands() {
         let choice = compoundAbilityPendingChoice()
         let service = makeService(hand: ["starter-fish-1"], pendingChoices: [choice.choiceId: choice])

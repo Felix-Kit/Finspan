@@ -314,6 +314,7 @@ enum AppStrings {
         static let drawFish = "抽鱼牌"
         static let chooseOption = "选择选项"
         static let pendingChoiceNotFound = "找不到待处理选择。"
+        static let pendingChoiceNoLongerAvailable = "这个收益已不可用，请重新选择。"
         static let pendingChoiceNotOwned = "只有该选择所属玩家可以处理。"
         static let pendingChoiceRequired = "该选择不能跳过。"
         static let pendingChoiceResolutionInvalid = "该选择的处理方式暂未支持。"

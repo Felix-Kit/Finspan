@@ -113,15 +113,16 @@
 - 当前 runtime JSON 中 215 张真实鱼牌能力已全部映射。
 - Ability Engine v2 core bridge 已开始接入：`AbilityIR` / `EffectGraph` / `EffectNode` / `PendingEffectSet` 已用于描述现有 pending choice。
 - Ability Engine v2 Cleanup Pass 1 已完成：`PendingEffectSet` 是 `GameBoardViewModel` pending action display 的 primary model；legacy `PendingChoice` 保留为 compatibility shell。
+- Ability Engine v2 Cleanup Pass 2 已完成：`PendingEffectIntent` / `effectNodeId` 已进入 ViewModel action choice，simple resolve / skip / target selection 通过 adapter 映射回现有 `PendingChoiceResolution`。
 - v2 预留 trace / replay 字段，但本阶段不实现完整 replay、timeline 或 debug UI。
 
 ## 下一阶段计划
 
-### P0 Ability Engine v2 cleanup / PendingEffectSet primary model
+### P0 Ability Engine v2 cleanup / PendingEffectSet + PendingEffectIntent
 
 - 继续让 ViewModel 和 action panel 优先读取 `PendingEffectSet.available`、blocked、completed、skipped。
-- 将 reward pool token generation 和 target requirement summary 迁移到 v2 metadata。
-- 逐步新增 resolve effect node / skip effect node 入口。
+- 将 reward pool token generation 和复杂 staged target requirement summary 迁移到 v2 metadata。
+- 逐步新增 native resolve effect node / skip effect node engine 入口，减少 adapter 对 legacy `PendingChoiceResolution` 的依赖。
 - 保留 legacy `PendingChoice` adapter，等 v2 choices 完全稳定后再清理 step-specific fields。
 
 ### P1 GameBoardViewModel pending UI stabilization
