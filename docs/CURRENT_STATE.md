@@ -65,8 +65,8 @@
 - scoring-only 10 条已实现。
 - executable 29 条已实现。
 - GAME END remaining unsupported: 0。
-- Pass 2E 后整体 ability coverage 为 199 mapped / 16 unsupported。
-- 剩余 16 条均为 S&R `also, if 3 same-color coral in this dive site` 条件收益，等待规则确认。
+- Pass 2F 后整体 ability coverage 为 215 mapped / 0 unsupported。
+- S&R `also, if [ColorCoral]x3 in this dive site: ...` 指定颜色珊瑚条件额外收益已接入。
 
 ### S&R / GAME END scoring
 
@@ -100,8 +100,8 @@
 
 - `AbilityRegistry` / `AbilityResolver` 已落地。
 - Fish A / Fish B / Fish C sample ability 已迁移到 registry / resolver 模型。
-- 真实鱼牌能力已部分映射，但尚未全量覆盖。
-- 未接入能力仍保持可表示、可跳过，不会导致崩溃。
+- 当前 runtime JSON 中 215 张真实鱼牌能力已全部映射。
+- 未来 runtime JSON 新增或变更的未知能力仍应保持可表示、可跳过，不应导致崩溃。
 
 ### 卡牌素材与牌面渲染
 
@@ -134,13 +134,11 @@
 - 真实 board 背景和 slot 对齐系统。
 - BoardLayout / SVG marker / JSON layout pipeline。
 - 点击对手头像查看对手 board。
-- 真实全量 ability 覆盖继续扫尾。
 - Nautoma 后置。
 - 联机 / reconnect / 房间恢复后置。
 
 ## 当前建议下一步
 
-1. 先确认 S&R `also, if 3 same-color coral in this dive site` 条件收益语义。
-2. 再推进 `recoverFromDiscardOrDraw` 与弃牌堆选择模式联动。
-3. 之后修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。
-4. 之后再做 BoardLayout 资产管线和剩余 S&R / 联机工作。
+1. 先推进 `recoverFromDiscardOrDraw` 与弃牌堆选择模式联动。
+2. 之后修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。
+3. 之后再做 BoardLayout 资产管线和剩余 S&R / 联机工作。

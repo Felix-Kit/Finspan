@@ -1798,7 +1798,8 @@ struct GameEngine {
         if let consumeUpdate = consumeFishFromHandDiveQueueProgressAfterResolving(
             choice: choice,
             resolution: payload.resolution,
-            queue: queue
+            queue: queue,
+            in: state
         ) {
             return consumeUpdate
         }
@@ -1813,7 +1814,8 @@ struct GameEngine {
         if let compoundUpdate = compoundDiveQueueProgressAfterResolving(
             choice: choice,
             resolution: payload.resolution,
-            queue: queue
+            queue: queue,
+            in: state
         ) {
             return compoundUpdate
         }
@@ -1821,7 +1823,8 @@ struct GameEngine {
         return advanceDiveQueueOrAllPlayersNext(
             queue,
             afterCompleting: choice,
-            didSkip: payload.resolution == .skip
+            didSkip: payload.resolution == .skip,
+            in: state
         )
     }
 
@@ -2002,6 +2005,9 @@ struct GameEngine {
     }
 
     private func sourceAddress(for choice: PendingChoice) -> OceanSlotAddress? {
+        if let sourceAddress = choice.conditionalBonusProgress?.sourceAddress {
+            return sourceAddress
+        }
         if let sourceAddress = choice.compoundAbilityProgress?.sourceAddress {
             return sourceAddress
         }
@@ -2017,6 +2023,9 @@ struct GameEngine {
         }
         if case let .endGameAbility(sourceId) = choice.source {
             return gameEndAbilitySource(from: sourceId)?.cardId
+        }
+        if let sourceCardId = choice.conditionalBonusProgress?.sourceCardId {
+            return sourceCardId
         }
         return choice.compoundAbilityProgress?.sourceCardId
     }
@@ -2254,6 +2263,28 @@ struct GameEngine {
         diveStepId: DiveResolutionStepID?,
         allPlayerIds: [PlayerID] = []
     ) -> PendingChoice {
+        if let conditionalBonus = ability.conditionalBonus {
+            let progress = ConditionalBonusAbilityProgress(
+                abilityId: ability.abilityId,
+                playerId: playerId,
+                sourceCardId: cardId,
+                sourceAddress: sourceAddress,
+                baseChoiceId: choiceId,
+                phase: .base,
+                requirement: conditionalBonus.requirement
+            )
+            return conditionalBonusPendingChoice(
+                ability,
+                progress: progress,
+                effects: conditionalBonus.baseEffects,
+                canResolveInAnyOrder: conditionalBonus.baseCanResolveInAnyOrder,
+                source: .fishAbility(cardId),
+                diveQueueId: diveQueueId,
+                diveStepId: diveStepId,
+                createdAtSequence: 0
+            )
+        }
+
         if ability.appliesToAllPlayers == true,
            let firstTargetPlayerId = allPlayerIds.first {
             let progress = AllPlayersAbilityProgress(
@@ -2341,8 +2372,56 @@ struct GameEngine {
             abilityDefinition: ability,
             compoundAbilityProgress: compoundProgress,
             allPlayersProgress: progress,
+            conditionalBonusProgress: nil,
             createdAtSequence: createdAtSequence
         )
+    }
+
+    private func conditionalBonusPendingChoice(
+        _ ability: AbilityDefinition,
+        progress: ConditionalBonusAbilityProgress,
+        effects: [AbilityEffectUnit],
+        canResolveInAnyOrder: Bool,
+        source: PendingChoiceSource,
+        diveQueueId: DiveResolutionQueueID?,
+        diveStepId: DiveResolutionStepID?,
+        createdAtSequence: EventID
+    ) -> PendingChoice {
+        let isCompound = effects.count > 1 || canResolveInAnyOrder
+        let compoundProgress = isCompound
+            ? CompoundAbilityProgress(
+                abilityId: ability.abilityId,
+                playerId: progress.playerId,
+                sourceCardId: progress.sourceCardId,
+                sourceAddress: progress.sourceAddress,
+                remainingEffects: effects,
+                completedEffects: [],
+                canResolveInAnyOrder: canResolveInAnyOrder,
+                isOptional: true
+            )
+            : nil
+        let firstEffect = effects.first ?? .unsupported
+        return PendingChoice(
+            choiceId: conditionalBonusChoiceId(progress),
+            playerId: progress.playerId,
+            source: source,
+            diveQueueId: diveQueueId,
+            diveStepId: diveStepId,
+            kind: isCompound ? .compoundAbility : pendingChoiceKind(for: firstEffect),
+            options: [],
+            expectedInput: isCompound ? .abilityEffectSelection : expectedInput(for: firstEffect),
+            isOptional: true,
+            abilityDefinition: ability,
+            compoundAbilityProgress: compoundProgress,
+            selectedAbilityEffect: isCompound ? nil : firstEffect,
+            allPlayersProgress: nil,
+            conditionalBonusProgress: progress,
+            createdAtSequence: createdAtSequence
+        )
+    }
+
+    private func conditionalBonusChoiceId(_ progress: ConditionalBonusAbilityProgress) -> PendingChoiceID {
+        "\(progress.baseChoiceId)-conditional-\(progress.phase.rawValue)"
     }
 
     private func allPlayersChoiceId(_ progress: AllPlayersAbilityProgress) -> PendingChoiceID {
@@ -2393,7 +2472,8 @@ struct GameEngine {
     private func compoundDiveQueueProgressAfterResolving(
         choice: PendingChoice,
         resolution: PendingChoiceResolution,
-        queue: DiveResolutionQueue
+        queue: DiveResolutionQueue,
+        in state: GameState
     ) -> (update: DiveResolutionQueueUpdate?, nextChoice: PendingChoice?)? {
         if choice.kind == .compoundAbility {
             switch resolution {
@@ -2415,7 +2495,8 @@ struct GameEngine {
                 return advanceDiveQueueOrAllPlayersNext(
                     queue,
                     afterCompleting: choice,
-                    didSkip: resolution == .skip
+                    didSkip: resolution == .skip,
+                    in: state
                 )
             default:
                 return nil
@@ -2436,7 +2517,8 @@ struct GameEngine {
             return advanceDiveQueueOrAllPlayersNext(
                 queue,
                 afterCompleting: choice,
-                didSkip: false
+                didSkip: false,
+                in: state
             )
         }
 
@@ -2461,7 +2543,10 @@ struct GameEngine {
         }
         if case .skip = resolution {
             if choice.allPlayersProgress != nil {
-                return advanceDiveQueueOrAllPlayersNext(queue, afterCompleting: choice, didSkip: true)
+                return advanceDiveQueueOrAllPlayersNext(queue, afterCompleting: choice, didSkip: true, in: state)
+            }
+            if choice.conditionalBonusProgress != nil {
+                return advanceDiveQueueOrAllPlayersNext(queue, afterCompleting: choice, didSkip: true, in: state)
             }
             return advanceDiveQueue(queue)
         }
@@ -2471,9 +2556,9 @@ struct GameEngine {
             in: state
         ) else {
             if choice.compoundAbilityProgress != nil {
-                return compoundDiveQueueProgressAfterScatterSchoolCompletion(choice: choice, queue: queue)
+                return compoundDiveQueueProgressAfterScatterSchoolCompletion(choice: choice, queue: queue, in: state)
             }
-            return advanceDiveQueueOrAllPlayersNext(queue, afterCompleting: choice, didSkip: false)
+            return advanceDiveQueueOrAllPlayersNext(queue, afterCompleting: choice, didSkip: false, in: state)
         }
 
         var updatedQueue = queue
@@ -2485,7 +2570,8 @@ struct GameEngine {
 
     private func compoundDiveQueueProgressAfterScatterSchoolCompletion(
         choice: PendingChoice,
-        queue: DiveResolutionQueue
+        queue: DiveResolutionQueue,
+        in state: GameState
     ) -> (update: DiveResolutionQueueUpdate?, nextChoice: PendingChoice?) {
         guard let progress = choice.compoundAbilityProgress,
               let completedEffect = compoundEffectUnit(for: choice)
@@ -2498,7 +2584,7 @@ struct GameEngine {
         updatedProgress.completedEffects.append(completedEffect)
 
         if abilityProgressIsComplete(updatedProgress) {
-            return advanceDiveQueueOrAllPlayersNext(queue, afterCompleting: choice, didSkip: false)
+            return advanceDiveQueueOrAllPlayersNext(queue, afterCompleting: choice, didSkip: false, in: state)
         }
 
         var updatedQueue = queue
@@ -2511,25 +2597,26 @@ struct GameEngine {
     private func consumeFishFromHandDiveQueueProgressAfterResolving(
         choice: PendingChoice,
         resolution: PendingChoiceResolution,
-        queue: DiveResolutionQueue
+        queue: DiveResolutionQueue,
+        in state: GameState
     ) -> (update: DiveResolutionQueueUpdate?, nextChoice: PendingChoice?)? {
         guard choice.kind == .consumeFishFromHand else {
             return nil
         }
         if case .skip = resolution {
             if choice.compoundAbilityProgress != nil {
-                return compoundDiveQueueProgressAfterConsumeFishCompletion(choice: choice, queue: queue)
+                return compoundDiveQueueProgressAfterConsumeFishCompletion(choice: choice, queue: queue, in: state)
             }
-            return advanceDiveQueueOrAllPlayersNext(queue, afterCompleting: choice, didSkip: true)
+            return advanceDiveQueueOrAllPlayersNext(queue, afterCompleting: choice, didSkip: true, in: state)
         }
         guard let nextChoice = consumeFishFromHandChoiceAfterResolving(
             choice: choice,
             resolution: resolution
         ) else {
             if choice.compoundAbilityProgress != nil {
-                return compoundDiveQueueProgressAfterConsumeFishCompletion(choice: choice, queue: queue)
+                return compoundDiveQueueProgressAfterConsumeFishCompletion(choice: choice, queue: queue, in: state)
             }
-            return advanceDiveQueueOrAllPlayersNext(queue, afterCompleting: choice, didSkip: false)
+            return advanceDiveQueueOrAllPlayersNext(queue, afterCompleting: choice, didSkip: false, in: state)
         }
 
         var updatedQueue = queue
@@ -2541,7 +2628,8 @@ struct GameEngine {
 
     private func compoundDiveQueueProgressAfterConsumeFishCompletion(
         choice: PendingChoice,
-        queue: DiveResolutionQueue
+        queue: DiveResolutionQueue,
+        in state: GameState
     ) -> (update: DiveResolutionQueueUpdate?, nextChoice: PendingChoice?) {
         guard let progress = choice.compoundAbilityProgress,
               let completedEffect = compoundEffectUnit(for: choice)
@@ -2554,7 +2642,7 @@ struct GameEngine {
         updatedProgress.completedEffects.append(completedEffect)
 
         if abilityProgressIsComplete(updatedProgress) {
-            return advanceDiveQueueOrAllPlayersNext(queue, afterCompleting: choice, didSkip: false)
+            return advanceDiveQueueOrAllPlayersNext(queue, afterCompleting: choice, didSkip: false, in: state)
         }
 
         var updatedQueue = queue
@@ -2577,7 +2665,8 @@ struct GameEngine {
             return advanceDiveQueueOrAllPlayersNext(
                 queue,
                 afterCompleting: choice,
-                didSkip: true
+                didSkip: true,
+                in: state
             )
         }
         if let nextChoice = playFishForFreeChoiceAfterResolving(choice: choice, resolution: resolution) {
@@ -2603,18 +2692,20 @@ struct GameEngine {
             return (.updated(updatedQueue), whenPlayedChoice)
         }
         if choice.compoundAbilityProgress != nil {
-            return compoundDiveQueueProgressAfterPlayFishForFreeCompletion(choice: choice, queue: queue)
+            return compoundDiveQueueProgressAfterPlayFishForFreeCompletion(choice: choice, queue: queue, in: state)
         }
         return advanceDiveQueueOrAllPlayersNext(
             queue,
             afterCompleting: choice,
-            didSkip: false
+            didSkip: false,
+            in: state
         )
     }
 
     private func compoundDiveQueueProgressAfterPlayFishForFreeCompletion(
         choice: PendingChoice,
-        queue: DiveResolutionQueue
+        queue: DiveResolutionQueue,
+        in state: GameState
     ) -> (update: DiveResolutionQueueUpdate?, nextChoice: PendingChoice?) {
         guard let progress = choice.compoundAbilityProgress,
               let completedEffect = compoundEffectUnit(for: choice)
@@ -2627,7 +2718,7 @@ struct GameEngine {
         updatedProgress.completedEffects.append(completedEffect)
 
         if abilityProgressIsComplete(updatedProgress) {
-            return advanceDiveQueueOrAllPlayersNext(queue, afterCompleting: choice, didSkip: false)
+            return advanceDiveQueueOrAllPlayersNext(queue, afterCompleting: choice, didSkip: false, in: state)
         }
 
         var updatedQueue = queue
@@ -2651,11 +2742,13 @@ struct GameEngine {
     private func advanceDiveQueueOrAllPlayersNext(
         _ queue: DiveResolutionQueue,
         afterCompleting choice: PendingChoice,
-        didSkip: Bool
+        didSkip: Bool,
+        in state: GameState
     ) -> (update: DiveResolutionQueueUpdate?, nextChoice: PendingChoice?) {
-        guard var nextChoice = nextAllPlayersChoiceAfterCompletingCurrentPlayer(
+        guard var nextChoice = nextFollowUpChoiceAfterCompletingCurrentSegment(
             choice,
-            didSkip: didSkip
+            didSkip: didSkip,
+            in: state
         ) else {
             return advanceDiveQueue(queue)
         }
@@ -2663,6 +2756,72 @@ struct GameEngine {
         nextChoice.diveStepId = choice.diveStepId
         setCurrentStepPendingChoice(nextChoice, in: &updatedQueue)
         return (.updated(updatedQueue), nextChoice)
+    }
+
+    private func nextFollowUpChoiceAfterCompletingCurrentSegment(
+        _ choice: PendingChoice,
+        didSkip: Bool,
+        in state: GameState
+    ) -> PendingChoice? {
+        nextConditionalBonusChoiceAfterCompletingCurrentPhase(
+            choice,
+            didSkip: didSkip,
+            in: state
+        )
+            ?? nextAllPlayersChoiceAfterCompletingCurrentPlayer(
+                choice,
+                didSkip: didSkip
+            )
+    }
+
+    private func nextConditionalBonusChoiceAfterCompletingCurrentPhase(
+        _ choice: PendingChoice,
+        didSkip: Bool,
+        in state: GameState
+    ) -> PendingChoice? {
+        guard var progress = choice.conditionalBonusProgress,
+              progress.phase == .base,
+              let ability = choice.abilityDefinition,
+              let conditionalBonus = ability.conditionalBonus
+        else {
+            return nil
+        }
+
+        progress.baseWasSkipped = didSkip
+        guard sourceDiveSiteColoredCoralRequirementIsSatisfied(progress.requirement, for: progress, in: state) else {
+            progress.bonusRequirementMet = false
+            return nil
+        }
+
+        progress.phase = .bonus
+        progress.bonusRequirementMet = true
+        return conditionalBonusPendingChoice(
+            ability,
+            progress: progress,
+            effects: conditionalBonus.bonusEffects,
+            canResolveInAnyOrder: conditionalBonus.bonusCanResolveInAnyOrder,
+            source: choice.source,
+            diveQueueId: choice.diveQueueId,
+            diveStepId: choice.diveStepId,
+            createdAtSequence: choice.createdAtSequence
+        )
+    }
+
+    private func sourceDiveSiteColoredCoralRequirementIsSatisfied(
+        _ requirement: SourceDiveSiteColoredCoralRequirement,
+        for progress: ConditionalBonusAbilityProgress,
+        in state: GameState
+    ) -> Bool {
+        guard progress.sourceAddress.diveSite == requirement.coralColor,
+              let playerState = state.playerGameStates[progress.playerId],
+              let sourceSlot = playerState.ocean.slots.first(where: { $0.address == progress.sourceAddress }),
+              case let .fishCard(visibleCardId) = sourceSlot.content,
+              visibleCardId == progress.sourceCardId,
+              let reef = playerState.ocean.coralReefs.first(where: { $0.diveSite == progress.sourceAddress.diveSite })
+        else {
+            return false
+        }
+        return reef.coralCount >= requirement.count
     }
 
     private func nonQueueCompoundChoiceAfterResolving(
@@ -2680,9 +2839,10 @@ struct GameEngine {
                   let progress = choice.compoundAbilityProgress
             else {
                 if case .skip = payload.resolution {
-                    return nextAllPlayersChoiceAfterCompletingCurrentPlayer(
+                    return nextFollowUpChoiceAfterCompletingCurrentSegment(
                         choice,
-                        didSkip: true
+                        didSkip: true,
+                        in: state
                     )
                 }
                 return nil
@@ -2697,7 +2857,7 @@ struct GameEngine {
         if let scatterChoice = nonQueueScatterSchoolChoiceAfterResolving(payload, choice: choice, in: state) {
             return scatterChoice
         }
-        if let consumeChoice = nonQueueConsumeFishFromHandChoiceAfterResolving(payload, choice: choice) {
+        if let consumeChoice = nonQueueConsumeFishFromHandChoiceAfterResolving(payload, choice: choice, in: state) {
             return consumeChoice
         }
         if let freePlayChoice = nonQueuePlayFishForFreeChoiceAfterResolving(payload, choice: choice, in: state) {
@@ -2710,9 +2870,10 @@ struct GameEngine {
         guard let progress = choice.compoundAbilityProgress,
               let completedEffect = compoundEffectUnit(for: choice)
         else {
-            return nextAllPlayersChoiceAfterCompletingCurrentPlayer(
+            return nextFollowUpChoiceAfterCompletingCurrentSegment(
                 choice,
-                didSkip: payload.resolution == .skip
+                didSkip: payload.resolution == .skip,
+                in: state
             )
         }
 
@@ -2721,9 +2882,10 @@ struct GameEngine {
         updatedProgress.completedEffects.append(completedEffect)
 
         guard !abilityProgressIsComplete(updatedProgress) else {
-            return nextAllPlayersChoiceAfterCompletingCurrentPlayer(
+            return nextFollowUpChoiceAfterCompletingCurrentSegment(
                 choice,
-                didSkip: false
+                didSkip: false,
+                in: state
             )
         }
 
@@ -2742,9 +2904,10 @@ struct GameEngine {
             return nil
         }
         if case .skip = payload.resolution {
-            return nextAllPlayersChoiceAfterCompletingCurrentPlayer(
+            return nextFollowUpChoiceAfterCompletingCurrentSegment(
                 choice,
-                didSkip: true
+                didSkip: true,
+                in: state
             )
         }
         if let nextChoice = scatterSchoolChoiceAfterResolving(
@@ -2757,9 +2920,10 @@ struct GameEngine {
         guard let progress = choice.compoundAbilityProgress,
               let completedEffect = compoundEffectUnit(for: choice)
         else {
-            return nextAllPlayersChoiceAfterCompletingCurrentPlayer(
+            return nextFollowUpChoiceAfterCompletingCurrentSegment(
                 choice,
-                didSkip: false
+                didSkip: false,
+                in: state
             )
         }
 
@@ -2768,15 +2932,19 @@ struct GameEngine {
         updatedProgress.completedEffects.append(completedEffect)
 
         guard !abilityProgressIsComplete(updatedProgress) else {
-            return nextAllPlayersChoiceAfterCompletingCurrentPlayer(
+            return nextFollowUpChoiceAfterCompletingCurrentSegment(
                 choice,
-                didSkip: false
+                didSkip: false,
+                in: state
             )
         }
         return compoundSelectorChoice(from: choice, progress: updatedProgress)
     }
 
-    private func nextCompoundChoiceAfterCompletingCurrentEffect(_ choice: PendingChoice) -> PendingChoice? {
+    private func nextCompoundChoiceAfterCompletingCurrentEffect(
+        _ choice: PendingChoice,
+        in state: GameState
+    ) -> PendingChoice? {
         guard let progress = choice.compoundAbilityProgress,
               let completedEffect = compoundEffectUnit(for: choice)
         else {
@@ -2788,9 +2956,10 @@ struct GameEngine {
         updatedProgress.completedEffects.append(completedEffect)
 
         guard !abilityProgressIsComplete(updatedProgress) else {
-            return nextAllPlayersChoiceAfterCompletingCurrentPlayer(
+            return nextFollowUpChoiceAfterCompletingCurrentSegment(
                 choice,
-                didSkip: false
+                didSkip: false,
+                in: state
             )
         }
         return compoundSelectorChoice(from: choice, progress: updatedProgress)
@@ -2798,16 +2967,18 @@ struct GameEngine {
 
     private func nonQueueConsumeFishFromHandChoiceAfterResolving(
         _ payload: ResolvePendingChoiceCommand,
-        choice: PendingChoice
+        choice: PendingChoice,
+        in state: GameState
     ) -> PendingChoice? {
         guard choice.kind == .consumeFishFromHand else {
             return nil
         }
         if case .skip = payload.resolution {
-            return nextCompoundChoiceAfterCompletingCurrentEffect(choice)
-                ?? nextAllPlayersChoiceAfterCompletingCurrentPlayer(
+            return nextCompoundChoiceAfterCompletingCurrentEffect(choice, in: state)
+                ?? nextFollowUpChoiceAfterCompletingCurrentSegment(
                     choice,
-                    didSkip: true
+                    didSkip: true,
+                    in: state
                 )
         }
         if let nextChoice = consumeFishFromHandChoiceAfterResolving(
@@ -2819,9 +2990,10 @@ struct GameEngine {
         guard let progress = choice.compoundAbilityProgress,
               let completedEffect = compoundEffectUnit(for: choice)
         else {
-            return nextAllPlayersChoiceAfterCompletingCurrentPlayer(
+            return nextFollowUpChoiceAfterCompletingCurrentSegment(
                 choice,
-                didSkip: false
+                didSkip: false,
+                in: state
             )
         }
 
@@ -2830,9 +3002,10 @@ struct GameEngine {
         updatedProgress.completedEffects.append(completedEffect)
 
         guard !abilityProgressIsComplete(updatedProgress) else {
-            return nextAllPlayersChoiceAfterCompletingCurrentPlayer(
+            return nextFollowUpChoiceAfterCompletingCurrentSegment(
                 choice,
-                didSkip: false
+                didSkip: false,
+                in: state
             )
         }
         return compoundSelectorChoice(from: choice, progress: updatedProgress)
@@ -2847,9 +3020,10 @@ struct GameEngine {
             return nil
         }
         if case .skip = payload.resolution {
-            return nextAllPlayersChoiceAfterCompletingCurrentPlayer(
+            return nextFollowUpChoiceAfterCompletingCurrentSegment(
                 choice,
-                didSkip: true
+                didSkip: true,
+                in: state
             )
         }
         if let nextChoice = playFishForFreeChoiceAfterResolving(
@@ -2871,9 +3045,10 @@ struct GameEngine {
         guard let progress = choice.compoundAbilityProgress,
               let completedEffect = compoundEffectUnit(for: choice)
         else {
-            return nextAllPlayersChoiceAfterCompletingCurrentPlayer(
+            return nextFollowUpChoiceAfterCompletingCurrentSegment(
                 choice,
-                didSkip: false
+                didSkip: false,
+                in: state
             )
         }
 
@@ -2882,9 +3057,10 @@ struct GameEngine {
         updatedProgress.completedEffects.append(completedEffect)
 
         guard !abilityProgressIsComplete(updatedProgress) else {
-            return nextAllPlayersChoiceAfterCompletingCurrentPlayer(
+            return nextFollowUpChoiceAfterCompletingCurrentSegment(
                 choice,
-                didSkip: false
+                didSkip: false,
+                in: state
             )
         }
         return compoundSelectorChoice(from: choice, progress: updatedProgress)
@@ -2899,9 +3075,10 @@ struct GameEngine {
             return nil
         }
         if case .skip = payload.resolution {
-            return nextAllPlayersChoiceAfterCompletingCurrentPlayer(
+            return nextFollowUpChoiceAfterCompletingCurrentSegment(
                 choice,
-                didSkip: true
+                didSkip: true,
+                in: state
             )
         }
         if let nextChoice = playFishFromHandChoiceAfterResolving(
@@ -2923,9 +3100,10 @@ struct GameEngine {
         guard let progress = choice.compoundAbilityProgress,
               let completedEffect = compoundEffectUnit(for: choice)
         else {
-            return nextAllPlayersChoiceAfterCompletingCurrentPlayer(
+            return nextFollowUpChoiceAfterCompletingCurrentSegment(
                 choice,
-                didSkip: false
+                didSkip: false,
+                in: state
             )
         }
 
@@ -2934,9 +3112,10 @@ struct GameEngine {
         updatedProgress.completedEffects.append(completedEffect)
 
         guard !abilityProgressIsComplete(updatedProgress) else {
-            return nextAllPlayersChoiceAfterCompletingCurrentPlayer(
+            return nextFollowUpChoiceAfterCompletingCurrentSegment(
                 choice,
-                didSkip: false
+                didSkip: false,
+                in: state
             )
         }
         return compoundSelectorChoice(from: choice, progress: updatedProgress)
@@ -2991,6 +3170,7 @@ struct GameEngine {
             scatterSchoolProgress: progress,
             selectedAbilityEffect: choice.selectedAbilityEffect,
             allPlayersProgress: choice.allPlayersProgress,
+            conditionalBonusProgress: choice.conditionalBonusProgress,
             createdAtSequence: choice.createdAtSequence
         )
     }
@@ -3032,6 +3212,7 @@ struct GameEngine {
             consumeFishFromHandProgress: ConsumeFishFromHandProgress(consumerSlot: consumerSlot),
             selectedAbilityEffect: choice.selectedAbilityEffect,
             allPlayersProgress: choice.allPlayersProgress,
+            conditionalBonusProgress: choice.conditionalBonusProgress,
             createdAtSequence: choice.createdAtSequence
         )
     }
@@ -3073,6 +3254,7 @@ struct GameEngine {
             playFishForFreeProgress: PlayFishForFreeProgress(selectedCardId: cardId),
             selectedAbilityEffect: choice.selectedAbilityEffect,
             allPlayersProgress: choice.allPlayersProgress,
+            conditionalBonusProgress: choice.conditionalBonusProgress,
             createdAtSequence: choice.createdAtSequence
         )
     }
@@ -3119,6 +3301,7 @@ struct GameEngine {
             playFishFromHandProgress: PlayFishFromHandProgress(selectedCardId: cardId),
             selectedAbilityEffect: choice.selectedAbilityEffect,
             allPlayersProgress: choice.allPlayersProgress,
+            conditionalBonusProgress: choice.conditionalBonusProgress,
             createdAtSequence: choice.createdAtSequence
         )
     }
@@ -3143,6 +3326,7 @@ struct GameEngine {
             playFishFromHandProgress: PlayFishFromHandProgress(selectedCardId: cardId, targetSlot: targetSlot),
             selectedAbilityEffect: choice.selectedAbilityEffect,
             allPlayersProgress: choice.allPlayersProgress,
+            conditionalBonusProgress: choice.conditionalBonusProgress,
             createdAtSequence: choice.createdAtSequence
         )
     }
@@ -3173,6 +3357,7 @@ struct GameEngine {
             compoundAbilityProgress: progress,
             selectedAbilityEffect: effect,
             allPlayersProgress: choice.allPlayersProgress,
+            conditionalBonusProgress: choice.conditionalBonusProgress,
             createdAtSequence: choice.createdAtSequence
         )
     }
@@ -3194,6 +3379,7 @@ struct GameEngine {
             abilityDefinition: choice.abilityDefinition,
             compoundAbilityProgress: progress,
             allPlayersProgress: choice.allPlayersProgress,
+            conditionalBonusProgress: choice.conditionalBonusProgress,
             createdAtSequence: choice.createdAtSequence
         )
     }

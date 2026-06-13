@@ -12,6 +12,7 @@ This document records the current GAME END sweep against runtime JSON in
 - Implemented executable: 29
 - Remaining unsupported after Pass 2D: 0
 - Remaining unsupported after Pass 2E: 0
+- Remaining unsupported after Pass 2F: 0
 
 ## Pass 2D Highlights
 
@@ -68,4 +69,5 @@ These remain auto-scored rather than surfaced as clickable actions:
 
 - There are no remaining unsupported GAME END cards after Pass 2D or Pass 2E.
 - Pass 2E implements `AllPlayers` globally; no runtime GAME END card currently requires a separate AllPlayers adapter.
+- Pass 2F implements S&R colored coral conditional bonus abilities; no runtime GAME END card currently uses this pattern.
 - Runtime JSON contains no `/` ability text, so branch choice does not affect GAME END coverage.

@@ -209,9 +209,45 @@ def all_players_inner_pattern(pattern: str) -> str | None:
     return inner or None
 
 
+def colored_coral_conditional_bonus_parts(pattern: str) -> tuple[str, str, str, int] | None:
+    separator = "also,if"
+    suffix = "inthisdivesite:"
+    if separator not in pattern or suffix not in pattern:
+        return None
+    base, rest = pattern.split(separator, 1)
+    coral_pattern, bonus = rest.split(suffix, 1)
+    if not base or not bonus:
+        return None
+    remaining = coral_pattern
+    color: str | None = None
+    count = 0
+    token_map = (
+        ("[BlueCoral]", "blue"),
+        ("[PurpleCoral]", "purple"),
+        ("[GreenCoral]", "green"),
+    )
+    while remaining:
+        for token, token_color in token_map:
+            if remaining.startswith(token):
+                if color is not None and color != token_color:
+                    return None
+                color = token_color
+                count += 1
+                remaining = remaining[len(token):]
+                break
+        else:
+            return None
+    if color is None or count <= 0:
+        return None
+    return base, bonus, color, count
+
+
 def pattern_parser_maps_normalized(pattern: str) -> bool:
     if not pattern or ";" in pattern or "/" in pattern:
         return False
+    if parts := colored_coral_conditional_bonus_parts(pattern):
+        base, bonus, _, _ = parts
+        return pattern_parser_maps_normalized(base) and pattern_parser_maps_normalized(bonus)
     if pure_repeated_token_count(pattern, "[DrawCard]", max_count=5) is not None:
         return True
     if pure_repeated_token_count(pattern, "[Discard]", max_count=5) is not None:
@@ -249,6 +285,9 @@ def pattern_parser_maps(text: str) -> bool:
 
 
 def pattern_label_for_normalized(pattern: str, text: str) -> str:
+    if parts := colored_coral_conditional_bonus_parts(pattern):
+        _, _, color, count = parts
+        return f"colored coral conditional bonus ({color} x{count})"
     if pure_repeated_token_count(pattern, "[DrawCard]", max_count=5) is not None:
         return "draw fish"
     if pure_repeated_token_count(pattern, "[Discard]", max_count=5) is not None:

@@ -222,6 +222,11 @@ enum AppStrings {
         static let pendingChoiceWaiting = "待处理"
         static let allPlayersChoice = "全员能力"
         static let allPlayersRemaining = "等待"
+        static let conditionalBonusBaseStep = "基础收益"
+        static let conditionalBonusBonusStep = "额外收益"
+        static func coloredCoralRequirement(_ color: String, count: Int) -> String {
+            "来源潜水点至少 \(count) 个\(color)珊瑚"
+        }
         static let optionalChoice = "可跳过"
         static let requiredChoice = "必须处理"
         static let skipChoice = "跳过"

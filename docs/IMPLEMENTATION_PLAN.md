@@ -80,8 +80,8 @@
 - scoring-only 10 条已实现。
 - executable 29 条已实现。
 - GAME END remaining unsupported: 0。
-- Pass 2E 后整体 ability coverage 为 199 mapped / 16 unsupported。
-- 剩余 16 条均为 S&R `also, if 3 same-color coral in this dive site` 条件收益，等待规则确认。
+- Pass 2F 后整体 ability coverage 为 215 mapped / 0 unsupported。
+- S&R `also, if [ColorCoral]x3 in this dive site: ...` 指定颜色珊瑚条件额外收益已接入。
 
 ### 10. Catalog Mode 和 Base Game JSON Catalog
 
@@ -110,7 +110,7 @@
 
 - `AbilityRegistry` / `AbilityResolver` 已落地。
 - Fish A / Fish B / Fish C sample ability 已迁移到 registry / resolver。
-- 真实 base game 全量能力尚未完全映射。
+- 当前 runtime JSON 中 215 张真实鱼牌能力已全部映射。
 
 ## 下一阶段计划
 

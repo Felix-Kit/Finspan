@@ -6629,27 +6629,199 @@ final class GameEngineTests: XCTestCase {
         XCTAssertTrue(slashCards.isEmpty, "Runtime JSON currently has no slash ability cards: \(slashCards.map(\.id))")
     }
 
-    func testDeferredAbilityPatternsRemainUnsupportedUntilRuleConfirmation() throws {
+    func testAbilityPatternParserMapsPass2FColoredCoralConditionalRealRuntimePatterns() throws {
         let srCatalog = try SharksAndReefsCardCatalog()
         let resolver = AbilityResolver()
         let cards = srCatalog.fishCards + srCatalog.starterFishCards
 
-        let deferredIds = [
-            "sr.main.138", // Armored Searobin: also, if 3 blue coral in this dive site
-            "sr.main.139", // Atlantic Thornyhead: also, if 3 green coral in this dive site
-            "sr.main.144", // Bluering Angelfish: also, if 3 purple coral in this dive site
-            "sr.starter.212", // Atlantic Barracudina: also, if 3 green coral in this dive site
-            "sr.starter.214" // Fanfin Anglerfish: also, if 3 purple coral in this dive site
+        let conditionalCases: [(CardID, DiveSite, AbilityEffectUnit, AbilityEffectUnit)] = [
+            ("sr.main.138", .blue, .recoverFromDiscardOrDraw(count: 1), .drawFish(count: 1)),
+            ("sr.main.139", .green, .hatchEgg(count: 1), .placeEgg(count: 1)),
+            ("sr.main.144", .purple, .placeEgg(count: 1), .consumeFishFromHand(count: 1)),
+            ("sr.main.157", .blue, .recoverFromDiscardOrDraw(count: 1), .moveYoungOrSchool(count: 1)),
+            ("sr.starter.212", .green, .hatchEgg(count: 1), .moveYoungOrSchool(count: 1)),
+            ("sr.starter.214", .purple, .placeEgg(count: 1), .gainCoral(selector: .green, count: 1))
         ]
 
-        for cardId in deferredIds {
+        for (cardId, expectedColor, expectedBase, expectedBonus) in conditionalCases {
             let card = try XCTUnwrap(cards.first { $0.id == cardId })
-            XCTAssertEqual(
-                resolver.abilityDefinitions(for: card).first?.effects,
-                [.unsupported],
-                "Expected \(cardId) to remain unsupported until rules are confirmed."
-            )
+            let ability = try XCTUnwrap(resolver.abilityDefinitions(for: card).first)
+            let conditional = try XCTUnwrap(ability.conditionalBonus)
+            XCTAssertEqual(ability.effects, [expectedBase])
+            XCTAssertEqual(conditional.baseEffects, [expectedBase])
+            XCTAssertEqual(conditional.requirement.coralColor, expectedColor)
+            XCTAssertEqual(conditional.requirement.count, 3)
+            XCTAssertEqual(conditional.bonusEffects, [expectedBonus])
         }
+    }
+
+    func testColoredCoralConditionalBaseResolvesWithoutBonusWhenRequirementIsNotMet() throws {
+        let engine = GameEngine(cardCatalog: try SharksAndReefsCardCatalog())
+        var state = coloredCoralConditionalDiveState(
+            cardId: "sr.main.138",
+            sourceDiveSite: .blue,
+            coralCounts: [.blue: 2],
+            discardPile: ["sr.main.136"]
+        )
+        let started = try startColoredCoralConditionalDive(in: state, using: engine, diveSite: .blue)
+        state = started.state
+        let baseChoice = started.choice
+
+        XCTAssertEqual(baseChoice.kind, .recoverFromDiscardOrDraw)
+        XCTAssertEqual(baseChoice.conditionalBonusProgress?.phase, .base)
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "resolve-base-without-colored-coral",
+                    choiceId: baseChoice.choiceId,
+                    resolution: .recoverCard("sr.main.136")
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        XCTAssertEqual(state.playerGameStates["player-1"]?.hand, ["sr.main.136"])
+        XCTAssertTrue(state.pendingChoices.isEmpty)
+    }
+
+    func testColoredCoralConditionalBaseSkipStillChecksAndResolvesBonus() throws {
+        let engine = GameEngine(cardCatalog: try SharksAndReefsCardCatalog())
+        var state = coloredCoralConditionalDiveState(
+            cardId: "sr.main.138",
+            sourceDiveSite: .blue,
+            coralCounts: [.blue: 3],
+            deck: ["sr.main.136"]
+        )
+        let started = try startColoredCoralConditionalDive(in: state, using: engine, diveSite: .blue)
+        state = started.state
+        let baseChoice = started.choice
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "skip-base-with-colored-coral", choiceId: baseChoice.choiceId, resolution: .skip),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        let bonusChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        XCTAssertEqual(bonusChoice.kind, .drawFish)
+        XCTAssertEqual(bonusChoice.conditionalBonusProgress?.phase, .bonus)
+        XCTAssertEqual(bonusChoice.conditionalBonusProgress?.baseWasSkipped, true)
+        XCTAssertEqual(bonusChoice.conditionalBonusProgress?.bonusRequirementMet, true)
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "resolve-bonus-after-base-skip", choiceId: bonusChoice.choiceId, resolution: .draw(count: 1)),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        XCTAssertEqual(state.playerGameStates["player-1"]?.hand, ["sr.main.136"])
+        XCTAssertTrue(state.pendingChoices.isEmpty)
+    }
+
+    func testColoredCoralConditionalBaseResolveThenBonusSkipDoesNotRollbackBase() throws {
+        let engine = GameEngine(cardCatalog: try SharksAndReefsCardCatalog())
+        var state = coloredCoralConditionalDiveState(
+            cardId: "sr.main.138",
+            sourceDiveSite: .blue,
+            coralCounts: [.blue: 4],
+            deck: ["sr.main.137"],
+            discardPile: ["sr.main.136"]
+        )
+        let started = try startColoredCoralConditionalDive(in: state, using: engine, diveSite: .blue)
+        state = started.state
+        let baseChoice = started.choice
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "resolve-base-with-colored-coral",
+                    choiceId: baseChoice.choiceId,
+                    resolution: .recoverCard("sr.main.136")
+                ),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        let bonusChoice = try XCTUnwrap(state.pendingChoices.values.first)
+        XCTAssertEqual(bonusChoice.kind, .drawFish)
+        XCTAssertEqual(bonusChoice.conditionalBonusProgress?.baseWasSkipped, false)
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "skip-bonus-keeps-base", choiceId: bonusChoice.choiceId, resolution: .skip),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        XCTAssertEqual(state.playerGameStates["player-1"]?.hand, ["sr.main.136"])
+        XCTAssertEqual(state.deckState.fishDrawPile, ["sr.main.137"])
+        XCTAssertTrue(state.pendingChoices.isEmpty)
+    }
+
+    func testColoredCoralConditionalUsesSourceDiveSiteAndSpecifiedColor() throws {
+        let engine = GameEngine(cardCatalog: try SharksAndReefsCardCatalog())
+        var state = coloredCoralConditionalDiveState(
+            cardId: "sr.main.138",
+            sourceDiveSite: .purple,
+            coralCounts: [.blue: 3, .purple: 3],
+            deck: ["sr.main.136"]
+        )
+        let started = try startColoredCoralConditionalDive(in: state, using: engine, diveSite: .purple)
+        state = started.state
+        let baseChoice = started.choice
+
+        XCTAssertEqual(baseChoice.kind, .recoverFromDiscardOrDraw)
+        XCTAssertEqual(baseChoice.conditionalBonusProgress?.requirement.coralColor, .blue)
+
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "skip-base-wrong-source-color", choiceId: baseChoice.choiceId, resolution: .skip),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        XCTAssertTrue(state.pendingChoices.isEmpty)
+        XCTAssertEqual(state.playerGameStates["player-1"]?.hand, [])
+    }
+
+    func testColoredCoralConditionalDoesNotCreateBonusWhenSourceFishIsCoveredBeforeCheck() throws {
+        let engine = GameEngine(cardCatalog: try SharksAndReefsCardCatalog())
+        var state = coloredCoralConditionalDiveState(
+            cardId: "sr.main.138",
+            sourceDiveSite: .blue,
+            coralCounts: [.blue: 3],
+            deck: ["sr.main.136"]
+        )
+        let started = try startColoredCoralConditionalDive(in: state, using: engine, diveSite: .blue)
+        state = started.state
+        let baseChoice = started.choice
+
+        setContent(.fishCard("sr.main.136"), at: started.sourceAddress, in: &state)
+        state = applying(
+            try engine.makeEventDrafts(
+                for: resolveCommand(commandId: "skip-base-after-source-covered", choiceId: baseChoice.choiceId, resolution: .skip),
+                in: state
+            ),
+            to: state,
+            using: engine
+        )
+
+        XCTAssertTrue(state.pendingChoices.isEmpty)
     }
 
     func testAllPlayersDrawAbilityResolvesEachPlayerIndependentlyFromSourcePlayer() throws {
@@ -7139,6 +7311,78 @@ final class GameEngineTests: XCTestCase {
             )
         }
         return state
+    }
+
+    private func coloredCoralConditionalDiveState(
+        cardId: CardID,
+        sourceDiveSite: DiveSite,
+        coralCounts: [DiveSite: Int],
+        deck: [CardID] = [],
+        discardPile: [CardID] = []
+    ) -> GameState {
+        var state = playFishState()
+        let diveActionSite = DiveActionSite(rawValue: sourceDiveSite.rawValue)
+        state.playerGameStates["player-1"]?.diveSitesReachedBottomThisWeek = [diveActionSite]
+        state.playerGameStates["player-1"]?.hand = []
+        state.playerGameStates["player-1"]?.discardPile = discardPile
+        state.deckState.fishDrawPile = deck
+        clearOceanContent(for: "player-1", in: &state)
+        clearResources(for: "player-1", in: &state)
+        setContent(
+            .fishCard(cardId),
+            at: OceanSlotAddress(playerId: "player-1", diveSite: sourceDiveSite, rowIndex: 0),
+            in: &state
+        )
+        state.playerGameStates["player-1"]?.ocean.coralReefs = DiveSite.allCases.map { diveSite in
+            let coralCount = coralCounts[diveSite] ?? 0
+            let maxCoral = diveSite == sourceDiveSite ? coralCount : max(coralCount, 6)
+            let completionBonus: Int
+            switch diveSite {
+            case .blue:
+                completionBonus = 6
+            case .purple:
+                completionBonus = 8
+            case .green:
+                completionBonus = 5
+            }
+            return CoralReefState(
+                diveSite: diveSite,
+                coralCount: coralCount,
+                maxCoral: maxCoral,
+                completionBonus: completionBonus
+            )
+        }
+        return state
+    }
+
+    private func startColoredCoralConditionalDive(
+        in initialState: GameState,
+        using engine: GameEngine,
+        diveSite: DiveSite
+    ) throws -> (state: GameState, choice: PendingChoice, sourceAddress: OceanSlotAddress) {
+        let sourceAddress = OceanSlotAddress(playerId: "player-1", diveSite: diveSite, rowIndex: 0)
+        var state = applying(
+            try engine.makeEventDrafts(
+                for: diveCommand(commandId: "dive-colored-coral-\(diveSite.rawValue)", diveSite: DiveActionSite(rawValue: diveSite.rawValue)),
+                in: initialState
+            ),
+            to: initialState,
+            using: engine
+        )
+        var choice = try XCTUnwrap(state.pendingChoices.values.first)
+        if case .diveBonus = choice.source {
+            state = applying(
+                try engine.makeEventDrafts(
+                    for: resolveCommand(commandId: "skip-printed-colored-coral-\(diveSite.rawValue)", choiceId: choice.choiceId, resolution: .skip),
+                    in: state
+                ),
+                to: state,
+                using: engine
+            )
+            choice = try XCTUnwrap(state.pendingChoices.values.first)
+        }
+        XCTAssertEqual(choice.conditionalBonusProgress?.sourceAddress, sourceAddress)
+        return (state, choice, sourceAddress)
     }
 
     private func allPlayersGiantHatchetfishDiveState() -> GameState {

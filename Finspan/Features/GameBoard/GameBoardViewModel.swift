@@ -4062,7 +4062,28 @@ final class GameBoardViewModel: ObservableObject {
                 : "，\(AppStrings.GameBoard.allPlayersRemaining)：\(remainingNames.joined(separator: "、"))"
             parts.append("\(AppStrings.GameBoard.allPlayersChoice)：当前为 \(playerName) 处理\(remainingText)")
         }
+        if let progress = choice.conditionalBonusProgress {
+            let stepText = progress.phase == .base
+                ? AppStrings.GameBoard.conditionalBonusBaseStep
+                : AppStrings.GameBoard.conditionalBonusBonusStep
+            let requirementText = AppStrings.GameBoard.coloredCoralRequirement(
+                coralColorName(progress.requirement.coralColor),
+                count: progress.requirement.count
+            )
+            parts.append("\(stepText)：\(requirementText)")
+        }
         return parts.joined(separator: "，")
+    }
+
+    private func coralColorName(_ diveSite: DiveSite) -> String {
+        switch diveSite {
+        case .blue:
+            return "蓝色"
+        case .purple:
+            return "紫色"
+        case .green:
+            return "绿色"
+        }
     }
 
     private func pendingChoiceTitle(_ choice: PendingChoice) -> String {

@@ -18,6 +18,7 @@ struct PendingChoice: Identifiable, Codable, Equatable, Sendable {
     var playFishFromHandProgress: PlayFishFromHandProgress? = nil
     var selectedAbilityEffect: AbilityEffectUnit? = nil
     var allPlayersProgress: AllPlayersAbilityProgress? = nil
+    var conditionalBonusProgress: ConditionalBonusAbilityProgress? = nil
     var createdAtSequence: EventID
 
     var id: PendingChoiceID { choiceId }
@@ -213,4 +214,43 @@ struct AllPlayersAbilityProgress: Codable, Equatable, Sendable {
         self.resolvedPlayerIds = resolvedPlayerIds
         self.skippedPlayerIds = skippedPlayerIds
     }
+}
+
+struct ConditionalBonusAbilityProgress: Codable, Equatable, Sendable {
+    var abilityId: AbilityID
+    var playerId: PlayerID
+    var sourceCardId: CardID
+    var sourceAddress: OceanSlotAddress
+    var baseChoiceId: PendingChoiceID
+    var phase: ConditionalBonusAbilityPhase
+    var requirement: SourceDiveSiteColoredCoralRequirement
+    var baseWasSkipped: Bool?
+    var bonusRequirementMet: Bool?
+
+    nonisolated init(
+        abilityId: AbilityID,
+        playerId: PlayerID,
+        sourceCardId: CardID,
+        sourceAddress: OceanSlotAddress,
+        baseChoiceId: PendingChoiceID,
+        phase: ConditionalBonusAbilityPhase,
+        requirement: SourceDiveSiteColoredCoralRequirement,
+        baseWasSkipped: Bool? = nil,
+        bonusRequirementMet: Bool? = nil
+    ) {
+        self.abilityId = abilityId
+        self.playerId = playerId
+        self.sourceCardId = sourceCardId
+        self.sourceAddress = sourceAddress
+        self.baseChoiceId = baseChoiceId
+        self.phase = phase
+        self.requirement = requirement
+        self.baseWasSkipped = baseWasSkipped
+        self.bonusRequirementMet = bonusRequirementMet
+    }
+}
+
+enum ConditionalBonusAbilityPhase: String, Codable, Equatable, Sendable {
+    case base
+    case bonus
 }

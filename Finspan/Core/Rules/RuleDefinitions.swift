@@ -86,6 +86,7 @@ struct AbilityDefinition: Codable, Equatable, Sendable {
     var isOptional: Bool
     var displayText: String
     var appliesToAllPlayers: Bool?
+    var conditionalBonus: ConditionalBonusAbilityDefinition?
 
     nonisolated init(
         abilityId: AbilityID,
@@ -94,7 +95,8 @@ struct AbilityDefinition: Codable, Equatable, Sendable {
         canResolveInAnyOrder: Bool = false,
         isOptional: Bool = true,
         displayText: String = "",
-        appliesToAllPlayers: Bool = false
+        appliesToAllPlayers: Bool = false,
+        conditionalBonus: ConditionalBonusAbilityDefinition? = nil
     ) {
         self.abilityId = abilityId
         self.trigger = trigger
@@ -103,7 +105,21 @@ struct AbilityDefinition: Codable, Equatable, Sendable {
         self.isOptional = isOptional
         self.displayText = displayText
         self.appliesToAllPlayers = appliesToAllPlayers
+        self.conditionalBonus = conditionalBonus
     }
+}
+
+struct ConditionalBonusAbilityDefinition: Codable, Equatable, Sendable {
+    var baseEffects: [AbilityEffectUnit]
+    var baseCanResolveInAnyOrder: Bool
+    var requirement: SourceDiveSiteColoredCoralRequirement
+    var bonusEffects: [AbilityEffectUnit]
+    var bonusCanResolveInAnyOrder: Bool
+}
+
+struct SourceDiveSiteColoredCoralRequirement: Codable, Equatable, Sendable {
+    var coralColor: DiveSite
+    var count: Int
 }
 
 struct ScoreCategory: RawRepresentable, Codable, Equatable, Hashable, Sendable {

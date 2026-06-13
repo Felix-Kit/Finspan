@@ -10,6 +10,8 @@ This document tracks the rule questions still blocking unsupported real-card abi
 - Pass 2D after: 153 mapped / 62 unsupported
 - Pass 2E before: 153 mapped / 62 unsupported
 - Pass 2E after: 199 mapped / 16 unsupported
+- Pass 2F before: 199 mapped / 16 unsupported
+- Pass 2F after: 215 mapped / 0 unsupported
 - Runtime ability texts containing `/`: 0
 
 Already confirmed and implemented:
@@ -25,10 +27,18 @@ Already confirmed and implemented:
 - `[AllPlayers]` gives the preceding benefit pool to every player independently.
 - AllPlayers resolves from the source player, then table order.
 - A target player skipping or having no legal target does not skip later players.
+- `also, if [ColorCoral]xN in this dive site: ...` is a conditional extra benefit, not an alternative benefit.
+- The base benefit is resolved or skipped first.
+- Skipping the base benefit still checks the bonus condition.
+- The bonus condition checks the source fish's current dive site.
+- The bonus condition uses the specific coral color icons in `abilityText`; it is not inferred from fish band or card color.
+- The colored coral count is a minimum threshold.
 
 ## Still Open
 
-### Coral Threshold "also, if" Conditions
+No current runtime card remains unsupported after Pass 2F.
+
+### Colored Coral Conditional Bonus
 
 Representative real cards:
 
@@ -41,13 +51,13 @@ Representative real cards:
 - `sr.starter.213` Blue Antimora
 - `sr.starter.214` Fanfin Anglerfish
 
-Still unanswered:
+Confirmed and implemented in Pass 2F:
 
-- Does the first benefit before `also` always happen even if the coral threshold is not met?
-- Is the threshold checked in the source fish's dive site?
-- Is the threshold checked before or after resolving the first benefit?
-- If the conditional second benefit has no legal target, does only that second benefit skip?
-- Should this be modeled as a two-part ability with a conditional optional follow-up?
+- The first benefit can be resolved or skipped before checking the extra benefit.
+- The extra benefit checks the source fish's current dive site after the first benefit has been handled.
+- If the required specified-color coral count is present, the extra benefit can be resolved or skipped independently.
+- If the condition is not met, only the extra benefit is unavailable; the first benefit is unaffected.
+- If the source fish is covered, hidden, or cannot be located, the extra benefit is unavailable / skippable without creating invalid state.
 
 ### Slash / Branch Choice
 
@@ -68,6 +78,5 @@ Branch-choice questions are no longer a mainline blocker. If a future runtime JS
 
 ## Deferred Until Confirmed
 
-- `also, if 3 same-color coral in this dive site` conditional benefits
 - any future `/` branch-choice abilities only if they appear in runtime JSON
 - any runtime patterns whose semantics still require confirmation

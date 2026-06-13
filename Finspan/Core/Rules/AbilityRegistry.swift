@@ -513,6 +513,14 @@ enum AbilityPatternParser {
             return nil
         }
 
+        if let definition = coloredCoralConditionalBonusDefinition(
+            abilityId: abilityId,
+            trigger: trigger,
+            pattern: pattern
+        ) {
+            return definition
+        }
+
         if let count = pureRepeatedTokenCount("[DrawCard]", in: pattern, maxCount: 5) {
             return AbilityDefinition(
                 abilityId: abilityId,
@@ -708,6 +716,14 @@ enum AbilityPatternParser {
         trigger: AbilityTrigger,
         normalizedNonAllPlayersPattern pattern: String
     ) -> AbilityDefinition? {
+        if let definition = coloredCoralConditionalBonusDefinition(
+            abilityId: abilityId,
+            trigger: trigger,
+            pattern: pattern
+        ) {
+            return definition
+        }
+
         if let count = pureRepeatedTokenCount("[DrawCard]", in: pattern, maxCount: 5) {
             return AbilityDefinition(
                 abilityId: abilityId,
@@ -963,6 +979,93 @@ enum AbilityPatternParser {
             isOptional: true,
             displayText: triggerText(trigger, action: action)
         )
+    }
+
+    nonisolated private static func coloredCoralConditionalBonusDefinition(
+        abilityId: AbilityID,
+        trigger: AbilityTrigger,
+        pattern: String
+    ) -> AbilityDefinition? {
+        let separator = "also,if"
+        let requirementSuffix = "inthisdivesite:"
+        guard let separatorRange = pattern.range(of: separator) else {
+            return nil
+        }
+
+        let basePattern = String(pattern[..<separatorRange.lowerBound])
+        let requirementAndBonus = String(pattern[separatorRange.upperBound...])
+        guard let suffixRange = requirementAndBonus.range(of: requirementSuffix) else {
+            return nil
+        }
+
+        let coralPattern = String(requirementAndBonus[..<suffixRange.lowerBound])
+        let bonusPattern = String(requirementAndBonus[suffixRange.upperBound...])
+        guard !basePattern.isEmpty,
+              !bonusPattern.isEmpty,
+              let requirement = sourceDiveSiteColoredCoralRequirement(from: coralPattern),
+              let baseDefinition = abilityDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                normalizedNonAllPlayersPattern: basePattern
+              ),
+              let bonusDefinition = abilityDefinition(
+                abilityId: abilityId,
+                trigger: trigger,
+                normalizedNonAllPlayersPattern: bonusPattern
+              )
+        else {
+            return nil
+        }
+
+        let conditionalBonus = ConditionalBonusAbilityDefinition(
+            baseEffects: baseDefinition.effects,
+            baseCanResolveInAnyOrder: baseDefinition.canResolveInAnyOrder,
+            requirement: requirement,
+            bonusEffects: bonusDefinition.effects,
+            bonusCanResolveInAnyOrder: bonusDefinition.canResolveInAnyOrder
+        )
+        return AbilityDefinition(
+            abilityId: abilityId,
+            trigger: trigger,
+            effects: baseDefinition.effects,
+            canResolveInAnyOrder: baseDefinition.canResolveInAnyOrder,
+            isOptional: true,
+            displayText: triggerText(trigger, action: "先处理基础收益，再按来源潜水点指定颜色珊瑚数量检查额外收益"),
+            conditionalBonus: conditionalBonus
+        )
+    }
+
+    nonisolated private static func sourceDiveSiteColoredCoralRequirement(
+        from pattern: String
+    ) -> SourceDiveSiteColoredCoralRequirement? {
+        var remaining = pattern
+        var coralColor: DiveSite?
+        var count = 0
+        while !remaining.isEmpty {
+            let parsedToken: (token: String, color: DiveSite)?
+            if remaining.hasPrefix("[BlueCoral]") {
+                parsedToken = ("[BlueCoral]", .blue)
+            } else if remaining.hasPrefix("[PurpleCoral]") {
+                parsedToken = ("[PurpleCoral]", .purple)
+            } else if remaining.hasPrefix("[GreenCoral]") {
+                parsedToken = ("[GreenCoral]", .green)
+            } else {
+                return nil
+            }
+            guard let parsedToken else {
+                return nil
+            }
+            if let coralColor, coralColor != parsedToken.color {
+                return nil
+            }
+            coralColor = parsedToken.color
+            count += 1
+            remaining.removeFirst(parsedToken.token.count)
+        }
+        guard let coralColor, count > 0 else {
+            return nil
+        }
+        return SourceDiveSiteColoredCoralRequirement(coralColor: coralColor, count: count)
     }
 
     nonisolated private static func eggPlacementFilter(from pattern: String) -> EggPlacementFilter? {
