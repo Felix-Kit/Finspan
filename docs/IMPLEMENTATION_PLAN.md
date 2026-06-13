@@ -115,6 +115,8 @@
 - Ability Engine v2 Cleanup Pass 1 已完成：`PendingEffectSet` 是 `GameBoardViewModel` pending action display 的 primary model；legacy `PendingChoice` 保留为 compatibility shell。
 - Ability Engine v2 Cleanup Pass 2 已完成：`PendingEffectIntent` / `effectNodeId` 已进入 ViewModel action choice，simple resolve / skip / target selection 通过 adapter 映射回现有 `PendingChoiceResolution`。
 - Ability Engine v2 Cleanup Pass 3A 已完成：`EffectNodeMetadata` 已扩展 target / payment / resource / reward token / staged selection metadata，reward pool token display 和复杂 staged prompt display 已开始从 v2 metadata 派生。
+- Ability Engine v2 Cleanup Pass 3B 已完成：`resolveEffectNode` / `skipEffectNode` / `skipEffectExecution` command 已接入，安全的 simple effects 可原生进入 engine。
+- Ability Engine v2 Cleanup Pass 4 已完成：scatter school、consume-from-hand、free-play / paid-play final payload、coral payment 和 draw reward token action 已迁到 native effect-node payload；legacy adapter 仍保留为 compatibility shell。
 - v2 预留 trace / replay 字段，但本阶段不实现完整 replay、timeline 或 debug UI。
 
 ## 下一阶段计划
@@ -123,13 +125,13 @@
 
 - 继续让 ViewModel 和 action panel 优先读取 `PendingEffectSet.available`、blocked、completed、skipped。
 - 保持 reward pool token generation、复杂 staged target requirement summary、payment summary 优先读取 v2 metadata。
-- 已新增 `resolveEffectNode` / `skipEffectNode` / `skipEffectExecution` command；安全的 draw、recover、egg / young / hatch target、simple compound selection、skip 和 skip remaining 可原生进入 engine。
-- 保留 legacy `PendingChoice` adapter，等复杂 staged payload 完全迁移后再清理 step-specific fields。
+- 已新增 `resolveEffectNode` / `skipEffectNode` / `skipEffectExecution` command；draw、recover、egg / young / hatch target、simple compound selection、skip、skip remaining、scatter school、consume-from-hand、free-play / paid-play final payload、coral payment 和 draw reward token action 可原生进入 engine。
+- 保留 legacy `PendingChoice` adapter，等 saved-state migration 和剩余 staged payload 完成后再清理 step-specific fields。
 
-### P1 Complete staged payload native migration
+### P1 Complete remaining staged payload native migration
 
-- 逐步迁移 scatter school、consume-from-hand、free-play、paid-play、coral payment、reward token action resolution。
-- 减少 staged flow 对 legacy `PendingChoiceResolution` 的依赖。
+- 迁移 move young / school source-target payload 和仍需多步 UI state 的 reward token action resolution。
+- 标记 scatter / consume / play / coral payment 的 legacy staged progress fields 为 cleanup candidates，等待 saved-state migration 后删除。
 - 继续保持既有规则结果和 deterministic command / event / reducer 流程。
 
 ### P2 GameBoardViewModel pending UI stabilization

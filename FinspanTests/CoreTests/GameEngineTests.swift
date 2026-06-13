@@ -342,9 +342,12 @@ final class GameEngineTests: XCTestCase {
         XCTAssertTrue(drafts.contains(.gameEndAbilityActivated(GameEndAbilityActivatedEvent(source: source))))
     }
 
-    func testResolveEffectNodeStagedScatterFallsBackToLegacyOnly() {
+    func testResolveEffectNodeScatterSchoolWithNativePayloadCompletesWithoutStagedProgress() throws {
         let engine = GameEngine()
         var state = playFishState()
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 2)
+        let targets = scatterSchoolTargets()
+        setResources([ResourceQuantity(kind: .school, amount: 1)], at: source, in: &state)
         var choice = scatterSchoolPendingChoice()
         choice.pendingEffectSet = pendingEffectSet(
             executionId: "exec-scatter",
@@ -356,19 +359,78 @@ final class GameEngineTests: XCTestCase {
         )
         state.pendingChoices[choice.choiceId] = choice
 
-        XCTAssertThrowsError(
-            try engine.makeEventDrafts(
-                for: resolveEffectNodeCommand(
-                    commandId: "native-scatter",
-                    executionId: "exec-scatter",
-                    effectNodeId: "scatter-node",
-                    payload: .targetSlot(OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0))
-                ),
-                in: state
-            )
-        ) { error in
-            XCTAssertEqual(error as? CommandValidationError, .invalidPendingChoiceResolution(choice.choiceId))
+        let drafts = try engine.makeEventDrafts(
+            for: resolveEffectNodeCommand(
+                commandId: "native-scatter",
+                executionId: "exec-scatter",
+                effectNodeId: "scatter-node",
+                payload: .scatterSchool(
+                    EffectScatterSchoolPayload(source: source, targets: targets)
+                )
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(resolved) = drafts.first else {
+            return XCTFail("Expected pendingChoiceResolved draft.")
         }
+        XCTAssertEqual(resolved.resolution, .scatterSchool(source: source, targets: targets))
+        XCTAssertEqual(
+            resolved.appliedEffects,
+            [.scatterSchoolSourceRemoved(playerId: "player-1", source: source)]
+                + targets.map { .scatterSchoolYoungPlaced(playerId: "player-1", target: $0) }
+        )
+    }
+
+    func testResolveEffectNodeConsumeFishFromHandWithNativePayloadConsumesSelectedHandCard() throws {
+        let engine = GameEngine(cardCatalog: consumeFishCatalog())
+        var state = consumeFishState(hand: ["consume.short"])
+        var choice = consumeFishPendingChoice()
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-consume",
+            sourceCardId: "consume.consumer",
+            sourceAbilityId: "fixture.consume",
+            available: [
+                effectNode(id: "consume-node", effect: .consumeFishFromHand(count: 1), legacyKind: .consumeFishFromHand)
+            ]
+        )
+        state.pendingChoices[choice.choiceId] = choice
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveEffectNodeCommand(
+                commandId: "native-consume",
+                executionId: "exec-consume",
+                effectNodeId: "consume-node",
+                payload: .consumeFishFromHand(
+                    EffectConsumeFishFromHandPayload(
+                        consumerSlot: consumeFishConsumerAddress(),
+                        consumedCardId: "consume.short"
+                    )
+                )
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(resolved) = drafts.first else {
+            return XCTFail("Expected pendingChoiceResolved draft.")
+        }
+        XCTAssertEqual(
+            resolved.resolution,
+            .consumeFishFromHandWithConsumer(
+                consumerSlot: consumeFishConsumerAddress(),
+                consumedCardId: "consume.short"
+            )
+        )
+        XCTAssertEqual(
+            resolved.appliedEffects,
+            [
+                .fishConsumedFromHand(
+                    playerId: "player-1",
+                    consumerSlot: consumeFishConsumerAddress(),
+                    consumedCardId: "consume.short"
+                )
+            ]
+        )
     }
 
     func testPlayFishAutomaticallyAdvancesActivePlayer() throws {

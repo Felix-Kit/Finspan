@@ -903,9 +903,9 @@ private enum RewardSelectionMode: Equatable {
     case coralResource(choiceId: PendingChoiceID, tokenId: String, kind: ResourceKind)
     case coralHandCard(choiceId: PendingChoiceID, tokenId: String)
     case scatterSchoolSource(choiceId: PendingChoiceID, tokenId: String)
-    case scatterSchoolYoungTarget(choiceId: PendingChoiceID, tokenId: String)
+    case scatterSchoolYoungTarget(choiceId: PendingChoiceID, tokenId: String, source: OceanSlotAddress, targets: [OceanSlotAddress])
     case consumeFishConsumer(choiceId: PendingChoiceID, tokenId: String)
-    case consumeFishHandCard(choiceId: PendingChoiceID, tokenId: String)
+    case consumeFishHandCard(choiceId: PendingChoiceID, tokenId: String, consumerSlot: OceanSlotAddress)
     case freePlayHandCard(choiceId: PendingChoiceID, tokenId: String)
     case freePlayTarget(choiceId: PendingChoiceID, tokenId: String, cardId: CardID)
     case playFishFromHandCard(choiceId: PendingChoiceID, tokenId: String)
@@ -2378,30 +2378,42 @@ final class GameBoardViewModel: ObservableObject {
                 errorMessage = AppStrings.GameBoard.unknownCard
                 return
             }
-            resolvePendingChoice(choiceId, resolution: .gainCoralByDiscard(cardId: cardId))
+            performNativeEffectPayload(
+                .coralPayment(EffectCoralPaymentPayload(payment: .discard(cardId: cardId))),
+                for: choiceId
+            )
             return
         }
-        if case let .consumeFishHandCard(choiceId, _) = rewardSelectionMode {
+        if case let .consumeFishHandCard(choiceId, _, consumerSlot) = rewardSelectionMode {
             guard let choice = state.pendingChoices[choiceId],
-                  consumeFishHandCardIsLegal(cardId, for: choice)
+                  consumeFishHandCardIsLegal(cardId, consumerSlot: consumerSlot, for: choice)
             else {
                 errorMessage = AppStrings.GameBoard.consumeFishMustBeShorter
                 return
             }
-            resolvePendingChoice(choiceId, resolution: .consumeFishFromHand(cardId))
+            performNativeEffectPayload(
+                .consumeFishFromHand(
+                    EffectConsumeFishFromHandPayload(
+                        consumerSlot: consumerSlot,
+                        consumedCardId: cardId
+                    )
+                ),
+                for: choiceId
+            )
             return
         }
-        if case let .freePlayHandCard(choiceId, _) = rewardSelectionMode {
+        if case let .freePlayHandCard(choiceId, tokenId) = rewardSelectionMode {
             guard let choice = state.pendingChoices[choiceId],
                   freePlayHandCardIsLegal(cardId, for: choice)
             else {
                 errorMessage = AppStrings.GameBoard.playFishForFreeFilterMismatch
                 return
             }
-            resolvePendingChoice(choiceId, resolution: .chooseFreePlayFish(cardId))
+            rewardSelectionMode = .freePlayTarget(choiceId: choiceId, tokenId: tokenId, cardId: cardId)
+            errorMessage = AppStrings.GameBoard.playFishForFreeTarget
             return
         }
-        if case let .playFishFromHandCard(choiceId, _) = rewardSelectionMode {
+        if case let .playFishFromHandCard(choiceId, tokenId) = rewardSelectionMode {
             guard let choice = state.pendingChoices[choiceId],
                   playFishFromHandCardIsLegal(cardId, for: choice)
             else {
@@ -2413,7 +2425,8 @@ final class GameBoardViewModel: ObservableObject {
             selectedDiscardCardIds = []
             clearResourcePaymentSelection()
             self.rewardSelectionMode = nil
-            resolvePendingChoice(choiceId, resolution: .choosePlayFishFromHand(cardId))
+            rewardSelectionMode = .playFishFromHandTarget(choiceId: choiceId, tokenId: tokenId, cardId: cardId)
+            errorMessage = AppStrings.GameBoard.playFishFromHandTarget
             return
         }
         guard canSelectHandCards else {
@@ -2559,7 +2572,9 @@ final class GameBoardViewModel: ObservableObject {
         switch entry.action {
         case let .direct(choiceId, resolution):
             self.rewardSelectionMode = nil
-            resolvePendingChoice(choiceId, resolution: resolution)
+            if !performNativeEffectResolution(resolution, for: choiceId) {
+                resolvePendingChoice(choiceId, resolution: resolution)
+            }
         case let .chooseTarget(choiceId, kind):
             rewardSelectionMode = .target(choiceId: choiceId, tokenId: tokenId, kind: kind)
             errorMessage = AppStrings.GameBoard.chooseLeftTarget
@@ -2576,13 +2591,36 @@ final class GameBoardViewModel: ObservableObject {
             rewardSelectionMode = .scatterSchoolSource(choiceId: choiceId, tokenId: tokenId)
             errorMessage = AppStrings.GameBoard.scatterSchoolSource
         case let .chooseScatterSchoolYoungTarget(choiceId, tokenId):
-            rewardSelectionMode = .scatterSchoolYoungTarget(choiceId: choiceId, tokenId: tokenId)
+            guard let choice = state.pendingChoices[choiceId],
+                  let source = choice.scatterSchoolProgress?.sourceSlot
+            else {
+                rewardSelectionMode = nil
+                errorMessage = AppStrings.GameBoard.scatterSchoolSource
+                return
+            }
+            rewardSelectionMode = .scatterSchoolYoungTarget(
+                choiceId: choiceId,
+                tokenId: tokenId,
+                source: source,
+                targets: choice.scatterSchoolProgress?.targetSlots ?? []
+            )
             errorMessage = AppStrings.GameBoard.scatterSchoolYoungTarget
         case let .chooseConsumeFishConsumer(choiceId, tokenId):
             rewardSelectionMode = .consumeFishConsumer(choiceId: choiceId, tokenId: tokenId)
             errorMessage = AppStrings.GameBoard.consumeFishConsumer
         case let .chooseConsumeFishHandCard(choiceId, tokenId):
-            rewardSelectionMode = .consumeFishHandCard(choiceId: choiceId, tokenId: tokenId)
+            guard let choice = state.pendingChoices[choiceId],
+                  let consumerSlot = choice.consumeFishFromHandProgress?.consumerSlot
+            else {
+                rewardSelectionMode = nil
+                errorMessage = AppStrings.GameBoard.consumeFishConsumer
+                return
+            }
+            rewardSelectionMode = .consumeFishHandCard(
+                choiceId: choiceId,
+                tokenId: tokenId,
+                consumerSlot: consumerSlot
+            )
             errorMessage = AppStrings.GameBoard.consumeFishHandCard
         case let .chooseFreePlayHandCard(choiceId, tokenId):
             rewardSelectionMode = .freePlayHandCard(choiceId: choiceId, tokenId: tokenId)
@@ -2676,9 +2714,15 @@ final class GameBoardViewModel: ObservableObject {
             }
             switch kind {
             case .egg:
-                resolvePendingChoice(choiceId, resolution: .gainCoralWithEgg(source: address))
+                performNativeEffectPayload(
+                    .coralPayment(EffectCoralPaymentPayload(payment: .egg(source: address))),
+                    for: choiceId
+                )
             case .young:
-                resolvePendingChoice(choiceId, resolution: .gainCoralWithYoung(source: address))
+                performNativeEffectPayload(
+                    .coralPayment(EffectCoralPaymentPayload(payment: .young(source: address))),
+                    for: choiceId
+                )
             default:
                 errorMessage = AppStrings.GameBoard.chooseCoralResourceSource
             }
@@ -2686,7 +2730,7 @@ final class GameBoardViewModel: ObservableObject {
         case .coralHandCard:
             errorMessage = AppStrings.GameBoard.chooseCoralDiscardCard
             return true
-        case let .scatterSchoolSource(choiceId, _):
+        case let .scatterSchoolSource(choiceId, tokenId):
             guard let choice = state.pendingChoices[choiceId],
                   let playerState = state.playerGameStates[choice.playerId],
                   let source = playerState.ocean.slots.first(where: { $0.address == address }),
@@ -2696,20 +2740,53 @@ final class GameBoardViewModel: ObservableObject {
                 errorMessage = AppStrings.GameBoard.scatterSchoolSource
                 return true
             }
-            resolvePendingChoice(choiceId, resolution: .chooseScatterSchoolSource(address))
+            self.rewardSelectionMode = .scatterSchoolYoungTarget(
+                choiceId: choiceId,
+                tokenId: tokenId,
+                source: address,
+                targets: []
+            )
+            errorMessage = AppStrings.GameBoard.scatterSchoolYoungTarget
             return true
-        case let .scatterSchoolYoungTarget(choiceId, _):
+        case let .scatterSchoolYoungTarget(choiceId, tokenId, source, targets):
             guard let choice = state.pendingChoices[choiceId],
                   let playerState = state.playerGameStates[choice.playerId],
                   let target = playerState.ocean.slots.first(where: { $0.address == address }),
-                  scatterSchoolYoungTargetIsLegal(target, for: choice, playerState: playerState)
+                  targets.contains(address) == false,
+                  scatterSchoolYoungTargetIsLegal(
+                    target,
+                    source: source,
+                    selectedTargets: targets,
+                    for: choice,
+                    playerState: playerState
+                  )
             else {
                 errorMessage = AppStrings.GameBoard.scatterSchoolYoungTarget
                 return true
             }
-            resolvePendingChoice(choiceId, resolution: .placeScatterSchoolYoung(address))
+            let nextTargets = targets + [address]
+            let requiredTargetCount = 4
+            guard nextTargets.count >= requiredTargetCount else {
+                self.rewardSelectionMode = .scatterSchoolYoungTarget(
+                    choiceId: choiceId,
+                    tokenId: tokenId,
+                    source: source,
+                    targets: nextTargets
+                )
+                errorMessage = AppStrings.GameBoard.scatterSchoolYoungTarget
+                return true
+            }
+            performNativeEffectPayload(
+                .scatterSchool(
+                    EffectScatterSchoolPayload(
+                        source: source,
+                        targets: nextTargets
+                    )
+                ),
+                for: choiceId
+            )
             return true
-        case let .consumeFishConsumer(choiceId, _):
+        case let .consumeFishConsumer(choiceId, tokenId):
             guard let choice = state.pendingChoices[choiceId],
                   let playerState = state.playerGameStates[choice.playerId],
                   let consumerSlot = playerState.ocean.slots.first(where: { $0.address == address }),
@@ -2718,7 +2795,12 @@ final class GameBoardViewModel: ObservableObject {
                 errorMessage = AppStrings.GameBoard.consumeFishConsumer
                 return true
             }
-            resolvePendingChoice(choiceId, resolution: .chooseConsumeFishConsumer(address))
+            self.rewardSelectionMode = .consumeFishHandCard(
+                choiceId: choiceId,
+                tokenId: tokenId,
+                consumerSlot: address
+            )
+            errorMessage = AppStrings.GameBoard.consumeFishHandCard
             return true
         case .consumeFishHandCard:
             errorMessage = AppStrings.GameBoard.consumeFishHandCard
@@ -2740,7 +2822,17 @@ final class GameBoardViewModel: ObservableObject {
                 errorMessage = preview.message
                 return true
             }
-            resolvePendingChoice(choiceId, resolution: .playFishForFree(cardId: cardId, targetSlot: address))
+            performNativeEffectPayload(
+                .playCard(
+                    EffectPlayCardPayload(
+                        cardId: cardId,
+                        targetSlot: address,
+                        payment: .empty,
+                        coverTarget: target.content == .empty ? nil : address
+                    )
+                ),
+                for: choiceId
+            )
             return true
         case .playFishFromHandCard:
             errorMessage = AppStrings.GameBoard.playFishFromHandHandCard
@@ -2759,8 +2851,13 @@ final class GameBoardViewModel: ObservableObject {
             selectedTargetSlot = address
             selectedDiscardCardIds = []
             clearResourcePaymentSelection()
-            self.rewardSelectionMode = nil
-            resolvePendingChoice(choiceId, resolution: .choosePlayFishFromHandTarget(address))
+            self.rewardSelectionMode = .playFishFromHandPayment(
+                choiceId: choiceId,
+                tokenId: selectedRewardTokenId ?? "",
+                cardId: cardId,
+                targetSlot: address
+            )
+            errorMessage = AppStrings.GameBoard.playFishFromHandPayment
             return true
         case .playFishFromHandPayment:
             errorMessage = AppStrings.GameBoard.playFishFromHandPayment
@@ -3013,17 +3110,20 @@ final class GameBoardViewModel: ObservableObject {
             return
         }
 
-        resolvePendingChoice(
-            choice.choiceId,
-            resolution: .playFishFromHand(
-                cardId: selectedCardId,
-                targetSlot: selectedTargetSlot,
-                payment: PlayFishPayment(
-                    discardedCardIds: Array(selectedDiscardCardIds).sorted(),
-                    eggSources: selectedEggSources,
-                    youngSources: selectedYoungSources
+        performNativeEffectPayload(
+            .playCard(
+                EffectPlayCardPayload(
+                    cardId: selectedCardId,
+                    targetSlot: selectedTargetSlot,
+                    payment: PlayFishPayment(
+                        discardedCardIds: Array(selectedDiscardCardIds).sorted(),
+                        eggSources: selectedEggSources,
+                        youngSources: selectedYoungSources
+                    ),
+                    coverTarget: nil
                 )
-            )
+            ),
+            for: choice.choiceId
         )
     }
 
@@ -3237,6 +3337,131 @@ final class GameBoardViewModel: ObservableObject {
             resolvePendingChoice(choiceId, resolution: resolution)
         } catch {
             errorMessage = AppStrings.GameBoard.pendingChoiceNoLongerAvailable
+        }
+    }
+
+    private func performNativeEffectPayload(
+        _ payload: EffectResolutionPayload,
+        for choiceId: PendingChoiceID
+    ) {
+        guard let choice = state.pendingChoices[choiceId],
+              let node = nativePayloadEffectNode(for: payload, in: choice)
+        else {
+            errorMessage = AppStrings.GameBoard.pendingChoiceNoLongerAvailable
+            return
+        }
+        performPendingEffectIntent(
+            resolveIntent(for: node, choice: choice, payload: payload),
+            for: choiceId
+        )
+    }
+
+    @discardableResult
+    private func performNativeEffectResolution(
+        _ resolution: PendingChoiceResolution,
+        for choiceId: PendingChoiceID
+    ) -> Bool {
+        switch resolution {
+        case let .draw(count):
+            performNativeEffectPayload(
+                .rewardToken(EffectRewardTokenPayload(tokenKind: .drawFish, count: count)),
+                for: choiceId
+            )
+            return true
+        case .drawFromDeck:
+            performNativeEffectPayload(.none, for: choiceId)
+            return true
+        case let .recoverCard(cardId):
+            performNativeEffectPayload(.selectedDiscardCard(cardId), for: choiceId)
+            return true
+        case let .gainCoralWithEgg(source):
+            performNativeEffectPayload(
+                .coralPayment(EffectCoralPaymentPayload(payment: .egg(source: source))),
+                for: choiceId
+            )
+            return true
+        case let .gainCoralWithYoung(source):
+            performNativeEffectPayload(
+                .coralPayment(EffectCoralPaymentPayload(payment: .young(source: source))),
+                for: choiceId
+            )
+            return true
+        case let .gainCoralByDiscard(cardId):
+            performNativeEffectPayload(
+                .coralPayment(EffectCoralPaymentPayload(payment: .discard(cardId: cardId))),
+                for: choiceId
+            )
+            return true
+        case let .playFishForFree(cardId, targetSlot):
+            performNativeEffectPayload(
+                .playCard(
+                    EffectPlayCardPayload(
+                        cardId: cardId,
+                        targetSlot: targetSlot,
+                        payment: .empty,
+                        coverTarget: nil
+                    )
+                ),
+                for: choiceId
+            )
+            return true
+        case let .playFishFromHand(cardId, targetSlot, payment):
+            performNativeEffectPayload(
+                .playCard(
+                    EffectPlayCardPayload(
+                        cardId: cardId,
+                        targetSlot: targetSlot,
+                        payment: payment,
+                        coverTarget: nil
+                    )
+                ),
+                for: choiceId
+            )
+            return true
+        case .skip,
+             .chooseTarget,
+             .moveResource,
+             .gainCoralFromAbility,
+             .chooseScatterSchoolSource,
+             .placeScatterSchoolYoung,
+             .scatterSchool,
+             .chooseConsumeFishConsumer,
+             .consumeFishFromHand,
+             .consumeFishFromHandWithConsumer,
+             .chooseFreePlayFish,
+             .choosePlayFishFromHand,
+             .choosePlayFishFromHandTarget,
+             .chooseOption,
+             .chooseAbilityEffect,
+             .finishAbility:
+            return false
+        }
+    }
+
+    private func nativePayloadEffectNode(
+        for payload: EffectResolutionPayload,
+        in choice: PendingChoice
+    ) -> EffectNode? {
+        choice.v2PendingEffectSet.available.first { node in
+            switch (node.effect, payload) {
+            case (.scatterSchool, .scatterSchool),
+                 (.consumeFishFromHand, .consumeFishFromHand),
+                 (.playFishForFree, .playCard),
+                 (.playFishFromHand, .playCard),
+                 (.gainCoral, .coralPayment):
+                return true
+            case (.drawFish, .rewardToken):
+                return true
+            case (.drawFish, .none),
+                 (.recoverFromDiscardOrDraw, .none),
+                 (.recoverFromDiscardOrDraw, .selectedDiscardCard),
+                 (.placeEgg, .targetSlot),
+                 (.placeYoung, .targetSlot),
+                 (.hatchEgg, .targetSlot):
+                return true
+            default:
+                return false
+            }
         }
     }
 
@@ -3937,11 +4162,11 @@ final class GameBoardViewModel: ObservableObject {
         guard let card else {
             return AppStrings.GameBoard.unknownCard
         }
-        if case let .consumeFishHandCard(choiceId, _) = rewardSelectionMode {
+        if case let .consumeFishHandCard(choiceId, _, consumerSlot) = rewardSelectionMode {
             guard let choice = state.pendingChoices[choiceId] else {
                 return AppStrings.GameBoard.consumeFishHandCard
             }
-            return consumeFishHandCardIsLegal(card.id, for: choice)
+            return consumeFishHandCardIsLegal(card.id, consumerSlot: consumerSlot, for: choice)
                 ? nil
                 : AppStrings.GameBoard.consumeFishMustBeShorter
         }
@@ -6291,9 +6516,13 @@ final class GameBoardViewModel: ObservableObject {
             return AppStrings.GameBoard.scatterSchool
         case .placeScatterSchoolYoung:
             return AppStrings.GameBoard.scatterSchoolYoungTarget
+        case .scatterSchool:
+            return AppStrings.GameBoard.scatterSchool
         case .chooseConsumeFishConsumer:
             return AppStrings.GameBoard.consumeFishConsumer
         case .consumeFishFromHand:
+            return AppStrings.GameBoard.consumeFishFromHand
+        case .consumeFishFromHandWithConsumer:
             return AppStrings.GameBoard.consumeFishFromHand
         case .chooseFreePlayFish:
             return AppStrings.GameBoard.playFishForFreeHandCard
@@ -6434,6 +6663,27 @@ final class GameBoardViewModel: ObservableObject {
         return !progress.requiresSchoolSource || progress.sourceSlot != nil
     }
 
+    private func scatterSchoolYoungTargetIsLegal(
+        _ target: OceanSlot,
+        source: OceanSlotAddress,
+        selectedTargets: [OceanSlotAddress],
+        for choice: PendingChoice,
+        playerState: PlayerGameState
+    ) -> Bool {
+        var choiceWithProgress = choice
+        choiceWithProgress.scatterSchoolProgress = ScatterSchoolProgress(
+            sourceSlot: source,
+            targetSlots: selectedTargets,
+            requiredTargetCount: 4,
+            requiresSchoolSource: true
+        )
+        return scatterSchoolYoungTargetIsLegal(
+            target,
+            for: choiceWithProgress,
+            playerState: playerState
+        )
+    }
+
     private func consumeFishConsumerIsLegal(_ slot: OceanSlot, for choice: PendingChoice) -> Bool {
         guard slot.address.playerId == choice.playerId,
               choice.kind == .consumeFishFromHand,
@@ -6452,6 +6702,24 @@ final class GameBoardViewModel: ObservableObject {
               playerState.hand.contains(cardId),
               let consumedCard = cardsById[cardId],
               let consumerSlotAddress = choice.consumeFishFromHandProgress?.consumerSlot,
+              let consumerSlot = playerState.ocean.slots.first(where: { $0.address == consumerSlotAddress }),
+              case let .fishCard(consumerCardId) = consumerSlot.content,
+              let consumerCard = cardsById[consumerCardId]
+        else {
+            return false
+        }
+        return consumedCard.lengthCm < consumerCard.lengthCm
+    }
+
+    private func consumeFishHandCardIsLegal(
+        _ cardId: CardID,
+        consumerSlot consumerSlotAddress: OceanSlotAddress,
+        for choice: PendingChoice
+    ) -> Bool {
+        guard choice.kind == .consumeFishFromHand,
+              let playerState = state.playerGameStates[choice.playerId],
+              playerState.hand.contains(cardId),
+              let consumedCard = cardsById[cardId],
               let consumerSlot = playerState.ocean.slots.first(where: { $0.address == consumerSlotAddress }),
               case let .fishCard(consumerCardId) = consumerSlot.content,
               let consumerCard = cardsById[consumerCardId]
@@ -6882,10 +7150,17 @@ final class GameBoardViewModel: ObservableObject {
                 return nil
             }
             return AppStrings.GameBoard.scatterSchoolSource
-        case let .scatterSchoolYoungTarget(choiceId, _):
+        case let .scatterSchoolYoungTarget(choiceId, _, source, targets):
             guard let choice = state.pendingChoices[choiceId],
                   let playerState = state.playerGameStates[choice.playerId],
-                  scatterSchoolYoungTargetIsLegal(slot, for: choice, playerState: playerState)
+                  targets.contains(slot.address) == false,
+                  scatterSchoolYoungTargetIsLegal(
+                    slot,
+                    source: source,
+                    selectedTargets: targets,
+                    for: choice,
+                    playerState: playerState
+                  )
             else {
                 return nil
             }

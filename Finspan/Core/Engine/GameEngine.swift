@@ -805,10 +805,19 @@ struct GameEngine {
             try validateScatterSchoolSource(source, for: choice, in: state)
         case let .placeScatterSchoolYoung(target):
             try validateScatterSchoolYoungTarget(target, for: choice, in: state)
+        case let .scatterSchool(source, targets):
+            try validateScatterSchool(source: source, targets: targets, for: choice, in: state)
         case let .chooseConsumeFishConsumer(consumerSlot):
             try validateConsumeFishConsumer(consumerSlot, for: choice, in: state)
         case let .consumeFishFromHand(cardId):
             try validateConsumeFishFromHand(cardId, for: choice, in: state)
+        case let .consumeFishFromHandWithConsumer(consumerSlot, consumedCardId):
+            try validateConsumeFishFromHand(
+                consumedCardId,
+                consumerSlot: consumerSlot,
+                for: choice,
+                in: state
+            )
         case let .chooseFreePlayFish(cardId):
             try validateFreePlayFishSelection(cardId, for: choice, in: state)
         case let .playFishForFree(cardId, targetSlot):
@@ -1077,6 +1086,37 @@ struct GameEngine {
         }
     }
 
+    private func validateScatterSchool(
+        source: OceanSlotAddress,
+        targets: [OceanSlotAddress],
+        for choice: PendingChoice,
+        in state: GameState
+    ) throws {
+        try validateScatterSchoolSource(source, for: choice, in: state)
+        guard let playerState = state.playerGameStates[choice.playerId] else {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+        let requiredTargetCount = scatterSchoolProgress(for: choice, playerState: playerState).requiredTargetCount
+        guard targets.count == requiredTargetCount,
+              Set(targets).count == targets.count
+        else {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+        var targetProgress = ScatterSchoolProgress(
+            sourceSlot: source,
+            targetSlots: [],
+            requiredTargetCount: requiredTargetCount,
+            requiresSchoolSource: true
+        )
+        for target in targets {
+            var targetChoice = choice
+            targetChoice.expectedInput = .scatterSchoolYoungTarget
+            targetChoice.scatterSchoolProgress = targetProgress
+            try validateScatterSchoolYoungTarget(target, for: targetChoice, in: state)
+            targetProgress.targetSlots.append(target)
+        }
+    }
+
     private func scatterSchoolProgress(
         for choice: PendingChoice,
         playerState: PlayerGameState
@@ -1132,6 +1172,26 @@ struct GameEngine {
         }
     }
 
+    private func validateConsumeFishFromHand(
+        _ consumedCardId: CardID,
+        consumerSlot consumerSlotAddress: OceanSlotAddress,
+        for choice: PendingChoice,
+        in state: GameState
+    ) throws {
+        guard choice.kind == .consumeFishFromHand,
+              consumerSlotAddress.playerId == choice.playerId,
+              let playerState = state.playerGameStates[choice.playerId],
+              playerState.hand.contains(consumedCardId),
+              let consumerSlot = playerState.ocean.slots.first(where: { $0.address == consumerSlotAddress }),
+              case let .fishCard(consumerCardId) = consumerSlot.content,
+              let consumerCard = card(withId: consumerCardId),
+              let consumedCard = card(withId: consumedCardId),
+              consumedCard.lengthCm < consumerCard.lengthCm
+        else {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
+        }
+    }
+
     private func validateFreePlayFishSelection(
         _ cardId: CardID,
         for choice: PendingChoice,
@@ -1156,9 +1216,6 @@ struct GameEngine {
         in state: GameState
     ) throws {
         guard choice.kind == .playFishForFree,
-              choice.expectedInput == .freePlayTargetSlot,
-              let selectedCardId = choice.playFishForFreeProgress?.selectedCardId,
-              selectedCardId == cardId,
               targetSlot.playerId == choice.playerId,
               let playerState = state.playerGameStates[choice.playerId],
               playerState.hand.contains(cardId),
@@ -1223,10 +1280,6 @@ struct GameEngine {
         in state: GameState
     ) throws {
         guard choice.kind == .playFishFromHand,
-              choice.expectedInput == .playFishFromHandPayment,
-              let progress = choice.playFishFromHandProgress,
-              progress.selectedCardId == cardId,
-              progress.targetSlot == targetSlot,
               let playerState = state.playerGameStates[choice.playerId],
               playerState.hand.contains(cardId),
               let card = card(withId: cardId),
@@ -2043,6 +2096,9 @@ struct GameEngine {
             return [.scatterSchoolSourceRemoved(playerId: playerId, source: source)]
         case let .placeScatterSchoolYoung(target):
             return [.scatterSchoolYoungPlaced(playerId: playerId, target: target)]
+        case let .scatterSchool(source, targets):
+            return [.scatterSchoolSourceRemoved(playerId: playerId, source: source)]
+                + targets.map { .scatterSchoolYoungPlaced(playerId: playerId, target: $0) }
         case .chooseConsumeFishConsumer:
             return [.none]
         case let .consumeFishFromHand(cardId):
@@ -2056,6 +2112,14 @@ struct GameEngine {
                     playerId: playerId,
                     consumerSlot: consumerSlot,
                     consumedCardId: cardId
+                )
+            ]
+        case let .consumeFishFromHandWithConsumer(consumerSlot, consumedCardId):
+            return [
+                .fishConsumedFromHand(
+                    playerId: playerId,
+                    consumerSlot: consumerSlot,
+                    consumedCardId: consumedCardId
                 )
             ]
         case .chooseFreePlayFish:
@@ -2177,8 +2241,10 @@ struct GameEngine {
              .gainCoralFromAbility,
              .chooseScatterSchoolSource,
              .placeScatterSchoolYoung,
+             .scatterSchool,
              .chooseConsumeFishConsumer,
              .consumeFishFromHand,
+             .consumeFishFromHandWithConsumer,
              .chooseFreePlayFish,
              .choosePlayFishFromHand,
              .choosePlayFishFromHandTarget,
@@ -3267,6 +3333,8 @@ struct GameEngine {
                 return nil
             }
             return scatterSchoolTargetChoice(from: choice, progress: progress)
+        case .scatterSchool:
+            return nil
         default:
             return nil
         }
@@ -3307,7 +3375,8 @@ struct GameEngine {
         switch resolution {
         case let .chooseConsumeFishConsumer(consumerSlot):
             return consumeFishFromHandCardChoice(from: choice, consumerSlot: consumerSlot)
-        case .consumeFishFromHand:
+        case .consumeFishFromHand,
+             .consumeFishFromHandWithConsumer:
             return nil
         default:
             return nil

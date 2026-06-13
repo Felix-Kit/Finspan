@@ -106,7 +106,8 @@
 - Ability Engine v2 Cleanup Pass 2 已完成：v2 action button / simple target selection 现在携带 `PendingEffectIntent` 和 `effectNodeId`，再通过 adapter 映射到现有 `PendingChoiceResolution`。
 - Ability Engine v2 Cleanup Pass 3A 已完成：`EffectNodeMetadata` 已能描述 reward token、target requirement、payment requirement、resource requirement 和复杂 staged selection prompt；reward pool / prompt display 优先读取 v2 metadata，再 fallback 到 legacy。
 - Ability Engine v2 Cleanup Pass 3B 已完成：新增 `resolveEffectNode` / `skipEffectNode` / `skipEffectExecution` command，安全的简单 resolve / skip 现在可原生进入 `GameEngine`，复杂 staged payload 继续 fallback 到 legacy `PendingChoiceResolution`。
-- legacy `PendingChoice` 仍保留为 compatibility shell，继续承载复杂 staged payload、reward token action dispatch 和现有 `PendingChoiceResolution` fallback。
+- Ability Engine v2 Cleanup Pass 4 已完成：scatter school、consume-from-hand、free-play / paid-play final payload、coral payment 和 draw reward token action 已能通过 native effect-node payload 进入 engine；legacy `PendingChoiceResolution` 仍作为 reducer/event compatibility shell。
+- legacy `PendingChoice` 仍保留为 compatibility shell，继续承载 saved-state compatibility、move young / school source-target flow、部分 reward token action dispatch 和现有 `PendingChoiceResolution` fallback。
 - v2 当前是 adapter / consolidation 层，不改变既有玩法结果，也不实现完整 replay / debug timeline。
 - 未来 runtime JSON 新增或变更的未知能力仍应保持可表示、可跳过，不应导致崩溃。
 
@@ -134,7 +135,7 @@
 
 ### 规则与功能
 
-- Ability Engine v2 cleanup：下一步推进 scatter / consume-from-hand / free-play / paid-play / coral payment 等复杂 staged payload 的 native migration；legacy adapter 继续保持行为稳定。
+- Ability Engine v2 cleanup：下一步收口剩余 staged payload，重点是 move young / school、需要多步 UI state 的 reward token action，以及 saved-state migration 前的 legacy field 标记；legacy adapter 继续保持行为稳定。
 - GameBoardViewModel pending UI stabilization：继续减少 ViewModel 对具体 ability type / step order 的依赖。
 - `recoverFromDiscardOrDraw` 与弃牌堆选择模式联动。
 - S&R achievements。
@@ -147,6 +148,6 @@
 
 ## 当前建议下一步
 
-1. 先推进 Ability Engine v2 cleanup，把复杂 staged payload 逐步迁到 native effect-node resolution，同时保留 legacy adapter 作为回退。
+1. 先推进 Ability Engine v2 cleanup，把剩余 staged payload 和 pending UI state 稳定到 native effect-node resolution，同时保留 legacy adapter 作为回退。
 2. 再推进 `recoverFromDiscardOrDraw` 与弃牌堆选择模式联动。
 3. 之后修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。

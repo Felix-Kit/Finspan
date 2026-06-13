@@ -2,7 +2,7 @@
 
 Last updated: 2026-06-13.
 
-This document describes the Ability Engine v2 core migration and Cleanup Passes 1-3B.
+This document describes the Ability Engine v2 core migration and Cleanup Passes 1-4.
 It is an architecture consolidation pass, not a rules expansion.
 
 ## Current Coverage Baseline
@@ -41,7 +41,8 @@ so reward tokens, payment summaries, target requirements, and staged prompt
 requirements can be described by v2 metadata. Cleanup Pass 3B adds native
 effect-node command entry points for safe simple resolve / skip flows while
 retaining legacy `PendingChoiceResolution` as the compatibility fallback for
-complex staged payloads.
+complex staged payloads. Cleanup Pass 4 migrates the main staged payloads into
+native effect-node payloads while keeping the same legacy reducer event shell.
 
 ## Unified Execution Shape
 
@@ -308,6 +309,68 @@ PendingEffectSet.available -> PendingEffectIntent -> legacy PendingChoiceResolut
 Cleanup Pass 3B still does not implement v2.1 replay, a debug timeline, a graph
 viewer, or native staged payload dispatch.
 
+## Cleanup Pass 4 Boundary
+
+Cleanup Pass 4 keeps the `resolveEffectNode` / `skipEffectNode` command path and
+adds native payloads for the previously staged flows:
+
+- `EffectScatterSchoolPayload` carries the source school slot and all target
+  young slots.
+- `EffectConsumeFishFromHandPayload` carries the consumer fish slot and consumed
+  hand card id.
+- `EffectPlayCardPayload` carries the hand card id, target slot, payment, and
+  optional cover target.
+- `EffectCoralPaymentPayload` carries egg / young / discard coral payment.
+- `EffectRewardTokenPayload` carries reward-token kind and count for native
+  reward actions where the payload is complete.
+
+Native coverage after Pass 4:
+
+- draw / recover / egg / young / hatch simple effects
+- compound effect selection and skip remaining
+- scatter school full source plus target placement
+- consume-from-hand full consumer plus hand-card selection
+- free-play and paid-play final card / target / payment payloads
+- coral payment via egg, young, or discard
+- draw reward token action
+- AllPlayers skip and GAME END executable skip
+
+The reducer still receives `PendingChoiceResolvedEvent` with
+`PendingChoiceResolution` compatibility payloads. This is intentional: Pass 4
+migrates command intent and validation payload shape first, without deleting the
+legacy event shell or step-specific fields.
+
+Legacy Still Required:
+
+- old `resolvePendingChoice` command support for saved state, tests, and
+  compatibility with existing pending choices
+- move young / school source-target flow until it has a rich native payload
+- `recoverFromDiscardOrDraw` discard-pile selection UI polish
+- reward token actions whose selections still require additional UI state
+- legacy pending fields used to rebuild follow-up choices and preserve saved
+  local room compatibility
+
+Safe To Remove Later:
+
+- scatter-school staged source / target progress dispatch once saved-state
+  migration no longer needs it
+- consume-from-hand staged consumer / hand-card progress dispatch once all UI
+  callers use `EffectConsumeFishFromHandPayload`
+- free-play / paid-play staged hand-card and target dispatch once native payload
+  callers cover every path
+- coral payment legacy resolution entry points after native payload coverage is
+  proven in ViewModel tests
+
+Blocked By Future Work:
+
+- native effect-node event type that replaces `PendingChoiceResolvedEvent`
+- complete staged payload native migration for move young / school and any
+  multi-step reward action not yet represented as one payload
+- v2.1 trace / replay / debug timeline using the reserved execution and node ids
+
+Cleanup Pass 4 still does not implement v2.1 replay, a debug timeline, or a
+graph viewer.
+
 ## Behavior Guarantees
 
 This pass must not change gameplay results:
@@ -323,8 +386,9 @@ This pass must not change gameplay results:
 
 ## Next Steps
 
-- Complete staged payload native migration for scatter, consume-from-hand,
-  free-play, paid-play, coral payment, and reward token actions.
+- Finish the remaining staged native payloads, especially move young / school
+  and any reward-token action that still needs multi-step UI state.
+- Stabilize GameBoardViewModel pending UI around v2 metadata and native payloads.
 - Add v2.1 trace / replay / debug timeline using the reserved ids.
 - Remove legacy step-specific pending fields only after v2 choices are fully
-  authoritative and tested.
+  authoritative and saved-state compatibility has a migration path.

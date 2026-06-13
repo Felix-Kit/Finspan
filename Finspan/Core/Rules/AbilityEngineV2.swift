@@ -153,6 +153,37 @@ enum EffectResolutionPayload: Codable, Equatable, Sendable {
     case selectedDiscardCard(CardID)
     case payment(PlayFishPayment)
     case resourceSource(OceanSlotAddress)
+    case scatterSchool(EffectScatterSchoolPayload)
+    case consumeFishFromHand(EffectConsumeFishFromHandPayload)
+    case playCard(EffectPlayCardPayload)
+    case coralPayment(EffectCoralPaymentPayload)
+    case rewardToken(EffectRewardTokenPayload)
+}
+
+struct EffectScatterSchoolPayload: Codable, Equatable, Sendable {
+    var source: OceanSlotAddress
+    var targets: [OceanSlotAddress]
+}
+
+struct EffectConsumeFishFromHandPayload: Codable, Equatable, Sendable {
+    var consumerSlot: OceanSlotAddress
+    var consumedCardId: CardID
+}
+
+struct EffectPlayCardPayload: Codable, Equatable, Sendable {
+    var cardId: CardID
+    var targetSlot: OceanSlotAddress
+    var payment: PlayFishPayment
+    var coverTarget: OceanSlotAddress?
+}
+
+struct EffectCoralPaymentPayload: Codable, Equatable, Sendable {
+    var payment: CoralPayment
+}
+
+struct EffectRewardTokenPayload: Codable, Equatable, Sendable {
+    var tokenKind: EffectRewardTokenKind
+    var count: Int
 }
 
 struct EffectTargetRequirement: Codable, Equatable, Sendable {
@@ -569,61 +600,72 @@ enum AbilityEngineV2Adapter {
                 : .chooseTarget(address)
         case (.scatterSchool, let .targetSlot(address)):
             switch choice.expectedInput {
-            case .scatterSchoolSource:
+            case .scatterSchoolSource?:
                 return .chooseScatterSchoolSource(address)
-            case .scatterSchoolTargets:
+            case .scatterSchoolYoungTarget?:
                 return .placeScatterSchoolYoung(address)
-            case .none,
-                 .targetSlot,
-                 .cardSelection,
-                 .sourceAndTargetSlots,
-                 .coralPayment,
-                 .matchingEggTarget,
-                 .consumeFishConsumer,
-                 .consumeFishHandCard,
-                 .freePlayHandCard,
-                 .freePlayTargetSlot,
-                 .playFishFromHandCard,
-                 .playFishFromHandTargetSlot,
-                 .playFishFromHandPayment,
-                 .abilityEffectSelection,
-                 .count(_):
+            case nil,
+                 .none?,
+                 .targetSlot?,
+                 .cardSelection?,
+                 .sourceAndTargetSlots?,
+                 .coralPayment?,
+                 .coralPlacement?,
+                 .matchingEggTarget?,
+                 .consumeFishConsumer?,
+                 .consumeFishHandCard?,
+                 .freePlayHandCard?,
+                 .freePlayTargetSlot?,
+                 .playFishFromHandCard?,
+                 .playFishFromHandTargetSlot?,
+                 .playFishFromHandPayment?,
+                 .abilityEffectSelection?,
+                 .count(_)?:
                 throw PendingEffectIntentAdapterError.unsupportedPayload
             }
+        case (.scatterSchool, let .scatterSchool(payload)):
+            return .scatterSchool(source: payload.source, targets: payload.targets)
         case (.consumeFishFromHand, let .targetSlot(address)):
-            guard choice.expectedInput == .consumeFishConsumer else {
+            guard case .consumeFishConsumer? = choice.expectedInput else {
                 throw PendingEffectIntentAdapterError.unsupportedPayload
             }
             return .chooseConsumeFishConsumer(address)
         case (.consumeFishFromHand, let .selectedCard(cardId)):
-            guard choice.expectedInput == .consumeFishHandCard else {
+            guard case .consumeFishHandCard? = choice.expectedInput else {
                 throw PendingEffectIntentAdapterError.unsupportedPayload
             }
             return .consumeFishFromHand(cardId)
+        case (.consumeFishFromHand, let .consumeFishFromHand(payload)):
+            return .consumeFishFromHandWithConsumer(
+                consumerSlot: payload.consumerSlot,
+                consumedCardId: payload.consumedCardId
+            )
         case (.playFishForFree, let .selectedCard(cardId)):
-            guard choice.expectedInput == .freePlayHandCard else {
+            guard case .freePlayHandCard? = choice.expectedInput else {
                 throw PendingEffectIntentAdapterError.unsupportedPayload
             }
             return .chooseFreePlayFish(cardId)
         case (.playFishForFree, let .targetSlot(address)):
-            guard choice.expectedInput == .freePlayTargetSlot,
+            guard case .freePlayTargetSlot? = choice.expectedInput,
                   let cardId = choice.playFishForFreeProgress?.selectedCardId
             else {
                 throw PendingEffectIntentAdapterError.unsupportedPayload
             }
             return .playFishForFree(cardId: cardId, targetSlot: address)
+        case (.playFishForFree, let .playCard(payload)):
+            return .playFishForFree(cardId: payload.cardId, targetSlot: payload.targetSlot)
         case (.playFishFromHand, let .selectedCard(cardId)):
-            guard choice.expectedInput == .playFishFromHandCard else {
+            guard case .playFishFromHandCard? = choice.expectedInput else {
                 throw PendingEffectIntentAdapterError.unsupportedPayload
             }
             return .choosePlayFishFromHand(cardId)
         case (.playFishFromHand, let .targetSlot(address)):
-            guard choice.expectedInput == .playFishFromHandTargetSlot else {
+            guard case .playFishFromHandTargetSlot? = choice.expectedInput else {
                 throw PendingEffectIntentAdapterError.unsupportedPayload
             }
             return .choosePlayFishFromHandTarget(address)
         case (.playFishFromHand, let .payment(payment)):
-            guard choice.expectedInput == .playFishFromHandPayment,
+            guard case .playFishFromHandPayment? = choice.expectedInput,
                   let progress = choice.playFishFromHandProgress,
                   let cardId = progress.selectedCardId,
                   let targetSlot = progress.targetSlot
@@ -631,6 +673,25 @@ enum AbilityEngineV2Adapter {
                 throw PendingEffectIntentAdapterError.unsupportedPayload
             }
             return .playFishFromHand(cardId: cardId, targetSlot: targetSlot, payment: payment)
+        case (.playFishFromHand, let .playCard(payload)):
+            return .playFishFromHand(
+                cardId: payload.cardId,
+                targetSlot: payload.targetSlot,
+                payment: payload.payment
+            )
+        case (.gainCoral, let .coralPayment(payload)):
+            switch payload.payment {
+            case let .egg(source):
+                return .gainCoralWithEgg(source: source)
+            case let .young(source):
+                return .gainCoralWithYoung(source: source)
+            case let .discard(cardId):
+                return .gainCoralByDiscard(cardId: cardId)
+            }
+        case (.drawFish, let .rewardToken(payload)) where payload.tokenKind == .drawFish:
+            return choice.kind == .compoundAbility
+                ? .chooseAbilityEffect(.drawFish(count: payload.count))
+                : .draw(count: payload.count)
         default:
             throw PendingEffectIntentAdapterError.unsupportedPayload
         }
@@ -646,6 +707,13 @@ enum AbilityEngineV2Adapter {
              .draw,
              .recoverCard,
              .drawFromDeck,
+             .gainCoralWithEgg,
+             .gainCoralWithYoung,
+             .gainCoralByDiscard,
+             .scatterSchool,
+             .consumeFishFromHandWithConsumer,
+             .playFishForFree,
+             .playFishFromHand,
              .finishAbility:
             return true
         case .chooseTarget:
@@ -687,19 +755,14 @@ enum AbilityEngineV2Adapter {
                 return false
             }
         case .moveResource,
-             .gainCoralWithEgg,
-             .gainCoralWithYoung,
-             .gainCoralByDiscard,
              .gainCoralFromAbility,
              .chooseScatterSchoolSource,
              .placeScatterSchoolYoung,
              .chooseConsumeFishConsumer,
              .consumeFishFromHand,
              .chooseFreePlayFish,
-             .playFishForFree,
              .choosePlayFishFromHand,
              .choosePlayFishFromHandTarget,
-             .playFishFromHand,
              .chooseOption:
             return false
         }
