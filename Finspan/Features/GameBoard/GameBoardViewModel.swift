@@ -981,6 +981,7 @@ final class GameBoardViewModel: ObservableObject {
     private var hudToastDismissWorkItem: DispatchWorkItem?
     private var lastShownHudToastSequence: EventID?
     private var didShowInitialHudToast = false
+    private var fishCardFaceViewStateCache: [CardID: FishCardFaceViewState] = [:]
     private var cardCatalog: any CardCatalog {
         cardCatalogProvider()
     }
@@ -3960,8 +3961,13 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     private func fishCardFaceViewState(cardId: CardID) -> FishCardFaceViewState {
+        if let cached = fishCardFaceViewStateCache[cardId] {
+            return cached
+        }
+
+        let viewState: FishCardFaceViewState
         guard let card = resolvedCard(for: cardId) else {
-            return FishCardFaceViewState(
+            viewState = FishCardFaceViewState(
                 kind: .placeholder,
                 cardId: cardId,
                 displayName: AppStrings.GameBoard.cardFaceUnknownCard,
@@ -3987,13 +3993,15 @@ final class GameBoardViewModel: ObservableObject {
                 aspectRatio: CardRenderMetrics.cardAspectRatio,
                 isPlaceholder: true
             )
+            fishCardFaceViewStateCache[cardId] = viewState
+            return viewState
         }
 
         let abilityText = card.abilityText?.trimmingCharacters(in: .whitespacesAndNewlines)
         let displayAbilityText = abilityText?.isEmpty == false
             ? abilityText!
             : cardAbilitySummaryText(card)
-        return FishCardFaceViewState(
+        viewState = FishCardFaceViewState(
             kind: .fishCard,
             cardId: cardId,
             displayName: card.name,
@@ -4019,6 +4027,8 @@ final class GameBoardViewModel: ObservableObject {
             aspectRatio: CardRenderMetrics.cardAspectRatio,
             isPlaceholder: false
         )
+        fishCardFaceViewStateCache[cardId] = viewState
+        return viewState
     }
 
     private func resolvedCard(for cardId: CardID) -> Card? {
@@ -5436,72 +5446,7 @@ final class GameBoardViewModel: ObservableObject {
             guard choice.expectedInput == .coralPayment else {
                 return abilityCoralRewardEntries(for: choice)
             }
-            guard let playerState = state.playerGameStates[choice.playerId],
-                  let diveSite = coralDiveSite(for: choice),
-                  let reef = playerState.ocean.coralReefs.first(where: { $0.diveSite == diveSite })
-            else {
-                return []
-            }
-            let hasEgg = playerState.ocean.slots.contains { resourceAmount(.egg, in: $0) > 0 }
-            let hasYoung = playerState.ocean.slots.contains { resourceAmount(.young, in: $0) > 0 }
-            let hasHandCard = !playerState.hand.isEmpty
-            let progressText = AppStrings.coralReefProgressText(
-                coralCount: reef.coralCount,
-                maxCoral: reef.maxCoral
-            )
-            return [
-                (
-                    rewardToken(
-                        id: "\(choice.choiceId)-coral-egg",
-                        kind: .gainCoral,
-                        title: AppStrings.GameBoard.payOneEgg,
-                        subtitle: progressText,
-                        iconText: "卵",
-                        symbolName: "circle",
-                        isSelectable: canResolve && hasEgg,
-                        unavailableReasonText: hasEgg ? nil : AppStrings.GameBoard.noCoralPaymentResource
-                    ),
-                    .chooseCoralResource(choiceId: choice.choiceId, tokenId: "\(choice.choiceId)-coral-egg", kind: .egg)
-                ),
-                (
-                    rewardToken(
-                        id: "\(choice.choiceId)-coral-young",
-                        kind: .gainCoral,
-                        title: AppStrings.GameBoard.payOneYoung,
-                        subtitle: progressText,
-                        iconText: "幼",
-                        symbolName: "circle.dotted",
-                        isSelectable: canResolve && hasYoung,
-                        unavailableReasonText: hasYoung ? nil : AppStrings.GameBoard.noCoralPaymentResource
-                    ),
-                    .chooseCoralResource(choiceId: choice.choiceId, tokenId: "\(choice.choiceId)-coral-young", kind: .young)
-                ),
-                (
-                    rewardToken(
-                        id: "\(choice.choiceId)-coral-discard",
-                        kind: .gainCoral,
-                        title: AppStrings.GameBoard.discardOneHandCard,
-                        subtitle: progressText,
-                        iconText: "牌",
-                        symbolName: "rectangle.stack.badge.minus",
-                        isSelectable: canResolve && hasHandCard,
-                        unavailableReasonText: hasHandCard ? nil : AppStrings.GameBoard.noCoralPaymentHandCard
-                    ),
-                    .chooseCoralHandCard(choiceId: choice.choiceId, tokenId: "\(choice.choiceId)-coral-discard")
-                ),
-                (
-                    rewardToken(
-                        id: "\(choice.choiceId)-coral-skip",
-                        kind: .skipOrEnd,
-                        title: AppStrings.GameBoard.skipChoice,
-                        subtitle: AppStrings.GameBoard.optionalChoice,
-                        iconText: "跳",
-                        symbolName: "forward.end",
-                        isSelectable: canResolve
-                    ),
-                    .direct(choiceId: choice.choiceId, resolution: .skip)
-                )
-            ]
+            return coralPaymentRewardEntries(for: choice)
         case .placeEggOnMatchingFish:
             return placeEggOnMatchingFishRewardEntries(for: choice)
         case .scatterSchool:
@@ -5914,6 +5859,12 @@ final class GameBoardViewModel: ObservableObject {
     private func v2CoralPaymentRewardEntries(
         for choice: PendingChoice
     ) -> [(token: RewardTokenViewState, action: RewardTokenAction)] {
+        coralPaymentRewardEntries(for: choice)
+    }
+
+    private func coralPaymentRewardEntries(
+        for choice: PendingChoice
+    ) -> [(token: RewardTokenViewState, action: RewardTokenAction)] {
         guard let playerState = state.playerGameStates[choice.playerId],
               let diveSite = coralDiveSite(for: choice),
               let reef = playerState.ocean.coralReefs.first(where: { $0.diveSite == diveSite })
@@ -5922,12 +5873,12 @@ final class GameBoardViewModel: ObservableObject {
         }
 
         let canResolve = canResolvePendingChoice(choice)
-        let hasEgg = playerState.ocean.slots.contains { resourceAmount(.egg, in: $0) > 0 }
-        let hasYoung = playerState.ocean.slots.contains { resourceAmount(.young, in: $0) > 0 }
-        let hasHandCard = !playerState.hand.isEmpty
         let progressText = AppStrings.coralReefProgressText(coralCount: reef.coralCount, maxCoral: reef.maxCoral)
-        return [
-            (
+        let paymentEntry: (token: RewardTokenViewState, action: RewardTokenAction)
+        switch printedCoralPaymentSource(for: diveSite) {
+        case .egg:
+            let hasEgg = playerState.ocean.slots.contains { resourceAmount(.egg, in: $0) > 0 }
+            paymentEntry = (
                 rewardToken(
                     id: "\(choice.choiceId)-coral-egg",
                     kind: .gainCoral,
@@ -5939,8 +5890,10 @@ final class GameBoardViewModel: ObservableObject {
                     unavailableReasonText: hasEgg ? nil : AppStrings.GameBoard.noCoralPaymentResource
                 ),
                 .chooseCoralResource(choiceId: choice.choiceId, tokenId: "\(choice.choiceId)-coral-egg", kind: .egg)
-            ),
-            (
+            )
+        case .young:
+            let hasYoung = playerState.ocean.slots.contains { resourceAmount(.young, in: $0) > 0 }
+            paymentEntry = (
                 rewardToken(
                     id: "\(choice.choiceId)-coral-young",
                     kind: .gainCoral,
@@ -5952,8 +5905,10 @@ final class GameBoardViewModel: ObservableObject {
                     unavailableReasonText: hasYoung ? nil : AppStrings.GameBoard.noCoralPaymentResource
                 ),
                 .chooseCoralResource(choiceId: choice.choiceId, tokenId: "\(choice.choiceId)-coral-young", kind: .young)
-            ),
-            (
+            )
+        case .handCard:
+            let hasHandCard = !playerState.hand.isEmpty
+            paymentEntry = (
                 rewardToken(
                     id: "\(choice.choiceId)-coral-discard",
                     kind: .gainCoral,
@@ -5965,7 +5920,15 @@ final class GameBoardViewModel: ObservableObject {
                     unavailableReasonText: hasHandCard ? nil : AppStrings.GameBoard.noCoralPaymentHandCard
                 ),
                 .chooseCoralHandCard(choiceId: choice.choiceId, tokenId: "\(choice.choiceId)-coral-discard")
-            ),
+            )
+        case .discardCard,
+             .coralReef,
+             .waivedCost:
+            return []
+        }
+
+        return [
+            paymentEntry,
             (
                 rewardToken(
                     id: "\(choice.choiceId)-coral-skip",
@@ -6853,6 +6816,17 @@ final class GameBoardViewModel: ObservableObject {
             return nil
         }
         return diveSite
+    }
+
+    private func printedCoralPaymentSource(for diveSite: DiveSite) -> EffectPaymentSourceKind {
+        switch diveSite {
+        case .blue:
+            return .egg
+        case .purple:
+            return .young
+        case .green:
+            return .handCard
+        }
     }
 
     private func gainCoralSelector(for choice: PendingChoice) -> CoralDiveSiteSelector? {

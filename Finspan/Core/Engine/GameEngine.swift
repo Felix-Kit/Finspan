@@ -1642,13 +1642,26 @@ struct GameEngine {
 
         switch payment {
         case let .egg(source):
+            try validateCoralPaymentKind(.egg, for: diveSite, choice: choice)
             try validateCoralResourcePayment(source: source, kind: .egg, for: choice, playerState: playerState)
         case let .young(source):
+            try validateCoralPaymentKind(.young, for: diveSite, choice: choice)
             try validateCoralResourcePayment(source: source, kind: .young, for: choice, playerState: playerState)
         case let .discard(cardId):
+            try validateCoralPaymentKind(.handCard, for: diveSite, choice: choice)
             guard playerState.hand.contains(cardId) else {
                 throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
             }
+        }
+    }
+
+    private func validateCoralPaymentKind(
+        _ paymentKind: EffectPaymentSourceKind,
+        for diveSite: DiveSite,
+        choice: PendingChoice
+    ) throws {
+        guard printedCoralPaymentSource(for: diveSite) == paymentKind else {
+            throw CommandValidationError.invalidPendingChoiceResolution(choice.choiceId)
         }
     }
 
@@ -1875,9 +1888,7 @@ struct GameEngine {
                 diveStepId: "",
                 kind: .gainCoral,
                 options: [
-                    PendingChoiceOption(optionId: "egg", label: "egg"),
-                    PendingChoiceOption(optionId: "young", label: "young"),
-                    PendingChoiceOption(optionId: "discard", label: "discard")
+                    coralPaymentOption(for: oceanDiveSite)
                 ],
                 expectedInput: .coralPayment,
                 isOptional: true,
@@ -2184,6 +2195,32 @@ struct GameEngine {
             return nil
         }
         return diveSite
+    }
+
+    private func coralPaymentOption(for diveSite: DiveSite) -> PendingChoiceOption {
+        switch printedCoralPaymentSource(for: diveSite) {
+        case .egg:
+            return PendingChoiceOption(optionId: "egg", label: "egg")
+        case .young:
+            return PendingChoiceOption(optionId: "young", label: "young")
+        case .handCard:
+            return PendingChoiceOption(optionId: "discard", label: "discard")
+        case .discardCard,
+             .coralReef,
+             .waivedCost:
+            return PendingChoiceOption(optionId: "unsupported", label: "unsupported")
+        }
+    }
+
+    private func printedCoralPaymentSource(for diveSite: DiveSite) -> EffectPaymentSourceKind {
+        switch diveSite {
+        case .blue:
+            return .egg
+        case .purple:
+            return .young
+        case .green:
+            return .handCard
+        }
     }
 
     private func sourceAddress(for choice: PendingChoice) -> OceanSlotAddress? {

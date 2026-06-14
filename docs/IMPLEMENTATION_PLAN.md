@@ -36,6 +36,7 @@
 - base + S&R 合并牌库已接入。
 - `OceanState.coralReefs` 已接入。
 - coral reef、coral requirement、coral reward 和 coral 计分都已建模。
+- Twilight printed coral reward 已按当前 dive site 固定支付来源：blue=egg、purple=young、green=hand card，coral 只加到当前 dive site 对应 reef。
 - S&R 相关 gainCoral / scatterSchool / consumeFishFromHand / playFishForFree / GAME END coral executable abilities 已接入。
 
 ### 4. Minimal `playFish`
@@ -105,6 +106,7 @@
 - 日志已改为折叠 / sheet 查看。
 - 已支持强制结束当前对局返回主页。
 - 已支持弃牌堆 normal 只读查看和 `recoverFromDiscardOrDraw` 选择模式。
+- 手牌点击卡顿已完成一轮低风险定位和优化：卡面静态 view state 按 cardId 缓存，避免选牌时重复构造完整 `FishCardFaceViewState`。
 
 ### 13. Ability Registry
 

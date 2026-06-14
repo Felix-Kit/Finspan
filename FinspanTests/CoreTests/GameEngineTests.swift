@@ -3475,6 +3475,7 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(choice.kind, .gainCoral)
         XCTAssertEqual(choice.source, .coralReef(.blue))
         XCTAssertEqual(choice.expectedInput, .coralPayment)
+        XCTAssertEqual(choice.options.map(\.optionId), ["egg"])
     }
 
     func testFullCoralReefDoesNotCreateGainableCoralOffer() throws {
@@ -3528,18 +3529,20 @@ final class GameEngineTests: XCTestCase {
     }
 
     func testCoralReefOfferAlwaysAddsCoralToCurrentDiveSite() throws {
-        let cases: [(DiveActionSite, DiveSite, OceanSlotAddress)] = [
-            (.blue, .blue, OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 3)),
-            (.purple, .purple, OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 3)),
-            (.green, .green, OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 3))
+        let eggSource = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 3)
+        let youngSource = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 3)
+        let cases: [(DiveActionSite, DiveSite, PendingChoiceResolution, OceanSlotAddress, [ResourceQuantity])] = [
+            (.blue, .blue, .gainCoralWithEgg(source: eggSource), eggSource, [ResourceQuantity(kind: .egg, amount: 1)]),
+            (.purple, .purple, .gainCoralWithYoung(source: youngSource), youngSource, [ResourceQuantity(kind: .young, amount: 1)]),
+            (.green, .green, .gainCoralByDiscard(cardId: "fish-1"), youngSource, [])
         ]
 
-        for (diveActionSite, expectedReef, paymentSource) in cases {
+        for (diveActionSite, expectedReef, resolution, paymentSource, sourceResources) in cases {
             let state = try resolveCoralOffer(
                 diveActionSite: diveActionSite,
-                resolution: .gainCoralWithEgg(source: paymentSource),
+                resolution: resolution,
                 source: paymentSource,
-                sourceResources: [ResourceQuantity(kind: .egg, amount: 1)]
+                sourceResources: sourceResources
             )
 
             XCTAssertEqual(coralCount(expectedReef, in: state), 1)
@@ -3551,24 +3554,80 @@ final class GameEngineTests: XCTestCase {
 
     func testPayingYoungForCoralReefOfferRemovesYoungAndIncreasesCoral() throws {
         let source = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 3)
-        let state = try resolveFirstCoralOffer(
+        let state = try resolveCoralOffer(
+            diveActionSite: .purple,
             resolution: .gainCoralWithYoung(source: source),
+            source: source,
             sourceResources: [ResourceQuantity(kind: .young, amount: 1)]
         )
 
         XCTAssertEqual(resourceAmount(.young, at: source, in: state), 0)
-        XCTAssertEqual(coralCount(.blue, in: state), 1)
+        XCTAssertEqual(coralCount(.purple, in: state), 1)
     }
 
     func testDiscardingHandCardForCoralReefOfferDiscardsCardAndIncreasesCoral() throws {
-        let state = try resolveFirstCoralOffer(
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 3)
+        let state = try resolveCoralOffer(
+            diveActionSite: .green,
             resolution: .gainCoralByDiscard(cardId: "fish-1"),
+            source: source,
             sourceResources: []
         )
 
         XCTAssertFalse(state.playerGameStates["player-1"]?.hand.contains("fish-1") ?? true)
         XCTAssertEqual(state.playerGameStates["player-1"]?.discardPile, ["fish-1"])
-        XCTAssertEqual(coralCount(.blue, in: state), 1)
+        XCTAssertEqual(coralCount(.green, in: state), 1)
+    }
+
+    func testBlueCoralReefOfferRejectsYoungAndHandCardPayment() throws {
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 3)
+
+        try assertCoralPaymentRejected(
+            diveActionSite: .blue,
+            resolution: .gainCoralWithYoung(source: source),
+            source: source,
+            sourceResources: [ResourceQuantity(kind: .young, amount: 1)]
+        )
+        try assertCoralPaymentRejected(
+            diveActionSite: .blue,
+            resolution: .gainCoralByDiscard(cardId: "fish-1"),
+            source: source,
+            sourceResources: []
+        )
+    }
+
+    func testPurpleCoralReefOfferRejectsEggAndHandCardPayment() throws {
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 3)
+
+        try assertCoralPaymentRejected(
+            diveActionSite: .purple,
+            resolution: .gainCoralWithEgg(source: source),
+            source: source,
+            sourceResources: [ResourceQuantity(kind: .egg, amount: 1)]
+        )
+        try assertCoralPaymentRejected(
+            diveActionSite: .purple,
+            resolution: .gainCoralByDiscard(cardId: "fish-1"),
+            source: source,
+            sourceResources: []
+        )
+    }
+
+    func testGreenCoralReefOfferRejectsEggAndYoungPayment() throws {
+        let source = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 3)
+
+        try assertCoralPaymentRejected(
+            diveActionSite: .green,
+            resolution: .gainCoralWithEgg(source: source),
+            source: source,
+            sourceResources: [ResourceQuantity(kind: .egg, amount: 1)]
+        )
+        try assertCoralPaymentRejected(
+            diveActionSite: .green,
+            resolution: .gainCoralWithYoung(source: source),
+            source: source,
+            sourceResources: [ResourceQuantity(kind: .young, amount: 1)]
+        )
     }
 
     func testResolvingCoralReefOfferContinuesDiveQueue() throws {
@@ -8121,6 +8180,41 @@ final class GameEngineTests: XCTestCase {
         )
         state = applying(drafts, to: state, using: engine)
         return state
+    }
+
+    private func assertCoralPaymentRejected(
+        diveActionSite: DiveActionSite,
+        resolution: PendingChoiceResolution,
+        source: OceanSlotAddress,
+        sourceResources: [ResourceQuantity],
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws {
+        let engine = GameEngine()
+        var initialState = coralDiveState()
+        setResources(sourceResources, at: source, in: &initialState)
+        let state = applying(
+            try engine.makeEventDrafts(
+                for: diveCommand(commandId: "dive-coral-invalid-\(diveActionSite.rawValue)", diveSite: diveActionSite),
+                in: initialState
+            ),
+            to: initialState,
+            using: engine
+        )
+        let choice = try XCTUnwrap(state.pendingChoices.values.first, file: file, line: line)
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: resolveCommand(
+                    commandId: "resolve-coral-invalid-\(diveActionSite.rawValue)",
+                    choiceId: choice.choiceId,
+                    resolution: resolution
+                ),
+                in: state
+            ),
+            file: file,
+            line: line
+        )
     }
 
     private func coralCount(_ diveSite: DiveSite, in state: GameState) -> Int {

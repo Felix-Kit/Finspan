@@ -1077,6 +1077,18 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertTrue(hand.cards.allSatisfy { $0.scale == HandCardViewState.fixedScale })
     }
 
+    func testSelectingHandCardDoesNotMutateGameStateOrSubmitCommand() {
+        let service = makeService(hand: ["starter-fish-1", "fish-2", "fish-3"])
+        let initialState = service.gameState
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+
+        viewModel.selectHandCard("fish-2")
+
+        XCTAssertEqual(service.gameState, initialState)
+        XCTAssertTrue(service.submittedCommands.isEmpty)
+        XCTAssertEqual(viewModel.handViewState.pulledOutCardId, "fish-2")
+    }
+
     func testSwitchingSelectedHandCardReturnsOldCardAndPullsOutNewCard() {
         let service = makeService(hand: ["starter-fish-1", "fish-2", "fish-3"])
         let viewModel = GameBoardViewModel(roomService: service)
@@ -3625,13 +3637,21 @@ final class GameBoardViewModelTests: XCTestCase {
     }
 
     func testEffectNodeMetadataDescribesCoralPaymentPrompt() throws {
-        let choice = pendingChoice(kind: .gainCoral, source: .coralReef(.blue))
-        let node = try XCTUnwrap(choice.v2PendingEffectSet.available.first)
+        let cases: [(DiveSite, [EffectPaymentSourceKind])] = [
+            (.blue, [.egg]),
+            (.purple, [.young]),
+            (.green, [.handCard])
+        ]
 
-        XCTAssertEqual(node.metadata.rewardTokenRequirement?.tokenKind, .gainCoral)
-        XCTAssertEqual(node.metadata.stagedSelection?.stage, .selectCoralPaymentSource)
-        XCTAssertEqual(node.metadata.paymentRequirement?.paymentKind, .coral)
-        XCTAssertEqual(node.metadata.paymentRequirement?.allowedSources, [.egg, .young, .handCard])
+        for (diveSite, allowedSources) in cases {
+            let choice = pendingChoice(kind: .gainCoral, source: .coralReef(diveSite))
+            let node = try XCTUnwrap(choice.v2PendingEffectSet.available.first)
+
+            XCTAssertEqual(node.metadata.rewardTokenRequirement?.tokenKind, .gainCoral)
+            XCTAssertEqual(node.metadata.stagedSelection?.stage, .selectCoralPaymentSource)
+            XCTAssertEqual(node.metadata.paymentRequirement?.paymentKind, .coral)
+            XCTAssertEqual(node.metadata.paymentRequirement?.allowedSources, allowedSources)
+        }
     }
 
     func testViewModelUsesV2RewardMetadataWhenCatalogIsAvailable() {
@@ -3686,7 +3706,7 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(rewardPool.instructionText, AppStrings.GameBoard.chooseRewardThenSource)
     }
 
-    func testCoralReefPendingChoiceGeneratesPaymentAndSkipRewardTokens() {
+    func testBlueCoralReefPendingChoiceGeneratesEggPaymentAndSkipRewardTokens() {
         let choice = pendingChoice(kind: .gainCoral, source: .coralReef(.blue))
         let service = makeService(
             hand: ["fish-2"],
@@ -3697,17 +3717,51 @@ final class GameBoardViewModelTests: XCTestCase {
 
         let rewardPool = viewModel.rewardPoolViewState
 
-        XCTAssertEqual(rewardPool.rewards.map(\.kind), [.gainCoral, .gainCoral, .gainCoral, .skipOrEnd])
+        XCTAssertEqual(rewardPool.rewards.map(\.kind), [.gainCoral, .skipOrEnd])
         XCTAssertEqual(
             rewardPool.rewards.map(\.title),
             [
                 AppStrings.GameBoard.payOneEgg,
-                AppStrings.GameBoard.payOneYoung,
-                AppStrings.GameBoard.discardOneHandCard,
                 AppStrings.GameBoard.skipChoice
             ]
         )
         XCTAssertEqual(rewardPool.instructionText, AppStrings.GameBoard.chooseCoralPayment)
+    }
+
+    func testPurpleCoralReefPendingChoiceGeneratesYoungPaymentAndSkipRewardTokens() {
+        let choice = pendingChoice(kind: .gainCoral, source: .coralReef(.purple))
+        let service = makeService(
+            hand: ["fish-2"],
+            pendingChoices: [choice.choiceId: choice],
+            coralReefs: CoralReefState.sharksAndReefsInitial
+        )
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+
+        XCTAssertEqual(
+            viewModel.rewardPoolViewState.rewards.map(\.title),
+            [
+                AppStrings.GameBoard.payOneYoung,
+                AppStrings.GameBoard.skipChoice
+            ]
+        )
+    }
+
+    func testGreenCoralReefPendingChoiceGeneratesHandCardPaymentAndSkipRewardTokens() {
+        let choice = pendingChoice(kind: .gainCoral, source: .coralReef(.green))
+        let service = makeService(
+            hand: ["fish-2"],
+            pendingChoices: [choice.choiceId: choice],
+            coralReefs: CoralReefState.sharksAndReefsInitial
+        )
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+
+        XCTAssertEqual(
+            viewModel.rewardPoolViewState.rewards.map(\.title),
+            [
+                AppStrings.GameBoard.discardOneHandCard,
+                AppStrings.GameBoard.skipChoice
+            ]
+        )
     }
 
     func testGainCoralAbilityPendingChoiceGeneratesFreeCoralRewardToken() {
@@ -3795,8 +3849,6 @@ final class GameBoardViewModelTests: XCTestCase {
             viewModel.rewardPoolViewState.rewards.map(\.title),
             [
                 AppStrings.GameBoard.payOneEgg,
-                AppStrings.GameBoard.payOneYoung,
-                AppStrings.GameBoard.discardOneHandCard,
                 AppStrings.GameBoard.skipChoice
             ]
         )
@@ -3855,7 +3907,7 @@ final class GameBoardViewModelTests: XCTestCase {
     }
 
     func testSelectingCoralDiscardRewardTokenThenHandCardBuildsGainCoralCommand() throws {
-        var choice = pendingChoice(kind: .gainCoral, source: .coralReef(.blue))
+        var choice = pendingChoice(kind: .gainCoral, source: .coralReef(.green))
         choice.pendingEffectSet = pendingEffectSet(
             executionId: "exec-coral-payment",
             sourceCardId: "fish-2",
@@ -3863,7 +3915,7 @@ final class GameBoardViewModelTests: XCTestCase {
             available: [
                 effectNode(
                     id: "gain-coral-payment",
-                    effect: .gainCoral(selector: .blue, count: 1),
+                    effect: .gainCoral(selector: .green, count: 1),
                     legacyKind: .gainCoral,
                     paymentRequirement: coralPaymentRequirement(debugLabel: "gain-coral-payment"),
                     rewardTokenRequirement: rewardRequirement(.gainCoral, source: .coralPayment, debugLabel: "gain-coral-payment"),

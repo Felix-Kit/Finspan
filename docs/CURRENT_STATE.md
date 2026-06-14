@@ -31,7 +31,7 @@
 - 启用 S&R 时每位玩家初始化 blue / purple / green reef。
 - `coralCount` / `maxCoral` / `completionBonus` 已建模。
 - GameBoard 已显示 coral reef。
-- Twilight printed bonus 后可选择支付 egg / young / hand card 获得 coral。
+- Twilight printed bonus 后的 coral reward 已按当前 dive site 固定支付来源：blue 支付 egg 获得 blue coral，purple 支付 young 获得 purple coral，green 弃 1 张手牌获得 green coral。
 - coral 不超过 `maxCoral`。
 
 ### S&R 出牌规则
@@ -87,6 +87,7 @@
 - 已支持强制结束当前对局并返回主页。
 - 已支持弃牌堆 normal 只读查看，以及 `recoverFromDiscardOrDraw` pending effect 下的弃牌选择模式。
 - `recoverFromDiscardOrDraw` 弃牌选择模式已接入 `PendingEffectSet` / `PendingEffectIntent`：可选择具体弃牌恢复，也可主动选择改为抽牌；弃牌为空时仍 fallback draw deck。
+- 手牌点击性能审计已完成一轮低风险优化：`GameBoardViewModel` 缓存按 cardId 生成的静态 `FishCardFaceViewState`，减少选牌时重复 catalog lookup / ability token parse；选牌仍只改变 UI selection，不修改 `GameState`。
 - 底部手牌 / 弃牌堆 dock 已在优化中。
 
 ### 数据与卡牌

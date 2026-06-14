@@ -261,6 +261,20 @@ enum EffectPaymentSourceKind: Codable, Equatable, Sendable {
     case discardCard
     case coralReef
     case waivedCost
+
+    nonisolated var resourceKind: ResourceKind? {
+        switch self {
+        case .egg:
+            return .egg
+        case .young:
+            return .young
+        case .handCard,
+             .discardCard,
+             .coralReef,
+             .waivedCost:
+            return nil
+        }
+    }
 }
 
 struct EffectRequiredPaymentResource: Codable, Equatable, Sendable {
@@ -926,6 +940,7 @@ enum AbilityEngineV2Adapter {
                 metadata: metadata(
                     for: effect,
                     sourceAddress: sourceAddress,
+                    choiceSource: nil,
                     ownerPlayerId: ownerPlayerId,
                     effectNodeId: nodeId,
                     debugDescription: "\(prefix) effect \(index): \(effectKey(effect))",
@@ -1053,6 +1068,7 @@ enum AbilityEngineV2Adapter {
             metadata: metadata(
                 for: effect,
                 sourceAddress: sourceAddress(for: choice),
+                choiceSource: choice.source,
                 ownerPlayerId: choice.playerId,
                 effectNodeId: id,
                 debugDescription: "Legacy pending choice \(choice.choiceId): \(effectKey(effect))",
@@ -1066,6 +1082,7 @@ enum AbilityEngineV2Adapter {
     nonisolated private static func metadata(
         for effect: AbilityEffectUnit,
         sourceAddress: OceanSlotAddress?,
+        choiceSource: PendingChoiceSource?,
         ownerPlayerId: PlayerID,
         effectNodeId: EffectNodeId,
         debugDescription: String,
@@ -1087,7 +1104,12 @@ enum AbilityEngineV2Adapter {
                 debugLabel: debugLabel,
                 stagedSelection: stagedSelection
             ),
-            paymentRequirement: paymentRequirement(for: effect, stagedSelection: stagedSelection, debugLabel: debugLabel),
+            paymentRequirement: paymentRequirement(
+                for: effect,
+                stagedSelection: stagedSelection,
+                choiceSource: choiceSource,
+                debugLabel: debugLabel
+            ),
             resourceRequirement: resourceRequirement(for: effect, ownerPlayerId: ownerPlayerId),
             rewardTokenRequirement: rewardTokenRequirement(for: effect, stagedSelection: stagedSelection, debugLabel: debugLabel),
             stagedSelection: stagedSelection
@@ -1224,6 +1246,7 @@ enum AbilityEngineV2Adapter {
     nonisolated private static func paymentRequirement(
         for effect: AbilityEffectUnit,
         stagedSelection: EffectStagedSelectionRequirement?,
+        choiceSource: PendingChoiceSource?,
         debugLabel: String
     ) -> EffectPaymentRequirement? {
         switch effect {
@@ -1238,14 +1261,30 @@ enum AbilityEngineV2Adapter {
             default:
                 return nil
             }
-            return EffectPaymentRequirement(
-                paymentKind: .coral,
-                allowedSources: [.egg, .young, .handCard],
-                requiredResources: [
+            let allowedSources: [EffectPaymentSourceKind]
+            let requiredResources: [EffectRequiredPaymentResource]
+            if case let .coralReef(diveSite)? = choiceSource {
+                let source = printedCoralPaymentSource(for: diveSite)
+                allowedSources = [source]
+                requiredResources = [
+                    EffectRequiredPaymentResource(
+                        kind: source.resourceKind,
+                        count: 1,
+                        source: source
+                    )
+                ]
+            } else {
+                allowedSources = [.egg, .young, .handCard]
+                requiredResources = [
                     EffectRequiredPaymentResource(kind: .egg, count: 1, source: .egg),
                     EffectRequiredPaymentResource(kind: .young, count: 1, source: .young),
                     EffectRequiredPaymentResource(kind: nil, count: 1, source: .handCard)
-                ],
+                ]
+            }
+            return EffectPaymentRequirement(
+                paymentKind: .coral,
+                allowedSources: allowedSources,
+                requiredResources: requiredResources,
                 isOptional: true,
                 costWaived: false,
                 debugLabel: debugLabel
@@ -1270,6 +1309,17 @@ enum AbilityEngineV2Adapter {
             )
         default:
             return nil
+        }
+    }
+
+    nonisolated private static func printedCoralPaymentSource(for diveSite: DiveSite) -> EffectPaymentSourceKind {
+        switch diveSite {
+        case .blue:
+            return .egg
+        case .purple:
+            return .young
+        case .green:
+            return .handCard
         }
     }
 
