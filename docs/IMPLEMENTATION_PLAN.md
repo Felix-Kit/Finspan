@@ -94,9 +94,13 @@
 ### 11. Card Assets Import 和最小牌面渲染
 
 - finsearch 素材已作为开发期导入来源，不作为运行时远程依赖。
-- 本地 `CardAssets` 已包含 fish image、icon、background / band 素材。
+- 线上 `https://navarog.github.io/finsearch/` 的 HTML / JS / CSS / asset 是 card rendering source of truth。
+- `references/webpage_live/` 已生成 live mirror 和 `reports/resource_diff.json`；`references/webpage/` 只作为旧缓存对照，不是绝对真相。
+- 本地 `CardAssets` 已包含 live fish image、icon、background / band 和 font 素材；当前与 live 288 个 asset 文件名相比缺失 0 个。
 - `CardRenderMetrics` 已用本地背景素材尺寸推导统一卡牌比例。
-- `FishCardFaceView` 已提供最小近似牌面。
+- `CardAssetResolver` / `CardSymbolAssetResolver` / `AbilityTokenAssetResolver` / `FishImageAssetResolver` / `CardTriggerStyleResolver` / `CardFontStyleResolver` 已接入。
+- `FishCardFaceView` 已完成 Fidelity Pass 1：fish image 按 sourceId 映射，ability token 使用 SVG/icon，trigger strip、length、zone、tag 和 font 走 resolver。
+- 旧 Swift renderer 仍只作为现状对照；后续不应基于旧近似布局零散补丁，而应按 web renderer model → Swift view state → rendering sections 推进。
 - 手牌、弃牌堆和 ocean slot 已使用同一鱼牌牌面组件 / 比例。
 
 ### 12. Major GameBoard HUD Polish
@@ -146,7 +150,15 @@
 - 后续继续减少 target prompt、payment prompt、discard-selection prompt 对 legacy `PendingChoice.kind` / `expectedInput` 的依赖。
 - 保持 UI 小步稳定，不做大规模卡牌 UI 重构。
 
-### P3 当前 UI 修复
+### P3 FishCardFaceView Fidelity Pass 2
+
+- 用 live renderer screenshot 对 Great White Shark、If Activated、Game End 三类卡做像素级对照。
+- 收敛 title、scientific name、points、length、ability text 的 font size / line-height / wrapping。
+- 调整 fish image frame、opacity、blend、clipping。
+- 继续保留 card face static view state cache，不在 SwiftUI `body` 内 parse ability text 或扫描 bundle。
+- 保持 Ability Engine v2 Core complete、215 mapped / 0 unsupported、GAME END remaining unsupported 0。
+
+### P4 当前 UI 修复
 
 - 去掉底部白色背景条。
 - 手牌居中。
@@ -155,7 +167,7 @@
 - 右侧行动玩家摘要精简。
 - 顶部行动摘要 toast 化。
 
-### P4 BoardLayout 和真实背景板
+### P5 BoardLayout 和真实背景板
 
 - 从 AI / Figma 标注 SVG rect。
 - 生成 `BoardLayout.json`。
@@ -163,7 +175,7 @@
 - debug overlay。
 - 后续逐步迁移 slot / coral reef / diver area。
 
-### P5 S&R 成就和周目标
+### P6 S&R 成就和周目标
 
 - S&R achievement tiles。
 - Side A / Side B。
@@ -171,7 +183,7 @@
 - 最高分 +3。
 - 第 4 周 GAME END 说明格。
 
-### P6 多玩家 / 联机 / 产品化
+### P7 多玩家 / 联机 / 产品化
 
 - 点击对手头像查看 board。
 - 本地多人完整流程。
@@ -179,13 +191,13 @@
 - reconnect / 房间恢复。
 - App icon / launch screen / debug menu。
 
-### P7 Saved-state migration / legacy cleanup
+### P8 Saved-state migration / legacy cleanup
 
 - 为旧 active room / saved local room 中的 legacy pending-choice payload 制定迁移策略。
 - 标记 move / reward-token / scatter / consume / play / coral payment 的 legacy staged progress fields 为 cleanup candidates，等待 saved-state migration 后删除。
 - 继续保持既有规则结果和 deterministic command / event / reducer 流程。
 
-### P8 v2.1 trace / replay / debug timeline
+### P9 v2.1 trace / replay / debug timeline
 
 - 使用 v2 已预留的 `executionId`、`effectNodeId`、`sourcePlayerId`、`targetPlayerId` 和 `decisionIndex`。
 - 增加 replay / trace 输出和 debug timeline。
@@ -199,6 +211,6 @@
 
 ## 当前建议下一步
 
-1. 先稳定 GameBoardViewModel pending UI。
-2. 再修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。
-3. 之后推进 S&R achievements / Side B weekly bonus。
+1. 先做 FishCardFaceView Fidelity Pass 2 的像素级 layout / font / spacing 修正。
+2. 再稳定 GameBoardViewModel pending UI。
+3. 之后修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。

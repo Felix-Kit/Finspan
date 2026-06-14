@@ -120,12 +120,18 @@
 
 - 已添加 finsearch 卡牌素材离线下载脚本：`tools/scripts/download_finsearch_assets.py`。
 - 本地素材已导入 `Finspan/Resources/CardAssets/`。
+- 本轮已直接审计线上 `https://navarog.github.io/finsearch/`，确认 card renderer source of truth 是 live HTML / JS / CSS / asset，而不是旧 Swift 近似实现。
+- 已新增 `references/webpage_live/` live mirror，包含 HTML、`main.3f6711eb.js`、`main.f74b3868.css`、288 个 live asset、字体和资源差异报告。
+- `references/webpage/` 只作为旧缓存对照；当前与 live 相比缺少字体、trigger strip、card background 等 19 个资源。
+- `Finspan/Resources/CardAssets/` 当前与 live asset 文件名相比缺失 0 个，已补入 `Panforte Pro`、`Dolce`、`Lexus Roman Optical` 字体文件。
 - `tools/generated/cards/` 已包含拆分后的 card JSON 生成结果。
 - `tools/generated/assets/asset_download_summary.json` 已记录素材下载结果和本地资源计数。
 - `CardRenderMetrics` 已落地，使用本地 finsearch 背景素材推导出的统一卡牌比例。
-- `FishCardFaceView` 已落地。
+- `CardAssetResolver` / `CardSymbolAssetResolver` / `AbilityTokenAssetResolver` / `FishImageAssetResolver` / `CardTriggerStyleResolver` / `CardFontStyleResolver` 已接入，用于把 web renderer mapping 转成可缓存的 Swift view state。
+- `FishCardFaceView` 已完成 Fidelity Pass 1：fish image 按 sourceId 映射，ability token 使用 SVG/icon，ArrowDown、长度、光层、触发条和字体走 live asset resolver。
+- Great White Shark 已明显改善：`base.main.057` 映射到 `57.*.webp`，`FishEgg` / `ArrowDown` / `Predator` / `AllPlayers` 均解析到真实 SVG。
 - 手牌、弃牌堆和 ocean slot 当前仍共用同一完整卡牌牌面。
-- 当前牌面仍是近似渲染，不是完整 finsearch 复刻。
+- 当前牌面仍是 Pass 1 近似复刻，不是完整 finsearch 像素级复刻。详见 `docs/CARD_RENDERING_FIDELITY.md`。
 
 ## 当前仍需修复 / 待做
 
@@ -152,6 +158,6 @@
 
 ## 当前建议下一步
 
-1. 继续做 GameBoardViewModel pending UI 小步稳定，重点是 target / payment / discard-selection prompt fallback。
-2. 再修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。
-3. 之后推进 S&R achievements / Side B weekly bonus。
+1. 做 FishCardFaceView Fidelity Pass 2：用 live screenshot 做像素级 layout / font / spacing / fish silhouette 对照。
+2. 继续做 GameBoardViewModel pending UI 小步稳定，重点是 target / payment / discard-selection prompt fallback。
+3. 再修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。

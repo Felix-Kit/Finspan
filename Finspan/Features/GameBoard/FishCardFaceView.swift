@@ -41,7 +41,7 @@ struct FishCardFaceView: View {
 
     @ViewBuilder
     private var cardBackground: some View {
-        if let image = localImage(prefix: viewState.backgroundAssetPrefix, extensions: ["webp", "png"], directories: backgroundDirectories) {
+        if let image = rasterImage(for: viewState.backgroundAsset) {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFill()
@@ -63,7 +63,8 @@ struct FishCardFaceView: View {
     private func nameArea(unit: CGFloat) -> some View {
         VStack(spacing: unit * 0.25) {
             Text(viewState.displayName)
-                .font(.system(size: unit * CardRenderMetrics.CardFaceLayout.titleFontSize, weight: .heavy))
+                .font(CardFontStyleResolver.shared.font(.title, size: unit * CardRenderMetrics.CardFaceLayout.titleFontSize))
+                .fontWeight(.heavy)
                 .multilineTextAlignment(.center)
                 .textCase(.uppercase)
                 .lineLimit(2)
@@ -71,8 +72,7 @@ struct FishCardFaceView: View {
                 .frame(maxWidth: unit * 48)
 
             Text(viewState.scientificName ?? AppStrings.GameBoard.cardFaceNoScientificName)
-                .font(.system(size: unit * CardRenderMetrics.CardFaceLayout.latinFontSize, weight: .regular, design: .serif))
-                .italic()
+                .font(CardFontStyleResolver.shared.font(.latin, size: unit * CardRenderMetrics.CardFaceLayout.latinFontSize))
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
                 .foregroundStyle(.primary.opacity(0.82))
@@ -119,7 +119,8 @@ struct FishCardFaceView: View {
     private func pointsArea(unit: CGFloat) -> some View {
         HStack(alignment: .top, spacing: 0) {
             Text(printedPointsNumber)
-                .font(.system(size: unit * CardRenderMetrics.CardFaceLayout.pointsFontSize, weight: .heavy))
+                .font(CardFontStyleResolver.shared.font(.title, size: unit * CardRenderMetrics.CardFaceLayout.pointsFontSize))
+                .fontWeight(.heavy)
                 .lineLimit(1)
                 .minimumScaleFactor(0.55)
             iconImage(
@@ -137,7 +138,8 @@ struct FishCardFaceView: View {
     private func lengthArea(unit: CGFloat) -> some View {
         VStack(spacing: unit * 0.6) {
             Text(lengthDisplayText)
-                .font(.system(size: unit * CardRenderMetrics.CardFaceLayout.lengthFontSize, weight: .heavy))
+                .font(CardFontStyleResolver.shared.font(.title, size: unit * CardRenderMetrics.CardFaceLayout.lengthFontSize))
+                .fontWeight(.heavy)
                 .lineLimit(2)
                 .minimumScaleFactor(0.45)
                 .multilineTextAlignment(.center)
@@ -167,7 +169,8 @@ struct FishCardFaceView: View {
         VStack(spacing: unit * 1.1) {
             if let trigger = viewState.abilityTriggerText {
                 Text(trigger)
-                    .font(.system(size: unit * CardRenderMetrics.CardFaceLayout.abilityFontSize, weight: .heavy))
+                    .font(CardFontStyleResolver.shared.font(.title, size: unit * CardRenderMetrics.CardFaceLayout.abilityFontSize))
+                    .fontWeight(.heavy)
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
             }
@@ -187,9 +190,7 @@ struct FishCardFaceView: View {
 
     @ViewBuilder
     private func abilitySegments(unit: CGFloat) -> some View {
-        let segments = viewState.abilitySegments.isEmpty
-            ? FishCardAbilityTokenParser.parse(viewState.abilityText)
-            : viewState.abilitySegments
+        let segments = viewState.abilitySegments
         let rows = abilityRows(for: Array(segments.prefix(12)))
 
         VStack(spacing: unit * 0.9) {
@@ -205,7 +206,8 @@ struct FishCardFaceView: View {
                     }
                 } else if case let .text(text) = row.first {
                     Text(text)
-                        .font(.system(size: unit * abilityTextFontSize, weight: .semibold))
+                        .font(CardFontStyleResolver.shared.font(.title, size: unit * abilityTextFontSize))
+                        .fontWeight(.semibold)
                         .lineLimit(3)
                         .minimumScaleFactor(0.42)
                         .multilineTextAlignment(.center)
@@ -330,8 +332,7 @@ struct FishCardFaceView: View {
 
     @ViewBuilder
     private func abilityBackground(unit: CGFloat) -> some View {
-        if let prefix = viewState.abilityStripAssetPrefix,
-           let image = localImage(prefix: prefix, extensions: ["png", "webp"], directories: backgroundDirectories) {
+        if let image = rasterImage(for: viewState.abilityStripAsset) {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFill()
@@ -357,7 +358,7 @@ struct FishCardFaceView: View {
 
     @ViewBuilder
     private func fishImage(unit: CGFloat) -> some View {
-        if let image = localFishImage {
+        if let image = rasterImage(for: viewState.localFishImageAsset) {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFit()
@@ -449,14 +450,14 @@ struct FishCardFaceView: View {
 
     @ViewBuilder
     private func iconImage(_ icon: FishCardFaceIconViewState, size: CGFloat) -> some View {
-        if let url = localAssetURL(prefix: icon.assetName, extensions: ["svg", "png", "webp"], directories: iconDirectories),
-           url.pathExtension.lowercased() == "svg" {
-            Image(url.lastPathComponent, bundle: .main)
+        if let asset = icon.asset,
+           asset.fileExtension.lowercased() == "svg" {
+            Image(asset.fileName, bundle: .main)
                 .resizable()
                 .scaledToFit()
                 .frame(width: size, height: size)
                 .accessibilityLabel(Text(icon.accessibilityText))
-        } else if let image = localImage(prefix: icon.assetName, extensions: ["png", "webp"], directories: iconDirectories) {
+        } else if let image = rasterImage(for: icon.asset) {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFit()
@@ -474,49 +475,13 @@ struct FishCardFaceView: View {
         }
     }
 
-    private var localFishImage: UIImage? {
-        guard viewState.kind == .fishCard,
-              let prefix = viewState.localFishImagePrefix
+    private func rasterImage(for asset: CardAssetReference?) -> UIImage? {
+        guard let asset,
+              asset.fileExtension.lowercased() != "svg"
         else {
             return nil
         }
-        return localImage(prefix: prefix, extensions: ["webp", "png"], directories: fishDirectories)
-    }
-
-    private func localImage(
-        prefix: String,
-        extensions: [String],
-        directories: [String]
-    ) -> UIImage? {
-        guard let url = localAssetURL(prefix: prefix, extensions: extensions, directories: directories) else {
-            return nil
-        }
-        return UIImage(contentsOfFile: url.path)
-    }
-
-    private func localAssetURL(
-        prefix: String,
-        extensions: [String],
-        directories: [String]
-    ) -> URL? {
-        for directory in directories {
-            for fileExtension in extensions {
-                if let exact = Bundle.main.url(
-                    forResource: prefix,
-                    withExtension: fileExtension,
-                    subdirectory: directory
-                ) {
-                    return exact
-                }
-                if let prefixed = Bundle.main.urls(
-                    forResourcesWithExtension: fileExtension,
-                    subdirectory: directory
-                )?.first(where: { $0.lastPathComponent.hasPrefix("\(prefix).") }) {
-                    return prefixed
-                }
-            }
-        }
-        return nil
+        return UIImage(contentsOfFile: asset.url.path)
     }
 
     private var placeholderSymbol: String {
@@ -571,27 +536,4 @@ struct FishCardFaceView: View {
         }
     }
 
-    private var backgroundDirectories: [String] {
-        [
-            "Resources/CardAssets/backgrounds",
-            "CardAssets/backgrounds",
-            "backgrounds"
-        ]
-    }
-
-    private var fishDirectories: [String] {
-        [
-            "Resources/CardAssets/fish",
-            "CardAssets/fish",
-            "fish"
-        ]
-    }
-
-    private var iconDirectories: [String] {
-        [
-            "Resources/CardAssets/icons",
-            "CardAssets/icons",
-            "icons"
-        ]
-    }
 }

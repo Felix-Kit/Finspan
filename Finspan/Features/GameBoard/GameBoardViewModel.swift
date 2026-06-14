@@ -27,6 +27,14 @@ struct FishCardFaceIconViewState: Equatable {
     let assetName: String
     let fallbackText: String
     let accessibilityText: String
+    var asset: CardAssetReference? = nil
+    var missingAsset: MissingCardAsset? = nil
+
+    static func == (lhs: FishCardFaceIconViewState, rhs: FishCardFaceIconViewState) -> Bool {
+        lhs.assetName == rhs.assetName
+            && lhs.fallbackText == rhs.fallbackText
+            && lhs.accessibilityText == rhs.accessibilityText
+    }
 }
 
 enum FishCardAbilitySegment: Equatable {
@@ -48,48 +56,12 @@ enum FishCardAbilityPanelStyle: String, Equatable {
 }
 
 enum FishCardAbilityTokenParser {
-    static let supportedTokenNames: Set<String> = [
-        "AllPlayers",
-        "AnyCoral",
-        "ArrowDown",
-        "Bioluminescent",
-        "BlueCoral",
-        "Camouflage",
-        "Card",
-        "ConsumeFish",
-        "ConsumeFish1",
-        "ConsumeFish2",
-        "ConsumeFish3",
-        "Discard",
-        "DrawCard",
-        "Electric",
-        "Estuary",
-        "FishEgg",
-        "FishFromHand",
-        "FishFromHandConsume",
-        "FishHatch",
-        "FishLengthLarge",
-        "FishLengthMedium",
-        "FishLengthSmall",
-        "FlipperBlue",
-        "FlipperGreen",
-        "FlipperPurple",
-        "FreePlayFishFromHand",
-        "GreenCoral",
-        "PlayFishBottomRow",
-        "Predator",
-        "PurpleCoral",
-        "School",
-        "SchoolFeederMove",
-        "SchoolFish",
-        "Sun",
-        "UnSchoolFish",
-        "Venomous",
-        "Wave",
-        "YoungFish"
-    ]
+    static let supportedTokenNames: Set<String> = AbilityTokenAssetResolver.supportedTokenNames
 
-    static func parse(_ text: String) -> [FishCardAbilitySegment] {
+    static func parse(
+        _ text: String,
+        tokenResolver: AbilityTokenAssetResolver = .shared
+    ) -> [FishCardAbilitySegment] {
         guard !text.isEmpty else {
             return []
         }
@@ -102,7 +74,7 @@ enum FishCardAbilityTokenParser {
             appendText(String(text[currentIndex..<open]), to: &segments)
 
             let token = String(text[text.index(after: open)..<close])
-            if let icon = icon(for: token) {
+            if let icon = icon(for: token, tokenResolver: tokenResolver) {
                 segments.append(.icon(icon))
             } else {
                 segments.append(.icon(unknownIcon(for: token)))
@@ -131,78 +103,89 @@ enum FishCardAbilityTokenParser {
         segments.append(.text(trimmed))
     }
 
-    private static func icon(for token: String) -> FishCardFaceIconViewState? {
+    private static func icon(
+        for token: String,
+        tokenResolver: AbilityTokenAssetResolver
+    ) -> FishCardFaceIconViewState? {
         switch token {
         case "AllPlayers":
-            return FishCardFaceIconViewState(assetName: "AllPlayers", fallbackText: "全员", accessibilityText: "所有玩家")
+            return tokenResolver.icon(for: "AllPlayers", fallbackText: "全员", accessibilityText: "所有玩家")
         case "AnyCoral":
-            return FishCardFaceIconViewState(assetName: "AnyCoral", fallbackText: "任意珊瑚", accessibilityText: "任意珊瑚")
+            return tokenResolver.icon(for: "AnyCoral", fallbackText: "任意珊瑚", accessibilityText: "任意珊瑚")
         case "ArrowDown":
-            return FishCardFaceIconViewState(assetName: "ArrowDown", fallbackText: "向下", accessibilityText: "向下")
+            return tokenResolver.icon(for: "ArrowDown", fallbackText: "向下", accessibilityText: "向下")
         case "Bioluminescent":
-            return FishCardFaceIconViewState(assetName: "Bioluminescent", fallbackText: "光", accessibilityText: "生物发光")
+            return tokenResolver.icon(for: "Bioluminescent", fallbackText: "光", accessibilityText: "生物发光")
         case "BlueCoral":
-            return FishCardFaceIconViewState(assetName: "BlueCoral", fallbackText: "蓝珊瑚", accessibilityText: "蓝色珊瑚")
+            return tokenResolver.icon(for: "BlueCoral", fallbackText: "蓝珊瑚", accessibilityText: "蓝色珊瑚")
         case "Camouflage":
-            return FishCardFaceIconViewState(assetName: "Camouflage", fallbackText: "隐", accessibilityText: "伪装")
+            return tokenResolver.icon(for: "Camouflage", fallbackText: "隐", accessibilityText: "伪装")
         case "ConsumeFish", "ConsumeFish1":
-            return FishCardFaceIconViewState(assetName: "ConsumeFish1", fallbackText: "吞", accessibilityText: "覆盖鱼")
+            return tokenResolver.icon(for: "ConsumeFish1", fallbackText: "吞", accessibilityText: "覆盖鱼")
         case "ConsumeFish2":
-            return FishCardFaceIconViewState(assetName: "ConsumeFish2", fallbackText: "吞2", accessibilityText: "覆盖两条鱼")
+            return tokenResolver.icon(for: "ConsumeFish2", fallbackText: "吞2", accessibilityText: "覆盖两条鱼")
         case "ConsumeFish3":
-            return FishCardFaceIconViewState(assetName: "ConsumeFish3", fallbackText: "吞3", accessibilityText: "覆盖三条鱼")
+            return tokenResolver.icon(for: "ConsumeFish3", fallbackText: "吞3", accessibilityText: "覆盖三条鱼")
         case "Discard":
-            return FishCardFaceIconViewState(assetName: "Discard", fallbackText: "弃", accessibilityText: "弃牌")
+            return tokenResolver.icon(for: "Discard", fallbackText: "弃", accessibilityText: "弃牌")
         case "DrawCard":
-            return FishCardFaceIconViewState(assetName: "DrawCard", fallbackText: "抽牌", accessibilityText: "抽牌")
+            return tokenResolver.icon(for: "DrawCard", fallbackText: "抽牌", accessibilityText: "抽牌")
         case "Electric":
-            return FishCardFaceIconViewState(assetName: "Electric", fallbackText: "电", accessibilityText: "放电")
+            return tokenResolver.icon(for: "Electric", fallbackText: "电", accessibilityText: "放电")
         case "Estuary":
-            return FishCardFaceIconViewState(assetName: "Estuary", fallbackText: "河口", accessibilityText: "河口")
+            return tokenResolver.icon(for: "Estuary", fallbackText: "河口", accessibilityText: "河口")
         case "FishEgg":
-            return FishCardFaceIconViewState(assetName: "FishEgg", fallbackText: "卵", accessibilityText: "鱼卵")
+            return tokenResolver.icon(for: "FishEgg", fallbackText: "卵", accessibilityText: "鱼卵")
         case "FishFromHand", "Card":
-            return FishCardFaceIconViewState(assetName: "FishFromHand", fallbackText: "手牌", accessibilityText: "从手牌打出鱼")
+            return tokenResolver.icon(for: token, fallbackText: "手牌", accessibilityText: "从手牌打出鱼")
         case "FishFromHandConsume":
-            return FishCardFaceIconViewState(assetName: "FishFromHandConsume", fallbackText: "吞手牌", accessibilityText: "从手牌覆盖鱼")
+            return tokenResolver.icon(for: "FishFromHandConsume", fallbackText: "吞手牌", accessibilityText: "从手牌覆盖鱼")
         case "FishHatch":
-            return FishCardFaceIconViewState(assetName: "FishHatch", fallbackText: "孵", accessibilityText: "孵化")
+            return tokenResolver.icon(for: "FishHatch", fallbackText: "孵", accessibilityText: "孵化")
         case "FishLengthLarge":
-            return FishCardFaceIconViewState(assetName: "FishLengthLarge", fallbackText: "大", accessibilityText: "大型鱼")
+            return tokenResolver.icon(for: "FishLengthLarge", fallbackText: "大", accessibilityText: "大型鱼")
         case "FishLengthMedium":
-            return FishCardFaceIconViewState(assetName: "FishLengthMedium", fallbackText: "中", accessibilityText: "中型鱼")
+            return tokenResolver.icon(for: "FishLengthMedium", fallbackText: "中", accessibilityText: "中型鱼")
         case "FishLengthSmall":
-            return FishCardFaceIconViewState(assetName: "FishLengthSmall", fallbackText: "小", accessibilityText: "小型鱼")
+            return tokenResolver.icon(for: "FishLengthSmall", fallbackText: "小", accessibilityText: "小型鱼")
         case "FlipperBlue":
-            return FishCardFaceIconViewState(assetName: "FlipperBlue", fallbackText: "蓝", accessibilityText: "蓝色潜水点")
+            return tokenResolver.icon(for: "FlipperBlue", fallbackText: "蓝", accessibilityText: "蓝色潜水点")
         case "FlipperGreen":
-            return FishCardFaceIconViewState(assetName: "FlipperGreen", fallbackText: "绿", accessibilityText: "绿色潜水点")
+            return tokenResolver.icon(for: "FlipperGreen", fallbackText: "绿", accessibilityText: "绿色潜水点")
         case "FlipperPurple":
-            return FishCardFaceIconViewState(assetName: "FlipperPurple", fallbackText: "紫", accessibilityText: "紫色潜水点")
+            return tokenResolver.icon(for: "FlipperPurple", fallbackText: "紫", accessibilityText: "紫色潜水点")
         case "FreePlayFishFromHand":
-            return FishCardFaceIconViewState(assetName: "FreePlayFishFromHand", fallbackText: "免费出鱼", accessibilityText: "免费从手牌打出鱼")
+            return tokenResolver.icon(for: "FreePlayFishFromHand", fallbackText: "免费出鱼", accessibilityText: "免费从手牌打出鱼")
         case "GreenCoral":
-            return FishCardFaceIconViewState(assetName: "GreenCoral", fallbackText: "绿珊瑚", accessibilityText: "绿色珊瑚")
+            return tokenResolver.icon(for: "GreenCoral", fallbackText: "绿珊瑚", accessibilityText: "绿色珊瑚")
         case "PlayFishBottomRow":
-            return FishCardFaceIconViewState(assetName: "PlayFishBottomRow", fallbackText: "底行出鱼", accessibilityText: "底行出鱼")
+            return tokenResolver.icon(for: "PlayFishBottomRow", fallbackText: "底行出鱼", accessibilityText: "底行出鱼")
+        case "PlayFishTopRow":
+            return tokenResolver.icon(for: "PlayFishTopRow", fallbackText: "顶行出鱼", accessibilityText: "顶行出鱼")
+        case "PlayFishAny":
+            return tokenResolver.icon(for: "PlayFishAny", fallbackText: "任意行出鱼", accessibilityText: "任意行出鱼")
         case "Predator":
-            return FishCardFaceIconViewState(assetName: "Predator", fallbackText: "捕", accessibilityText: "捕食者")
+            return tokenResolver.icon(for: "Predator", fallbackText: "捕", accessibilityText: "捕食者")
         case "PurpleCoral":
-            return FishCardFaceIconViewState(assetName: "PurpleCoral", fallbackText: "紫珊瑚", accessibilityText: "紫色珊瑚")
+            return tokenResolver.icon(for: "PurpleCoral", fallbackText: "紫珊瑚", accessibilityText: "紫色珊瑚")
         case "School", "SchoolFish":
-            return FishCardFaceIconViewState(assetName: "SchoolFish", fallbackText: "群", accessibilityText: "鱼群")
+            return tokenResolver.icon(for: token, fallbackText: "群", accessibilityText: "鱼群")
         case "SchoolFeederMove":
-            return FishCardFaceIconViewState(assetName: "SchoolFeederMove", fallbackText: "移群", accessibilityText: "移动鱼群")
-        case "Sun":
-            return FishCardFaceIconViewState(assetName: "Sun", fallbackText: "阳", accessibilityText: "阳光层")
+            return tokenResolver.icon(for: "SchoolFeederMove", fallbackText: "移群", accessibilityText: "移动鱼群")
+        case "Sun", "Sunlit":
+            return tokenResolver.icon(for: token, fallbackText: "阳", accessibilityText: "阳光层")
+        case "Dusk", "Twilight":
+            return tokenResolver.icon(for: token, fallbackText: "暮", accessibilityText: "暮光层")
+        case "Night", "Midnight":
+            return tokenResolver.icon(for: token, fallbackText: "深", accessibilityText: "深海层")
         case "UnSchoolFish":
-            return FishCardFaceIconViewState(assetName: "UnSchoolFish", fallbackText: "散群", accessibilityText: "移除鱼群")
+            return tokenResolver.icon(for: "UnSchoolFish", fallbackText: "散群", accessibilityText: "移除鱼群")
         case "Venomous":
-            return FishCardFaceIconViewState(assetName: "Venomous", fallbackText: "毒", accessibilityText: "有毒")
+            return tokenResolver.icon(for: "Venomous", fallbackText: "毒", accessibilityText: "有毒")
         case "Wave":
-            return FishCardFaceIconViewState(assetName: "Wave", fallbackText: "分", accessibilityText: "分数")
+            return tokenResolver.icon(for: "Wave", fallbackText: "分", accessibilityText: "分数")
         case "YoungFish":
-            return FishCardFaceIconViewState(assetName: "YoungFish", fallbackText: "幼", accessibilityText: "幼鱼")
+            return tokenResolver.icon(for: "YoungFish", fallbackText: "幼", accessibilityText: "幼鱼")
         default:
             return nil
         }
@@ -238,8 +221,12 @@ struct FishCardFaceViewState: Equatable {
     let abilitySegments: [FishCardAbilitySegment]
     let backgroundAssetPrefix: String
     let abilityStripAssetPrefix: String?
+    var backgroundAsset: CardAssetReference? = nil
+    var abilityStripAsset: CardAssetReference? = nil
     let abilityPanelStyle: FishCardAbilityPanelStyle
     let localFishImagePrefix: String?
+    var localFishImageAsset: CardAssetReference? = nil
+    var missingAssets: [MissingCardAsset] = []
     let aspectRatio: Double
     let isPlaceholder: Bool
 }
@@ -982,6 +969,10 @@ final class GameBoardViewModel: ObservableObject {
     private var lastShownHudToastSequence: EventID?
     private var didShowInitialHudToast = false
     private var fishCardFaceViewStateCache: [CardID: FishCardFaceViewState] = [:]
+    private let cardAssetResolver = CardAssetResolver.shared
+    private let symbolAssetResolver = CardSymbolAssetResolver.shared
+    private let fishImageAssetResolver = FishImageAssetResolver.shared
+    private let triggerStyleResolver = CardTriggerStyleResolver.shared
     private var cardCatalog: any CardCatalog {
         cardCatalogProvider()
     }
@@ -4001,6 +3992,20 @@ final class GameBoardViewModel: ObservableObject {
         let displayAbilityText = abilityText?.isEmpty == false
             ? abilityText!
             : cardAbilitySummaryText(card)
+        let triggerText = cardAbilityTriggerText(card)
+        let costIcons = cardCostIcons(card)
+        let zoneIcons = cardZoneIcons(card)
+        let tagIcons = cardTagIcons(card.tags)
+        let sizeClassIcon = cardSizeClassIcon(card)
+        let abilitySegments = FishCardAbilityTokenParser.parse(displayAbilityText)
+        let backgroundPrefix = cardBackgroundAssetPrefix(for: card.requiredDiveSiteColor)
+        let backgroundLookup = cardBackgroundAssetLookup(prefix: backgroundPrefix)
+        let triggerStyle = triggerStyleResolver.style(for: triggerText)
+        let fishImagePrefix = card.visualAssetName ?? inferredFishImagePrefix(cardId: card.id)
+        let fishImageLookup = fishImageAssetResolver.image(
+            forCardId: card.id,
+            visualAssetName: card.visualAssetName
+        )
         viewState = FishCardFaceViewState(
             kind: .fishCard,
             cardId: cardId,
@@ -4013,17 +4018,27 @@ final class GameBoardViewModel: ObservableObject {
             requiredDiveSiteColor: card.requiredDiveSiteColor,
             requiredDiveSiteText: cardRequiredDiveSiteText(card),
             tagsText: cardTagsText(card.tags),
-            abilityTriggerText: cardAbilityTriggerText(card),
+            abilityTriggerText: triggerText,
             abilityText: displayAbilityText,
-            costIcons: cardCostIcons(card),
-            zoneIcons: cardZoneIcons(card),
-            tagIcons: cardTagIcons(card.tags),
-            sizeClassIcon: cardSizeClassIcon(card),
-            abilitySegments: FishCardAbilityTokenParser.parse(displayAbilityText),
-            backgroundAssetPrefix: cardBackgroundAssetPrefix(for: card.requiredDiveSiteColor),
-            abilityStripAssetPrefix: abilityStripAssetPrefix(for: card),
-            abilityPanelStyle: abilityPanelStyle(for: card),
-            localFishImagePrefix: card.visualAssetName ?? inferredFishImagePrefix(cardId: card.id),
+            costIcons: costIcons,
+            zoneIcons: zoneIcons,
+            tagIcons: tagIcons,
+            sizeClassIcon: sizeClassIcon,
+            abilitySegments: abilitySegments,
+            backgroundAssetPrefix: backgroundPrefix,
+            abilityStripAssetPrefix: triggerStyle.stripAssetPrefix,
+            backgroundAsset: backgroundLookup.asset,
+            abilityStripAsset: triggerStyle.stripAsset,
+            abilityPanelStyle: triggerStyle.abilityPanelStyle,
+            localFishImagePrefix: fishImagePrefix,
+            localFishImageAsset: fishImageLookup.asset,
+            missingAssets: cardFaceMissingAssets(
+                backgroundLookup: backgroundLookup,
+                triggerStyle: triggerStyle,
+                fishImageLookup: fishImageLookup,
+                icons: costIcons + zoneIcons + tagIcons + [sizeClassIcon],
+                abilitySegments: abilitySegments
+            ),
             aspectRatio: CardRenderMetrics.cardAspectRatio,
             isPlaceholder: false
         )
@@ -4129,6 +4144,44 @@ final class GameBoardViewModel: ObservableObject {
         }
     }
 
+    private func cardBackgroundAssetLookup(prefix: String) -> CardAssetLookup {
+        cardAssetResolver.resolve(
+            kind: .background,
+            requestedName: prefix,
+            subdirectories: CardAssetDirectories.backgrounds,
+            fileExtensions: ["webp", "png"]
+        )
+    }
+
+    private func cardFaceMissingAssets(
+        backgroundLookup: CardAssetLookup,
+        triggerStyle: CardTriggerStyle,
+        fishImageLookup: CardAssetLookup,
+        icons: [FishCardFaceIconViewState],
+        abilitySegments: [FishCardAbilitySegment]
+    ) -> [MissingCardAsset] {
+        var missingAssets: [MissingCardAsset] = []
+        appendMissing(backgroundLookup.missingAsset, to: &missingAssets)
+        appendMissing(triggerStyle.missingAsset, to: &missingAssets)
+        appendMissing(fishImageLookup.missingAsset, to: &missingAssets)
+        icons.forEach { appendMissing($0.missingAsset, to: &missingAssets) }
+        abilitySegments.forEach { segment in
+            if case let .icon(icon) = segment {
+                appendMissing(icon.missingAsset, to: &missingAssets)
+            }
+        }
+        return missingAssets
+    }
+
+    private func appendMissing(_ missingAsset: MissingCardAsset?, to missingAssets: inout [MissingCardAsset]) {
+        guard let missingAsset,
+              !missingAssets.contains(missingAsset)
+        else {
+            return
+        }
+        missingAssets.append(missingAsset)
+    }
+
     private func abilityStripAssetPrefix(for card: Card) -> String? {
         guard let trigger = cardAbilityTriggerText(card) else {
             return nil
@@ -4160,8 +4213,8 @@ final class GameBoardViewModel: ObservableObject {
             switch cost {
             case let .discardCards(count):
                 return repeatedIcon(
-                    assetName: "FishFromHand",
-                    fallbackText: "手牌",
+                    assetName: "DrawCard",
+                    fallbackText: "抽牌",
                     accessibilityText: AppStrings.GameBoard.discardPayment,
                     count: count
                 )
@@ -4169,7 +4222,7 @@ final class GameBoardViewModel: ObservableObject {
                 return repeatedIcon(for: kind, count: count)
             case let .coverShorterFish(count):
                 return repeatedIcon(
-                    assetName: "ConsumeFish1",
+                    assetName: "ConsumeFish",
                     fallbackText: "吞",
                     accessibilityText: AppStrings.GameBoard.canCoverShorterFish,
                     count: count
@@ -4249,8 +4302,8 @@ final class GameBoardViewModel: ObservableObject {
         fallbackText: String,
         accessibilityText: String
     ) -> FishCardFaceIconViewState {
-        FishCardFaceIconViewState(
-            assetName: assetName,
+        symbolAssetResolver.icon(
+            named: assetName,
             fallbackText: fallbackText,
             accessibilityText: accessibilityText
         )

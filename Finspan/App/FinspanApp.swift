@@ -11,6 +11,10 @@ import SwiftUI
 struct FinspanApp: App {
     private let environment = AppEnvironment()
 
+    init() {
+        CardFontStyleResolver.shared.registerFontsIfNeeded()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView(environment: environment)

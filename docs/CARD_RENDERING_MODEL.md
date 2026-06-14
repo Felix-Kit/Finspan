@@ -3,6 +3,10 @@
 This note records the current presentation-layer model for card rendering. It
 does not describe or implement game rules.
 
+Update: Fidelity work should now use `docs/CARD_RENDERING_FIDELITY.md` as the
+primary rendering audit. The online finsearch HTML / JS / CSS / asset graph is
+the source of truth; this older model note is retained for historical context.
+
 ## Source Files Inspected
 
 - `tools/raw/finsearch/finsearch_assets_manifest.json`
@@ -16,7 +20,9 @@ Update: a saved finsearch webpage was later inspected at
 
 ## Asset Groups
 
-The asset manifest contains 285 assets:
+The older asset manifest contained 285 assets. The live audit in
+`references/webpage_live/asset_index.json` now records 288 live assets,
+including fonts:
 
 - 215 fish images
 - 57 icons

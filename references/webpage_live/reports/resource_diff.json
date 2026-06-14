@@ -1,0 +1,41 @@
+{
+  "source": "https://navarog.github.io/finsearch/",
+  "liveAssetCount": 288,
+  "liveByExtension": {
+    "otf": 2,
+    "png": 6,
+    "svg": 57,
+    "webp": 222,
+    "woff": 1
+  },
+  "referencesWebpageCount": 272,
+  "appCardAssetsCount": 288,
+  "missingFromReferencesWebpage": [
+    "Dolce-Medium.5a8c804bd86540fd1771.otf",
+    "GameEnd.027482f9c0439f2d1f17.webp",
+    "GameEnd.1c86787c5a74319ee78f.png",
+    "IfActivated.0c5d4ca8421590f6e8ef.webp",
+    "IfActivated.f4ec95e03e7c3189135e.png",
+    "LexusRomanOpti-RegularIt.7bead565996221395db0.otf",
+    "Panforte-Pro.ttf.fac46a4fc984691c5461.woff",
+    "SRLogo.6fb02c8f2b92fa17505a.svg",
+    "StarterIcon.e2156ba9467aa2981d59.svg",
+    "TuckedCardSolo.7ccba819848db9a4cfe2.svg",
+    "base.35519da28cd2f346a2ed.png",
+    "base.f121413876c92b0271f4.webp",
+    "blue.160a8f1c605b70b33352.png",
+    "blue.b9baf436df4033049f53.webp",
+    "green.374d1a75825b118218bc.webp",
+    "green.4eaff11c554f88333ead.png",
+    "purple.c493ffc8ca41cab3da6f.webp",
+    "purple.cd7cf06ece46fee1d80c.png",
+    "webpage.e8dc55dd9f8fa0caffc8.webp"
+  ],
+  "extraInReferencesWebpage": [
+    "js",
+    "main.3f6711eb.js",
+    "main.f74b3868.css"
+  ],
+  "missingFromAppCardAssets": [],
+  "extraInAppCardAssets": []
+}

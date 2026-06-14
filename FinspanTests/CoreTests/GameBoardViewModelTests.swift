@@ -752,6 +752,23 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(cardFace?.localFishImagePrefix, "57")
     }
 
+    func testFishCardFaceViewStateCacheDoesNotInvalidateForSelectedState() throws {
+        let catalog = try BaseGameCardCatalog()
+        let service = makeService(hand: ["base.main.057"])
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalogProvider: { catalog }
+        )
+
+        let initialFace = try XCTUnwrap(viewModel.handViewState.cards.first?.cardFace)
+        viewModel.selectHandCard("base.main.057")
+        let selectedFace = try XCTUnwrap(viewModel.handViewState.cards.first?.cardFace)
+
+        XCTAssertEqual(initialFace, selectedFace)
+        XCTAssertEqual(initialFace.localFishImageAsset?.fileName, selectedFace.localFishImageAsset?.fileName)
+        XCTAssertEqual(initialFace.missingAssets, selectedFace.missingAssets)
+    }
+
     func testGameBoardViewModelHidesCoralReefsWhenNotInitialized() {
         let service = makeService(hand: ["starter-fish-1"])
         let viewModel = GameBoardViewModel(roomService: service)
