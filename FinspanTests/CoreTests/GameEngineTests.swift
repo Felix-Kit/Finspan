@@ -5238,6 +5238,126 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(nextState.deckState.fishDrawPile, ["fish-10"])
     }
 
+    func testResolveEffectNodeRecoverCanDrawInsteadWhenDiscardHasCards() throws {
+        let engine = GameEngine()
+        var state = playFishState()
+        var choice = pendingChoice(kind: .recoverFromDiscardOrDraw)
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-recover",
+            sourceCardId: "fish-30",
+            sourceAbilityId: "fixture.recover",
+            available: [
+                effectNode(
+                    id: "recover-node",
+                    effect: .recoverFromDiscardOrDraw(count: 1),
+                    legacyKind: .recoverFromDiscardOrDraw
+                )
+            ]
+        )
+        state.pendingChoices[choice.choiceId] = choice
+        state.playerGameStates["player-1"]?.discardPile = ["fish-8"]
+        state.deckState.fishDrawPile = ["fish-9", "fish-10"]
+
+        let drafts = try engine.makeEventDrafts(
+            for: resolveEffectNodeCommand(
+                commandId: "native-recover-draw-instead",
+                executionId: "exec-recover",
+                effectNodeId: "recover-node",
+                payload: .none
+            ),
+            in: state
+        )
+
+        guard case let .pendingChoiceResolved(payload) = drafts.first else {
+            return XCTFail("Expected pendingChoiceResolved.")
+        }
+        let nextState = engine.reduce(
+            state: state,
+            event: GameEvent(
+                sequenceNumber: 10,
+                roomId: roomId,
+                timestamp: timestamp,
+                payload: .pendingChoiceResolved(payload)
+            )
+        )
+
+        XCTAssertEqual(payload.resolution, .drawFromDeck)
+        XCTAssertEqual(payload.appliedEffects, [.drawFish(playerId: "player-1", cardIds: ["fish-9"])])
+        XCTAssertEqual(nextState.playerGameStates["player-1"]?.discardPile, ["fish-8"])
+        XCTAssertTrue(nextState.playerGameStates["player-1"]?.hand.contains("fish-9") == true)
+        XCTAssertEqual(nextState.deckState.fishDrawPile, ["fish-10"])
+    }
+
+    func testResolveEffectNodeRecoverRejectsStaleExecutionId() {
+        let engine = GameEngine()
+        var state = playFishState()
+        var choice = pendingChoice(kind: .recoverFromDiscardOrDraw)
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-recover",
+            sourceCardId: "fish-30",
+            sourceAbilityId: "fixture.recover",
+            available: [
+                effectNode(
+                    id: "recover-node",
+                    effect: .recoverFromDiscardOrDraw(count: 1),
+                    legacyKind: .recoverFromDiscardOrDraw
+                )
+            ]
+        )
+        state.pendingChoices[choice.choiceId] = choice
+        state.playerGameStates["player-1"]?.discardPile = ["fish-8"]
+        state.deckState.fishDrawPile = ["fish-9"]
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: resolveEffectNodeCommand(
+                    commandId: "native-recover-stale-exec",
+                    executionId: "missing-exec",
+                    effectNodeId: "recover-node",
+                    payload: .selectedDiscardCard("fish-8")
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .invalidPendingChoiceResolution("missing-exec"))
+        }
+    }
+
+    func testResolveEffectNodeRecoverRejectsStaleEffectNodeId() {
+        let engine = GameEngine()
+        var state = playFishState()
+        var choice = pendingChoice(kind: .recoverFromDiscardOrDraw)
+        choice.pendingEffectSet = pendingEffectSet(
+            executionId: "exec-recover",
+            sourceCardId: "fish-30",
+            sourceAbilityId: "fixture.recover",
+            available: [
+                effectNode(
+                    id: "recover-node",
+                    effect: .recoverFromDiscardOrDraw(count: 1),
+                    legacyKind: .recoverFromDiscardOrDraw
+                )
+            ]
+        )
+        state.pendingChoices[choice.choiceId] = choice
+        state.playerGameStates["player-1"]?.discardPile = ["fish-8"]
+        state.deckState.fishDrawPile = ["fish-9"]
+
+        XCTAssertThrowsError(
+            try engine.makeEventDrafts(
+                for: resolveEffectNodeCommand(
+                    commandId: "native-recover-stale-node",
+                    executionId: "exec-recover",
+                    effectNodeId: "missing-node",
+                    payload: .selectedDiscardCard("fish-8")
+                ),
+                in: state
+            )
+        ) { error in
+            XCTAssertEqual(error as? CommandValidationError, .invalidPendingChoiceResolution(choice.choiceId))
+        }
+    }
+
     func testSkipRecoverFromDiscardChoiceDoesNotChangeHandDiscardOrDeck() throws {
         let engine = GameEngine()
         var state = playFishState()

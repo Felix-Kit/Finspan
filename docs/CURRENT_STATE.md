@@ -85,7 +85,8 @@
 - 周目标四格和详情面板已接入。
 - 日志已改为折叠 / 弹出查看。
 - 已支持强制结束当前对局并返回主页。
-- 已支持弃牌堆只读查看。
+- 已支持弃牌堆 normal 只读查看，以及 `recoverFromDiscardOrDraw` pending effect 下的弃牌选择模式。
+- `recoverFromDiscardOrDraw` 弃牌选择模式已接入 `PendingEffectSet` / `PendingEffectIntent`：可选择具体弃牌恢复，也可主动选择改为抽牌；弃牌为空时仍 fallback draw deck。
 - 底部手牌 / 弃牌堆 dock 已在优化中。
 
 ### 数据与卡牌
@@ -139,7 +140,6 @@
 
 - Ability Engine v2 saved-state migration / legacy cleanup 后置：当前不是正式发布阶段，legacy adapter 继续保持行为稳定，直到旧本地房间和旧 pending-choice payload 有明确迁移路径。
 - GameBoardViewModel pending UI stabilization：继续减少 ViewModel 对具体 ability type / step order 的依赖。
-- `recoverFromDiscardOrDraw` 与弃牌堆选择模式联动。
 - S&R achievements。
 - Side B weekly bonus +3。
 - 真实 board 背景和 slot 对齐系统。
@@ -150,6 +150,6 @@
 
 ## 当前建议下一步
 
-1. 先推进 `recoverFromDiscardOrDraw` 与弃牌堆选择模式联动。
-2. 再稳定 GameBoardViewModel pending UI。
-3. 之后修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。
+1. 先稳定 GameBoardViewModel pending UI。
+2. 再修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。
+3. 之后推进 S&R achievements / Side B weekly bonus。

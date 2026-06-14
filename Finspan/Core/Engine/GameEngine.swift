@@ -761,10 +761,7 @@ struct GameEngine {
                 throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
             }
         case .drawFromDeck:
-            guard choice.kind == .recoverFromDiscardOrDraw,
-                  let playerState = state.playerGameStates[playerId],
-                  playerState.discardPile.isEmpty
-            else {
+            guard choice.kind == .recoverFromDiscardOrDraw else {
                 throw CommandValidationError.invalidPendingChoiceResolution(payload.choiceId)
             }
             guard !state.deckState.fishDrawPile.isEmpty else {

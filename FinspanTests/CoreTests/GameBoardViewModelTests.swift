@@ -898,6 +898,92 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.discardPileDetailViewState?.cards.isEmpty ?? false)
     }
 
+    func testShowingDiscardPileDuringRecoverPendingChoiceUsesSelectionMode() {
+        let choice = pendingChoice(kind: .recoverFromDiscardOrDraw)
+        let service = makeService(
+            hand: ["starter-fish-1"],
+            pendingChoices: [choice.choiceId: choice],
+            discardPile: ["fish-9", "fish-10"],
+            fishDrawPile: ["fish-11"]
+        )
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+
+        viewModel.showDiscardPile()
+
+        XCTAssertEqual(viewModel.discardPileDetailViewState?.mode, .recoverSelection)
+        XCTAssertEqual(viewModel.discardPileDetailViewState?.isReadOnly, false)
+        XCTAssertEqual(viewModel.discardPileDetailViewState?.cards.map(\.cardId), ["fish-10", "fish-9"])
+        XCTAssertEqual(
+            viewModel.discardPileDetailViewState?.instructionText,
+            AppStrings.GameBoard.discardPileRecoverSelectionInstruction
+        )
+        XCTAssertEqual(viewModel.discardPileDetailViewState?.showsDrawInsteadAction, true)
+        XCTAssertEqual(viewModel.discardPileDetailViewState?.canRecoverSelectedCard, false)
+    }
+
+    func testRecoverDiscardSelectionSubmitsNativeSelectedDiscardCard() {
+        let choice = pendingChoice(kind: .recoverFromDiscardOrDraw)
+        let service = makeService(
+            hand: ["starter-fish-1"],
+            pendingChoices: [choice.choiceId: choice],
+            discardPile: ["fish-9"],
+            fishDrawPile: ["fish-10"]
+        )
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+
+        viewModel.showDiscardPile()
+        viewModel.selectDiscardPileCard("fish-9")
+
+        XCTAssertEqual(viewModel.discardPileDetailViewState?.selectedCardId, "fish-9")
+        XCTAssertEqual(viewModel.discardPileDetailViewState?.canRecoverSelectedCard, true)
+
+        viewModel.confirmRecoverSelectedDiscardCard()
+
+        guard case let .resolveEffectNode(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolveEffectNode command.")
+        }
+        XCTAssertEqual(payload.payload, .selectedDiscardCard("fish-9"))
+        XCTAssertNil(viewModel.discardPileDetailViewState)
+    }
+
+    func testRecoverDiscardSelectionDrawInsteadSubmitsNativeDrawFallback() {
+        let choice = pendingChoice(kind: .recoverFromDiscardOrDraw)
+        let service = makeService(
+            hand: ["starter-fish-1"],
+            pendingChoices: [choice.choiceId: choice],
+            discardPile: ["fish-9"],
+            fishDrawPile: ["fish-10"]
+        )
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+
+        viewModel.showDiscardPile()
+        viewModel.drawInsteadFromDiscardSelection()
+
+        guard case let .resolveEffectNode(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected resolveEffectNode command.")
+        }
+        XCTAssertEqual(payload.payload, .none)
+        XCTAssertNil(viewModel.discardPileDetailViewState)
+    }
+
+    func testCancelRecoverDiscardSelectionDismissesWithoutCommand() {
+        let choice = pendingChoice(kind: .recoverFromDiscardOrDraw)
+        let service = makeService(
+            hand: ["starter-fish-1"],
+            pendingChoices: [choice.choiceId: choice],
+            discardPile: ["fish-9"],
+            fishDrawPile: ["fish-10"]
+        )
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+
+        viewModel.showDiscardPile()
+        viewModel.selectDiscardPileCard("fish-9")
+        viewModel.cancelDiscardPileSelection()
+
+        XCTAssertTrue(service.submittedCommands.isEmpty)
+        XCTAssertNil(viewModel.discardPileDetailViewState)
+    }
+
     func testDiscardPileCardFaceResolvesRealBaseGameCard() throws {
         let catalog = try BaseGameCardCatalog()
         let service = makeService(hand: ["starter-fish-1"], discardPile: ["base.main.057"])

@@ -574,6 +574,12 @@ struct GameBoardView: View {
                 .tint(.white)
             }
 
+            if let instructionText = detail.instructionText {
+                Text(instructionText)
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(.white.opacity(0.86))
+            }
+
             if detail.cards.isEmpty {
                 ContentUnavailableView(
                     detail.emptyText,
@@ -592,10 +598,50 @@ struct GameBoardView: View {
                         ForEach(Array(detail.cards.enumerated()), id: \.offset) { _, card in
                             FishCardFaceView(viewState: card)
                                 .frame(maxWidth: .infinity)
-                                .allowsHitTesting(false)
+                                .overlay {
+                                    let isSelected = detail.selectedCardId == card.cardId
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(
+                                            isSelected ? Color.yellow : Color.clear,
+                                            lineWidth: isSelected ? 4 : 0
+                                        )
+                                }
+                                .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                .onTapGesture {
+                                    guard detail.mode == .recoverSelection,
+                                          let cardId = card.cardId
+                                    else {
+                                        return
+                                    }
+                                    viewModel.selectDiscardPileCard(cardId)
+                                }
+                                .allowsHitTesting(detail.mode == .recoverSelection)
                         }
                     }
                     .padding(.vertical, 4)
+                }
+            }
+
+            if detail.mode == .recoverSelection {
+                HStack(spacing: 12) {
+                    Button(AppStrings.GameBoard.recoverSelectedDiscardCard) {
+                        viewModel.confirmRecoverSelectedDiscardCard()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!detail.canRecoverSelectedCard)
+
+                    Button(AppStrings.GameBoard.drawInstead) {
+                        viewModel.drawInsteadFromDiscardSelection()
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.white)
+                    .disabled(!detail.showsDrawInsteadAction)
+
+                    Button(AppStrings.GameBoard.cancel) {
+                        viewModel.cancelDiscardPileSelection()
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.white)
                 }
             }
         }

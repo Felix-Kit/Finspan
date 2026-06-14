@@ -511,10 +511,20 @@ struct DiscardPileDetailViewState: Equatable {
     let maxCardsPerRow: Int
     let presentationStyle: DiscardPileDetailPresentationStyle
     let isReadOnly: Bool
+    let mode: DiscardPileDetailMode
+    let instructionText: String?
+    let selectedCardId: CardID?
+    let canRecoverSelectedCard: Bool
+    let showsDrawInsteadAction: Bool
 }
 
 enum DiscardPileDetailPresentationStyle: String, Equatable {
     case fullScreenOverlay
+}
+
+enum DiscardPileDetailMode: String, Equatable {
+    case normal
+    case recoverSelection
 }
 
 struct OceanSlotViewData: Identifiable, Equatable {
@@ -933,6 +943,12 @@ private struct PendingEffectActionChoice: Equatable {
     var intent: PendingEffectIntent
 }
 
+private struct RecoverDiscardSelectionContext: Equatable {
+    var choiceId: PendingChoiceID
+    var ownerPlayerId: PlayerID
+    var candidateCardIds: [CardID]
+}
+
 @MainActor
 final class GameBoardViewModel: ObservableObject {
     @Published private(set) var state: GameState = .empty
@@ -953,6 +969,9 @@ final class GameBoardViewModel: ObservableObject {
     @Published private(set) var selectedWeeklyGoalDetailWeek: Int?
     @Published private(set) var isEventLogPresented = false
     @Published private(set) var isDiscardPileDetailPresented = false
+    @Published private var discardPileDetailMode: DiscardPileDetailMode = .normal
+    @Published private var recoverDiscardSelectionChoiceId: PendingChoiceID?
+    @Published private var selectedRecoverDiscardCardId: CardID?
     @Published private(set) var hudToastViewState: GameBoardToastViewState?
 
     private let roomService: any RoomService
@@ -1889,7 +1908,17 @@ final class GameBoardViewModel: ObservableObject {
         guard isDiscardPileDetailPresented else {
             return nil
         }
-        let cardFaces = discardPileCardFaces
+        let selectionContext = presentedRecoverDiscardSelectionContext()
+        let mode: DiscardPileDetailMode = selectionContext == nil ? .normal : .recoverSelection
+        let playerId = selectionContext?.ownerPlayerId ?? state.activePlayerId
+        let cardFaces = discardPileCardFaces(for: playerId)
+        let selectedCardId: CardID?
+        if let currentSelection = selectedRecoverDiscardCardId,
+           selectionContext?.candidateCardIds.contains(currentSelection) == true {
+            selectedCardId = currentSelection
+        } else {
+            selectedCardId = nil
+        }
         return DiscardPileDetailViewState(
             title: AppStrings.GameBoard.discardPile,
             countText: AppStrings.GameBoard.discardPileDetailCountText(cardFaces.count),
@@ -1897,14 +1926,64 @@ final class GameBoardViewModel: ObservableObject {
             emptyText: AppStrings.GameBoard.discardPileEmpty,
             maxCardsPerRow: 4,
             presentationStyle: .fullScreenOverlay,
-            isReadOnly: true
+            isReadOnly: mode == .normal,
+            mode: mode,
+            instructionText: mode == .recoverSelection ? AppStrings.GameBoard.discardPileRecoverSelectionInstruction : nil,
+            selectedCardId: selectedCardId,
+            canRecoverSelectedCard: selectedCardId != nil,
+            showsDrawInsteadAction: mode == .recoverSelection && !state.deckState.fishDrawPile.isEmpty
         )
     }
 
     private var discardPileCardFaces: [FishCardFaceViewState] {
-        activePlayerState?.discardPile
+        discardPileCardFaces(for: state.activePlayerId)
+    }
+
+    private func discardPileCardFaces(for playerId: PlayerID?) -> [FishCardFaceViewState] {
+        guard let playerId,
+              let playerState = state.playerGameStates[playerId]
+        else {
+            return []
+        }
+        return playerState.discardPile
             .reversed()
-            .map(fishCardFaceViewState(cardId:)) ?? []
+            .map(fishCardFaceViewState(cardId:))
+    }
+
+    private func activeRecoverDiscardSelectionContext() -> RecoverDiscardSelectionContext? {
+        state.pendingChoices.values
+            .sorted { $0.choiceId < $1.choiceId }
+            .compactMap(recoverDiscardSelectionContext(for:))
+            .first
+    }
+
+    private func presentedRecoverDiscardSelectionContext() -> RecoverDiscardSelectionContext? {
+        guard discardPileDetailMode == .recoverSelection,
+              let choiceId = recoverDiscardSelectionChoiceId,
+              let choice = state.pendingChoices[choiceId]
+        else {
+            return nil
+        }
+        return recoverDiscardSelectionContext(for: choice)
+    }
+
+    private func recoverDiscardSelectionContext(for choice: PendingChoice) -> RecoverDiscardSelectionContext? {
+        let effectSet = choice.v2PendingEffectSet
+        guard let requirement = effectSet.available
+            .compactMap({ AbilityEngineV2Adapter.targetRequirement(for: $0, effectSet: effectSet) })
+            .first(where: { $0.kind == .discardCard })
+        else {
+            return nil
+        }
+        let candidateCardIds = state.playerGameStates[requirement.ownerPlayerId]?.discardPile ?? []
+        guard !candidateCardIds.isEmpty else {
+            return nil
+        }
+        return RecoverDiscardSelectionContext(
+            choiceId: choice.choiceId,
+            ownerPlayerId: requirement.ownerPlayerId,
+            candidateCardIds: candidateCardIds
+        )
     }
 
     var handViewState: HandViewState {
@@ -2360,6 +2439,7 @@ final class GameBoardViewModel: ObservableObject {
             players = roomService.gameRoom?.players ?? []
             eventLog = roomService.eventLog
             removeInvalidSelections()
+            removeInvalidDiscardPileSelection()
             updateHudToast()
             return
         }
@@ -2367,6 +2447,7 @@ final class GameBoardViewModel: ObservableObject {
         players = roomService.gameRoom?.players ?? []
         eventLog = roomService.eventLog
         removeInvalidSelections()
+        removeInvalidDiscardPileSelection()
         updateHudToast()
     }
 
@@ -2902,11 +2983,59 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     func showDiscardPile() {
+        if let selectionContext = activeRecoverDiscardSelectionContext() {
+            discardPileDetailMode = .recoverSelection
+            recoverDiscardSelectionChoiceId = selectionContext.choiceId
+            selectedRecoverDiscardCardId = nil
+        } else {
+            discardPileDetailMode = .normal
+            recoverDiscardSelectionChoiceId = nil
+            selectedRecoverDiscardCardId = nil
+        }
         isDiscardPileDetailPresented = true
     }
 
     func hideDiscardPile() {
+        clearRecoverDiscardSelection()
         isDiscardPileDetailPresented = false
+    }
+
+    func selectDiscardPileCard(_ cardId: CardID) {
+        guard let selectionContext = presentedRecoverDiscardSelectionContext(),
+              selectionContext.candidateCardIds.contains(cardId)
+        else {
+            return
+        }
+        selectedRecoverDiscardCardId = cardId
+    }
+
+    func confirmRecoverSelectedDiscardCard() {
+        guard let selectionContext = presentedRecoverDiscardSelectionContext(),
+              let cardId = selectedRecoverDiscardCardId,
+              selectionContext.candidateCardIds.contains(cardId)
+        else {
+            errorMessage = AppStrings.GameBoard.chooseDiscardCardToRecover
+            return
+        }
+        resolvePendingChoice(selectionContext.choiceId, recoverCardId: cardId)
+        if errorMessage == nil {
+            hideDiscardPile()
+        }
+    }
+
+    func drawInsteadFromDiscardSelection() {
+        guard let selectionContext = presentedRecoverDiscardSelectionContext() else {
+            errorMessage = AppStrings.GameBoard.pendingChoiceNoLongerAvailable
+            return
+        }
+        performNativeEffectPayload(.none, for: selectionContext.choiceId)
+        if errorMessage == nil {
+            hideDiscardPile()
+        }
+    }
+
+    func cancelDiscardPileSelection() {
+        hideDiscardPile()
     }
 
     func performRightActionPrimary() {
@@ -3676,6 +3805,27 @@ final class GameBoardViewModel: ObservableObject {
            !activePlayerState.ocean.slots.contains(where: { $0.address == selectedTargetSlot && playFishSlotPreview(for: $0).isSelectable }) {
             self.selectedTargetSlot = nil
         }
+    }
+
+    private func removeInvalidDiscardPileSelection() {
+        guard discardPileDetailMode == .recoverSelection else {
+            return
+        }
+        guard let selectionContext = presentedRecoverDiscardSelectionContext() else {
+            clearRecoverDiscardSelection()
+            isDiscardPileDetailPresented = false
+            return
+        }
+        if let selectedRecoverDiscardCardId,
+           !selectionContext.candidateCardIds.contains(selectedRecoverDiscardCardId) {
+            self.selectedRecoverDiscardCardId = nil
+        }
+    }
+
+    private func clearRecoverDiscardSelection() {
+        discardPileDetailMode = .normal
+        recoverDiscardSelectionChoiceId = nil
+        selectedRecoverDiscardCardId = nil
     }
 
     private func clearPlayFishSelection() {

@@ -104,7 +104,7 @@
 - 右侧行动确认区已接入。
 - 日志已改为折叠 / sheet 查看。
 - 已支持强制结束当前对局返回主页。
-- 已支持弃牌堆只读查看。
+- 已支持弃牌堆 normal 只读查看和 `recoverFromDiscardOrDraw` 选择模式。
 
 ### 13. Ability Registry
 
@@ -131,9 +131,10 @@
 
 ### P1 `recoverFromDiscardOrDraw` discard-pile selection UI
 
-- 弃牌堆只读详情升级为可选择模式。
-- pending choice 进入弃牌选择模式。
-- 弃牌为空时 fallback draw deck。
+- 已完成。弃牌堆详情支持 normal mode 和 recover selection mode。
+- recover selection mode 可点击具体弃牌并通过 `resolveEffectNode` / `.selectedDiscardCard` 恢复。
+- 玩家可主动选择 Draw Instead，通过 `resolveEffectNode` / `.none` 抽牌。
+- 弃牌为空时仍 fallback draw deck。
 
 ### P2 GameBoardViewModel pending UI stabilization
 
@@ -194,6 +195,6 @@
 
 ## 当前建议下一步
 
-1. 先推进 Ability Engine v2 cleanup / PendingEffectSet primary model。
-2. 然后稳定 GameBoardViewModel pending UI。
-3. 再推进 `recoverFromDiscardOrDraw` 与弃牌堆选择模式联动。
+1. 先稳定 GameBoardViewModel pending UI。
+2. 再修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。
+3. 之后推进 S&R achievements / Side B weekly bonus。
