@@ -111,6 +111,7 @@
 - Ability Engine v2 Cleanup Pass 4 已完成：scatter school、consume-from-hand、free-play / paid-play final payload、coral payment 和 draw reward token action 已能通过 native effect-node payload 进入 engine；legacy `PendingChoiceResolution` 仍作为 reducer/event compatibility shell。
 - Ability Engine v2 Cleanup Pass 5 已完成：move young / school source-target flow 已迁到 native `EffectMoveResourcePayload`，compound reward-token action selection 已迁到 native `EffectRewardTokenPayload` intent。
 - Ability Engine v2 Completion Audit 已完成：v2 Core 可以标记为 complete。新游戏 pending actions 默认通过 `PendingEffectSet` / `PendingEffectIntent` / `EffectNodeMetadata` / native effect-node command 进入 engine。
+- GameBoardViewModel Pending UI Stabilization Pass 1 已完成：pending 面板标题、可选 / 已完成 / 已跳过 / 暂不可用摘要和 action buttons 优先读取 `PendingEffectSet` / `EffectNodeMetadata`，compound legacy progress 只作为旧状态 fallback。
 - legacy `PendingChoice` 仍保留为 compatibility shell，继续承载 saved-state compatibility、`PendingChoiceResolvedEvent` reducer shell、follow-up target / payment / discard-selection choices 和现有 `PendingChoiceResolution` fallback。
 - v2 Core complete 不代表删除 legacy：saved-state migration、legacy field cleanup、native effect-node event 替换和 v2.1 replay / debug timeline 仍后置。
 - 未来 runtime JSON 新增或变更的未知能力仍应保持可表示、可跳过，不应导致崩溃。
@@ -140,7 +141,7 @@
 ### 规则与功能
 
 - Ability Engine v2 saved-state migration / legacy cleanup 后置：当前不是正式发布阶段，legacy adapter 继续保持行为稳定，直到旧本地房间和旧 pending-choice payload 有明确迁移路径。
-- GameBoardViewModel pending UI stabilization：继续减少 ViewModel 对具体 ability type / step order 的依赖。
+- GameBoardViewModel pending UI stabilization 后续：继续把 no-target prompt、follow-up target / payment / discard-selection choices 的显示逻辑收敛到 metadata fallback helper。
 - S&R achievements。
 - Side B weekly bonus +3。
 - 真实 board 背景和 slot 对齐系统。
@@ -151,6 +152,6 @@
 
 ## 当前建议下一步
 
-1. 先稳定 GameBoardViewModel pending UI。
+1. 继续做 GameBoardViewModel pending UI 小步稳定，重点是 target / payment / discard-selection prompt fallback。
 2. 再修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。
 3. 之后推进 S&R achievements / Side B weekly bonus。

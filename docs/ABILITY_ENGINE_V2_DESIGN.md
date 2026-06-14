@@ -47,6 +47,13 @@ Cleanup Pass 5 migrates move young / school payloads and compound reward-token
 action selection into the native effect-node command path, further shrinking the
 legacy adapter boundary without changing game results.
 
+GameBoardViewModel Pending UI Stabilization Pass 1 keeps the v2 Core complete
+state intact and moves pending panel presentation further toward metadata-only
+display. Pending titles, available / completed / skipped / blocked summaries,
+and primary action buttons now prefer `PendingEffectSet` and `EffectNode`
+metadata. Legacy progress fields are still available as compatibility fallback,
+not as the main presentation model.
+
 ## Unified Execution Shape
 
 The target execution flow is:
@@ -463,6 +470,9 @@ New-game native path:
 - `PendingChoice.v2PendingEffectSet` exposes active effect nodes.
 - `GameBoardViewModel` builds primary pending actions from
   `PendingEffectSet.available`.
+- `GameBoardViewModel` builds pending title and progress summaries from
+  `PendingEffectSet.available`, completed, skipped, and blocked effect nodes.
+- AllPlayers current target display reads `PendingEffectSet.targetPlayerId`.
 - v2 actions carry `executionId`, `effectNodeId`, `sourcePlayerId`, and
   `targetPlayerId`.
 - ViewModel staged selections construct native payloads when complete:
@@ -481,6 +491,11 @@ Compatibility fallback:
 - `compoundAbilityProgress`, `allPlayersProgress`, and
   `conditionalBonusProgress` remain as persisted compatibility fields and as
   bridge data used by `v2PendingEffectSet`.
+- `compoundAbilityProgress` is still used as a progress-display fallback only
+  when a choice cannot expose v2 effect-node progress.
+- AllPlayers remaining-player display and conditional base / bonus phase copy
+  still read legacy shell fields until saved-state cleanup removes those
+  persisted progress structs.
 - Follow-up target / payment / discard-selection choices are still represented
   as current pending choices after native reward-token selection.
 
@@ -524,8 +539,7 @@ This pass must not change gameplay results:
 ## Next Steps
 
 - Resume product work outside the v2 core migration: prioritize
-  `recoverFromDiscardOrDraw` discard-pile selection UI, then pending UI
-  stabilization and UI polish.
+  pending UI stabilization and UI polish.
 - Keep saved-state migration / legacy cleanup as a later compatibility pass.
 - Add v2.1 trace / replay / debug timeline only after product-facing pending
   UI work is stable.

@@ -64,14 +64,14 @@ final class GameBoardViewModelTests: XCTestCase {
             ],
             clearAllSlotResources: true
         )
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
 
         XCTAssertEqual(viewModel.topBarViewState.resourceSummaryText, "鱼卵 2 · 幼鱼 1 · 鱼群 3")
     }
 
     func testTopBarViewStateShowsPlayerCountAndLogEntry() {
         let service = makeService(hand: [])
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
 
         XCTAssertEqual(viewModel.topBarViewState.playerCountText, "1 人")
         XCTAssertTrue(viewModel.topBarViewState.canShowLog)
@@ -85,7 +85,7 @@ final class GameBoardViewModelTests: XCTestCase {
                 RoomPlayer(playerId: "player-2", displayName: "玩家 2", color: .green)
             ]
         )
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
         let playerHud = viewModel.gameHudViewState.playerHud
 
         XCTAssertEqual(playerHud.players.map(\.playerId), ["player-1", "player-2"])
@@ -97,7 +97,7 @@ final class GameBoardViewModelTests: XCTestCase {
 
     func testGameHudTopPlayerHudDoesNotExposeDiversOrResources() {
         let service = makeService(hand: [], availableDivers: 4)
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
         let hudText = viewModel.gameHudViewState.playerHud.players
             .flatMap { [$0.displayName, $0.avatarText, $0.colorName ?? ""] }
             .joined(separator: " ")
@@ -2261,19 +2261,7 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(
             pendingChoice?.progressLines,
             [
-                "\(AppStrings.GameBoard.abilityEngineV2Available)：2",
-                "\(AppStrings.GameBoard.abilityEngineV2Completed)：0",
-                "\(AppStrings.GameBoard.abilityEngineV2Skipped)：0",
-                AppStrings.GameBoard.compoundAbilityProgressText(
-                    title: AppStrings.GameBoard.placeEggAbilityAction,
-                    completedCount: 0,
-                    totalCount: 2
-                ),
-                AppStrings.GameBoard.compoundAbilityProgressText(
-                    title: AppStrings.GameBoard.hatchEggAbilityAction,
-                    completedCount: 0,
-                    totalCount: 1
-                )
+                "\(AppStrings.GameBoard.abilityEngineV2Available)：\(AppStrings.GameBoard.placeEggAbilityAction)、\(AppStrings.GameBoard.hatchEggAbilityAction)"
             ]
         )
         XCTAssertEqual(
@@ -2299,7 +2287,7 @@ final class GameBoardViewModelTests: XCTestCase {
             ]
         )
         let service = makeService(hand: ["starter-fish-1"], pendingChoices: [choice.choiceId: choice])
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
 
         let pendingChoice = viewModel.pendingChoices[0]
 
@@ -2338,7 +2326,7 @@ final class GameBoardViewModelTests: XCTestCase {
                 RoomPlayer(playerId: "player-3", displayName: "玩家 3", color: .purple)
             ]
         )
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: pendingEffectSetCatalog())
 
         let pendingChoice = viewModel.pendingChoices[0]
 
@@ -2358,7 +2346,7 @@ final class GameBoardViewModelTests: XCTestCase {
             ]
         )
         let service = makeService(hand: ["starter-fish-1"], pendingChoices: [choice.choiceId: choice])
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
 
         let pendingChoice = viewModel.pendingChoices[0]
 
@@ -2431,10 +2419,13 @@ final class GameBoardViewModelTests: XCTestCase {
                 blockedChoice.choiceId: blockedChoice
             ]
         )
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: pendingEffectSetCatalog())
         let choices = Dictionary(uniqueKeysWithValues: viewModel.pendingChoices.map { ($0.choiceId, $0) })
 
-        XCTAssertEqual(choices[baseChoice.choiceId]?.progressLines.first, "\(AppStrings.GameBoard.abilityEngineV2Available)：1")
+        XCTAssertEqual(
+            choices[baseChoice.choiceId]?.progressLines.first,
+            "\(AppStrings.GameBoard.abilityEngineV2Available)：\(AppStrings.GameBoard.hatchEggAbilityAction)"
+        )
         XCTAssertEqual(choices[bonusChoice.choiceId]?.actions.first?.effectNodeId, "bonus-draw")
         XCTAssertEqual(choices[blockedChoice.choiceId]?.actions.map(\.title), [AppStrings.GameBoard.skipChoice])
     }
@@ -2476,11 +2467,19 @@ final class GameBoardViewModelTests: XCTestCase {
                 gameEndChoice.choiceId: gameEndChoice
             ]
         )
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: pendingEffectSetCatalog())
         let choices = Dictionary(uniqueKeysWithValues: viewModel.pendingChoices.map { ($0.choiceId, $0) })
 
-        XCTAssertTrue(choices[blackmouthChoice.choiceId]?.progressLines.contains("\(AppStrings.GameBoard.abilityEngineV2Available)：1") ?? false)
-        XCTAssertTrue(choices[gameEndChoice.choiceId]?.progressLines.contains("\(AppStrings.GameBoard.abilityEngineV2Available)：1") ?? false)
+        XCTAssertTrue(
+            choices[blackmouthChoice.choiceId]?.progressLines.contains(
+                "\(AppStrings.GameBoard.abilityEngineV2Available)：\(AppStrings.GameBoard.playFishForFree)"
+            ) ?? false
+        )
+        XCTAssertTrue(
+            choices[gameEndChoice.choiceId]?.progressLines.contains(
+                "\(AppStrings.GameBoard.abilityEngineV2Available)：\(AppStrings.GameBoard.consumeFishFromHand)"
+            ) ?? false
+        )
     }
 
     func testPendingEffectIntentResolvesAvailableEffectNode() {
@@ -5351,6 +5350,19 @@ final class GameBoardViewModelTests: XCTestCase {
             players: service.snapshot.players,
             state: service.gameState,
             events: service.snapshot.events
+        )
+    }
+
+    private func pendingEffectSetCatalog() -> TestCardCatalog {
+        let sample = SampleCardCatalog()
+        return TestCardCatalog(
+            starterFishCards: sample.starterFishCards,
+            fishCards: sample.fishCards + [
+                Card(id: "base.main.050", name: "All Players Fixture Fish", printedPoints: 1, lengthCm: 20),
+                Card(id: "sr.main.138", name: "Conditional Fixture Fish", printedPoints: 1, lengthCm: 20),
+                Card(id: "sr.main.141", name: "Blackmouth Angler", printedPoints: 1, lengthCm: 20),
+                Card(id: "base.main.117", name: "Game End Fixture Fish", printedPoints: 1, lengthCm: 20)
+            ]
         )
     }
 

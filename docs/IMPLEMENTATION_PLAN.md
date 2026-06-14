@@ -121,6 +121,7 @@
 - Ability Engine v2 Cleanup Pass 4 已完成：scatter school、consume-from-hand、free-play / paid-play final payload、coral payment 和 draw reward token action 已迁到 native effect-node payload；legacy adapter 仍保留为 compatibility shell。
 - Ability Engine v2 Cleanup Pass 5 已完成：move young / school source-target payload 和 compound reward-token action selection 已迁到 native effect-node payload；legacy adapter 边界进一步缩小。
 - Ability Engine v2 Completion Audit 已完成：v2 Core 可以标记为 complete；legacy `PendingChoice` / `PendingChoiceResolvedEvent` / `resolvePendingChoice` 仍保留为 compatibility shell 和 saved-state fallback。
+- GameBoardViewModel Pending UI Stabilization Pass 1 已完成：pending title / progress / action presentation 优先读取 `PendingEffectSet` / `EffectNodeMetadata`，legacy progress 只作为 compatibility fallback。
 - v2 预留 trace / replay 字段，但本阶段不实现完整 replay、timeline 或 debug UI。
 
 ## 下一阶段计划
@@ -140,8 +141,9 @@
 
 ### P2 GameBoardViewModel pending UI stabilization
 
-- 让 ViewModel 优先读取 current execution id、source player、target player、available / blocked / completed / skipped effects。
-- 减少 ViewModel 对 ability type、step index 和特殊 pipeline 的判断。
+- Pass 1 已完成：ViewModel pending 面板优先读取 current execution id、source player、target player、available / blocked / completed / skipped effects。
+- Pass 1 已完成：compound / Blackmouth / GAME END / colored coral conditional 的基础 action summary 由 effect-node label 驱动，不再显示旧的 count-only v2 progress。
+- 后续继续减少 target prompt、payment prompt、discard-selection prompt 对 legacy `PendingChoice.kind` / `expectedInput` 的依赖。
 - 保持 UI 小步稳定，不做大规模卡牌 UI 重构。
 
 ### P3 当前 UI 修复

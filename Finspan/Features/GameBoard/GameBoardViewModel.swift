@@ -1751,7 +1751,7 @@ final class GameBoardViewModel: ObservableObject {
                     subtitle: pendingChoiceSubtitle(choice),
                     sourceText: AppStrings.pendingChoiceSourceName(choice.source),
                     statusText: AppStrings.GameBoard.pendingChoiceWaiting,
-                    progressLines: pendingEffectSetProgressLines(for: choice) + compoundAbilityProgressLines(for: choice),
+                    progressLines: pendingProgressLines(for: choice),
                     targetPrompt: pendingChoiceTargetPrompt(for: choice),
                     noTargetsText: noPendingChoiceTargetsText(for: choice),
                     targets: pendingChoiceTargets(for: choice),
@@ -4616,32 +4616,12 @@ final class GameBoardViewModel: ObservableObject {
     private func pendingChoiceSubtitle(_ choice: PendingChoice) -> String {
         let playerName = players.first(where: { $0.playerId == choice.playerId })?.displayName ?? choice.playerId
         let optionalText = choice.isOptional ? AppStrings.GameBoard.optionalChoice : AppStrings.GameBoard.requiredChoice
-        var parts = [
+        return [
             "\(AppStrings.GameBoard.pendingChoicePlayer)：\(playerName)",
             "\(AppStrings.GameBoard.pendingChoiceSource)：\(AppStrings.pendingChoiceSourceName(choice.source))",
             "\(AppStrings.GameBoard.pendingChoiceStatus)：\(AppStrings.GameBoard.pendingChoiceWaiting)",
             optionalText
-        ]
-        if let progress = choice.allPlayersProgress {
-            let remainingNames = progress.remainingPlayerIds.map { playerId in
-                players.first(where: { $0.playerId == playerId })?.displayName ?? playerId
-            }
-            let remainingText = remainingNames.isEmpty
-                ? ""
-                : "，\(AppStrings.GameBoard.allPlayersRemaining)：\(remainingNames.joined(separator: "、"))"
-            parts.append("\(AppStrings.GameBoard.allPlayersChoice)：当前为 \(playerName) 处理\(remainingText)")
-        }
-        if let progress = choice.conditionalBonusProgress {
-            let stepText = progress.phase == .base
-                ? AppStrings.GameBoard.conditionalBonusBaseStep
-                : AppStrings.GameBoard.conditionalBonusBonusStep
-            let requirementText = AppStrings.GameBoard.coloredCoralRequirement(
-                coralColorName(progress.requirement.coralColor),
-                count: progress.requirement.count
-            )
-            parts.append("\(stepText)：\(requirementText)")
-        }
-        return parts.joined(separator: "，")
+        ].joined(separator: "，")
     }
 
     private func coralColorName(_ diveSite: DiveSite) -> String {
@@ -4657,9 +4637,16 @@ final class GameBoardViewModel: ObservableObject {
 
     private func pendingChoiceTitle(_ choice: PendingChoice) -> String {
         guard case let .fishAbility(cardId) = choice.source else {
-            return AppStrings.pendingChoiceKindName(choice.kind)
+            return pendingEffectSetTitle(for: choice) ?? AppStrings.pendingChoiceKindName(choice.kind)
         }
         return AppStrings.GameBoard.triggeringFishAbility(cardName: cardTitle(cardId))
+    }
+
+    private func pendingEffectSetTitle(for choice: PendingChoice) -> String? {
+        let effectSet = choice.v2PendingEffectSet
+        return effectSet.available.first.map(effectNodeDisplayTitle)
+            ?? effectSet.completed.last.map { effectDisplayTitle(for: $0.effect, debugLabel: $0.debugLabel) }
+            ?? effectSet.skipped.last?.effect.map { effectDisplayTitle(for: $0, debugLabel: effectSet.debugLabel) }
     }
 
     private func compoundAbilityProgressLines(for choice: PendingChoice) -> [String] {
@@ -4702,20 +4689,108 @@ final class GameBoardViewModel: ObservableObject {
 
     private func pendingEffectSetProgressLines(for choice: PendingChoice) -> [String] {
         let effectSet = choice.v2PendingEffectSet
-        guard !effectSet.available.isEmpty || !effectSet.completed.isEmpty || !effectSet.skipped.isEmpty else {
+        guard !effectSet.available.isEmpty
+                || !effectSet.completed.isEmpty
+                || !effectSet.skipped.isEmpty
+                || !effectSet.blocked.isEmpty
+        else {
             return []
         }
         var lines: [String] = []
         if let targetPlayerId = effectSet.targetPlayerId,
-           choice.allPlayersProgress != nil {
+           pendingEffectSetShouldShowTargetPlayer(effectSet) {
             lines.append("\(AppStrings.GameBoard.pendingChoicePlayer)：\(displayName(for: targetPlayerId))")
         }
-        lines.append(contentsOf: [
-            "\(AppStrings.GameBoard.abilityEngineV2Available)：\(effectSet.available.count)",
-            "\(AppStrings.GameBoard.abilityEngineV2Completed)：\(effectSet.completed.count)",
-            "\(AppStrings.GameBoard.abilityEngineV2Skipped)：\(effectSet.skipped.count)"
-        ])
+        if let progress = choice.allPlayersProgress {
+            let remainingNames = progress.remainingPlayerIds.map(displayName)
+            if !remainingNames.isEmpty {
+                // Compatibility fallback: remaining player order still lives on the legacy all-players shell.
+                lines.append("\(AppStrings.GameBoard.allPlayersRemaining)：\(remainingNames.joined(separator: "、"))")
+            }
+        }
+        if let progress = choice.conditionalBonusProgress {
+            // Compatibility fallback: the current base/bonus phase is still stored on the legacy shell.
+            let stepText = progress.phase == .base
+                ? AppStrings.GameBoard.conditionalBonusBaseStep
+                : AppStrings.GameBoard.conditionalBonusBonusStep
+            let requirementText = AppStrings.GameBoard.coloredCoralRequirement(
+                coralColorName(progress.requirement.coralColor),
+                count: progress.requirement.count
+            )
+            lines.append("\(stepText)：\(requirementText)")
+        }
+        if !effectSet.available.isEmpty {
+            lines.append("\(AppStrings.GameBoard.abilityEngineV2Available)：\(effectSet.available.map(effectNodeDisplayTitle).joined(separator: "、"))")
+        }
+        if !effectSet.completed.isEmpty {
+            lines.append("\(AppStrings.GameBoard.abilityEngineV2Completed)：\(effectSet.completed.map { effectDisplayTitle(for: $0.effect, debugLabel: $0.debugLabel) }.joined(separator: "、"))")
+        }
+        if !effectSet.skipped.isEmpty {
+            let skipped = effectSet.skipped.map { skipped in
+                skipped.effect.map { effectDisplayTitle(for: $0, debugLabel: skipped.debugLabel) } ?? skipped.debugLabel
+            }
+            lines.append("\(AppStrings.GameBoard.abilityEngineV2Skipped)：\(skipped.joined(separator: "、"))")
+        }
+        if !effectSet.blocked.isEmpty {
+            lines.append("\(AppStrings.GameBoard.abilityEngineV2Blocked)：\(effectSet.blocked.map { effectNodeDisplayTitle($0.node) }.joined(separator: "、"))")
+        }
         return lines
+    }
+
+    private func pendingEffectSetShouldShowTargetPlayer(_ effectSet: PendingEffectSet) -> Bool {
+        let nodes = effectSet.available + effectSet.blocked.map(\.node)
+        return nodes.contains { node in
+            if case .targetPlayer = node.scope {
+                return true
+            }
+            return false
+        }
+    }
+
+    private func pendingProgressLines(for choice: PendingChoice) -> [String] {
+        let v2Lines = pendingEffectSetProgressLines(for: choice)
+        if !v2Lines.isEmpty {
+            return v2Lines
+        }
+        // Compatibility fallback for old saved pending choices that cannot expose v2 progress.
+        return compoundAbilityProgressLines(for: choice)
+    }
+
+    private func effectNodeDisplayTitle(_ node: EffectNode) -> String {
+        effectDisplayTitle(for: node.effect, debugLabel: node.metadata.debugLabel)
+    }
+
+    private func effectDisplayTitle(for effect: AbilityEffectUnit, debugLabel: String) -> String {
+        switch effect {
+        case let .drawFish(count):
+            return AppStrings.GameBoard.drawFishCard(count: count)
+        case .recoverFromDiscardOrDraw:
+            return AppStrings.GameBoard.recoverOneFromDiscard
+        case .placeEgg:
+            return AppStrings.GameBoard.placeEggAbilityAction
+        case .placeYoung:
+            return AppStrings.GameBoard.placeYoungAbilityAction
+        case .hatchEgg:
+            return AppStrings.GameBoard.hatchEggAbilityAction
+        case .moveYoungOrSchool:
+            return AppStrings.GameBoard.moveYoungOrSchool
+        case .gainCoral:
+            return AppStrings.GameBoard.gainOneCoral
+        case .scatterSchool:
+            return AppStrings.GameBoard.scatterSchool
+        case .consumeFishFromHand:
+            return AppStrings.GameBoard.consumeFishFromHand
+        case .playFishForFree:
+            return AppStrings.GameBoard.playFishForFree
+        case .playFishFromHand:
+            return AppStrings.GameBoard.playFishFromHand
+        case .placeEggOnMatchingFish:
+            return AppStrings.GameBoard.placeEggOnMatchingFish
+        case .gameEndScore:
+            return AppStrings.GameBoard.finalScoreGameEndAbility
+        case .unsupported:
+            return debugLabel.isEmpty ? AppStrings.GameBoard.abilityUnsupported : debugLabel
+        }
     }
 
     private func abilityProgressLine(
@@ -4980,11 +5055,13 @@ final class GameBoardViewModel: ObservableObject {
         var actions = pendingEffectSetActionButtons(for: choice)
         let canResolve = canResolvePendingChoice(choice)
 
-        if actions.isEmpty {
+        let effectSet = choice.v2PendingEffectSet
+        let shouldUseLegacyActions = !effectSet.available.isEmpty || !pendingEffectSetHasPresentation(effectSet)
+        if actions.isEmpty && shouldUseLegacyActions {
             actions.append(contentsOf: legacyPendingChoiceActionButtons(for: choice, canResolve: canResolve))
         }
 
-        if choice.kind == .compoundAbility {
+        if canSkipRemainingEffects(for: choice) {
             actions.append(
                 PendingChoiceActionViewData(
                     choiceId: choice.choiceId,
@@ -5012,6 +5089,18 @@ final class GameBoardViewModel: ObservableObject {
         }
 
         return actions
+    }
+
+    private func pendingEffectSetHasPresentation(_ effectSet: PendingEffectSet) -> Bool {
+        !effectSet.available.isEmpty
+            || !effectSet.completed.isEmpty
+            || !effectSet.skipped.isEmpty
+            || !effectSet.blocked.isEmpty
+    }
+
+    private func canSkipRemainingEffects(for choice: PendingChoice) -> Bool {
+        // Compatibility fallback: old saved compound choices can still expose only legacy progress.
+        return choice.compoundAbilityProgress != nil
     }
 
     private func pendingEffectSetActionButtons(for choice: PendingChoice) -> [PendingChoiceActionViewData] {
@@ -5063,7 +5152,7 @@ final class GameBoardViewModel: ObservableObject {
         for node: EffectNode,
         choice: PendingChoice
     ) -> PendingEffectActionChoice? {
-        if choice.kind == .compoundAbility,
+        if choice.compoundAbilityProgress != nil,
            let progress = choice.compoundAbilityProgress,
            !compoundEffectIsCurrentlySelectable(node.effect, choice: choice, progress: progress) {
             return nil
@@ -5072,12 +5161,12 @@ final class GameBoardViewModel: ObservableObject {
         case let .drawFish(count):
             return PendingEffectActionChoice(
                 effectNodeId: node.id,
-                action: choice.kind == .compoundAbility ? .chooseDrawAbilityEffect : .drawFish,
+                action: choice.compoundAbilityProgress != nil ? .chooseDrawAbilityEffect : .drawFish,
                 title: AppStrings.GameBoard.drawFishCard(count: count),
                 intent: resolveIntent(for: node, choice: choice, payload: .none)
             )
         case .recoverFromDiscardOrDraw:
-            if choice.kind == .compoundAbility {
+            if choice.compoundAbilityProgress != nil {
                 return PendingEffectActionChoice(
                     effectNodeId: node.id,
                     action: .chooseRecoverAbilityEffect,
@@ -5095,7 +5184,7 @@ final class GameBoardViewModel: ObservableObject {
                 intent: resolveIntent(for: node, choice: choice, payload: .none)
             )
         case .placeEgg:
-            guard choice.kind == .compoundAbility else {
+            guard choice.compoundAbilityProgress != nil else {
                 return nil
             }
             return PendingEffectActionChoice(
@@ -5105,7 +5194,7 @@ final class GameBoardViewModel: ObservableObject {
                 intent: resolveIntent(for: node, choice: choice, payload: .none)
             )
         case .placeYoung:
-            guard choice.kind == .compoundAbility else {
+            guard choice.compoundAbilityProgress != nil else {
                 return nil
             }
             return PendingEffectActionChoice(
@@ -5115,7 +5204,7 @@ final class GameBoardViewModel: ObservableObject {
                 intent: resolveIntent(for: node, choice: choice, payload: .none)
             )
         case .hatchEgg:
-            guard choice.kind == .compoundAbility else {
+            guard choice.compoundAbilityProgress != nil else {
                 return nil
             }
             return PendingEffectActionChoice(
