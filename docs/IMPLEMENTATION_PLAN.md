@@ -102,6 +102,10 @@
 - `FishCardFaceView` 已完成 Fidelity Pass 1：fish image 按 sourceId 映射，ability token 使用 SVG/icon，trigger strip、length、zone、tag 和 font 走 resolver。
 - `FishCardFaceView` Fidelity Pass 1.5 已完成：修正 asset wiring correctness，trigger strip 限定在 ability panel 宽度内，cost / requirement icons、zone icons、`Wave` points icon、`FishLengthSmall` / `Medium` / `Large` 和 ability token sequence 均由 resolver-backed view state 驱动。
 - `FishCardFaceView` Fidelity Pass 2 已完成当前结构补齐：live SVG icon 已生成同名 PNG 派生资源，icon resolver 优先使用可渲染 PNG；SwiftUI 牌面不再把 loose SVG resource 当成主要显示路径。
+- Fish Card Icon Vector / Renderability Pipeline Fix 已完成：SVG 仍是 source of truth，iOS runtime 使用 `sips` 生成的透明 high-res PNG render asset。旧白块根因是 Quick Look thumbnail 派生 PNG 带不透明白底，而不是 resolver 找不到文件。
+- `tools/scripts/audit_card_icon_renderability.py` 已接入，验证 57 / 57 icon PNG 可解码、非纯白、非全透明、无白底，并保持 SVG viewBox aspect ratio。`CardIconRenderabilityAnalyzer` 在 Swift 测试和 DEBUG 面板中验证 bundle runtime decode。
+- `FishCardFaceView` 现在通过统一 `CardFaceIconAssetView` 渲染 cost / requirement、zone、Wave、FishLength、ability token、tag / coral icon；显示尺寸由 live-inspired `CardRenderMetrics` frame 控制，不由 PNG intrinsic size 控制。
+- DEBUG 牌库卡面右上角可打开 icon render status 面板，用于定位当前卡的 failed icon、missing asset、fish image、flavor text 和 render asset type。
 - card face 内 name、scientific name、ability text、trigger title 和 flavor text 使用 English / raw source；外层中文 UI 继续保留。
 - 215 张卡的 live description 已作为 `Finspan/Resources/CardAssets/card_face_descriptions.json` 渲染 metadata 接入，不修改 runtime card JSON。
 - Great White Shark、Great Northern Tilefish、Great Barracuda 仅作为 QA 样例，不写 special case；代表卡的 token sequence、cost / requirement、zone、length、Wave、fish image 和 flavor text 都通过通用 resolver / view-state mapping 生效。
@@ -157,9 +161,11 @@
 - 后续继续减少 target prompt、payment prompt、discard-selection prompt 对 legacy `PendingChoice.kind` / `expectedInput` 的依赖。
 - 保持 UI 小步稳定，不做大规模卡牌 UI 重构。
 
-### P3 FishCardFaceView Fidelity Pass 2
+### P3 FishCardFaceView Fidelity Pass 2 / Renderability
 
-- Pass 1.5 asset wiring correctness 已完成，Pass 2 不再处理“资源已导入但没有显示”的基础问题。
+- Pass 1.5 asset wiring correctness 已完成。
+- Pass 2 结构补齐已完成。
+- Icon renderability pipeline fix 已完成：不再把 resolver success 当作可见性证明，新增 PNG 像素审计和 runtime bundle decode 测试。
 - 用 live renderer screenshot 对 Great White Shark、If Activated、Game End 三类卡做像素级对照。
 - 收敛 title、scientific name、points、length、ability text 的 font size / line-height / wrapping。
 - 调整 fish image frame、opacity、blend、clipping。
@@ -219,6 +225,6 @@
 
 ## 当前建议下一步
 
-1. 先做 FishCardFaceView Fidelity Pass 2 的像素级 layout / font / spacing 修正。
+1. 先做 FishCardFaceView 后续像素级 layout / font / spacing 修正。
 2. 再稳定 GameBoardViewModel pending UI。
 3. 之后修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。

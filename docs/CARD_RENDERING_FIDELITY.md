@@ -129,6 +129,35 @@ Pass 2 继续以 live finsearch 为 source of truth，修正“view state 已有
 - `Panforte Pro`、`Dolce`、`Lexus Roman Optical` 分别落到 title / scientific name / flavor text；points、length、trigger 和 ability copy 继续使用 live title font family。
 - Great White Shark、Great Northern Tilefish、Great Barracuda 是本轮代表卡审计样例，不是 special case。
 
+## Icon Renderability Pipeline
+
+Pass 2 后又完成了一轮 Fish Card Icon Vector / Renderability Pipeline Fix。根因不是 resolver 缺映射，而是旧 `.svg.png` 衍生图由 Quick Look thumbnail 路径生成：文件能解析，但像素内容是 512 x 512 的不透明近白背景，App 实际加载后就表现为白色方块。
+
+当前策略：
+
+- `references/webpage_live/` 和 `Finspan/Resources/CardAssets/icons/*.svg` 仍是 icon source of truth。
+- iOS runtime 不把 loose SVG 当作主要 SwiftUI image。原因是 `Image(resourceName)` 对 app bundle loose SVG 不稳定，也无法提供统一的 `UIImage(contentsOfFile:)` runtime decode / pixel audit 路径。
+- render asset 使用 same-name high-resolution PNG：`*.svg -> *.svg.png`。
+- 生成脚本是 `tools/scripts/render_card_icon_assets.py`，使用 macOS `sips` 从相邻 SVG 导出透明 PNG，默认最大边 1536 px。
+- 审计脚本是 `tools/scripts/audit_card_icon_renderability.py`，会读取真实 PNG 尺寸，从 PNG 派生临时审计样本并检查 alpha、non-white pixels、白底、全透明、尺寸和 SVG viewBox aspect ratio。
+- `CardSymbolAssetResolver` 继续按 `png / webp / svg` 优先级解析 icon，因此 SwiftUI 正常路径使用 PNG render asset，SVG 只保留为 source / last fallback。
+- `CardFaceIconAssetView` 统一渲染 cost / requirement、playable zones、Wave、FishLength、ability tokens、tag / coral icons；正常图标使用 `.renderingMode(.original)`、`.resizable()`、`.scaledToFit()` 和明确 frame。
+- 图标显示尺寸来自 live-inspired `CardRenderMetrics.CardFaceLayout` 和各区域 frame，不来自 PNG intrinsic pixel size。
+- DEBUG 下 icon 加载失败显示红色边框和 `?`，不再静默画白色 fallback。卡面右上角 DEBUG status button 可打开当前卡 icon render summary。
+
+本轮像素审计结果：
+
+- render PNG assets: 57
+- ok: 57
+- failed: 0
+- 重点 icon `ArrowDown`、`FishEgg`、`YoungFish`、`SchoolFish`、`DrawCard`、`Discard`、`FishHatch`、`ConsumeFish`、`Predator`、`AllPlayers`、`Wave`、`FishLengthSmall` / `Medium` / `Large`、`Sun` / `Dusk` / `Night`、`BlueCoral` / `PurpleCoral` / `GreenCoral` / `AnyCoral`、`PlayFishBottomRow` 都通过非白块 / 非透明 / bundle decode 检查。
+
+代表卡 runtime summary：
+
+- `base.main.057` Great White Shark：`FishEgg` / `ArrowDown` / `Predator` / `AllPlayers` 均指向可渲染 PNG；Wave、FishLengthLarge、fish image、flavor text 都可用。
+- `base.main.056` Great Northern Tilefish：`FishHatch` token 可渲染；If Activated strip 和 flavor text 可用。
+- `sr.main.161` Great Barracuda：coral requirement、`BlueCoral`、`AllPlayers`、Wave、FishLengthLarge 均可渲染。
+
 ## Resource Diff
 
 `references/webpage_live/reports/resource_diff.json` 是本轮的机器可读差异报告。
@@ -178,6 +207,7 @@ Pass 2 对 215 张真实卡做了 ability / cost / zone / tag / points / length 
 - unique ability token names: 33
 - missing asset / fallback count: 0
 - live icon PNG derivative count: 57
+- renderability failures: 0
 
 ## Great White Shark
 

@@ -131,12 +131,17 @@
 - `FishCardFaceView` 已完成 Fidelity Pass 1：fish image 按 sourceId 映射，ability token 使用 SVG/icon，ArrowDown、长度、光层、触发条和字体走 live asset resolver。
 - `FishCardFaceView` Fidelity Pass 1.5 已完成，范围是 asset wiring correctness，不是像素级 Pass 2：trigger strip 宽度被限制在 ability panel 内，cost / requirement icons、zone icons、`Wave` points icon、`FishLengthSmall` / `Medium` / `Large` 和 ability token sequence 都走 resolver view state。
 - `FishCardFaceView` Fidelity Pass 2 已完成当前一轮结构补齐：live SVG icon 生成同名 PNG 派生资源，icon resolver 优先返回可渲染 PNG，cost / zone / points / length / ability token 不再依赖 loose SVG 作为 SwiftUI image。
+- Fish Card Icon Vector / Renderability Pipeline Fix 已完成：旧 Quick Look `.svg.png` 白底缩略图已由 `sips` 生成的透明高分辨率 PNG render asset 替换；SVG source 仍保留为 source of truth。
+- 新增 `tools/scripts/render_card_icon_assets.py` 和 `tools/scripts/audit_card_icon_renderability.py`。当前审计结果为 57 / 57 icon PNG 可解码、非纯白、非全透明、无白底、aspect ratio 匹配 SVG viewBox。
+- `FishCardFaceView` 的 cost / requirement、playable zone、Wave、FishLength、ability token、tag / coral icon 已统一走 `CardFaceIconAssetView`；显示尺寸来自 `CardRenderMetrics` / explicit frame，不来自 PNG intrinsic size。
+- DEBUG card face 增加 icon render status 面板：在 Lobby → 牌库 → 所有牌中点击卡面右上角 `i` / `!` 可查看 card id、source id、icon count、failed icons、missing assets、fish image / flavor text 和 render asset type。
 - 牌面底部英文 flavor text 已恢复：215 张卡的 live description 被抽取为 `Finspan/Resources/CardAssets/card_face_descriptions.json` 渲染 metadata，不修改 `Finspan/Resources/Cards/*.json`，S&R 仍优先使用自身 `rawSource.description`。
 - 鱼牌牌面文案保持 English / raw source：name、scientific name、ability text、trigger title 和 flavor text 不使用中文牌面文案；App 外层中文 UI 不受影响。
 - Great White Shark 是 QA 样例，不是 special case：`base.main.057` 映射到 `57.*.webp`，`FishEgg` / `ArrowDown` / `Predator` / `AllPlayers` 均解析到 live-derived PNG render asset，cost 显示 `YoungFish` / `ConsumeFish`，length 600 cm 映射到 `FishLengthLarge`。
 - Great Northern Tilefish 和 Great Barracuda 也纳入 Pass 2 代表卡审计，覆盖 If Activated、S&R coral requirement / coral token、不同 zone 和 flavor text。
 - DEBUG 牌库 QA 搜索已接入：Lobby → 牌库 → 所有牌，可按 English name、canonical card id、sourceId、trigger 或 token 稳定预览代表卡，不依赖随机发牌。
 - Pass 2 全量 215 张真实卡 ability / cost / zone / tag / points / length token 审计结果：missing asset / fallback count 0。
+- Icon renderability focused tests 覆盖 Great White Shark、Great Northern Tilefish、Great Barracuda 和全量 215 张真实卡；代表卡 renderability failures 为 0。
 - 手牌、弃牌堆和 ocean slot 当前仍共用同一完整卡牌牌面。
 - 当前牌面已完成 Pass 2 结构补齐，但仍不是完整 finsearch 像素级复刻。详见 `docs/CARD_RENDERING_FIDELITY.md`。
 
@@ -165,6 +170,6 @@
 
 ## 当前建议下一步
 
-1. 做 FishCardFaceView Fidelity Pass 2：在 Pass 1.5 wiring 正确的基础上，用 live screenshot 做像素级 layout / font / spacing / fish silhouette 对照。
+1. 做 FishCardFaceView 后续像素级 layout pass：在 renderability pipeline 正确的基础上，用 live screenshot 做 font / spacing / fish silhouette 对照。
 2. 继续做 GameBoardViewModel pending UI 小步稳定，重点是 target / payment / discard-selection prompt fallback。
 3. 再修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。

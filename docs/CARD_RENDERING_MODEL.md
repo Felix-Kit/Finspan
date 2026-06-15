@@ -38,11 +38,27 @@ The downloaded local app assets are stored under:
 The app runtime must use these local files only. Remote finsearch URLs are a
 development import source, not a runtime dependency.
 
-Pass 2 note: the 57 live SVG icons also have same-name PNG derivatives under
-`Finspan/Resources/CardAssets/icons/`. SwiftUI icon rendering intentionally
-prefers these PNG derivatives because loose SVG files in the app bundle are not
-a reliable `Image(resourceName)` source on iOS. The SVG files remain the live
-source asset; the PNG files are render assets derived from that source.
+Pass 2 / renderability note: the 57 live SVG icons also have same-name PNG
+derivatives under `Finspan/Resources/CardAssets/icons/`. SwiftUI icon rendering
+intentionally prefers these PNG derivatives because loose SVG files in the app
+bundle are not a reliable `Image(resourceName)` source on iOS and cannot be
+validated through the same `UIImage(contentsOfFile:)` runtime path. The SVG
+files remain the live source asset; the PNG files are render assets derived
+from that source.
+
+The first PNG derivative batch was generated through Quick Look thumbnails and
+resolved successfully, but the actual pixels were opaque near-white 512 x 512
+blocks. The fixed pipeline is:
+
+```text
+live SVG source -> tools/scripts/render_card_icon_assets.py -> transparent high-res PNG render asset -> iOS bundle -> CardFaceIconAssetView
+```
+
+`tools/scripts/render_card_icon_assets.py` uses macOS `sips` and defaults to a
+1536 px maximum dimension. `tools/scripts/audit_card_icon_renderability.py`
+audits the generated PNGs for decode success, dimensions, alpha coverage,
+non-white pixels, white backgrounds, all-transparent images, and source SVG
+viewBox aspect ratio. Current result: 57 / 57 render PNGs pass.
 
 The current local download summary is recorded in
 `tools/generated/assets/asset_download_summary.json`:
@@ -106,6 +122,12 @@ DOM card structure:
   `[FishEgg]`, `[YoungFish]`, `[SchoolFish]`, `[Wave]`, `[AllPlayers]`,
   flipper icons, length icons, coral icons, and consume/discard/draw/hatch
   tokens
+
+All card-face icons use explicit SwiftUI frames from `CardRenderMetrics` and
+`.resizable().scaledToFit()`. PNG intrinsic size is intentionally ignored for
+layout; high resolution is used only so the icon remains sharp at the live
+display size. Loading failure is visible in DEBUG as a red fallback marker and
+is not silently rendered as a white placeholder.
 
 This is intentionally a display layer only. It does not implement or interpret
 real fish abilities.

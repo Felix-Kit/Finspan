@@ -6,6 +6,9 @@ import UIKit
 
 struct FishCardFaceView: View {
     let viewState: FishCardFaceViewState
+#if DEBUG
+    @State private var showsIconRenderStatus = false
+#endif
 
     var body: some View {
         GeometryReader { proxy in
@@ -30,6 +33,9 @@ struct FishCardFaceView: View {
                 tagArea(unit: unit)
                 flavorArea(unit: unit)
                 abilityArea(unit: unit)
+#if DEBUG
+                debugIconRenderStatusLayer(unit: unit)
+#endif
             }
             .clipShape(RoundedRectangle(cornerRadius: width * CardRenderMetrics.cornerRadiusRatio))
             .overlay(
@@ -488,30 +494,7 @@ struct FishCardFaceView: View {
 
     @ViewBuilder
     private func iconImage(_ icon: FishCardFaceIconViewState, size: CGFloat) -> some View {
-        if let asset = icon.asset,
-           asset.fileExtension.lowercased() == "svg" {
-            Image(asset.resourceName, bundle: .main)
-                .resizable()
-                .renderingMode(.original)
-                .scaledToFit()
-                .frame(width: size, height: size)
-                .accessibilityLabel(Text(icon.accessibilityText))
-        } else if let image = rasterImage(for: icon.asset) {
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFit()
-                .frame(width: size, height: size)
-                .accessibilityLabel(Text(icon.accessibilityText))
-        } else {
-            Text(icon.fallbackText)
-                .font(.system(size: max(size * 0.52, 7), weight: .black))
-                .lineLimit(1)
-                .minimumScaleFactor(0.45)
-                .foregroundStyle(.primary)
-                .frame(width: size, height: size)
-                .background(Circle().fill(Color.white.opacity(0.72)))
-                .accessibilityLabel(Text(icon.accessibilityText))
-        }
+        CardFaceIconAssetView(icon: icon, size: size)
     }
 
     private func rasterImage(for asset: CardAssetReference?) -> UIImage? {
@@ -562,6 +545,72 @@ struct FishCardFaceView: View {
         }
     }
 
+#if DEBUG
+    private func debugIconRenderStatusLayer(unit: CGFloat) -> some View {
+        let summary = CardIconRenderabilityAnalyzer.debugSummary(for: viewState)
+
+        return VStack(alignment: .trailing, spacing: unit * 0.7) {
+            Button {
+                showsIconRenderStatus.toggle()
+            } label: {
+                Text(summary.failedIconCount > 0 || summary.missingAssetCount > 0 ? "!" : "i")
+                    .font(.system(size: max(unit * 3.2, 8), weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .frame(width: unit * 5, height: unit * 5)
+                    .background(
+                        Circle().fill(
+                            summary.failedIconCount > 0 || summary.missingAssetCount > 0
+                                ? Color.red.opacity(0.88)
+                                : Color.black.opacity(0.58)
+                        )
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("Card icon render status"))
+
+            if showsIconRenderStatus {
+                debugIconRenderStatusPanel(summary: summary, unit: unit)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+        .padding(.top, unit * 1.5)
+        .padding(.trailing, unit * 1.5)
+    }
+
+    private func debugIconRenderStatusPanel(
+        summary: FishCardIconRenderDebugSummary,
+        unit: CGFloat
+    ) -> some View {
+        let failedNames = summary.failedIconNames.isEmpty
+            ? "none"
+            : summary.failedIconNames.prefix(5).joined(separator: ", ")
+        let typeText = summary.renderAssetTypes.isEmpty ? "none" : summary.renderAssetTypes.joined(separator: "/")
+
+        return VStack(alignment: .leading, spacing: unit * 0.35) {
+            Text(summary.cardId)
+                .font(.system(size: max(unit * 1.8, 7), weight: .bold, design: .monospaced))
+            Text("source \(summary.sourceId)  \(typeText)")
+            Text("icons \(summary.iconCount)  failed \(summary.failedIconCount)")
+            Text("missing \(summary.missingAssetCount)  fish \(summary.fishImageFound ? "yes" : "no")")
+            Text("flavor \(summary.flavorTextFound ? "yes" : "no")")
+            Text("failed \(failedNames)")
+                .lineLimit(3)
+        }
+        .font(.system(size: max(unit * 1.45, 6.5), weight: .semibold, design: .rounded))
+        .foregroundStyle(.white)
+        .padding(unit * 1.1)
+        .frame(width: unit * 27, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: unit * 1.1)
+                .fill(Color.black.opacity(0.76))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: unit * 1.1)
+                .stroke(summary.failedIconCount > 0 ? Color.red : Color.green, lineWidth: max(1, unit * 0.18))
+        )
+    }
+#endif
+
     private var borderColor: Color {
         switch viewState.kind {
         case .empty:
@@ -575,4 +624,52 @@ struct FishCardFaceView: View {
         }
     }
 
+}
+
+private struct CardFaceIconAssetView: View {
+    let icon: FishCardFaceIconViewState
+    let size: CGFloat
+
+    var body: some View {
+        Group {
+            if let image = rasterImage(for: icon.asset) {
+                Image(uiImage: image)
+                    .resizable()
+                    .renderingMode(.original)
+                    .scaledToFit()
+            } else {
+                fallback
+            }
+        }
+        .frame(width: size, height: size)
+        .accessibilityLabel(Text(icon.accessibilityText))
+    }
+
+    @ViewBuilder
+    private var fallback: some View {
+#if DEBUG
+        ZStack {
+            RoundedRectangle(cornerRadius: max(size * 0.12, 2))
+                .fill(Color.red.opacity(0.16))
+                .overlay(
+                    RoundedRectangle(cornerRadius: max(size * 0.12, 2))
+                        .stroke(Color.red, lineWidth: max(1, size * 0.08))
+                )
+            Text("?")
+                .font(.system(size: max(size * 0.62, 7), weight: .black, design: .rounded))
+                .foregroundStyle(.red)
+        }
+#else
+        Color.clear
+#endif
+    }
+
+    private func rasterImage(for asset: CardAssetReference?) -> UIImage? {
+        guard let asset,
+              asset.fileExtension.lowercased() != "svg"
+        else {
+            return nil
+        }
+        return UIImage(contentsOfFile: asset.url.path)
+    }
 }
