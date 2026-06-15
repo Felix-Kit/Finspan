@@ -1,0 +1,131 @@
+import XCTest
+@testable import Finspan
+
+final class FishCardAbilityLayoutTests: XCTestCase {
+    @MainActor
+    func testGreatWhiteSharkAbilityPresentationUsesArrowFlowInsteadOfFlatRow() throws {
+        let cardFace = try cardFace(for: "base.main.057")
+        let presentation = cardFace.abilityPresentation
+
+        XCTAssertFalse(presentation.isFlatFallback)
+        XCTAssertEqual(presentation.blocks.count, 1)
+        XCTAssertTrue(presentation.hasAllPlayersShadow)
+
+        let arrowFlowGroup = try XCTUnwrap(presentation.firstIconGroup(layout: .arrowFlow))
+        XCTAssertEqual(arrowFlowGroup.icons.map(\.icon.assetName), ["FishEgg", "ArrowDown", "Predator"])
+        XCTAssertTrue(arrowFlowGroup.icons.allSatisfy { $0.placement == .arrowFlow })
+        XCTAssertNotNil(presentation.firstIcon(named: "AllPlayers", placement: .allPlayersBottom))
+        XCTAssertEqual(presentation.firstIcon(named: "AllPlayers", placement: .allPlayersBottom)?.style, .allPlayersShadow)
+    }
+
+    @MainActor
+    func testGreatWhiteSharkLayoutIsGeneratedFromRawAbilityTextNotCardId() throws {
+        let cardFace = try cardFace(for: "base.main.057")
+        let builder = CardAbilityPresentationBuilder()
+        let rebuilt = builder.build(
+            rawAbilityText: "(all players) [FishEgg][ArrowDown][Predator] on each [AllPlayers]",
+            triggerTitle: CardFaceTriggerCopy.whenPlayed,
+            triggerStyle: CardTriggerStyleResolver.shared.style(for: CardFaceTriggerCopy.whenPlayed)
+        )
+
+        XCTAssertEqual(cardFace.abilityPresentation.tokenPlacementSummary, rebuilt.tokenPlacementSummary)
+    }
+
+    @MainActor
+    func testGreatNorthernTilefishIfActivatedBlockUsesBrushAsset() throws {
+        let cardFace = try cardFace(for: "base.main.056")
+        let block = try XCTUnwrap(cardFace.abilityPresentation.blocks.first)
+
+        XCTAssertEqual(cardFace.abilityTriggerText, CardFaceTriggerCopy.ifActivated)
+        XCTAssertEqual(block.kind, .main)
+        XCTAssertEqual(block.backgroundAssetPrefix, "IfActivated")
+        XCTAssertNotNil(block.backgroundAsset)
+        XCTAssertTrue(block.hasBrushBackground)
+    }
+
+    @MainActor
+    func testAtlanticBarracudinaAlsoIfUsesSeparateBrushBlockAndCoralGroup() throws {
+        let cardFace = try cardFace(for: "sr.starter.212")
+        let presentation = cardFace.abilityPresentation
+
+        XCTAssertEqual(presentation.blocks.count, 2)
+        XCTAssertEqual(presentation.alsoIfBlockCount, 1)
+        XCTAssertEqual(presentation.blockGapCqw, 2)
+        XCTAssertEqual(presentation.blocks.map(\.layout), [.squished, .alsoIf])
+        XCTAssertTrue(presentation.blocks.allSatisfy(\.hasBrushBackground))
+
+        let alsoIfBlock = try XCTUnwrap(presentation.blocks.first { $0.kind == .alsoIf })
+        let coralGroup = try XCTUnwrap(alsoIfBlock.elements.firstIconGroup(layout: .coralHorizontal))
+        XCTAssertEqual(coralGroup.icons.map(\.icon.assetName), ["GreenCoral", "GreenCoral", "GreenCoral"])
+        XCTAssertEqual(coralGroup.cssClassSummary, "GreenCoral-3")
+    }
+
+    @MainActor
+    func testTriggerBrushBackgroundsUseAssetsNotPureColorFallbacks() throws {
+        let ifActivated = try cardFace(for: "base.main.056")
+        let gameEnd = try cardFace(for: "base.main.001")
+
+        XCTAssertEqual(ifActivated.abilityPresentation.blocks.first?.backgroundAssetPrefix, "IfActivated")
+        XCTAssertNotNil(ifActivated.abilityPresentation.blocks.first?.backgroundAsset)
+        XCTAssertEqual(gameEnd.abilityPresentation.blocks.first?.backgroundAssetPrefix, "GameEnd")
+        XCTAssertNotNil(gameEnd.abilityPresentation.blocks.first?.backgroundAsset)
+    }
+
+    @MainActor
+    private func cardFace(for cardId: CardID) throws -> FishCardFaceViewState {
+        let viewModel = CardLibraryViewModel()
+        viewModel.displayMode = .all
+        return try XCTUnwrap(
+            viewModel.viewState.cards.map(\.cardFace).first { $0.cardId == cardId },
+            "Expected \(cardId) in card QA library."
+        )
+    }
+}
+
+private extension CardAbilityPresentation {
+    func firstIconGroup(layout: CardAbilityIconGroupLayout) -> CardAbilityIconGroup? {
+        blocks.flatMap(\.elements).firstIconGroup(layout: layout)
+    }
+
+    func firstIcon(named assetName: String, placement: CardAbilityIconPlacement) -> CardAbilityIcon? {
+        blocks.flatMap(\.elements).firstIcon(named: assetName, placement: placement)
+    }
+}
+
+private extension Array where Element == CardAbilityElement {
+    func firstIconGroup(layout: CardAbilityIconGroupLayout) -> CardAbilityIconGroup? {
+        for element in self {
+            switch element {
+            case let .iconGroup(group) where group.layout == layout:
+                return group
+            case let .horizontalRow(elements):
+                if let group = elements.firstIconGroup(layout: layout) {
+                    return group
+                }
+            case .text, .icon, .points, .iconGroup:
+                continue
+            }
+        }
+        return nil
+    }
+
+    func firstIcon(named assetName: String, placement: CardAbilityIconPlacement) -> CardAbilityIcon? {
+        for element in self {
+            switch element {
+            case let .icon(icon) where icon.icon.assetName == assetName && icon.placement == placement:
+                return icon
+            case let .iconGroup(group):
+                if let icon = group.icons.first(where: { $0.icon.assetName == assetName && $0.placement == placement }) {
+                    return icon
+                }
+            case let .horizontalRow(elements):
+                if let icon = elements.firstIcon(named: assetName, placement: placement) {
+                    return icon
+                }
+            case .text, .icon, .points:
+                continue
+            }
+        }
+        return nil
+    }
+}

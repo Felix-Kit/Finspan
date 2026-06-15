@@ -187,6 +187,12 @@ final class CardLibraryViewModel: ObservableObject {
             fileExtensions: ["webp", "png"]
         )
         let triggerStyle = triggerStyleResolver.style(for: triggerText)
+        let abilityPresentation = CardAbilityPresentationBuilder().build(
+            rawAbilityText: displayAbilityText,
+            triggerTitle: triggerText,
+            triggerStyle: triggerStyle
+        )
+        let expansionBadgeIcon = expansionBadgeIcon(for: card.id)
         let fishImagePrefix = card.visualAssetName ?? inferredFishImagePrefix(cardId: card.id)
         let fishImageLookup = fishImageAssetResolver.image(
             forCardId: card.id,
@@ -213,6 +219,9 @@ final class CardLibraryViewModel: ObservableObject {
             pointsIcon: cardIcon(assetName: "Wave", fallbackText: "分", accessibilityText: "分数"),
             sizeClassIcon: sizeClassIcon,
             abilitySegments: abilitySegments,
+            abilityPresentation: abilityPresentation,
+            expansionBadgeIcon: expansionBadgeIcon,
+            hasStarterCornerDecorations: isStarterCard(card.id),
             backgroundAssetPrefix: backgroundPrefix,
             abilityStripAssetPrefix: triggerStyle.stripAssetPrefix,
             backgroundAsset: backgroundLookup.asset,
@@ -224,7 +233,7 @@ final class CardLibraryViewModel: ObservableObject {
                 backgroundLookup: backgroundLookup,
                 triggerStyle: triggerStyle,
                 fishImageLookup: fishImageLookup,
-                icons: costIcons + zoneIcons + tagIcons + [cardIcon(assetName: "Wave", fallbackText: "分", accessibilityText: "分数"), sizeClassIcon],
+                icons: costIcons + zoneIcons + tagIcons + [cardIcon(assetName: "Wave", fallbackText: "分", accessibilityText: "分数"), sizeClassIcon] + [expansionBadgeIcon].compactMap { $0 },
                 abilitySegments: abilitySegments
             ),
             aspectRatio: CardRenderMetrics.cardAspectRatio,
@@ -385,6 +394,21 @@ final class CardLibraryViewModel: ObservableObject {
             fallbackText: fallbackText,
             accessibilityText: accessibilityText
         )
+    }
+
+    private func expansionBadgeIcon(for cardId: CardID) -> FishCardFaceIconViewState? {
+        guard cardId.hasPrefix("sr.") else {
+            return nil
+        }
+        return cardIcon(
+            assetName: "SRLogo",
+            fallbackText: "S&R",
+            accessibilityText: "Sharks & Reefs"
+        )
+    }
+
+    private func isStarterCard(_ cardId: CardID) -> Bool {
+        cardId.contains(".starter.")
     }
 
     private func cardFaceMissingAssets(

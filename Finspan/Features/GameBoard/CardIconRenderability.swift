@@ -38,6 +38,15 @@ struct FishCardIconRenderDebugSummary: Equatable {
     let fishImageFound: Bool
     let flavorTextFound: Bool
     let renderAssetTypes: [String]
+    let abilityBlockCount: Int
+    let abilityBlockTypes: [String]
+    let abilityBlockBackgrounds: [String]
+    let tokenPlacements: [String]
+    let hasExpansionLogo: Bool
+    let hasStarterCorner: Bool
+    let hasAllPlayersShadow: Bool
+    let triggerBrushMode: String
+    let alsoIfBlockCount: Int
 }
 
 enum CardIconRenderabilityAnalyzer {
@@ -99,7 +108,16 @@ enum CardIconRenderabilityAnalyzer {
             missingAssetCount: viewState.missingAssets.count,
             fishImageFound: viewState.localFishImageAsset != nil,
             flavorTextFound: viewState.flavorText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false,
-            renderAssetTypes: renderAssetTypes
+            renderAssetTypes: renderAssetTypes,
+            abilityBlockCount: viewState.abilityPresentation.blocks.count,
+            abilityBlockTypes: viewState.abilityPresentation.blocks.map { "\($0.kind.rawValue):\($0.layout.rawValue)" },
+            abilityBlockBackgrounds: viewState.abilityPresentation.blocks.map { $0.backgroundAssetPrefix ?? "none" },
+            tokenPlacements: viewState.abilityPresentation.tokenPlacementSummary,
+            hasExpansionLogo: viewState.expansionBadgeIcon != nil,
+            hasStarterCorner: viewState.hasStarterCornerDecorations,
+            hasAllPlayersShadow: viewState.abilityPresentation.hasAllPlayersShadow,
+            triggerBrushMode: viewState.abilityPanelStyle.rawValue,
+            alsoIfBlockCount: viewState.abilityPresentation.alsoIfBlockCount
         )
     }
 
@@ -360,7 +378,35 @@ extension FishCardFaceViewState {
             }
             return nil
         }
-        return costIcons + zoneIcons + tagIcons + [pointsIcon, sizeClassIcon] + abilityIcons
+        let presentationIcons = abilityPresentation.blocks.flatMap { block in
+            block.elements.cardFaceIconsForRenderability
+        }
+        return costIcons
+            + zoneIcons
+            + tagIcons
+            + [pointsIcon, sizeClassIcon]
+            + abilityIcons
+            + presentationIcons
+            + [expansionBadgeIcon].compactMap { $0 }
+    }
+}
+
+private extension Array where Element == CardAbilityElement {
+    var cardFaceIconsForRenderability: [FishCardFaceIconViewState] {
+        flatMap { element -> [FishCardFaceIconViewState] in
+            switch element {
+            case let .icon(icon):
+                return [icon.icon]
+            case let .iconGroup(group):
+                return group.icons.map(\.icon)
+            case let .points(points):
+                return [points.waveIcon]
+            case let .horizontalRow(elements):
+                return elements.cardFaceIconsForRenderability
+            case .text:
+                return []
+            }
+        }
     }
 }
 

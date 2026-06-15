@@ -33,6 +33,8 @@ struct FishCardFaceView: View {
                 tagArea(unit: unit)
                 flavorArea(unit: unit)
                 abilityArea(unit: unit)
+                expansionBadgeLayer(unit: unit)
+                starterCornerDecorationsLayer(unit: unit)
 #if DEBUG
                 debugIconRenderStatusLayer(unit: unit)
 #endif
@@ -194,27 +196,12 @@ struct FishCardFaceView: View {
     }
 
     private func abilityArea(unit: CGFloat) -> some View {
-        VStack(spacing: unit * 1.1) {
-            if let trigger = viewState.abilityTriggerText {
-                Text(trigger)
-                    .font(CardFontStyleResolver.shared.font(.title, size: unit * CardRenderMetrics.CardFaceLayout.abilityFontSize))
-                    .fontWeight(.heavy)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.5)
+        VStack(spacing: unit * viewState.abilityPresentation.blockGapCqw) {
+            ForEach(Array(viewState.abilityPresentation.blocks.enumerated()), id: \.offset) { _, block in
+                abilityBlock(block, unit: unit)
             }
-
-            abilitySegments(unit: unit)
         }
-        .padding(.horizontal, abilityHorizontalPadding(unit: unit))
-        .padding(.top, unit * 3)
-        .padding(.bottom, unit * 5)
         .frame(width: unit * CardRenderMetrics.CardFaceLayout.abilityPanelWidth)
-        .frame(minHeight: unit * CardRenderMetrics.CardFaceLayout.abilityMinHeight)
-        .background {
-            abilityBackground(unit: unit)
-                .frame(width: unit * CardRenderMetrics.CardFaceLayout.triggerStripWidth)
-                .clipped()
-        }
         .clipped()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
         .padding(.top, unit * abilityTopOffset)
@@ -222,32 +209,138 @@ struct FishCardFaceView: View {
     }
 
     @ViewBuilder
-    private func abilitySegments(unit: CGFloat) -> some View {
-        let segments = viewState.abilitySegments
-        let rows = abilityRows(for: Array(segments.prefix(12)))
+    private func abilityBlock(_ block: CardAbilityBlock, unit: CGFloat) -> some View {
+        let contentElements = block.elements.filter { !$0.isAllPlayersBottomIcon }
+        let bottomIcons = block.elements.allPlayersBottomIcons
 
-        VStack(spacing: unit * 0.9) {
-            ForEach(Array(rows.prefix(6).enumerated()), id: \.offset) { _, row in
-                if row.allSatisfy(\.isIcon) {
-                    HStack(spacing: unit * 0.55) {
-                        ForEach(Array(row.enumerated()), id: \.offset) { _, segment in
-                            if case let .icon(icon) = segment {
-                                iconImage(icon, size: abilityIconSize(icon, unit: unit))
-                                    .offset(y: abilityIconVerticalOffset(icon, unit: unit))
-                            }
-                        }
-                    }
-                    .frame(maxWidth: unit * 26, alignment: .center)
-                } else if case let .text(text) = row.first {
-                    Text(text)
-                        .font(CardFontStyleResolver.shared.font(.title, size: unit * abilityTextFontSize))
-                        .fontWeight(.semibold)
-                        .lineLimit(3)
-                        .minimumScaleFactor(0.42)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(viewState.kind == .placeholder ? .secondary : .primary)
+        ZStack(alignment: .center) {
+            abilityBlockBackground(block, unit: unit)
+
+            VStack(spacing: unit * abilityBlockSpacing(block.layout)) {
+                ForEach(Array(contentElements.prefix(12).enumerated()), id: \.offset) { _, element in
+                    abilityElement(element, blockLayout: block.layout, unit: unit)
                 }
             }
+
+            ForEach(Array(bottomIcons.enumerated()), id: \.offset) { _, icon in
+                abilityIcon(icon, unit: unit)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    .padding(.bottom, unit * 4)
+            }
+        }
+        .padding(.horizontal, unit * abilityBlockHorizontalPadding(block.layout))
+        .padding(.top, unit * abilityBlockTopPadding(block.layout))
+        .padding(.bottom, unit * abilityBlockBottomPadding(block.layout))
+        .frame(width: unit * CardRenderMetrics.CardFaceLayout.triggerStripWidth)
+        .frame(minHeight: unit * abilityBlockMinHeight(block.layout))
+        .clipped()
+    }
+
+    private func abilityElement(
+        _ element: CardAbilityElement,
+        blockLayout: CardAbilityBlockLayout,
+        unit: CGFloat
+    ) -> AnyView {
+        switch element {
+        case let .text(text):
+            if !text.text.isEmpty {
+                return AnyView(Text(text.text)
+                    .font(CardFontStyleResolver.shared.font(.title, size: unit * abilityTextFontSize(for: blockLayout)))
+                    .fontWeight(text.isBold ? .heavy : .semibold)
+                    .lineLimit(blockLayout == .alsoIf ? 4 : 3)
+                    .minimumScaleFactor(0.42)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(viewState.kind == .placeholder ? .secondary : .primary)
+                    .frame(maxWidth: unit * 25))
+            }
+            return AnyView(EmptyView())
+        case let .icon(icon):
+            return AnyView(abilityIcon(icon, unit: unit))
+        case let .iconGroup(group):
+            return AnyView(abilityIconGroup(group, unit: unit))
+        case let .points(points):
+            return AnyView(HStack(alignment: .top, spacing: -unit * 1.8) {
+                if !points.pointsText.isEmpty {
+                    Text(points.pointsText)
+                        .font(CardFontStyleResolver.shared.font(.title, size: unit * 7.2))
+                        .fontWeight(.heavy)
+                }
+                iconImage(points.waveIcon, size: unit * 7)
+                    .offset(y: unit * 1.2)
+            })
+        case let .horizontalRow(elements):
+            return AnyView(HStack(spacing: unit * 0.7) {
+                ForEach(Array(elements.enumerated()), id: \.offset) { _, child in
+                    abilityElement(child, blockLayout: blockLayout, unit: unit)
+                }
+            }
+            .frame(maxWidth: unit * 26, alignment: .center))
+        }
+    }
+
+    @ViewBuilder
+    private func abilityIconGroup(_ group: CardAbilityIconGroup, unit: CGFloat) -> some View {
+        switch group.layout {
+        case .arrowFlow:
+            VStack(spacing: -unit * 4.2) {
+                ForEach(Array(group.icons.enumerated()), id: \.offset) { _, icon in
+                    abilityIcon(icon, unit: unit)
+                }
+            }
+            .frame(maxWidth: unit * 18, alignment: .center)
+        case .coralHorizontal, .horizontal:
+            HStack(spacing: unit * 0.45) {
+                ForEach(Array(group.icons.enumerated()), id: \.offset) { _, icon in
+                    abilityIcon(icon, unit: unit)
+                }
+            }
+            .frame(maxWidth: unit * 24, alignment: .center)
+        case .vertical:
+            VStack(spacing: unit * 0.9) {
+                ForEach(Array(group.icons.enumerated()), id: \.offset) { _, icon in
+                    abilityIcon(icon, unit: unit)
+                }
+            }
+            .frame(maxWidth: unit * 18, alignment: .center)
+        }
+    }
+
+    private func abilityIcon(_ icon: CardAbilityIcon, unit: CGFloat) -> some View {
+        CardFaceIconAssetView(
+            icon: icon.icon,
+            size: abilityIconSize(icon.icon, unit: unit),
+            style: icon.style
+        )
+        .offset(y: abilityIconVerticalOffset(icon.icon, unit: unit))
+    }
+
+    @ViewBuilder
+    private func abilityBlockBackground(_ block: CardAbilityBlock, unit: CGFloat) -> some View {
+        if let image = rasterImage(for: block.backgroundAsset) {
+            Image(uiImage: image)
+                .resizable(
+                    capInsets: EdgeInsets(
+                        top: unit * 2,
+                        leading: unit * 2,
+                        bottom: unit * 2,
+                        trailing: unit * 2
+                    ),
+                    resizingMode: .stretch
+                )
+                .renderingMode(.original)
+                .scaledToFill()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: unit * 1.3))
+        } else if block.backgroundAssetPrefix == nil {
+            Color.clear
+        } else {
+#if DEBUG
+            RoundedRectangle(cornerRadius: unit * 1.2)
+                .stroke(Color.red.opacity(0.7), lineWidth: max(1, unit * 0.24))
+#else
+            Color.clear
+#endif
         }
     }
 
@@ -320,6 +413,70 @@ struct FishCardFaceView: View {
         }
     }
 
+    private func abilityTextFontSize(for layout: CardAbilityBlockLayout) -> CGFloat {
+        switch layout {
+        case .alsoIf:
+            return 3.45
+        case .squished:
+            return 3.55
+        case .standard:
+            return abilityTextFontSize
+        }
+    }
+
+    private func abilityBlockSpacing(_ layout: CardAbilityBlockLayout) -> CGFloat {
+        switch layout {
+        case .alsoIf:
+            return 0.7
+        case .squished:
+            return 0.55
+        case .standard:
+            return 1
+        }
+    }
+
+    private func abilityBlockHorizontalPadding(_ layout: CardAbilityBlockLayout) -> CGFloat {
+        switch layout {
+        case .alsoIf:
+            return 1
+        case .squished, .standard:
+            return 0
+        }
+    }
+
+    private func abilityBlockTopPadding(_ layout: CardAbilityBlockLayout) -> CGFloat {
+        switch layout {
+        case .alsoIf:
+            return 3
+        case .squished:
+            return 2
+        case .standard:
+            return 3
+        }
+    }
+
+    private func abilityBlockBottomPadding(_ layout: CardAbilityBlockLayout) -> CGFloat {
+        switch layout {
+        case .alsoIf:
+            return 3
+        case .squished:
+            return 2
+        case .standard:
+            return 5
+        }
+    }
+
+    private func abilityBlockMinHeight(_ layout: CardAbilityBlockLayout) -> CGFloat {
+        switch layout {
+        case .alsoIf:
+            return 15
+        case .squished:
+            return 13
+        case .standard:
+            return CardRenderMetrics.CardFaceLayout.abilityMinHeight
+        }
+    }
+
     private func abilityHorizontalPadding(unit: CGFloat) -> CGFloat {
         switch viewState.abilityPanelStyle {
         case .none:
@@ -335,6 +492,34 @@ struct FishCardFaceView: View {
             return unit * 6
         case .tanBrush, .yellowBrush:
             return 0
+        }
+    }
+
+    @ViewBuilder
+    private func expansionBadgeLayer(unit: CGFloat) -> some View {
+        if let icon = viewState.expansionBadgeIcon {
+            iconImage(icon, size: unit * 3.0)
+                .opacity(0.9)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                .padding(.bottom, unit * 2)
+                .padding(.trailing, unit * 1.5)
+        }
+    }
+
+    @ViewBuilder
+    private func starterCornerDecorationsLayer(unit: CGFloat) -> some View {
+        if viewState.hasStarterCornerDecorations {
+            let size = unit * 7.5
+            ZStack {
+                CardCornerTriangle(corner: .topLeft)
+                    .fill(Color(red: 0.44, green: 0.44, blue: 0.46))
+                    .frame(width: size, height: size)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                CardCornerTriangle(corner: .bottomRight)
+                    .fill(Color(red: 0.44, green: 0.44, blue: 0.46))
+                    .frame(width: size, height: size)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+            }
         }
     }
 
@@ -593,6 +778,11 @@ struct FishCardFaceView: View {
             Text("icons \(summary.iconCount)  failed \(summary.failedIconCount)")
             Text("missing \(summary.missingAssetCount)  fish \(summary.fishImageFound ? "yes" : "no")")
             Text("flavor \(summary.flavorTextFound ? "yes" : "no")")
+            Text("blocks \(summary.abilityBlockCount)  alsoIf \(summary.alsoIfBlockCount)")
+            Text("brush \(summary.triggerBrushMode)  allPlayersShadow \(summary.hasAllPlayersShadow ? "yes" : "no")")
+            Text("badge \(summary.hasExpansionLogo ? "yes" : "no")  starter \(summary.hasStarterCorner ? "yes" : "no")")
+            Text("blockTypes \(summary.abilityBlockTypes.prefix(3).joined(separator: ","))")
+                .lineLimit(2)
             Text("failed \(failedNames)")
                 .lineLimit(3)
         }
@@ -629,6 +819,7 @@ struct FishCardFaceView: View {
 private struct CardFaceIconAssetView: View {
     let icon: FishCardFaceIconViewState
     let size: CGFloat
+    var style: CardAbilityIconStyle = .normal
 
     var body: some View {
         Group {
@@ -642,6 +833,12 @@ private struct CardFaceIconAssetView: View {
             }
         }
         .frame(width: size, height: size)
+        .shadow(
+            color: style == .allPlayersShadow ? Color(red: 0.25, green: 0.25, blue: 0.25).opacity(0.78) : .clear,
+            radius: style == .allPlayersShadow ? max(size * 0.12, 1) : 0,
+            x: 0,
+            y: 0
+        )
         .accessibilityLabel(Text(icon.accessibilityText))
     }
 
@@ -671,5 +868,51 @@ private struct CardFaceIconAssetView: View {
             return nil
         }
         return UIImage(contentsOfFile: asset.url.path)
+    }
+}
+
+private enum CardCornerPosition {
+    case topLeft
+    case bottomRight
+}
+
+private struct CardCornerTriangle: Shape {
+    let corner: CardCornerPosition
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        switch corner {
+        case .topLeft:
+            path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        case .bottomRight:
+            path.move(to: CGPoint(x: rect.maxX, y: rect.maxY))
+            path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        }
+        path.closeSubpath()
+        return path
+    }
+}
+
+private extension CardAbilityElement {
+    var isAllPlayersBottomIcon: Bool {
+        if case let .icon(icon) = self {
+            return icon.placement == .allPlayersBottom
+        }
+        return false
+    }
+}
+
+private extension Array where Element == CardAbilityElement {
+    var allPlayersBottomIcons: [CardAbilityIcon] {
+        compactMap { element in
+            if case let .icon(icon) = element,
+               icon.placement == .allPlayersBottom {
+                return icon
+            }
+            return nil
+        }
     }
 }

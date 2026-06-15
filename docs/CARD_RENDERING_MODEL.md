@@ -113,15 +113,30 @@ DOM card structure:
 - printed points, length, and size-class icons in CSS-inspired lower-left areas
 - tag icons near the title when present
 - ability trigger/text in a right-side panel
+- ability presentation in a right-side panel generated from raw English ability
+  text before SwiftUI rendering; SwiftUI does not parse ability text inside
+  `body`
 - English flavor / description text in the bottom live `.description` area
-- IF ACTIVATED uses the local `IfActivated` tan brush/strip background
-- GAME END uses the local `GameEnd` yellow brush/strip background
+- IF ACTIVATED uses the local `IfActivated` brush/strip background per ability
+  block
+- GAME END uses the local `GameEnd` brush/strip background per ability block
 - WHEN PLAYED remains a transparent icon-composition area
 - ability token parsing covers the current runtime base-game and S&R tokens,
   including `[FishFromHand]`, `[ArrowDown]`, `[PlayFishBottomRow]`,
   `[FishEgg]`, `[YoungFish]`, `[SchoolFish]`, `[Wave]`, `[AllPlayers]`,
   flipper icons, length icons, coral icons, and consume/discard/draw/hatch
   tokens
+- consecutive icon runs follow the live renderer composition model: plus groups
+  become horizontal ability rows, coral runs become horizontal coral groups, and
+  arrow runs such as Great White Shark become vertical arrow-flow groups
+- `also, if` IF ACTIVATED abilities are split into a squished main brush block
+  and a separate also-if brush block with a live-like gap
+- `AllPlayers` uses a card-specific drop-shadow style matching the live CSS
+  filter
+- S&R cards display the live `SRLogo` expansion badge at the lower-right
+- starter cards display two clipped gray corner overlays based on live CSS
+  `.corner-overlay`; `StarterIcon` is retained as a search/filter live asset,
+  not used for the fish-card corner decoration
 
 All card-face icons use explicit SwiftUI frames from `CardRenderMetrics` and
 `.resizable().scaledToFit()`. PNG intrinsic size is intentionally ignored for
@@ -130,7 +145,8 @@ display size. Loading failure is visible in DEBUG as a red fallback marker and
 is not silently rendered as a white placeholder.
 
 This is intentionally a display layer only. It does not implement or interpret
-real fish abilities.
+real fish abilities. The presentation builder reads raw English card-face text
+and metadata only to decide card-face composition, not gameplay behavior.
 
 The floating hand, discard pile preview/detail, and ocean slots all use this
 same complete card face and adapt by outer frame / scale only. This stage does

@@ -125,7 +125,7 @@ Pass 2 继续以 live finsearch 为 source of truth，修正“view state 已有
 - live SVG icon 现在有同名 PNG 派生资源，`CardSymbolAssetResolver` 对 icon lookup 优先返回 PNG / WebP，再 fallback SVG。这样 cost、zone、Wave、FishLength 和 ability token 在 iOS runtime 中通过 `UIImage(contentsOfFile:)` 渲染，不再依赖 loose SVG 被 `Image(resourceName)` 正确识别。
 - `FishCardFaceViewState` 新增 `flavorText`，base / S&R 215 张卡的英文 description 从 live JS 抽取为 `Finspan/Resources/CardAssets/card_face_descriptions.json`；S&R 如已有 `rawSource.description` 则优先使用原 JSON 字段。这个 metadata 只用于牌面渲染，不改变 `Resources/Cards/*.json` 或规则。
 - `FishCardFaceView` 新增 live `.description` 区域：left 22cqw、top 50cqw、width 50cqw、`Lexus Roman Optical` italic、2.5cqw，恢复底部英文 flavor text。
-- ability icon sequence 从垂直堆叠改为横向 row，贴近 live `.ability-row`，Great White Shark 的 `[FishEgg][ArrowDown][Predator] ... [AllPlayers]` 现在通过通用 parser / resolver 渲染真实图标。
+- ability icon sequence 已进入 resolver-backed view state；Pass 2 当时仍是近似布局，后续 Pass 已改为 live token composition model，不再把所有连续 icon 简化为统一横排。
 - `Panforte Pro`、`Dolce`、`Lexus Roman Optical` 分别落到 title / scientific name / flavor text；points、length、trigger 和 ability copy 继续使用 live title font family。
 - Great White Shark、Great Northern Tilefish、Great Barracuda 是本轮代表卡审计样例，不是 special case。
 
@@ -157,6 +157,37 @@ Pass 2 后又完成了一轮 Fish Card Icon Vector / Renderability Pipeline Fix�
 - `base.main.057` Great White Shark：`FishEgg` / `ArrowDown` / `Predator` / `AllPlayers` 均指向可渲染 PNG；Wave、FishLengthLarge、fish image、flavor text 都可用。
 - `base.main.056` Great Northern Tilefish：`FishHatch` token 可渲染；If Activated strip 和 flavor text 可用。
 - `sr.main.161` Great Barracuda：coral requirement、`BlueCoral`、`AllPlayers`、Wave、FishLengthLarge 均可渲染。
+
+## Ability Layout / Badge Fidelity Pass
+
+本轮修复的是 ability composition、brush blocks、expansion badge 和 starter corner，不是重新做 icon renderability。白块问题仍由上一节的 PNG render asset pipeline 解决。
+
+Live renderer 中的 ability model 来自 `references/webpage_live/static/js/main.3f6711eb.js` 和 `main.f74b3868.css`：
+
+- `A(text)` 按 raw ability text token 化。普通 token 渲染为 icon；连续 icon 会形成 `.icon-group`；只有 `[A] + [B]` 这类 plus group 才进入 `.ability-row` 横排。
+- `F(card)` 为 ability panel 生成 block。普通 IF ACTIVATED / GAME END 是一个 `.ability` brush block；`IF ACTIVATED` 中包含 `also, if` 时拆成主 `.ability.squished` 和条件 `.ability.also-if` 两个 brush blocks，中间由 `.ability-container` gap 分隔。
+- `.ability .ArrowDown` 使用更高 icon height 和负 margin 形成 vertical flow。
+- `.ability .AllPlayers` 使用 `filter: drop-shadow(0 0 4px #404040)`，并在 block 底部绝对定位。
+- S&R 牌在右下角显示 `.expansion-logo`，asset 为 `SRLogo`。
+- Starter 牌的角标不是 `StarterIcon` 图片，而是 `.corner-overlay` CSS clipped gray triangles，左上和右下各一个。
+
+Swift 当前映射：
+
+- 新增 `CardAbilityPresentation` / `CardAbilityBlock` / `CardAbilityElement`，由 `GameBoardViewModel` 和 `CardLibraryViewModel` 在构造 `FishCardFaceViewState` 时生成。`FishCardFaceView` 只渲染 presentation model，不在 `body` 中重新 parse ability text。
+- Great White Shark 的 `(all players) [FishEgg][ArrowDown][Predator] on each [AllPlayers]` 通过通用 icon-run 规则生成 `arrowFlow` group：`FishEgg`、`ArrowDown`、`Predator` 竖向连接；`on each` 保持文本元素；`AllPlayers` 使用 bottom placement 和 live drop-shadow style。没有按 `base.main.057` 写 special case。
+- `sr.starter.212` Atlantic Barracudina 的 `also, if [GreenCoral][GreenCoral][GreenCoral] in this dive site: [SchoolFeederMove]` 被拆成两个 brush blocks；第二个 block 是 `alsoIf` layout，三枚 `GreenCoral` 形成 horizontal coral group。
+- IF ACTIVATED / GAME END / also-if block 的 background 都使用 live trigger strip asset，不再用纯色 `Rectangle` 作为正常路径。DEBUG 下只有 asset 缺失时才显示红色 outline fallback。
+- `CardFaceIconAssetView` 增加 `CardAbilityIconStyle.allPlayersShadow`，只影响 `AllPlayers`，不改变普通 icon。
+- `FishCardFaceViewState.expansionBadgeIcon` 对 `sr.*` 牌返回 `SRLogo`；base 牌不显示 S&R badge。
+- `FishCardFaceViewState.hasStarterCornerDecorations` 对 `.starter.` card id 为 true；SwiftUI 用 clipped gray vector triangles 还原 live CSS corner overlay。`StarterIcon` 仍作为搜索 / filter live asset 保留并通过 renderability audit，但不用于牌面 corner。
+- DEBUG card face status 面板扩展 ability layout / badge 信息：ability block count、block type、background asset、token placement、S&R logo、starter corner、AllPlayers shadow、trigger brush mode 和 also-if block count。
+
+Focused tests 覆盖：
+
+- `FishCardAbilityLayoutTests`
+- `CardExpansionBadgeTests`
+- `StarterCardCornerTests`
+- 既有 `FishCardRenderingFidelityTests` 和 `FishCardIconRenderabilityTests`
 
 ## Resource Diff
 
@@ -211,11 +242,12 @@ Pass 2 对 215 张真实卡做了 ability / cost / zone / tag / points / length 
 
 ## Great White Shark
 
-Great White Shark 是 QA 样例，不是 special case。它已从旧近似渲染提升到 Pass 1.5 web mapping：
+Great White Shark 是 QA 样例，不是 special case。它已从旧近似渲染提升到 live ability presentation mapping：
 
 - real JSON 中保持 `base.main.057`，`visualAssetName` 仍为 `null`，不修改 card JSON。
 - Swift 通过 canonical card id 推导 source id 57，fish image 解析到 live `57.*.webp`。
 - ability token `[FishEgg][ArrowDown][Predator][AllPlayers]` 全部解析为 live-derived PNG render asset。
+- ability layout 不再是 flat horizontal row：`FishEgg` / `ArrowDown` / `Predator` 进入 `arrowFlow` icon group，`AllPlayers` 进入 bottom placement 并带 live drop-shadow style。
 - length 600 cm 映射到 `FishLengthLarge`。
 - cost 使用 `YoungFish` 和 web `ConsumeFish` mapping。
 - trigger title 使用 `WHEN PLAYED` 英文牌面文案；background / font 全部走 resolver view state。
@@ -226,8 +258,9 @@ Great White Shark 是 QA 样例，不是 special case。它已从旧近似渲染
 Pass 2 固定审计这些代表卡：
 
 - `base.main.057` Great White Shark：sourceId 57 fish image、young + consume cost、Sun / Dusk / Night zones、Wave points、FishLengthLarge、WHEN PLAYED token sequence、English flavor text。
-- `base.main.056` Great Northern Tilefish：sourceId 56 fish image、draw + egg cost、Sun / Dusk zones、green band、IF ACTIVATED trigger strip、FishHatch token pair、English flavor text。
-- `sr.main.161` Great Barracuda：sourceId 161 fish image、draw + consume + coral requirement icons、Sun zone、Wave points、FishLengthLarge、BlueCoral / AllPlayers token sequence、English flavor text.
+- `base.main.056` Great Northern Tilefish：sourceId 56 fish image、draw + egg cost、Sun / Dusk zones、green band、IF ACTIVATED trigger strip brush block、FishHatch token pair、English flavor text。
+- `sr.main.161` Great Barracuda：sourceId 161 fish image、draw + consume + coral requirement icons、Sun zone、Wave points、FishLengthLarge、S&R expansion badge、BlueCoral / AllPlayers token sequence、English flavor text。
+- `sr.starter.212` Atlantic Barracudina：S&R starter badge / corner、IF ACTIVATED `also, if` split brush blocks、GreenCoral horizontal group、SchoolFeederMove bonus token。
 
 ## QA Preview
 
@@ -253,9 +286,9 @@ Pass 2 固定审计这些代表卡：
 Pass 2 后仍有这些差距：
 
 - exact cqw positioning、line-height、font weight 和 text wrapping 尚未逐项像素对齐。
-- ability text 内容来自本地 JSON 的 English / raw source；layout 已按 live CSS 分区，但 inline text/icon 混排仍不是完整 HTML renderer。
+- ability text 内容来自本地 JSON 的 English / raw source；ability block / icon-run / also-if / badge / corner 已按 live CSS/JS model 分区，但 inline wrapping 仍不是完整 HTML renderer。
 - fish silhouette 的 opacity、blend mode 和裁切仍需截图对照。
-- trigger strip 和 ability panel 的像素级间距仍需后续 screenshot pass 精调。
+- trigger strip 和 ability panel 的像素级 padding、negative margin、absolute placement 仍需后续 screenshot pass 精调。
 - `PlayFishTopRow` / `PlayFishAny` 仍需确认是组合图标、逻辑 token、旧 token 名，还是 live renderer 无独立素材。
 - Swift renderer 仍不是 HTML renderer；不会用 `WKWebView` 渲染每张卡。
 

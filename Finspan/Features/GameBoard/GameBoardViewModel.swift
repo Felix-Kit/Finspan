@@ -228,6 +228,9 @@ struct FishCardFaceViewState: Equatable {
     let pointsIcon: FishCardFaceIconViewState
     let sizeClassIcon: FishCardFaceIconViewState
     let abilitySegments: [FishCardAbilitySegment]
+    let abilityPresentation: CardAbilityPresentation
+    let expansionBadgeIcon: FishCardFaceIconViewState?
+    let hasStarterCornerDecorations: Bool
     let backgroundAssetPrefix: String
     let abilityStripAssetPrefix: String?
     var backgroundAsset: CardAssetReference? = nil
@@ -3995,6 +3998,9 @@ final class GameBoardViewModel: ObservableObject {
                 pointsIcon: cardIcon(assetName: "Wave", fallbackText: "分", accessibilityText: "分数"),
                 sizeClassIcon: cardIcon(assetName: "FishLengthMedium", fallbackText: "中", accessibilityText: "中型鱼"),
                 abilitySegments: FishCardAbilityTokenParser.parse(AppStrings.GameBoard.abilityUnsupported),
+                abilityPresentation: .empty,
+                expansionBadgeIcon: nil,
+                hasStarterCornerDecorations: false,
                 backgroundAssetPrefix: cardBackgroundAssetPrefix(for: nil),
                 abilityStripAssetPrefix: nil,
                 abilityPanelStyle: .none,
@@ -4019,6 +4025,12 @@ final class GameBoardViewModel: ObservableObject {
         let backgroundPrefix = cardBackgroundAssetPrefix(for: card.requiredDiveSiteColor)
         let backgroundLookup = cardBackgroundAssetLookup(prefix: backgroundPrefix)
         let triggerStyle = triggerStyleResolver.style(for: triggerText)
+        let abilityPresentation = CardAbilityPresentationBuilder().build(
+            rawAbilityText: displayAbilityText,
+            triggerTitle: triggerText,
+            triggerStyle: triggerStyle
+        )
+        let expansionBadgeIcon = expansionBadgeIcon(for: card.id)
         let fishImagePrefix = card.visualAssetName ?? inferredFishImagePrefix(cardId: card.id)
         let fishImageLookup = fishImageAssetResolver.image(
             forCardId: card.id,
@@ -4045,6 +4057,9 @@ final class GameBoardViewModel: ObservableObject {
             pointsIcon: cardIcon(assetName: "Wave", fallbackText: "分", accessibilityText: "分数"),
             sizeClassIcon: sizeClassIcon,
             abilitySegments: abilitySegments,
+            abilityPresentation: abilityPresentation,
+            expansionBadgeIcon: expansionBadgeIcon,
+            hasStarterCornerDecorations: isStarterCard(card.id),
             backgroundAssetPrefix: backgroundPrefix,
             abilityStripAssetPrefix: triggerStyle.stripAssetPrefix,
             backgroundAsset: backgroundLookup.asset,
@@ -4056,7 +4071,7 @@ final class GameBoardViewModel: ObservableObject {
                 backgroundLookup: backgroundLookup,
                 triggerStyle: triggerStyle,
                 fishImageLookup: fishImageLookup,
-                icons: costIcons + zoneIcons + tagIcons + [cardIcon(assetName: "Wave", fallbackText: "分", accessibilityText: "分数"), sizeClassIcon],
+                icons: costIcons + zoneIcons + tagIcons + [cardIcon(assetName: "Wave", fallbackText: "分", accessibilityText: "分数"), sizeClassIcon] + [expansionBadgeIcon].compactMap { $0 },
                 abilitySegments: abilitySegments
             ),
             aspectRatio: CardRenderMetrics.cardAspectRatio,
@@ -4114,6 +4129,9 @@ final class GameBoardViewModel: ObservableObject {
                 pointsIcon: cardIcon(assetName: "Wave", fallbackText: "分", accessibilityText: "分数"),
                 sizeClassIcon: cardIcon(assetName: "FishLengthMedium", fallbackText: "中", accessibilityText: "中型鱼"),
                 abilitySegments: FishCardAbilityTokenParser.parse(AppStrings.GameBoard.cardFaceNoAbility),
+                abilityPresentation: .empty,
+                expansionBadgeIcon: nil,
+                hasStarterCornerDecorations: false,
                 backgroundAssetPrefix: cardBackgroundAssetPrefix(for: nil),
                 abilityStripAssetPrefix: nil,
                 abilityPanelStyle: .none,
@@ -4143,6 +4161,9 @@ final class GameBoardViewModel: ObservableObject {
                 pointsIcon: cardIcon(assetName: "Wave", fallbackText: "分", accessibilityText: "分数"),
                 sizeClassIcon: cardSizeClassIcon(lengthCm: fish.lengthCm),
                 abilitySegments: FishCardAbilityTokenParser.parse(AppStrings.GameBoard.cardFaceNoAbility),
+                abilityPresentation: .empty,
+                expansionBadgeIcon: nil,
+                hasStarterCornerDecorations: false,
                 backgroundAssetPrefix: cardBackgroundAssetPrefix(for: nil),
                 abilityStripAssetPrefix: nil,
                 abilityPanelStyle: .none,
@@ -4368,6 +4389,21 @@ final class GameBoardViewModel: ObservableObject {
             fallbackText: fallbackText,
             accessibilityText: accessibilityText
         )
+    }
+
+    private func expansionBadgeIcon(for cardId: CardID) -> FishCardFaceIconViewState? {
+        guard cardId.hasPrefix("sr.") else {
+            return nil
+        }
+        return cardIcon(
+            assetName: "SRLogo",
+            fallbackText: "S&R",
+            accessibilityText: "Sharks & Reefs"
+        )
+    }
+
+    private func isStarterCard(_ cardId: CardID) -> Bool {
+        cardId.contains(".starter.")
     }
 
     private func cardSizeClassIcon(_ card: Card) -> FishCardFaceIconViewState {
