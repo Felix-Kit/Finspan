@@ -100,6 +100,7 @@ enum AppStrings {
             static let sharksAndReefsBadge = "S&R"
             static let unknownExpansionBadge = "未知"
             static let empty = "暂无鱼牌"
+            static let qaSearchPlaceholder = "按英文名、编号、触发或图标搜索"
         }
 
         static func defaultRoomName(ownerName: String) -> String {

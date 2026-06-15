@@ -129,9 +129,13 @@
 - `CardRenderMetrics` 已落地，使用本地 finsearch 背景素材推导出的统一卡牌比例。
 - `CardAssetResolver` / `CardSymbolAssetResolver` / `AbilityTokenAssetResolver` / `FishImageAssetResolver` / `CardTriggerStyleResolver` / `CardFontStyleResolver` 已接入，用于把 web renderer mapping 转成可缓存的 Swift view state。
 - `FishCardFaceView` 已完成 Fidelity Pass 1：fish image 按 sourceId 映射，ability token 使用 SVG/icon，ArrowDown、长度、光层、触发条和字体走 live asset resolver。
-- Great White Shark 已明显改善：`base.main.057` 映射到 `57.*.webp`，`FishEgg` / `ArrowDown` / `Predator` / `AllPlayers` 均解析到真实 SVG。
+- `FishCardFaceView` Fidelity Pass 1.5 已完成，范围是 asset wiring correctness，不是像素级 Pass 2：trigger strip 宽度被限制在 ability panel 内，cost / requirement icons、zone icons、`Wave` points icon、`FishLengthSmall` / `Medium` / `Large` 和 ability token sequence 都走 resolver view state。
+- 鱼牌牌面文案已改为 English / raw source：name、scientific name、ability text 和 trigger title 不再使用中文牌面文案；App 外层中文 UI 不受影响。
+- Great White Shark 是 QA 样例，不是 special case：`base.main.057` 映射到 `57.*.webp`，`FishEgg` / `ArrowDown` / `Predator` / `AllPlayers` 均解析到真实 SVG，cost 显示 `YoungFish` / `ConsumeFish`，length 600 cm 映射到 `FishLengthLarge`。
+- DEBUG 牌库 QA 搜索已接入：Lobby → 牌库 → 所有牌，可按 English name、canonical card id、sourceId、trigger 或 token 稳定预览代表卡，不依赖随机发牌。
+- Pass 1.5 全量 215 张真实卡 source-id / static icon / ability token 审计结果：missing asset / fallback count 0。
 - 手牌、弃牌堆和 ocean slot 当前仍共用同一完整卡牌牌面。
-- 当前牌面仍是 Pass 1 近似复刻，不是完整 finsearch 像素级复刻。详见 `docs/CARD_RENDERING_FIDELITY.md`。
+- 当前牌面仍是 Pass 1.5 近似复刻，不是完整 finsearch 像素级复刻。详见 `docs/CARD_RENDERING_FIDELITY.md`。
 
 ## 当前仍需修复 / 待做
 
@@ -158,6 +162,6 @@
 
 ## 当前建议下一步
 
-1. 做 FishCardFaceView Fidelity Pass 2：用 live screenshot 做像素级 layout / font / spacing / fish silhouette 对照。
+1. 做 FishCardFaceView Fidelity Pass 2：在 Pass 1.5 wiring 正确的基础上，用 live screenshot 做像素级 layout / font / spacing / fish silhouette 对照。
 2. 继续做 GameBoardViewModel pending UI 小步稳定，重点是 target / payment / discard-selection prompt fallback。
 3. 再修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。

@@ -38,6 +38,9 @@ enum CardRenderMetrics {
         static let lengthFontSize: Double = 5
         static let lengthIconHeight: Double = 11
         static let abilityWidth: Double = 30
+        static let abilityPanelWidth: Double = abilityWidth
+        static let triggerStripWidth: Double = abilityPanelWidth
+        static let fullCardWidth: Double = 100
         static let abilityTop: Double = 16
         static let abilityMinHeight: Double = 20
         static let abilityFontSize: Double = 4.1

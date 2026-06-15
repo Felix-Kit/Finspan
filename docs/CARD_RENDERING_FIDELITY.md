@@ -1,7 +1,7 @@
 # Card Rendering Fidelity
 
 本文件记录 Finsearch card renderer reverse engineering 和
-`FishCardFaceView` Fidelity Pass 1。这里描述的是展示层，不描述或改变游戏规则。
+`FishCardFaceView` Fidelity Pass 1 / Pass 1.5。这里描述的是展示层，不描述或改变游戏规则。
 
 ## Source of Truth
 
@@ -67,7 +67,7 @@ Live asset count 为 288：
 
 ## Web-to-Swift Mapping
 
-本轮新增 Swift resolver 层，把 web renderer model 映射到可缓存的 view state：
+Swift resolver 层把 web renderer model 映射到可缓存的 view state：
 
 - `CardAssetResolver`
 - `CardSymbolAssetResolver`
@@ -108,6 +108,16 @@ Live asset count 为 288：
 - `IfActivated`
 - `GameEnd`
 
+Pass 1.5 修正了“资源已导入但未完整应用”的 wiring 问题：
+
+- `IfActivated` / `GameEnd` trigger strip 被限制在 ability panel 宽度内，layout metadata 明确区分 full-card width、ability panel width 和 trigger strip width；背景使用 stretch + clipping，不再横向溢出到鱼图区域。
+- cost / requirement 区域统一由 `FishCardFaceViewState.costIcons` 驱动，base cost、egg、young、consume、school fish、NoCost 和 S&R coral requirement 都走 `CardSymbolAssetResolver`。
+- zone 区域统一由 `zoneIcons` 驱动，`Sun` / `Dusk` / `Night` 和 live `midnight == 2` 的 `PlayFishBottomRow` 都走真实 asset；`PlayFishBottomRow` 只作为显示层 live source mapping，不改变 `OceanZone` 规则语义。
+- points 区域新增 `pointsIcon` view-state 字段，分数图标使用 live `Wave` asset，不再在 View 内硬编码无 resolver 图标。
+- length 区域继续使用 `FishLengthSmall` / `FishLengthMedium` / `FishLengthLarge`，并通过 resolver 确认真实 SVG。
+- card face 内的 name、scientific name、ability text 和 trigger title 使用 English / raw source；外层 App UI 仍可继续使用中文。
+- ability token sequence 基于 raw ability text 解析，`FishCardFaceView` 渲染 resolver 后的 icon sequence，未知 token 会进入 `MissingCardAsset`。
+
 `WhenPlayed` 目前保持透明 ability 区；`IfActivated` 和 `GameEnd` 使用 live trigger strip asset 和 Swift panel style。
 
 ## Resource Diff
@@ -142,32 +152,56 @@ Live asset count 为 288：
 
 Fallback 只能作为最后兜底，并通过 `MissingCardAsset` 进入 view state 供审计：
 
-- `PlayFishTopRow` 和 `PlayFishAny` 是已建模 logical token，但本轮未在 live asset 中找到对应独立素材。
-- 未知 ability token 会显示 `UnknownToken` fallback，并保留原 token 信息。
+- `PlayFishTopRow` 和 `PlayFishAny` 是已建模 logical token，但当前 215 张真实卡没有使用它们；如果未来数据出现且 live asset 仍无独立素材，会进入 missing report。
+- 未知 ability token 会显示 `?` fallback，并以原 token 名进入 `MissingCardAsset`。
 - 如果某个 live asset 后续缺失，Swift 会显示最小 fallback text，但该缺失会进入 `missingAssets`，不能被当作完成状态。
+
+Pass 1.5 对 215 张真实卡做了 source-id / static icon / ability token 审计：
+
+- cards: 215
+- ability token references: 554
+- unique token names: 33
+- missing asset / fallback count: 0
 
 ## Great White Shark
 
-Great White Shark 已从旧近似渲染提升到 Pass 1 web mapping：
+Great White Shark 是 QA 样例，不是 special case。它已从旧近似渲染提升到 Pass 1.5 web mapping：
 
 - real JSON 中保持 `base.main.057`，`visualAssetName` 仍为 `null`，不修改 card JSON。
 - Swift 通过 canonical card id 推导 source id 57，fish image 解析到 live `57.*.webp`。
 - ability token `[FishEgg][ArrowDown][Predator][AllPlayers]` 全部解析为 SVG asset。
 - length 600 cm 映射到 `FishLengthLarge`。
 - cost 使用 `YoungFish` 和 web `ConsumeFish` mapping。
-- trigger / background / font 全部走 resolver view state。
+- trigger title 使用 `WHEN PLAYED` 英文牌面文案；background / font 全部走 resolver view state。
+
+## QA Preview
+
+不需要靠随机发牌检查代表卡。DEBUG build 中打开：
+
+1. Lobby。
+2. `牌库`。
+3. 切换到 `所有牌`。
+4. 使用顶部 DEBUG 搜索框按 English name、canonical card id、sourceId、trigger title 或 token 搜索。
+
+可稳定搜索：
+
+- `Great White Shark` / `base.main.057` / `57`
+- `If Activated`
+- `Game End`
+- `AnyCoral` / `BlueCoral` / `GreenCoral` / `PurpleCoral`
+- `FishLengthSmall` / `FishLengthMedium` / `FishLengthLarge`
 
 视觉目标是“明显像网页”，不是像素级完成。
 
 ## Current Gap to Live Renderer
 
-Pass 1 仍有这些差距：
+Pass 1.5 后仍有这些差距：
 
 - exact cqw positioning、line-height、font weight 和 text wrapping 尚未逐项像素对齐。
-- ability text 中英文内容仍来自本地 JSON，不从 finsearch DOM 复制排版。
+- ability text 内容来自本地 JSON 的 English / raw source，不从 finsearch DOM 复制排版。
 - fish silhouette 的 opacity、blend mode 和裁切仍需截图对照。
-- trigger strip 和 ability panel 的叠放关系仍需 Pass 2 精调。
-- `PlayFishTopRow` / `PlayFishAny` 仍是 reported fallback。
+- trigger strip 和 ability panel 的像素级间距仍需 Pass 2 精调。
+- `PlayFishTopRow` / `PlayFishAny` 仍需确认是组合图标、逻辑 token、旧 token 名，还是 live renderer 无独立素材。
 - Swift renderer 仍不是 HTML renderer；不会用 `WKWebView` 渲染每张卡。
 
 ## Ability Status

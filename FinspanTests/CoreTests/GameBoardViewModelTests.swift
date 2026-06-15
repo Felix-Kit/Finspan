@@ -573,7 +573,7 @@ final class GameBoardViewModelTests: XCTestCase {
                 .icon(FishCardFaceIconViewState(assetName: "Wave", fallbackText: "分", accessibilityText: "分数")),
                 .icon(FishCardFaceIconViewState(assetName: "ArrowDown", fallbackText: "向下", accessibilityText: "向下")),
                 .icon(FishCardFaceIconViewState(assetName: "PlayFishBottomRow", fallbackText: "底行出鱼", accessibilityText: "底行出鱼")),
-                .icon(FishCardFaceIconViewState(assetName: "UnknownToken", fallbackText: "?", accessibilityText: "未知图标 Mystery"))
+                .icon(FishCardFaceIconViewState(assetName: "Mystery", fallbackText: "?", accessibilityText: "未知图标 Mystery"))
             ]
         )
     }
@@ -641,7 +641,7 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(cardFace.abilityPanelStyle, .none)
         XCTAssertEqual(cardFace.printedPointsText, "3分")
         XCTAssertEqual(cardFace.lengthText, "90 厘米")
-        XCTAssertEqual(cardFace.abilityTriggerText, AppStrings.GameBoard.abilityTriggerWhenPlayed)
+        XCTAssertEqual(cardFace.abilityTriggerText, CardFaceTriggerCopy.whenPlayed)
         XCTAssertEqual(
             cardFace.abilitySegments,
             [
@@ -665,7 +665,7 @@ final class GameBoardViewModelTests: XCTestCase {
         let cardFace = try XCTUnwrap(viewModel.handViewState.cards.first?.cardFace)
 
         XCTAssertEqual(cardFace.displayName, "Bluespine Unicornfish")
-        XCTAssertEqual(cardFace.abilityTriggerText, AppStrings.GameBoard.abilityTriggerIfActivated)
+        XCTAssertEqual(cardFace.abilityTriggerText, CardFaceTriggerCopy.ifActivated)
         XCTAssertEqual(cardFace.abilityPanelStyle, .tanBrush)
         XCTAssertEqual(cardFace.abilityStripAssetPrefix, "IfActivated")
         XCTAssertTrue(cardFace.abilitySegments.contains(.text("(all players)")))
@@ -683,7 +683,7 @@ final class GameBoardViewModelTests: XCTestCase {
         let cardFace = try XCTUnwrap(viewModel.handViewState.cards.first?.cardFace)
 
         XCTAssertEqual(cardFace.displayName, "Clown Anemonefish")
-        XCTAssertEqual(cardFace.abilityTriggerText, AppStrings.GameBoard.abilityTriggerGameEnd)
+        XCTAssertEqual(cardFace.abilityTriggerText, CardFaceTriggerCopy.gameEnd)
         XCTAssertEqual(cardFace.abilityPanelStyle, .yellowBrush)
         XCTAssertEqual(cardFace.abilityStripAssetPrefix, "GameEnd")
         XCTAssertTrue(cardFace.abilitySegments.contains(.icon(FishCardFaceIconViewState(assetName: "Wave", fallbackText: "分", accessibilityText: "分数"))))
@@ -699,6 +699,9 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(CardRenderMetrics.CardFaceLayout.pointsTop, 37)
         XCTAssertEqual(CardRenderMetrics.CardFaceLayout.lengthTop, 48)
         XCTAssertEqual(CardRenderMetrics.CardFaceLayout.abilityWidth, 30)
+        XCTAssertEqual(CardRenderMetrics.CardFaceLayout.abilityPanelWidth, 30)
+        XCTAssertEqual(CardRenderMetrics.CardFaceLayout.triggerStripWidth, CardRenderMetrics.CardFaceLayout.abilityPanelWidth)
+        XCTAssertLessThan(CardRenderMetrics.CardFaceLayout.triggerStripWidth, CardRenderMetrics.CardFaceLayout.fullCardWidth)
     }
 
     func testAbyssalHalosaurHandSlotAndDiscardPileReuseSameCardFace() throws {
@@ -5258,6 +5261,7 @@ final class GameBoardViewModelTests: XCTestCase {
                     costIcons: [FishCardFaceIconViewState(assetName: "NoCost", fallbackText: "-", accessibilityText: AppStrings.GameBoard.noCost)],
                     zoneIcons: [],
                     tagIcons: [],
+                    pointsIcon: FishCardFaceIconViewState(assetName: "Wave", fallbackText: "分", accessibilityText: "分数"),
                     sizeClassIcon: FishCardFaceIconViewState(assetName: "FishLengthMedium", fallbackText: "中", accessibilityText: "中型鱼"),
                     abilitySegments: FishCardAbilityTokenParser.parse(AppStrings.GameBoard.cardFaceNoAbility),
                     backgroundAssetPrefix: "base",

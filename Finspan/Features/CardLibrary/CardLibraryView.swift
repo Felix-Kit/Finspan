@@ -25,6 +25,13 @@ struct CardLibraryView: View {
                 .frame(maxWidth: 320)
             }
 
+#if DEBUG
+            TextField(AppStrings.Lobby.CardLibrary.qaSearchPlaceholder, text: $viewModel.qaSearchText)
+                .textFieldStyle(.roundedBorder)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+#endif
+
             if viewState.cards.isEmpty {
                 ContentUnavailableView(
                     viewState.emptyText,

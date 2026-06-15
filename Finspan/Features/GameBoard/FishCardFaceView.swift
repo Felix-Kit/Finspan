@@ -124,7 +124,7 @@ struct FishCardFaceView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.55)
             iconImage(
-                FishCardFaceIconViewState(assetName: "Wave", fallbackText: "分", accessibilityText: "分数"),
+                viewState.pointsIcon,
                 size: unit * 7
             )
             .offset(x: -unit * 2.5, y: unit * 2)
@@ -180,9 +180,14 @@ struct FishCardFaceView: View {
         .padding(.horizontal, abilityHorizontalPadding(unit: unit))
         .padding(.top, unit * 3)
         .padding(.bottom, unit * 5)
-        .frame(width: unit * CardRenderMetrics.CardFaceLayout.abilityWidth)
+        .frame(width: unit * CardRenderMetrics.CardFaceLayout.abilityPanelWidth)
         .frame(minHeight: unit * CardRenderMetrics.CardFaceLayout.abilityMinHeight)
-        .background(abilityBackground(unit: unit))
+        .background {
+            abilityBackground(unit: unit)
+                .frame(width: unit * CardRenderMetrics.CardFaceLayout.triggerStripWidth)
+                .clipped()
+        }
+        .clipped()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
         .padding(.top, unit * abilityTopOffset)
         .padding(.trailing, abilityTrailingPadding(unit: unit))
@@ -334,8 +339,18 @@ struct FishCardFaceView: View {
     private func abilityBackground(unit: CGFloat) -> some View {
         if let image = rasterImage(for: viewState.abilityStripAsset) {
             Image(uiImage: image)
-                .resizable()
+                .resizable(
+                    capInsets: EdgeInsets(
+                        top: unit * 2,
+                        leading: unit * 2,
+                        bottom: unit * 2,
+                        trailing: unit * 2
+                    ),
+                    resizingMode: .stretch
+                )
                 .scaledToFill()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
                 .clipShape(RoundedRectangle(cornerRadius: unit * 1.3))
         } else if viewState.abilityPanelStyle == .tanBrush {
             RoundedRectangle(cornerRadius: unit * 1.2)
@@ -452,8 +467,9 @@ struct FishCardFaceView: View {
     private func iconImage(_ icon: FishCardFaceIconViewState, size: CGFloat) -> some View {
         if let asset = icon.asset,
            asset.fileExtension.lowercased() == "svg" {
-            Image(asset.fileName, bundle: .main)
+            Image(asset.resourceName, bundle: .main)
                 .resizable()
+                .renderingMode(.original)
                 .scaledToFit()
                 .frame(width: size, height: size)
                 .accessibilityLabel(Text(icon.accessibilityText))

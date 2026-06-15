@@ -55,6 +55,16 @@ struct CardLibraryViewState: Equatable {
 @MainActor
 final class CardLibraryViewModel: ObservableObject {
     @Published var displayMode: CardLibraryDisplayMode = .discovered
+#if DEBUG
+    @Published var qaSearchText: String = ""
+#endif
+
+    private static let liveBottomRowZoneCardIds: Set<CardID> = [
+        "base.main.044",
+        "base.main.077",
+        "sr.main.186",
+        "sr.main.209"
+    ]
 
     private let cards: [Card]
     private let discoveredStore: DiscoveredCardStore
@@ -83,7 +93,7 @@ final class CardLibraryViewModel: ObservableObject {
         return CardLibraryViewState(
             title: AppStrings.Lobby.CardLibrary.title,
             displayMode: displayMode,
-            cards: cards.map { card in
+            cards: filteredCards().map { card in
                 let isDiscovered = discoveredIds.contains(card.id)
                 return CardLibraryCardViewState(
                     cardId: card.id,
@@ -108,6 +118,46 @@ final class CardLibraryViewModel: ObservableObject {
         }
     }
 
+    private func filteredCards() -> [Card] {
+#if DEBUG
+        let query = qaSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !query.isEmpty else {
+            return cards
+        }
+        return cards.filter { card in
+            qaSearchFields(for: card).contains { $0.contains(query) }
+        }
+#else
+        return cards
+#endif
+    }
+
+#if DEBUG
+    private func qaSearchFields(for card: Card) -> [String] {
+        let sourceId = fishImageAssetResolver.sourceId(fromCardId: card.id).map(String.init) ?? ""
+        let trigger = abilityTriggerText(for: card) ?? ""
+        let tokens = FishCardAbilityTokenParser.parse(card.cardFaceRawAbilityText ?? "")
+            .compactMap { segment -> String? in
+                if case let .icon(icon) = segment {
+                    return icon.assetName
+                }
+                return nil
+            }
+            .joined(separator: " ")
+        return [
+            card.id,
+            sourceId,
+            card.name,
+            card.cardFaceDisplayName,
+            card.scientificName ?? "",
+            trigger,
+            card.cardFaceRawAbilityText ?? "",
+            tokens
+        ]
+        .map { $0.lowercased() }
+    }
+#endif
+
     private func expansionBadgeText(for cardId: CardID) -> String {
         if cardId.hasPrefix("sr.") {
             return AppStrings.Lobby.CardLibrary.sharksAndReefsBadge
@@ -119,7 +169,7 @@ final class CardLibraryViewModel: ObservableObject {
     }
 
     private func fishCardFaceViewState(for card: Card) -> FishCardFaceViewState {
-        let abilityText = card.abilityText?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let abilityText = card.cardFaceRawAbilityText?.trimmingCharacters(in: .whitespacesAndNewlines)
         let displayAbilityText = abilityText?.isEmpty == false
             ? abilityText!
             : AppStrings.GameBoard.cardFaceAbilityTextMissing
@@ -145,7 +195,7 @@ final class CardLibraryViewModel: ObservableObject {
         return FishCardFaceViewState(
             kind: .fishCard,
             cardId: card.id,
-            displayName: card.name,
+            displayName: card.cardFaceDisplayName,
             scientificName: card.scientificName,
             printedPointsText: "\(card.printedPoints)\(AppStrings.GameBoard.cardFacePointsSuffix)",
             lengthText: "\(card.lengthCm) \(AppStrings.GameBoard.centimeters)",
@@ -159,6 +209,7 @@ final class CardLibraryViewModel: ObservableObject {
             costIcons: costIcons,
             zoneIcons: zoneIcons,
             tagIcons: tagIcons,
+            pointsIcon: cardIcon(assetName: "Wave", fallbackText: "分", accessibilityText: "分数"),
             sizeClassIcon: sizeClassIcon,
             abilitySegments: abilitySegments,
             backgroundAssetPrefix: backgroundPrefix,
@@ -172,7 +223,7 @@ final class CardLibraryViewModel: ObservableObject {
                 backgroundLookup: backgroundLookup,
                 triggerStyle: triggerStyle,
                 fishImageLookup: fishImageLookup,
-                icons: costIcons + zoneIcons + tagIcons + [sizeClassIcon],
+                icons: costIcons + zoneIcons + tagIcons + [cardIcon(assetName: "Wave", fallbackText: "分", accessibilityText: "分数"), sizeClassIcon],
                 abilitySegments: abilitySegments
             ),
             aspectRatio: CardRenderMetrics.cardAspectRatio,
@@ -214,8 +265,38 @@ final class CardLibraryViewModel: ObservableObject {
             case let .coverShorterFish(count):
                 return repeatedIcon(assetName: "ConsumeFish", fallbackText: "吞", accessibilityText: AppStrings.GameBoard.canCoverShorterFish, count: count)
             }
-        }
+        } + cardRequirementIcons(card.requirements)
         return icons.isEmpty ? [cardIcon(assetName: "NoCost", fallbackText: "-", accessibilityText: AppStrings.GameBoard.noCost)] : icons
+    }
+
+    private func cardRequirementIcons(_ requirements: [Requirement]) -> [FishCardFaceIconViewState] {
+        requirements.flatMap { requirement -> [FishCardFaceIconViewState] in
+            guard let coralRequirement = requirement.coralRequirement else {
+                return [cardIcon(assetName: "NoCost", fallbackText: requirement.kind, accessibilityText: requirement.kind)]
+            }
+            let assetName: String
+            let fallbackText: String
+            switch coralRequirement.diveSite {
+            case .any:
+                assetName = "AnyCoral"
+                fallbackText = "任意珊瑚"
+            case .blue:
+                assetName = "BlueCoral"
+                fallbackText = "蓝珊瑚"
+            case .purple:
+                assetName = "PurpleCoral"
+                fallbackText = "紫珊瑚"
+            case .green:
+                assetName = "GreenCoral"
+                fallbackText = "绿珊瑚"
+            }
+            return repeatedIcon(
+                assetName: assetName,
+                fallbackText: fallbackText,
+                accessibilityText: fallbackText,
+                count: coralRequirement.count
+            )
+        }
     }
 
     private func repeatedIcon(for kind: ResourceKind, count: Int) -> [FishCardFaceIconViewState] {
@@ -251,6 +332,9 @@ final class CardLibraryViewModel: ObservableObject {
             case .twilight:
                 return cardIcon(assetName: "Dusk", fallbackText: "暮", accessibilityText: AppStrings.oceanZoneName(zone))
             case .midnight:
+                if Self.liveBottomRowZoneCardIds.contains(card.id) {
+                    return cardIcon(assetName: "PlayFishBottomRow", fallbackText: "底行出鱼", accessibilityText: "底行出鱼")
+                }
                 return cardIcon(assetName: "Night", fallbackText: "深", accessibilityText: AppStrings.oceanZoneName(zone))
             }
         }
@@ -336,13 +420,13 @@ final class CardLibraryViewModel: ObservableObject {
             return nil
         }
         if firstAbilityId.contains(".whenPlayed.") {
-            return AppStrings.GameBoard.abilityTriggerWhenPlayed
+            return CardFaceTriggerCopy.whenPlayed
         }
         if firstAbilityId.contains(".ifActivated.") {
-            return AppStrings.GameBoard.abilityTriggerIfActivated
+            return CardFaceTriggerCopy.ifActivated
         }
         if firstAbilityId.contains(".gameEnd.") {
-            return AppStrings.GameBoard.abilityTriggerGameEnd
+            return CardFaceTriggerCopy.gameEnd
         }
         return nil
     }

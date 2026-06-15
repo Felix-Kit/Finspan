@@ -100,6 +100,11 @@
 - `CardRenderMetrics` 已用本地背景素材尺寸推导统一卡牌比例。
 - `CardAssetResolver` / `CardSymbolAssetResolver` / `AbilityTokenAssetResolver` / `FishImageAssetResolver` / `CardTriggerStyleResolver` / `CardFontStyleResolver` 已接入。
 - `FishCardFaceView` 已完成 Fidelity Pass 1：fish image 按 sourceId 映射，ability token 使用 SVG/icon，trigger strip、length、zone、tag 和 font 走 resolver。
+- `FishCardFaceView` Fidelity Pass 1.5 已完成：修正 asset wiring correctness，trigger strip 限定在 ability panel 宽度内，cost / requirement icons、zone icons、`Wave` points icon、`FishLengthSmall` / `Medium` / `Large` 和 ability token sequence 均由 resolver-backed view state 驱动。
+- card face 内 name、scientific name、ability text 和 trigger title 使用 English / raw source；外层中文 UI 继续保留。
+- Great White Shark 仅作为 QA 样例，不写 special case；`base.main.057` 的 token sequence、cost、length 和 fish image 都通过通用 resolver mapping 生效。
+- DEBUG 牌库 QA 搜索已接入：Lobby → 牌库 → 所有牌，可按 English name、canonical card id、sourceId、trigger 或 token 稳定预览代表卡。
+- Pass 1.5 全量 215 张真实卡 source-id / static icon / ability token 审计 missing asset / fallback count 为 0。
 - 旧 Swift renderer 仍只作为现状对照；后续不应基于旧近似布局零散补丁，而应按 web renderer model → Swift view state → rendering sections 推进。
 - 手牌、弃牌堆和 ocean slot 已使用同一鱼牌牌面组件 / 比例。
 
@@ -152,6 +157,7 @@
 
 ### P3 FishCardFaceView Fidelity Pass 2
 
+- Pass 1.5 asset wiring correctness 已完成，Pass 2 不再处理“资源已导入但没有显示”的基础问题。
 - 用 live renderer screenshot 对 Great White Shark、If Activated、Game End 三类卡做像素级对照。
 - 收敛 title、scientific name、points、length、ability text 的 font size / line-height / wrapping。
 - 调整 fish image frame、opacity、blend、clipping。

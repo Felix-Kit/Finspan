@@ -93,6 +93,8 @@ private extension Card {
             requirements: dto.requirements,
             abilityIds: dto.abilityIds,
             abilityText: dto.abilityText,
+            cardFaceName: dto.name,
+            cardFaceAbilityText: dto.abilityText,
             tags: dto.tags,
             visualAssetName: dto.visualAssetName,
             allowedZones: try dto.allowedZones.map(OceanZone.init(runtimeValue:)),

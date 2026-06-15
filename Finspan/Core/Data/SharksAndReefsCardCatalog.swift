@@ -92,6 +92,16 @@ private struct LocalizedCardTextDTO: Decodable {
         }
         return en ?? ""
     }
+
+    var cardFaceText: String {
+        if let raw, !raw.isEmpty {
+            return raw
+        }
+        if let en, !en.isEmpty {
+            return en
+        }
+        return displayText
+    }
 }
 
 private struct SharksAndReefsVisualDTO: Decodable {
@@ -147,6 +157,8 @@ private extension Card {
             requirements: dto.requirements + dto.costs.compactMap(Requirement.init(sharksAndReefsRuntimeDTO:)),
             abilityIds: dto.abilityIds,
             abilityText: dto.abilityText?.displayText,
+            cardFaceName: dto.name.cardFaceText,
+            cardFaceAbilityText: dto.abilityText?.cardFaceText,
             tags: dto.tags,
             visualAssetName: dto.visual?.fishImageAsset?.removingPathExtension ?? "\(dto.sourceId)",
             allowedZones: try dto.allowedZones.map(OceanZone.init(sharksAndReefsRuntimeValue:)),

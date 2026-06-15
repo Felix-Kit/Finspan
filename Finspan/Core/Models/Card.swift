@@ -15,6 +15,8 @@ struct Card: Identifiable, Codable, Equatable, Sendable {
     /// Compatibility fallback for legacy fixtures. New card data should prefer `abilityIds`.
     var abilities: [AbilityDefinition]
     var abilityText: String?
+    var cardFaceName: String?
+    var cardFaceAbilityText: String?
     var tags: [CardTag]
     var visualAssetName: String?
     var allowedZones: [OceanZone]
@@ -31,6 +33,8 @@ struct Card: Identifiable, Codable, Equatable, Sendable {
         case abilityIds
         case abilities
         case abilityText
+        case cardFaceName
+        case cardFaceAbilityText
         case tags
         case visualAssetName
         case allowedZones
@@ -48,6 +52,8 @@ struct Card: Identifiable, Codable, Equatable, Sendable {
         abilityIds: [AbilityID] = [],
         abilities: [AbilityDefinition] = [],
         abilityText: String? = nil,
+        cardFaceName: String? = nil,
+        cardFaceAbilityText: String? = nil,
         tags: [CardTag] = [],
         visualAssetName: String? = nil,
         allowedZones: [OceanZone] = OceanZone.allCases,
@@ -63,6 +69,8 @@ struct Card: Identifiable, Codable, Equatable, Sendable {
         self.abilityIds = abilityIds
         self.abilities = abilities
         self.abilityText = abilityText
+        self.cardFaceName = cardFaceName
+        self.cardFaceAbilityText = cardFaceAbilityText
         self.tags = tags
         self.visualAssetName = visualAssetName
         self.allowedZones = allowedZones
@@ -81,6 +89,8 @@ struct Card: Identifiable, Codable, Equatable, Sendable {
         abilityIds = try container.decodeIfPresent([AbilityID].self, forKey: .abilityIds) ?? []
         abilities = try container.decodeIfPresent([AbilityDefinition].self, forKey: .abilities) ?? []
         abilityText = try container.decodeIfPresent(String.self, forKey: .abilityText)
+        cardFaceName = try container.decodeIfPresent(String.self, forKey: .cardFaceName)
+        cardFaceAbilityText = try container.decodeIfPresent(String.self, forKey: .cardFaceAbilityText)
         tags = try container.decodeIfPresent([CardTag].self, forKey: .tags) ?? []
         visualAssetName = try container.decodeIfPresent(String.self, forKey: .visualAssetName)
         allowedZones = try container.decodeIfPresent([OceanZone].self, forKey: .allowedZones) ?? OceanZone.allCases
@@ -91,6 +101,24 @@ struct Card: Identifiable, Codable, Equatable, Sendable {
 }
 
 extension Card {
+    var cardFaceDisplayName: String {
+        guard let cardFaceName,
+              !cardFaceName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else {
+            return name
+        }
+        return cardFaceName
+    }
+
+    var cardFaceRawAbilityText: String? {
+        guard let cardFaceAbilityText,
+              !cardFaceAbilityText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else {
+            return abilityText
+        }
+        return cardFaceAbilityText
+    }
+
     var requiresCoveringShorterFish: Bool {
         costs.contains { cost in
             if case .coverShorterFish = cost {

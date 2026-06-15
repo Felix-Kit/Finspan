@@ -10,6 +10,23 @@ enum CardAssetKind: String, Equatable {
     case triggerBand
 }
 
+enum CardFaceTriggerCopy {
+    static let whenPlayed = "WHEN PLAYED"
+    static let ifActivated = "IF ACTIVATED"
+    static let gameEnd = "GAME END"
+
+    static func title(for trigger: AbilityTrigger) -> String {
+        switch trigger {
+        case .whenPlayed:
+            return whenPlayed
+        case .ifActivated:
+            return ifActivated
+        case .gameEnd:
+            return gameEnd
+        }
+    }
+}
+
 struct CardAssetReference: Equatable {
     let kind: CardAssetKind
     let logicalName: String
@@ -399,10 +416,15 @@ final class CardTriggerStyleResolver: @unchecked Sendable {
             )
         }
 
-        if triggerText == AppStrings.GameBoard.abilityTriggerIfActivated {
+        let normalizedTriggerText = triggerText
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        if normalizedTriggerText == CardFaceTriggerCopy.ifActivated.lowercased()
+            || triggerText == AppStrings.GameBoard.abilityTriggerIfActivated {
             return stripStyle(prefix: "IfActivated", panelStyle: .tanBrush)
         }
-        if triggerText == AppStrings.GameBoard.abilityTriggerGameEnd {
+        if normalizedTriggerText == CardFaceTriggerCopy.gameEnd.lowercased()
+            || triggerText == AppStrings.GameBoard.abilityTriggerGameEnd {
             return stripStyle(prefix: "GameEnd", panelStyle: .yellowBrush)
         }
         return CardTriggerStyle(
