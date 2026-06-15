@@ -1,7 +1,7 @@
 # Card Rendering Fidelity
 
 本文件记录 Finsearch card renderer reverse engineering 和
-`FishCardFaceView` Fidelity Pass 1 / Pass 1.5。这里描述的是展示层，不描述或改变游戏规则。
+`FishCardFaceView` Fidelity Pass 1 / Pass 1.5 / Pass 2。这里描述的是展示层，不描述或改变游戏规则。
 
 ## Source of Truth
 
@@ -120,6 +120,15 @@ Pass 1.5 修正了“资源已导入但未完整应用”的 wiring 问题：
 
 `WhenPlayed` 目前保持透明 ability 区；`IfActivated` 和 `GameEnd` 使用 live trigger strip asset 和 Swift panel style。
 
+Pass 2 继续以 live finsearch 为 source of truth，修正“view state 已有字段但 SwiftUI 没有真实渲染”的问题：
+
+- live SVG icon 现在有同名 PNG 派生资源，`CardSymbolAssetResolver` 对 icon lookup 优先返回 PNG / WebP，再 fallback SVG。这样 cost、zone、Wave、FishLength 和 ability token 在 iOS runtime 中通过 `UIImage(contentsOfFile:)` 渲染，不再依赖 loose SVG 被 `Image(resourceName)` 正确识别。
+- `FishCardFaceViewState` 新增 `flavorText`，base / S&R 215 张卡的英文 description 从 live JS 抽取为 `Finspan/Resources/CardAssets/card_face_descriptions.json`；S&R 如已有 `rawSource.description` 则优先使用原 JSON 字段。这个 metadata 只用于牌面渲染，不改变 `Resources/Cards/*.json` 或规则。
+- `FishCardFaceView` 新增 live `.description` 区域：left 22cqw、top 50cqw、width 50cqw、`Lexus Roman Optical` italic、2.5cqw，恢复底部英文 flavor text。
+- ability icon sequence 从垂直堆叠改为横向 row，贴近 live `.ability-row`，Great White Shark 的 `[FishEgg][ArrowDown][Predator] ... [AllPlayers]` 现在通过通用 parser / resolver 渲染真实图标。
+- `Panforte Pro`、`Dolce`、`Lexus Roman Optical` 分别落到 title / scientific name / flavor text；points、length、trigger 和 ability copy 继续使用 live title font family。
+- Great White Shark、Great Northern Tilefish、Great Barracuda 是本轮代表卡审计样例，不是 special case。
+
 ## Resource Diff
 
 `references/webpage_live/reports/resource_diff.json` 是本轮的机器可读差异报告。
@@ -163,16 +172,32 @@ Pass 1.5 对 215 张真实卡做了 source-id / static icon / ability token 审�
 - unique token names: 33
 - missing asset / fallback count: 0
 
+Pass 2 对 215 张真实卡做了 ability / cost / zone / tag / points / length token 可渲染资源审计：
+
+- cards: 215
+- unique ability token names: 33
+- missing asset / fallback count: 0
+- live icon PNG derivative count: 57
+
 ## Great White Shark
 
 Great White Shark 是 QA 样例，不是 special case。它已从旧近似渲染提升到 Pass 1.5 web mapping：
 
 - real JSON 中保持 `base.main.057`，`visualAssetName` 仍为 `null`，不修改 card JSON。
 - Swift 通过 canonical card id 推导 source id 57，fish image 解析到 live `57.*.webp`。
-- ability token `[FishEgg][ArrowDown][Predator][AllPlayers]` 全部解析为 SVG asset。
+- ability token `[FishEgg][ArrowDown][Predator][AllPlayers]` 全部解析为 live-derived PNG render asset。
 - length 600 cm 映射到 `FishLengthLarge`。
 - cost 使用 `YoungFish` 和 web `ConsumeFish` mapping。
 - trigger title 使用 `WHEN PLAYED` 英文牌面文案；background / font 全部走 resolver view state。
+- flavor text 使用 live description: `Known by scientists as simply the “white shark,” this famous predator is, itself, occasionally preyed upon by orca whales.`
+
+## Representative Cards
+
+Pass 2 固定审计这些代表卡：
+
+- `base.main.057` Great White Shark：sourceId 57 fish image、young + consume cost、Sun / Dusk / Night zones、Wave points、FishLengthLarge、WHEN PLAYED token sequence、English flavor text。
+- `base.main.056` Great Northern Tilefish：sourceId 56 fish image、draw + egg cost、Sun / Dusk zones、green band、IF ACTIVATED trigger strip、FishHatch token pair、English flavor text。
+- `sr.main.161` Great Barracuda：sourceId 161 fish image、draw + consume + coral requirement icons、Sun zone、Wave points、FishLengthLarge、BlueCoral / AllPlayers token sequence、English flavor text.
 
 ## QA Preview
 
@@ -195,12 +220,12 @@ Great White Shark 是 QA 样例，不是 special case。它已从旧近似渲染
 
 ## Current Gap to Live Renderer
 
-Pass 1.5 后仍有这些差距：
+Pass 2 后仍有这些差距：
 
 - exact cqw positioning、line-height、font weight 和 text wrapping 尚未逐项像素对齐。
-- ability text 内容来自本地 JSON 的 English / raw source，不从 finsearch DOM 复制排版。
+- ability text 内容来自本地 JSON 的 English / raw source；layout 已按 live CSS 分区，但 inline text/icon 混排仍不是完整 HTML renderer。
 - fish silhouette 的 opacity、blend mode 和裁切仍需截图对照。
-- trigger strip 和 ability panel 的像素级间距仍需 Pass 2 精调。
+- trigger strip 和 ability panel 的像素级间距仍需后续 screenshot pass 精调。
 - `PlayFishTopRow` / `PlayFishAny` 仍需确认是组合图标、逻辑 token、旧 token 名，还是 live renderer 无独立素材。
 - Swift renderer 仍不是 HTML renderer；不会用 `WKWebView` 渲染每张卡。
 
@@ -214,9 +239,9 @@ Pass 1.5 后仍有这些差距：
 - 215 mapped / 0 unsupported。
 - GAME END remaining unsupported 0。
 
-## Pass 2 Next Steps
+## Remaining Fidelity Work
 
-下一轮建议：
+后续建议：
 
 1. 用 live card screenshot 对 Great White Shark、If Activated、Game End 三类卡做像素级坐标表。
 2. 把 title、scientific name、points、length、ability text 的 font size / line-height / wrapping 收敛到 live CSS。

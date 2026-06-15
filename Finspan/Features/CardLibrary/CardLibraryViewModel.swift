@@ -206,6 +206,7 @@ final class CardLibraryViewModel: ObservableObject {
             tagsText: card.tags.isEmpty ? AppStrings.GameBoard.cardFaceNoTags : card.tags.map(\.kind).joined(separator: "，"),
             abilityTriggerText: triggerText,
             abilityText: displayAbilityText,
+            flavorText: card.cardFaceRawFlavorText,
             costIcons: costIcons,
             zoneIcons: zoneIcons,
             tagIcons: tagIcons,

@@ -17,6 +17,7 @@ struct Card: Identifiable, Codable, Equatable, Sendable {
     var abilityText: String?
     var cardFaceName: String?
     var cardFaceAbilityText: String?
+    var cardFaceFlavorText: String?
     var tags: [CardTag]
     var visualAssetName: String?
     var allowedZones: [OceanZone]
@@ -35,6 +36,7 @@ struct Card: Identifiable, Codable, Equatable, Sendable {
         case abilityText
         case cardFaceName
         case cardFaceAbilityText
+        case cardFaceFlavorText
         case tags
         case visualAssetName
         case allowedZones
@@ -54,6 +56,7 @@ struct Card: Identifiable, Codable, Equatable, Sendable {
         abilityText: String? = nil,
         cardFaceName: String? = nil,
         cardFaceAbilityText: String? = nil,
+        cardFaceFlavorText: String? = nil,
         tags: [CardTag] = [],
         visualAssetName: String? = nil,
         allowedZones: [OceanZone] = OceanZone.allCases,
@@ -71,6 +74,7 @@ struct Card: Identifiable, Codable, Equatable, Sendable {
         self.abilityText = abilityText
         self.cardFaceName = cardFaceName
         self.cardFaceAbilityText = cardFaceAbilityText
+        self.cardFaceFlavorText = cardFaceFlavorText
         self.tags = tags
         self.visualAssetName = visualAssetName
         self.allowedZones = allowedZones
@@ -91,6 +95,7 @@ struct Card: Identifiable, Codable, Equatable, Sendable {
         abilityText = try container.decodeIfPresent(String.self, forKey: .abilityText)
         cardFaceName = try container.decodeIfPresent(String.self, forKey: .cardFaceName)
         cardFaceAbilityText = try container.decodeIfPresent(String.self, forKey: .cardFaceAbilityText)
+        cardFaceFlavorText = try container.decodeIfPresent(String.self, forKey: .cardFaceFlavorText)
         tags = try container.decodeIfPresent([CardTag].self, forKey: .tags) ?? []
         visualAssetName = try container.decodeIfPresent(String.self, forKey: .visualAssetName)
         allowedZones = try container.decodeIfPresent([OceanZone].self, forKey: .allowedZones) ?? OceanZone.allCases
@@ -117,6 +122,15 @@ extension Card {
             return abilityText
         }
         return cardFaceAbilityText
+    }
+
+    var cardFaceRawFlavorText: String? {
+        guard let cardFaceFlavorText,
+              !cardFaceFlavorText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else {
+            return nil
+        }
+        return cardFaceFlavorText
     }
 
     var requiresCoveringShorterFish: Bool {

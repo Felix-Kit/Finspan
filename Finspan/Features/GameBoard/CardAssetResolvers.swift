@@ -247,7 +247,7 @@ final class CardSymbolAssetResolver: @unchecked Sendable {
             requestedName: name,
             canonicalName: canonicalName,
             subdirectories: CardAssetDirectories.icons,
-            fileExtensions: ["svg", "png", "webp"]
+            fileExtensions: ["png", "webp", "svg"]
         )
         return FishCardFaceIconViewState(
             assetName: canonicalName,
@@ -265,7 +265,7 @@ final class CardSymbolAssetResolver: @unchecked Sendable {
             requestedName: name,
             canonicalName: canonicalName,
             subdirectories: CardAssetDirectories.icons,
-            fileExtensions: ["svg", "png", "webp"]
+            fileExtensions: ["png", "webp", "svg"]
         )
     }
 }

@@ -5258,6 +5258,7 @@ final class GameBoardViewModelTests: XCTestCase {
                     tagsText: AppStrings.GameBoard.cardFaceNoTags,
                     abilityTriggerText: nil,
                     abilityText: AppStrings.GameBoard.cardFaceNoAbility,
+                    flavorText: nil,
                     costIcons: [FishCardFaceIconViewState(assetName: "NoCost", fallbackText: "-", accessibilityText: AppStrings.GameBoard.noCost)],
                     zoneIcons: [],
                     tagIcons: [],

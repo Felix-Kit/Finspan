@@ -51,6 +51,7 @@ final class FishCardRenderingFidelityTests: XCTestCase {
         XCTAssertEqual(cardFace.scientificName, "Carcharodon carcharias")
         XCTAssertEqual(cardFace.abilityTriggerText, CardFaceTriggerCopy.whenPlayed)
         XCTAssertEqual(cardFace.abilityText, "(all players) [FishEgg][ArrowDown][Predator] on each [AllPlayers]")
+        XCTAssertEqual(cardFace.flavorText, "Known by scientists as simply the “white shark,” this famous predator is, itself, occasionally preyed upon by orca whales.")
         XCTAssertFalse(cardFace.abilityText.contains("所有"))
 
         for assetName in ["FishEgg", "ArrowDown", "Predator", "AllPlayers"] {
@@ -65,7 +66,7 @@ final class FishCardRenderingFidelityTests: XCTestCase {
             let lookup = CardSymbolAssetResolver.shared.lookup(named: assetName)
 
             XCTAssertTrue(lookup.isResolved, "Expected \(assetName) to resolve.")
-            XCTAssertEqual(lookup.asset?.fileExtension.lowercased(), "svg")
+            XCTAssertEqual(lookup.asset?.fileExtension.lowercased(), "png")
         }
     }
 
@@ -74,7 +75,7 @@ final class FishCardRenderingFidelityTests: XCTestCase {
             let lookup = CardSymbolAssetResolver.shared.lookup(named: assetName)
 
             XCTAssertTrue(lookup.isResolved, "Expected \(assetName) to resolve.")
-            XCTAssertEqual(lookup.asset?.fileExtension.lowercased(), "svg")
+            XCTAssertEqual(lookup.asset?.fileExtension.lowercased(), "png")
         }
     }
 
@@ -82,7 +83,7 @@ final class FishCardRenderingFidelityTests: XCTestCase {
         let lookup = CardSymbolAssetResolver.shared.lookup(named: "Wave")
 
         XCTAssertTrue(lookup.isResolved)
-        XCTAssertEqual(lookup.asset?.fileExtension.lowercased(), "svg")
+        XCTAssertEqual(lookup.asset?.fileExtension.lowercased(), "png")
         XCTAssertTrue(lookup.asset?.fileName.hasPrefix("Wave.") == true)
     }
 
@@ -110,6 +111,53 @@ final class FishCardRenderingFidelityTests: XCTestCase {
         XCTAssertEqual(CardRenderMetrics.CardFaceLayout.abilityPanelWidth, CardRenderMetrics.CardFaceLayout.abilityWidth)
         XCTAssertEqual(CardRenderMetrics.CardFaceLayout.triggerStripWidth, CardRenderMetrics.CardFaceLayout.abilityPanelWidth)
         XCTAssertLessThan(CardRenderMetrics.CardFaceLayout.triggerStripWidth, CardRenderMetrics.CardFaceLayout.fullCardWidth)
+    }
+
+    @MainActor
+    func testRepresentativeCardsCarryCompleteLiveFaceMetadata() throws {
+        let representatives: [(CardID, String, String, String)] = [
+            (
+                "base.main.057",
+                "Great White Shark",
+                "Carcharodon carcharias",
+                "Known by scientists as simply the “white shark,” this famous predator is, itself, occasionally preyed upon by orca whales."
+            ),
+            (
+                "base.main.056",
+                "Great Northern Tilefish",
+                "Lopholatilus chamaeleonticeps",
+                "This colorful fish is known as the clown of the sea. It burrows into the sediment at the bottom of the ocean."
+            ),
+            (
+                "sr.main.161",
+                "Great Barracuda",
+                "Sphyraena barracuda",
+                "Its long, prominent teeth fit into pockets on the opposing jaw, allowing it to close its mouth, locking onto its prey."
+            )
+        ]
+
+        for (cardId, name, scientificName, flavorText) in representatives {
+            let cardFace = try cardFace(for: cardId)
+
+            XCTAssertEqual(cardFace.displayName, name, "Expected English live card name for \(cardId).")
+            XCTAssertEqual(cardFace.scientificName, scientificName, "Expected live scientific name for \(cardId).")
+            XCTAssertEqual(cardFace.flavorText, flavorText, "Expected live description for \(cardId).")
+            XCTAssertFalse(cardFace.costIcons.isEmpty, "Expected cost/requirement icons for \(cardId).")
+            XCTAssertFalse(cardFace.zoneIcons.isEmpty, "Expected playable zone icons for \(cardId).")
+            XCTAssertEqual(cardFace.pointsIcon.assetName, "Wave", "Expected live Wave points icon for \(cardId).")
+            XCTAssertNotNil(cardFace.pointsIcon.asset, "Expected Wave to be renderable for \(cardId).")
+            XCTAssertNotNil(cardFace.sizeClassIcon.asset, "Expected fish length icon for \(cardId).")
+            XCTAssertFalse(
+                cardFace.abilitySegments.compactMap { segment -> FishCardFaceIconViewState? in
+                    if case let .icon(icon) = segment {
+                        return icon
+                    }
+                    return nil
+                }.isEmpty,
+                "Expected ability icon tokens for \(cardId)."
+            )
+            XCTAssertTrue(cardFace.missingAssets.isEmpty, "Expected no missing live assets for \(cardId): \(cardFace.missingAssets)")
+        }
     }
 
     @MainActor
@@ -142,9 +190,10 @@ final class FishCardRenderingFidelityTests: XCTestCase {
 
     @MainActor
     func testPlayableZoneIconsIncludeLiveBottomRowMapping() throws {
-        XCTAssertEqual(try cardFace(for: "base.main.001").zoneIcons.map(\.assetName), ["Sun"])
+        XCTAssertEqual(try cardFace(for: "base.main.004").zoneIcons.map(\.assetName), ["Sun"])
+        XCTAssertEqual(try cardFace(for: "base.main.056").zoneIcons.map(\.assetName), ["Sun", "Dusk"])
         XCTAssertEqual(try cardFace(for: "base.main.002").zoneIcons.map(\.assetName), ["Night"])
-        XCTAssertEqual(try cardFace(for: "base.main.025").zoneIcons.map(\.assetName), ["Sun", "Dusk", "Night"])
+        XCTAssertEqual(try cardFace(for: "base.main.057").zoneIcons.map(\.assetName), ["Sun", "Dusk", "Night"])
         XCTAssertEqual(try cardFace(for: "base.main.044").zoneIcons.map(\.assetName), ["PlayFishBottomRow"])
         XCTAssertEqual(try cardFace(for: "sr.main.186").zoneIcons.map(\.assetName), ["PlayFishBottomRow"])
     }

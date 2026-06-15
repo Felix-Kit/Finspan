@@ -28,6 +28,7 @@ struct FishCardFaceView: View {
                 pointsArea(unit: unit)
                 lengthArea(unit: unit)
                 tagArea(unit: unit)
+                flavorArea(unit: unit)
                 abilityArea(unit: unit)
             }
             .clipShape(RoundedRectangle(cornerRadius: width * CardRenderMetrics.cornerRadiusRatio))
@@ -165,6 +166,27 @@ struct FishCardFaceView: View {
         .padding(.trailing, unit * 17)
     }
 
+    @ViewBuilder
+    private func flavorArea(unit: CGFloat) -> some View {
+        if let flavorText = viewState.flavorText?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !flavorText.isEmpty {
+            Text(flavorText)
+                .font(CardFontStyleResolver.shared.font(.body, size: unit * CardRenderMetrics.CardFaceLayout.descriptionFontSize))
+                .italic()
+                .lineLimit(3)
+                .minimumScaleFactor(0.62)
+                .multilineTextAlignment(.leading)
+                .foregroundStyle(.primary.opacity(0.82))
+                .frame(
+                    width: unit * CardRenderMetrics.CardFaceLayout.descriptionWidth,
+                    alignment: .topLeading
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(.leading, unit * CardRenderMetrics.CardFaceLayout.descriptionLeft)
+                .padding(.top, unit * CardRenderMetrics.CardFaceLayout.descriptionTop)
+        }
+    }
+
     private func abilityArea(unit: CGFloat) -> some View {
         VStack(spacing: unit * 1.1) {
             if let trigger = viewState.abilityTriggerText {
@@ -201,7 +223,7 @@ struct FishCardFaceView: View {
         VStack(spacing: unit * 0.9) {
             ForEach(Array(rows.prefix(6).enumerated()), id: \.offset) { _, row in
                 if row.allSatisfy(\.isIcon) {
-                    VStack(spacing: unit * 0.4) {
+                    HStack(spacing: unit * 0.55) {
                         ForEach(Array(row.enumerated()), id: \.offset) { _, segment in
                             if case let .icon(icon) = segment {
                                 iconImage(icon, size: abilityIconSize(icon, unit: unit))
@@ -209,6 +231,7 @@ struct FishCardFaceView: View {
                             }
                         }
                     }
+                    .frame(maxWidth: unit * 26, alignment: .center)
                 } else if case let .text(text) = row.first {
                     Text(text)
                         .font(CardFontStyleResolver.shared.font(.title, size: unit * abilityTextFontSize))

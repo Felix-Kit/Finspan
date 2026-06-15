@@ -38,6 +38,12 @@ The downloaded local app assets are stored under:
 The app runtime must use these local files only. Remote finsearch URLs are a
 development import source, not a runtime dependency.
 
+Pass 2 note: the 57 live SVG icons also have same-name PNG derivatives under
+`Finspan/Resources/CardAssets/icons/`. SwiftUI icon rendering intentionally
+prefers these PNG derivatives because loose SVG files in the app bundle are not
+a reliable `Image(resourceName)` source on iOS. The SVG files remain the live
+source asset; the PNG files are render assets derived from that source.
+
 The current local download summary is recorded in
 `tools/generated/assets/asset_download_summary.json`:
 
@@ -91,6 +97,7 @@ DOM card structure:
 - printed points, length, and size-class icons in CSS-inspired lower-left areas
 - tag icons near the title when present
 - ability trigger/text in a right-side panel
+- English flavor / description text in the bottom live `.description` area
 - IF ACTIVATED uses the local `IfActivated` tan brush/strip background
 - GAME END uses the local `GameEnd` yellow brush/strip background
 - WHEN PLAYED remains a transparent icon-composition area

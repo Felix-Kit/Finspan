@@ -130,12 +130,15 @@
 - `CardAssetResolver` / `CardSymbolAssetResolver` / `AbilityTokenAssetResolver` / `FishImageAssetResolver` / `CardTriggerStyleResolver` / `CardFontStyleResolver` 已接入，用于把 web renderer mapping 转成可缓存的 Swift view state。
 - `FishCardFaceView` 已完成 Fidelity Pass 1：fish image 按 sourceId 映射，ability token 使用 SVG/icon，ArrowDown、长度、光层、触发条和字体走 live asset resolver。
 - `FishCardFaceView` Fidelity Pass 1.5 已完成，范围是 asset wiring correctness，不是像素级 Pass 2：trigger strip 宽度被限制在 ability panel 内，cost / requirement icons、zone icons、`Wave` points icon、`FishLengthSmall` / `Medium` / `Large` 和 ability token sequence 都走 resolver view state。
-- 鱼牌牌面文案已改为 English / raw source：name、scientific name、ability text 和 trigger title 不再使用中文牌面文案；App 外层中文 UI 不受影响。
-- Great White Shark 是 QA 样例，不是 special case：`base.main.057` 映射到 `57.*.webp`，`FishEgg` / `ArrowDown` / `Predator` / `AllPlayers` 均解析到真实 SVG，cost 显示 `YoungFish` / `ConsumeFish`，length 600 cm 映射到 `FishLengthLarge`。
+- `FishCardFaceView` Fidelity Pass 2 已完成当前一轮结构补齐：live SVG icon 生成同名 PNG 派生资源，icon resolver 优先返回可渲染 PNG，cost / zone / points / length / ability token 不再依赖 loose SVG 作为 SwiftUI image。
+- 牌面底部英文 flavor text 已恢复：215 张卡的 live description 被抽取为 `Finspan/Resources/CardAssets/card_face_descriptions.json` 渲染 metadata，不修改 `Finspan/Resources/Cards/*.json`，S&R 仍优先使用自身 `rawSource.description`。
+- 鱼牌牌面文案保持 English / raw source：name、scientific name、ability text、trigger title 和 flavor text 不使用中文牌面文案；App 外层中文 UI 不受影响。
+- Great White Shark 是 QA 样例，不是 special case：`base.main.057` 映射到 `57.*.webp`，`FishEgg` / `ArrowDown` / `Predator` / `AllPlayers` 均解析到 live-derived PNG render asset，cost 显示 `YoungFish` / `ConsumeFish`，length 600 cm 映射到 `FishLengthLarge`。
+- Great Northern Tilefish 和 Great Barracuda 也纳入 Pass 2 代表卡审计，覆盖 If Activated、S&R coral requirement / coral token、不同 zone 和 flavor text。
 - DEBUG 牌库 QA 搜索已接入：Lobby → 牌库 → 所有牌，可按 English name、canonical card id、sourceId、trigger 或 token 稳定预览代表卡，不依赖随机发牌。
-- Pass 1.5 全量 215 张真实卡 source-id / static icon / ability token 审计结果：missing asset / fallback count 0。
+- Pass 2 全量 215 张真实卡 ability / cost / zone / tag / points / length token 审计结果：missing asset / fallback count 0。
 - 手牌、弃牌堆和 ocean slot 当前仍共用同一完整卡牌牌面。
-- 当前牌面仍是 Pass 1.5 近似复刻，不是完整 finsearch 像素级复刻。详见 `docs/CARD_RENDERING_FIDELITY.md`。
+- 当前牌面已完成 Pass 2 结构补齐，但仍不是完整 finsearch 像素级复刻。详见 `docs/CARD_RENDERING_FIDELITY.md`。
 
 ## 当前仍需修复 / 待做
 

@@ -34,15 +34,19 @@ struct BundleBaseGameCardDataSource: CardDataSource {
     let bundle: Bundle
 
     func loadCatalogData() throws -> CardCatalogData {
-        let fishCards = try loadCards(named: "base_main_fish_cards")
-        let starterFishCards = try loadCards(named: "base_starter_fish_cards")
+        let descriptionStore = CardFaceDescriptionStore(bundle: bundle)
+        let fishCards = try loadCards(named: "base_main_fish_cards", descriptionStore: descriptionStore)
+        let starterFishCards = try loadCards(named: "base_starter_fish_cards", descriptionStore: descriptionStore)
         return CardCatalogData(
             starterFishCards: starterFishCards,
             fishCards: fishCards
         )
     }
 
-    private func loadCards(named resourceName: String) throws -> [Card] {
+    private func loadCards(
+        named resourceName: String,
+        descriptionStore: CardFaceDescriptionStore
+    ) throws -> [Card] {
         guard let url = bundle.url(
             forResource: resourceName,
             withExtension: "json",
@@ -57,7 +61,9 @@ struct BundleBaseGameCardDataSource: CardDataSource {
 
         let data = try Data(contentsOf: url)
         let decodedCards = try JSONDecoder().decode([RuntimeCardDTO].self, from: data)
-        return try decodedCards.map(Card.init(runtimeDTO:))
+        return try decodedCards.map { dto in
+            try Card(runtimeDTO: dto, flavorText: descriptionStore.description(for: dto.id))
+        }
     }
 }
 
@@ -84,7 +90,7 @@ private struct RuntimeCostDTO: Decodable {
 }
 
 private extension Card {
-    nonisolated init(runtimeDTO dto: RuntimeCardDTO) throws {
+    nonisolated init(runtimeDTO dto: RuntimeCardDTO, flavorText: String?) throws {
         self.init(
             id: dto.id,
             name: dto.name,
@@ -95,6 +101,7 @@ private extension Card {
             abilityText: dto.abilityText,
             cardFaceName: dto.name,
             cardFaceAbilityText: dto.abilityText,
+            cardFaceFlavorText: flavorText,
             tags: dto.tags,
             visualAssetName: dto.visualAssetName,
             allowedZones: try dto.allowedZones.map(OceanZone.init(runtimeValue:)),

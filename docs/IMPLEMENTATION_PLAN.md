@@ -101,11 +101,13 @@
 - `CardAssetResolver` / `CardSymbolAssetResolver` / `AbilityTokenAssetResolver` / `FishImageAssetResolver` / `CardTriggerStyleResolver` / `CardFontStyleResolver` 已接入。
 - `FishCardFaceView` 已完成 Fidelity Pass 1：fish image 按 sourceId 映射，ability token 使用 SVG/icon，trigger strip、length、zone、tag 和 font 走 resolver。
 - `FishCardFaceView` Fidelity Pass 1.5 已完成：修正 asset wiring correctness，trigger strip 限定在 ability panel 宽度内，cost / requirement icons、zone icons、`Wave` points icon、`FishLengthSmall` / `Medium` / `Large` 和 ability token sequence 均由 resolver-backed view state 驱动。
-- card face 内 name、scientific name、ability text 和 trigger title 使用 English / raw source；外层中文 UI 继续保留。
-- Great White Shark 仅作为 QA 样例，不写 special case；`base.main.057` 的 token sequence、cost、length 和 fish image 都通过通用 resolver mapping 生效。
+- `FishCardFaceView` Fidelity Pass 2 已完成当前结构补齐：live SVG icon 已生成同名 PNG 派生资源，icon resolver 优先使用可渲染 PNG；SwiftUI 牌面不再把 loose SVG resource 当成主要显示路径。
+- card face 内 name、scientific name、ability text、trigger title 和 flavor text 使用 English / raw source；外层中文 UI 继续保留。
+- 215 张卡的 live description 已作为 `Finspan/Resources/CardAssets/card_face_descriptions.json` 渲染 metadata 接入，不修改 runtime card JSON。
+- Great White Shark、Great Northern Tilefish、Great Barracuda 仅作为 QA 样例，不写 special case；代表卡的 token sequence、cost / requirement、zone、length、Wave、fish image 和 flavor text 都通过通用 resolver / view-state mapping 生效。
 - DEBUG 牌库 QA 搜索已接入：Lobby → 牌库 → 所有牌，可按 English name、canonical card id、sourceId、trigger 或 token 稳定预览代表卡。
-- Pass 1.5 全量 215 张真实卡 source-id / static icon / ability token 审计 missing asset / fallback count 为 0。
-- 旧 Swift renderer 仍只作为现状对照；后续不应基于旧近似布局零散补丁，而应按 web renderer model → Swift view state → rendering sections 推进。
+- Pass 2 全量 215 张真实卡 ability / cost / zone / tag / points / length token 审计 missing asset / fallback count 为 0。
+- 旧 Swift renderer 仍只作为现状对照；后续不应基于旧近似布局零散补丁，而应按 live finsearch CSS/JS/asset → Swift view state → rendering sections 推进。
 - 手牌、弃牌堆和 ocean slot 已使用同一鱼牌牌面组件 / 比例。
 
 ### 12. Major GameBoard HUD Polish

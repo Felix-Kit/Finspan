@@ -34,15 +34,19 @@ struct BundleSharksAndReefsCardDataSource: CardDataSource {
     let bundle: Bundle
 
     func loadCatalogData() throws -> CardCatalogData {
-        let fishCards = try loadCards(named: "sharks_reefs_main_fish_cards")
-        let starterFishCards = try loadCards(named: "sharks_reefs_starter_fish_cards")
+        let descriptionStore = CardFaceDescriptionStore(bundle: bundle)
+        let fishCards = try loadCards(named: "sharks_reefs_main_fish_cards", descriptionStore: descriptionStore)
+        let starterFishCards = try loadCards(named: "sharks_reefs_starter_fish_cards", descriptionStore: descriptionStore)
         return CardCatalogData(
             starterFishCards: starterFishCards,
             fishCards: fishCards
         )
     }
 
-    private func loadCards(named resourceName: String) throws -> [Card] {
+    private func loadCards(
+        named resourceName: String,
+        descriptionStore: CardFaceDescriptionStore
+    ) throws -> [Card] {
         guard let url = bundle.url(
             forResource: resourceName,
             withExtension: "json",
@@ -57,7 +61,12 @@ struct BundleSharksAndReefsCardDataSource: CardDataSource {
 
         let data = try Data(contentsOf: url)
         let decodedCards = try JSONDecoder().decode([SharksAndReefsRuntimeCardDTO].self, from: data)
-        return try decodedCards.map(Card.init(sharksAndReefsRuntimeDTO:))
+        return try decodedCards.map { dto in
+            try Card(
+                sharksAndReefsRuntimeDTO: dto,
+                fallbackFlavorText: descriptionStore.description(for: dto.id)
+            )
+        }
     }
 }
 
@@ -76,6 +85,7 @@ private struct SharksAndReefsRuntimeCardDTO: Decodable {
     var abilityText: LocalizedCardTextDTO?
     var abilityIds: [AbilityID]
     var visual: SharksAndReefsVisualDTO?
+    var rawSource: SharksAndReefsRawSourceDTO?
 }
 
 private struct LocalizedCardTextDTO: Decodable {
@@ -106,6 +116,10 @@ private struct LocalizedCardTextDTO: Decodable {
 
 private struct SharksAndReefsVisualDTO: Decodable {
     var fishImageAsset: String?
+}
+
+private struct SharksAndReefsRawSourceDTO: Decodable {
+    var description: String?
 }
 
 private struct SharksAndReefsRuntimeCostDTO: Decodable {
@@ -148,7 +162,10 @@ private enum FlexibleRuntimeCount: Decodable {
 }
 
 private extension Card {
-    nonisolated init(sharksAndReefsRuntimeDTO dto: SharksAndReefsRuntimeCardDTO) throws {
+    nonisolated init(
+        sharksAndReefsRuntimeDTO dto: SharksAndReefsRuntimeCardDTO,
+        fallbackFlavorText: String?
+    ) throws {
         self.init(
             id: dto.id,
             name: dto.name.displayText,
@@ -159,6 +176,7 @@ private extension Card {
             abilityText: dto.abilityText?.displayText,
             cardFaceName: dto.name.cardFaceText,
             cardFaceAbilityText: dto.abilityText?.cardFaceText,
+            cardFaceFlavorText: dto.rawSource?.description ?? fallbackFlavorText,
             tags: dto.tags,
             visualAssetName: dto.visual?.fishImageAsset?.removingPathExtension ?? "\(dto.sourceId)",
             allowedZones: try dto.allowedZones.map(OceanZone.init(sharksAndReefsRuntimeValue:)),

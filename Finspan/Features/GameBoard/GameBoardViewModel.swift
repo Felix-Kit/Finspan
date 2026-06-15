@@ -201,7 +201,7 @@ enum FishCardAbilityTokenParser {
                 logicalName: token,
                 canonicalName: token,
                 searchedSubdirectories: CardAssetDirectories.icons,
-                searchedExtensions: ["svg", "png", "webp"]
+                searchedExtensions: ["png", "webp", "svg"]
             )
         )
     }
@@ -221,6 +221,7 @@ struct FishCardFaceViewState: Equatable {
     let tagsText: String
     let abilityTriggerText: String?
     let abilityText: String
+    let flavorText: String?
     let costIcons: [FishCardFaceIconViewState]
     let zoneIcons: [FishCardFaceIconViewState]
     let tagIcons: [FishCardFaceIconViewState]
@@ -3987,6 +3988,7 @@ final class GameBoardViewModel: ObservableObject {
                 tagsText: AppStrings.GameBoard.cardFaceNoTags,
                 abilityTriggerText: nil,
                 abilityText: AppStrings.GameBoard.abilityUnsupported,
+                flavorText: nil,
                 costIcons: [cardIcon(assetName: "NoCost", fallbackText: "-", accessibilityText: AppStrings.GameBoard.noCost)],
                 zoneIcons: [],
                 tagIcons: [],
@@ -4036,6 +4038,7 @@ final class GameBoardViewModel: ObservableObject {
             tagsText: cardTagsText(card.tags),
             abilityTriggerText: triggerText,
             abilityText: displayAbilityText,
+            flavorText: card.cardFaceRawFlavorText,
             costIcons: costIcons,
             zoneIcons: zoneIcons,
             tagIcons: tagIcons,
@@ -4104,6 +4107,7 @@ final class GameBoardViewModel: ObservableObject {
                 tagsText: AppStrings.GameBoard.cardFaceNoTags,
                 abilityTriggerText: nil,
                 abilityText: AppStrings.GameBoard.cardFaceNoAbility,
+                flavorText: nil,
                 costIcons: [cardIcon(assetName: "NoCost", fallbackText: "-", accessibilityText: AppStrings.GameBoard.noCost)],
                 zoneIcons: [],
                 tagIcons: [],
@@ -4132,6 +4136,7 @@ final class GameBoardViewModel: ObservableObject {
                 tagsText: AppStrings.GameBoard.forageFish,
                 abilityTriggerText: nil,
                 abilityText: AppStrings.GameBoard.cardFaceNoAbility,
+                flavorText: nil,
                 costIcons: [cardIcon(assetName: "NoCost", fallbackText: "-", accessibilityText: AppStrings.GameBoard.noCost)],
                 zoneIcons: [],
                 tagIcons: [],

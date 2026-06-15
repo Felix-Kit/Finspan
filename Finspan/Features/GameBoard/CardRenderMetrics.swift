@@ -29,6 +29,10 @@ enum CardRenderMetrics {
         static let silhouetteTop: Double = 19
         static let silhouetteMaxWidth: Double = 48
         static let silhouetteMaxHeight: Double = 34
+        static let descriptionLeft: Double = 22
+        static let descriptionTop: Double = 50
+        static let descriptionWidth: Double = 50
+        static let descriptionFontSize: Double = 2.5
         static let pointsLeft: Double = 3
         static let pointsTop: Double = 37
         static let pointsFontSize: Double = 7
