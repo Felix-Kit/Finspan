@@ -189,6 +189,39 @@ Focused tests 覆盖：
 - `StarterCardCornerTests`
 - 既有 `FishCardRenderingFidelityTests` 和 `FishCardIconRenderabilityTests`
 
+## Ability Panel Pixel Alignment Pass
+
+本轮继续以 live `references/webpage_live/static/css/main.f74b3868.css` / `main.3f6711eb.js` 为 source of truth，只修 ability panel 的像素级方向、位置和 overlap，不改规则、不改 card JSON、不扩展 Ability Engine。
+
+Live CSS 关键值已映射到 `CardAbilityLayoutMetrics`：
+
+- `.ability-container { min-width: 28cqw; right: 28cqw; height: calc(100% - 1cqw); padding-top: 1cqw; gap: 2cqw; justify-content: center; }`
+- `.ability { background-size: cover; min-height: 20cqw; padding: 3cqw 0 5cqw; width: 100%; }`
+- `.ability.squished { margin-top: 4cqw; min-height: auto; padding: 2cqw 0; }`
+- `.ability.also-if { padding: 3cqw 1cqw; width: auto; }`
+- `.ability .ArrowDown { height: 15cqw; margin: -5cqw 0; }`
+- `.icon-group { gap: 1cqw; }`
+- `.ability .AllPlayers { bottom: 4cqw; filter: drop-shadow(0 0 4px #404040); position: absolute; }`
+
+Swift 修复点：
+
+- ability panel 从旧的 30cqw / 手写 top padding 改为 live-derived 28cqw panel，右侧边缘对齐 card face，整体 x 位置更接近 Banggai Cardinalfish 等 live IF ACTIVATED 卡。
+- panel 使用 live-like full-height container + centered blocks，而不是每个 trigger style 单独估一个 top offset。
+- IF ACTIVATED / GAME END / also-if brush 不再使用 `.scaledToFill()` 裁切；改为统一 `CardAbilityBrushBackgroundView`，保持 strip asset 原始横向方向，使用 stretch resizing 控制拉伸，不旋转、不用纯色正常 fallback。
+- block padding / min height / content gap 收拢到 `CardAbilityBlockMetrics`，standard、squished、also-if 分别对应 live CSS。
+- arrow-flow 使用 `CardAbilityArrowFlowMetrics`：默认 icon 9cqw、ArrowDown 15cqw、icon-group gap 1cqw、ArrowDown negative margin -5cqw，等效 Swift stack spacing 为 -4cqw，移除旧的额外 ArrowDown vertical offset。
+- DEBUG card face status 面板新增 brush asset、brush orientation、brush content mode、ability panel frame、arrow-flow metrics、also-if gap 和 card id / source id。
+
+本轮代表卡：
+
+- `base.main.057` Great White Shark：arrow-flow overlap 用 live-derived -4cqw spacing，AllPlayers bottom 4cqw。
+- `base.main.016` Bearded Seadevil：使用同一 arrow-flow metrics，不做单卡特判。
+- `base.main.014` Banggai Cardinalfish：IF ACTIVATED brush 方向保持 horizontal strip，panel x/width 改为 live 28cqw / x=72cqw。
+- `sr.starter.212` Atlantic Barracudina：also-if gap 保持 2cqw，main / also-if brush 使用同一方向。
+- `sr.main.161` Great Barracuda：S&R badge / coral / AllPlayers 回归未破坏。
+
+Focused tests 新增 `FishCardAbilityPixelAlignmentTests`，覆盖 brush orientation、panel frame、ArrowDown overlap、also-if gap、S&R badge、starter corner 和 debug summary metrics。
+
 ## Resource Diff
 
 `references/webpage_live/reports/resource_diff.json` 是本轮的机器可读差异报告。
@@ -279,16 +312,16 @@ Pass 2 固定审计这些代表卡：
 - `AnyCoral` / `BlueCoral` / `GreenCoral` / `PurpleCoral`
 - `FishLengthSmall` / `FishLengthMedium` / `FishLengthLarge`
 
-视觉目标是“明显像网页”，不是像素级完成。
+视觉目标是“明显像网页”，本轮后 ability panel 的方向 / x 位置 / ArrowDown overlap 已按 live CSS 收敛；剩余是更细的截图级字体和 sub-pixel 微调。
 
 ## Current Gap to Live Renderer
 
-Pass 2 后仍有这些差距：
+当前仍有这些差距：
 
 - exact cqw positioning、line-height、font weight 和 text wrapping 尚未逐项像素对齐。
 - ability text 内容来自本地 JSON 的 English / raw source；ability block / icon-run / also-if / badge / corner 已按 live CSS/JS model 分区，但 inline wrapping 仍不是完整 HTML renderer。
 - fish silhouette 的 opacity、blend mode 和裁切仍需截图对照。
-- trigger strip 和 ability panel 的像素级 padding、negative margin、absolute placement 仍需后续 screenshot pass 精调。
+- trigger strip 方向、right-side panel width / x、also-if gap 和 ArrowDown negative margin 已按 live CSS 映射；剩余主要是截图级 font wrapping、icon sub-pixel offset 和 brush cap-inset 微调。
 - `PlayFishTopRow` / `PlayFishAny` 仍需确认是组合图标、逻辑 token、旧 token 名，还是 live renderer 无独立素材。
 - Swift renderer 仍不是 HTML renderer；不会用 `WKWebView` 渲染每张卡。
 

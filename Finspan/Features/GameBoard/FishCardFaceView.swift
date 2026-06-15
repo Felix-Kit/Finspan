@@ -196,43 +196,53 @@ struct FishCardFaceView: View {
     }
 
     private func abilityArea(unit: CGFloat) -> some View {
-        VStack(spacing: unit * viewState.abilityPresentation.blockGapCqw) {
+        let panelMetrics = CardAbilityPanelMetrics.live
+
+        return VStack(spacing: unit * panelMetrics.blockGapCqw) {
             ForEach(Array(viewState.abilityPresentation.blocks.enumerated()), id: \.offset) { _, block in
                 abilityBlock(block, unit: unit)
             }
         }
-        .frame(width: unit * CardRenderMetrics.CardFaceLayout.abilityPanelWidth)
+        .frame(
+            width: unit * panelMetrics.widthCqw,
+            height: unit * panelMetrics.heightCqw,
+            alignment: .center
+        )
         .clipped()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-        .padding(.top, unit * abilityTopOffset)
-        .padding(.trailing, abilityTrailingPadding(unit: unit))
+        .padding(.top, unit * panelMetrics.topPaddingCqw)
+        .padding(.trailing, unit * panelMetrics.trailingPaddingCqw)
     }
 
     @ViewBuilder
     private func abilityBlock(_ block: CardAbilityBlock, unit: CGFloat) -> some View {
         let contentElements = block.elements.filter { !$0.isAllPlayersBottomIcon }
         let bottomIcons = block.elements.allPlayersBottomIcons
+        let blockMetrics = CardAbilityBlockMetrics.live(
+            for: block.layout,
+            panelStyle: viewState.abilityPanelStyle
+        )
 
         ZStack(alignment: .center) {
             abilityBlockBackground(block, unit: unit)
 
-            VStack(spacing: unit * abilityBlockSpacing(block.layout)) {
+            VStack(spacing: unit * blockMetrics.contentGapCqw) {
                 ForEach(Array(contentElements.prefix(12).enumerated()), id: \.offset) { _, element in
                     abilityElement(element, blockLayout: block.layout, unit: unit)
                 }
             }
+            .padding(.horizontal, unit * blockMetrics.horizontalPaddingCqw)
+            .padding(.top, unit * blockMetrics.topPaddingCqw)
+            .padding(.bottom, unit * blockMetrics.bottomPaddingCqw)
 
             ForEach(Array(bottomIcons.enumerated()), id: \.offset) { _, icon in
                 abilityIcon(icon, unit: unit)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                    .padding(.bottom, unit * 4)
+                    .padding(.bottom, unit * CardAbilityArrowFlowMetrics.live.allPlayersBottomCqw)
             }
         }
-        .padding(.horizontal, unit * abilityBlockHorizontalPadding(block.layout))
-        .padding(.top, unit * abilityBlockTopPadding(block.layout))
-        .padding(.bottom, unit * abilityBlockBottomPadding(block.layout))
-        .frame(width: unit * CardRenderMetrics.CardFaceLayout.triggerStripWidth)
-        .frame(minHeight: unit * abilityBlockMinHeight(block.layout))
+        .frame(width: unit * CardAbilityPanelMetrics.live.widthCqw)
+        .frame(minHeight: unit * blockMetrics.minTotalHeightCqw)
         .clipped()
     }
 
@@ -282,7 +292,7 @@ struct FishCardFaceView: View {
     private func abilityIconGroup(_ group: CardAbilityIconGroup, unit: CGFloat) -> some View {
         switch group.layout {
         case .arrowFlow:
-            VStack(spacing: -unit * 4.2) {
+            VStack(spacing: unit * CardAbilityArrowFlowMetrics.live.effectiveStackSpacingCqw) {
                 ForEach(Array(group.icons.enumerated()), id: \.offset) { _, icon in
                     abilityIcon(icon, unit: unit)
                 }
@@ -317,21 +327,7 @@ struct FishCardFaceView: View {
     @ViewBuilder
     private func abilityBlockBackground(_ block: CardAbilityBlock, unit: CGFloat) -> some View {
         if let image = rasterImage(for: block.backgroundAsset) {
-            Image(uiImage: image)
-                .resizable(
-                    capInsets: EdgeInsets(
-                        top: unit * 2,
-                        leading: unit * 2,
-                        bottom: unit * 2,
-                        trailing: unit * 2
-                    ),
-                    resizingMode: .stretch
-                )
-                .renderingMode(.original)
-                .scaledToFill()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .clipped()
-                .clipShape(RoundedRectangle(cornerRadius: unit * 1.3))
+            CardAbilityBrushBackgroundView(image: image, unit: unit)
         } else if block.backgroundAssetPrefix == nil {
             Color.clear
         } else {
@@ -393,106 +389,11 @@ struct FishCardFaceView: View {
         return digits.isEmpty ? "-\ncm" : "\(digits)\ncm"
     }
 
-    private var abilityTopOffset: CGFloat {
-        switch viewState.abilityPanelStyle {
-        case .yellowBrush:
-            return 9
-        case .tanBrush:
-            return 17
-        case .none:
-            return 17
-        }
-    }
-
-    private var abilityTextFontSize: CGFloat {
-        switch viewState.abilityPanelStyle {
-        case .none:
-            return 3.45
-        case .tanBrush, .yellowBrush:
-            return CardRenderMetrics.CardFaceLayout.abilityFontSize
-        }
-    }
-
     private func abilityTextFontSize(for layout: CardAbilityBlockLayout) -> CGFloat {
-        switch layout {
-        case .alsoIf:
-            return 3.45
-        case .squished:
-            return 3.55
-        case .standard:
-            return abilityTextFontSize
-        }
-    }
-
-    private func abilityBlockSpacing(_ layout: CardAbilityBlockLayout) -> CGFloat {
-        switch layout {
-        case .alsoIf:
-            return 0.7
-        case .squished:
-            return 0.55
-        case .standard:
-            return 1
-        }
-    }
-
-    private func abilityBlockHorizontalPadding(_ layout: CardAbilityBlockLayout) -> CGFloat {
-        switch layout {
-        case .alsoIf:
-            return 1
-        case .squished, .standard:
-            return 0
-        }
-    }
-
-    private func abilityBlockTopPadding(_ layout: CardAbilityBlockLayout) -> CGFloat {
-        switch layout {
-        case .alsoIf:
-            return 3
-        case .squished:
-            return 2
-        case .standard:
-            return 3
-        }
-    }
-
-    private func abilityBlockBottomPadding(_ layout: CardAbilityBlockLayout) -> CGFloat {
-        switch layout {
-        case .alsoIf:
-            return 3
-        case .squished:
-            return 2
-        case .standard:
-            return 5
-        }
-    }
-
-    private func abilityBlockMinHeight(_ layout: CardAbilityBlockLayout) -> CGFloat {
-        switch layout {
-        case .alsoIf:
-            return 15
-        case .squished:
-            return 13
-        case .standard:
-            return CardRenderMetrics.CardFaceLayout.abilityMinHeight
-        }
-    }
-
-    private func abilityHorizontalPadding(unit: CGFloat) -> CGFloat {
-        switch viewState.abilityPanelStyle {
-        case .none:
-            return unit * 1.5
-        case .tanBrush, .yellowBrush:
-            return unit * 3.0
-        }
-    }
-
-    private func abilityTrailingPadding(unit: CGFloat) -> CGFloat {
-        switch viewState.abilityPanelStyle {
-        case .none:
-            return unit * 6
-        case .tanBrush, .yellowBrush:
-            return 0
-        }
+        CGFloat(CardAbilityBlockMetrics.live(
+            for: layout,
+            panelStyle: viewState.abilityPanelStyle
+        ).textFontSizeCqw)
     }
 
     @ViewBuilder
@@ -526,7 +427,7 @@ struct FishCardFaceView: View {
     private func abilityIconSize(_ icon: FishCardFaceIconViewState, unit: CGFloat) -> CGFloat {
         switch icon.assetName {
         case "ArrowDown":
-            return unit * CardRenderMetrics.CardFaceLayout.abilityArrowHeight
+            return unit * CardAbilityArrowFlowMetrics.live.arrowHeightCqw
         case "SchoolFeederMove", "FishLengthSmall", "FishLengthMedium", "FishLengthLarge", "ConsumeFish", "ConsumeFish1", "ConsumeFish2", "ConsumeFish3":
             return unit * 12
         case "YoungFish":
@@ -534,54 +435,18 @@ struct FishCardFaceView: View {
         case "FishFromHand":
             return unit * 7.2
         case "AllPlayers":
-            return unit * 10
+            return unit * CardAbilityArrowFlowMetrics.live.allPlayersHeightCqw
         default:
-            return unit * CardRenderMetrics.CardFaceLayout.abilityIconHeight
+            return unit * CardAbilityArrowFlowMetrics.live.defaultIconHeightCqw
         }
     }
 
     private func abilityIconVerticalOffset(_ icon: FishCardFaceIconViewState, unit: CGFloat) -> CGFloat {
         switch icon.assetName {
         case "ArrowDown":
-            return -unit * 2.5
+            return unit * CardAbilityArrowFlowMetrics.live.arrowVerticalOffsetCqw
         default:
             return 0
-        }
-    }
-
-    @ViewBuilder
-    private func abilityBackground(unit: CGFloat) -> some View {
-        if let image = rasterImage(for: viewState.abilityStripAsset) {
-            Image(uiImage: image)
-                .resizable(
-                    capInsets: EdgeInsets(
-                        top: unit * 2,
-                        leading: unit * 2,
-                        bottom: unit * 2,
-                        trailing: unit * 2
-                    ),
-                    resizingMode: .stretch
-                )
-                .scaledToFill()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .clipped()
-                .clipShape(RoundedRectangle(cornerRadius: unit * 1.3))
-        } else if viewState.abilityPanelStyle == .tanBrush {
-            RoundedRectangle(cornerRadius: unit * 1.2)
-                .fill(Color(red: 0.72, green: 0.46, blue: 0.24).opacity(0.58))
-                .overlay(
-                    RoundedRectangle(cornerRadius: unit * 1.2)
-                        .stroke(Color(red: 0.78, green: 0.58, blue: 0.36).opacity(0.3), lineWidth: max(1, unit * 0.3))
-                )
-        } else if viewState.abilityPanelStyle == .yellowBrush {
-            RoundedRectangle(cornerRadius: unit * 1.2)
-                .fill(Color(red: 0.96, green: 0.77, blue: 0.22).opacity(0.64))
-                .overlay(
-                    RoundedRectangle(cornerRadius: unit * 1.2)
-                        .stroke(Color(red: 0.88, green: 0.65, blue: 0.14).opacity(0.34), lineWidth: max(1, unit * 0.3))
-                )
-        } else {
-            Color.clear
         }
     }
 
@@ -780,6 +645,14 @@ struct FishCardFaceView: View {
             Text("flavor \(summary.flavorTextFound ? "yes" : "no")")
             Text("blocks \(summary.abilityBlockCount)  alsoIf \(summary.alsoIfBlockCount)")
             Text("brush \(summary.triggerBrushMode)  allPlayersShadow \(summary.hasAllPlayersShadow ? "yes" : "no")")
+            Text("brushAsset \(summary.abilityBlockBackgrounds.prefix(2).joined(separator: "/"))")
+                .lineLimit(1)
+            Text("brush \(summary.brushOrientation)  mode \(summary.brushContentMode)")
+            Text("panel \(summary.abilityPanelFrame)")
+                .lineLimit(1)
+            Text("arrow \(summary.arrowFlowMetrics)")
+                .lineLimit(2)
+            Text("gap \(summary.alsoIfGapCqw)cqw")
             Text("badge \(summary.hasExpansionLogo ? "yes" : "no")  starter \(summary.hasStarterCorner ? "yes" : "no")")
             Text("blockTypes \(summary.abilityBlockTypes.prefix(3).joined(separator: ","))")
                 .lineLimit(2)
@@ -814,6 +687,30 @@ struct FishCardFaceView: View {
         }
     }
 
+}
+
+private struct CardAbilityBrushBackgroundView: View {
+    let image: UIImage
+    let unit: CGFloat
+
+    private let metrics = CardAbilityBrushMetrics.live
+
+    var body: some View {
+        Image(uiImage: image)
+            .resizable(
+                capInsets: EdgeInsets(
+                    top: unit * metrics.capInsetCqw,
+                    leading: unit * metrics.capInsetCqw,
+                    bottom: unit * metrics.capInsetCqw,
+                    trailing: unit * metrics.capInsetCqw
+                ),
+                resizingMode: .stretch
+            )
+            .renderingMode(.original)
+            .interpolation(.high)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: unit * metrics.cornerRadiusCqw))
+    }
 }
 
 private struct CardFaceIconAssetView: View {

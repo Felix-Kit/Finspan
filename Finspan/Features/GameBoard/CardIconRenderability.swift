@@ -47,6 +47,11 @@ struct FishCardIconRenderDebugSummary: Equatable {
     let hasAllPlayersShadow: Bool
     let triggerBrushMode: String
     let alsoIfBlockCount: Int
+    let brushOrientation: String
+    let brushContentMode: String
+    let abilityPanelFrame: String
+    let arrowFlowMetrics: String
+    let alsoIfGapCqw: Double
 }
 
 enum CardIconRenderabilityAnalyzer {
@@ -117,7 +122,12 @@ enum CardIconRenderabilityAnalyzer {
             hasStarterCorner: viewState.hasStarterCornerDecorations,
             hasAllPlayersShadow: viewState.abilityPresentation.hasAllPlayersShadow,
             triggerBrushMode: viewState.abilityPanelStyle.rawValue,
-            alsoIfBlockCount: viewState.abilityPresentation.alsoIfBlockCount
+            alsoIfBlockCount: viewState.abilityPresentation.alsoIfBlockCount,
+            brushOrientation: CardAbilityBrushMetrics.live.orientation.rawValue,
+            brushContentMode: CardAbilityBrushMetrics.live.assetContentMode,
+            abilityPanelFrame: CardAbilityPanelMetrics.live.frameSummary,
+            arrowFlowMetrics: CardAbilityArrowFlowMetrics.live.summary,
+            alsoIfGapCqw: CardAbilityPanelMetrics.live.blockGapCqw
         )
     }
 

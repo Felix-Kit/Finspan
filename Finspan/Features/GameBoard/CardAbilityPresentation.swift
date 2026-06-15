@@ -146,7 +146,7 @@ struct CardAbilityPresentationBuilder {
             return CardAbilityPresentation(
                 triggerTitle: triggerTitle,
                 blocks: [mainBlock, alsoIfBlock],
-                blockGapCqw: 2,
+                blockGapCqw: CardAbilityPanelMetrics.live.blockGapCqw,
                 isFlatFallback: false
             )
         }
@@ -163,7 +163,7 @@ struct CardAbilityPresentationBuilder {
                     elements: elements
                 )
             ],
-            blockGapCqw: 2,
+            blockGapCqw: CardAbilityPanelMetrics.live.blockGapCqw,
             isFlatFallback: false
         )
     }

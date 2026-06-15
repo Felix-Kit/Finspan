@@ -109,6 +109,7 @@
 - card face 内 name、scientific name、ability text、trigger title 和 flavor text 使用 English / raw source；外层中文 UI 继续保留。
 - 215 张卡的 live description 已作为 `Finspan/Resources/CardAssets/card_face_descriptions.json` 渲染 metadata 接入，不修改 runtime card JSON。
 - FishCardFaceView Ability Layout + Badge Fidelity Pass 已完成：`CardAbilityPresentation` 在 view-state 构造阶段生成，SwiftUI 不在 `body` 中 parse ability text；ability token 不再统一 HStack，Great White Shark 使用 arrow-flow icon group，IF ACTIVATED `also, if` 拆成多个 brush blocks，AllPlayers 使用 live drop-shadow style。
+- FishCardFaceView Ability Panel Pixel Alignment Pass 已完成：live CSS 的 `.ability-container` 28cqw width / right offset、1cqw top padding、2cqw gap、IF ACTIVATED / GAME END horizontal brush direction、also-if gap 和 ArrowDown 15cqw / -5cqw overlap 已进入 `CardAbilityLayoutMetrics`，SwiftUI 不再用 `.scaledToFill()` 裁切 trigger brush。
 - S&R expansion badge 已接入：`sr.*` 牌显示右下角 `SRLogo`，base 牌不显示。
 - Starter corner 已接入：`.starter.` 牌显示左上 / 右下 clipped gray corner overlay；这是 live CSS `.corner-overlay` 的 SwiftUI vector 还原，不使用 `StarterIcon` 作为牌面角标。
 - Great White Shark、Great Northern Tilefish、Great Barracuda、Atlantic Barracudina 仅作为 QA 样例，不写 special case；代表卡的 token sequence、brush block、also-if conditional、badge/corner、cost / requirement、zone、length、Wave、fish image 和 flavor text 都通过通用 resolver / view-state mapping 生效。
@@ -170,8 +171,9 @@
 - Pass 2 结构补齐已完成。
 - Icon renderability pipeline fix 已完成：不再把 resolver success 当作可见性证明，新增 PNG 像素审计和 runtime bundle decode 测试。
 - Ability layout / brush / badge / starter corner pass 已完成：live JS/CSS 的 icon-run、ability-row、also-if split block、AllPlayers drop-shadow、S&R logo 和 starter corner overlay 已进入 Swift presentation model。
-- 用 live renderer screenshot 对 Great White Shark、If Activated、Game End 三类卡做像素级对照。
-- 收敛 title、scientific name、points、length、ability text 的 font size / line-height / wrapping，以及 arrow-flow negative margin / AllPlayers bottom placement 的像素级偏移。
+- Ability panel pixel alignment pass 已完成：right-side panel x/width、brush orientation / stretch、also-if gap、ArrowDown overlap 和 AllPlayers bottom placement 已从 live CSS 映射。
+- 后续用 live renderer screenshot 对 Great White Shark、If Activated、Game End 三类卡做截图级对照。
+- 收敛 title、scientific name、points、length、ability text 的 font size / line-height / wrapping，以及 icon sub-pixel offset / brush cap-inset 的微调。
 - 调整 fish image frame、opacity、blend、clipping。
 - 继续保留 card face static view state cache，不在 SwiftUI `body` 内 parse ability text 或扫描 bundle。
 - 保持 Ability Engine v2 Core complete、215 mapped / 0 unsupported、GAME END remaining unsupported 0。

@@ -116,10 +116,16 @@ DOM card structure:
 - ability presentation in a right-side panel generated from raw English ability
   text before SwiftUI rendering; SwiftUI does not parse ability text inside
   `body`
+- right-side ability panel metrics are centralized in `CardAbilityLayoutMetrics`
+  and mapped from live CSS: 28cqw panel width / right offset, 1cqw top
+  padding, full-height centered block container, and 2cqw multi-block gap
 - English flavor / description text in the bottom live `.description` area
 - IF ACTIVATED uses the local `IfActivated` brush/strip background per ability
   block
 - GAME END uses the local `GameEnd` brush/strip background per ability block
+- brush backgrounds use `CardAbilityBrushBackgroundView`, keep the live
+  horizontal strip orientation, and use stretch resizing instead of
+  `.scaledToFill()` clipping; pure color is not a normal fallback path
 - WHEN PLAYED remains a transparent icon-composition area
 - ability token parsing covers the current runtime base-game and S&R tokens,
   including `[FishFromHand]`, `[ArrowDown]`, `[PlayFishBottomRow]`,
@@ -129,6 +135,10 @@ DOM card structure:
 - consecutive icon runs follow the live renderer composition model: plus groups
   become horizontal ability rows, coral runs become horizontal coral groups, and
   arrow runs such as Great White Shark become vertical arrow-flow groups
+- arrow-flow overlap is centralized in `CardAbilityArrowFlowMetrics`: default
+  icon height 9cqw, ArrowDown height 15cqw, icon-group gap 1cqw, ArrowDown
+  margin -5cqw, effective Swift stack spacing -4cqw, and no extra vertical
+  offset
 - `also, if` IF ACTIVATED abilities are split into a squished main brush block
   and a separate also-if brush block with a live-like gap
 - `AllPlayers` uses a card-specific drop-shadow style matching the live CSS
@@ -147,6 +157,12 @@ is not silently rendered as a white placeholder.
 This is intentionally a display layer only. It does not implement or interpret
 real fish abilities. The presentation builder reads raw English card-face text
 and metadata only to decide card-face composition, not gameplay behavior.
+
+The current DEBUG card-face panel reports both renderability and layout
+metadata: brush asset, brush orientation/content mode, ability panel frame,
+arrow-flow metrics, also-if gap, card id, source id, block types, token
+placements, S&R badge, starter corner, AllPlayers shadow, and missing/failing
+icon counts.
 
 The floating hand, discard pile preview/detail, and ocean slots all use this
 same complete card face and adapt by outer frame / scale only. This stage does
