@@ -16,6 +16,7 @@ struct GameBoardView: View {
     @State private var slotFrames: [OceanSlotAddress: CGRect] = [:]
     @State private var isShowingSettings = false
     @State private var isConfirmingDissolveCurrentGame = false
+    @State private var isBottomRewardDockExpanded = false
     var onTemporarilyExitGameAndReturnHome: (() -> Void)?
     var onDissolveCurrentGameAndReturnHome: (() -> Void)?
 
@@ -29,29 +30,37 @@ struct GameBoardView: View {
                 }
             } else {
                 NavigationStack {
-                    ZStack(alignment: .bottomLeading) {
+                    ZStack(alignment: .bottom) {
                         VStack(alignment: .leading, spacing: 12) {
                             gameHud
                             boardStatusStrip
 
-                            HStack(alignment: .top, spacing: 12) {
-                                ZStack(alignment: .bottom) {
-                                    playFishPanel
-                                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                            ZStack(alignment: .bottom) {
+                                playFishPanel
+                                    .frame(maxWidth: .infinity, alignment: .topLeading)
 
-                                    bottomCardDock
-                                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                                }
-
-                                Divider()
-
-                                rightSidePanel
-                                    .frame(width: rightSidePanelWidth, alignment: .topLeading)
+                                bottomCardDock
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                             }
                         }
                         .padding(.horizontal, 18)
                         .padding(.top, 12)
                         .padding(.bottom, 20)
+
+                        BottomRewardDockView(
+                            state: viewModel.bottomRewardDockState,
+                            isExpanded: isBottomRewardDockExpanded,
+                            onToggleExpanded: {
+                                withAnimation(.snappy(duration: 0.2)) {
+                                    isBottomRewardDockExpanded.toggle()
+                                }
+                            },
+                            onAction: { action in
+                                viewModel.performBottomRewardDockAction(action)
+                            }
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                        .zIndex(10)
 
                         if let toast = viewModel.hudToastViewState {
                             hudToastBanner(toast)
@@ -382,107 +391,6 @@ struct GameBoardView: View {
             }
             .padding(.bottom, 230)
         }
-    }
-
-    private var rightSidePanelWidth: CGFloat {
-        switch viewModel.rightSidePanelViewState.presentation {
-        case .compact:
-            return 150
-        case .expanded:
-            return 300
-        }
-    }
-
-    @ViewBuilder
-    private var rightSidePanel: some View {
-        let panel = viewModel.rightSidePanelViewState
-        if panel.presentation == .compact {
-            compactRightSidePanel(panel)
-        } else {
-            VStack(alignment: .leading, spacing: 14) {
-                rewardPoolPanel
-                    .frame(maxHeight: 300, alignment: .topLeading)
-                Divider()
-                rightActionPanel
-                if let gameEndAbilityPhase = viewModel.gameEndAbilityPhaseViewState {
-                    Divider()
-                    gameEndAbilityPanel(gameEndAbilityPhase)
-                }
-            }
-        }
-    }
-
-    private func compactRightSidePanel(_ panel: RightSidePanelViewState) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label(panel.compactTitle, systemImage: "sidebar.right")
-                .font(.headline.weight(.semibold))
-            Text(panel.compactSubtitle)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.secondarySystemBackground))
-        )
-    }
-
-    private func gameEndAbilityPanel(_ viewState: GameEndAbilityPhaseViewState) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(viewState.title)
-                .font(.title3.weight(.semibold))
-            Text(viewState.summaryText)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-
-            if viewState.abilityRows.isEmpty {
-                Text(viewState.emptyText)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            } else {
-                LazyVStack(alignment: .leading, spacing: 8) {
-                    ForEach(viewState.abilityRows) { row in
-                        Button {
-                            viewModel.activateGameEndAbility(row.source)
-                        } label: {
-                            VStack(alignment: .leading, spacing: 6) {
-                                HStack(alignment: .firstTextBaseline) {
-                                    Text(row.fishName)
-                                        .font(.headline)
-                                    Spacer()
-                                    Text(row.statusText)
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(row.canActivate ? .green : .secondary)
-                                }
-                                Text(row.abilitySummary)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(!row.canActivate)
-                    }
-                }
-            }
-
-            Button {
-                viewModel.finishGameEndAbilities()
-            } label: {
-                Text(viewState.finishButtonTitle)
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(!viewState.canFinish)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.secondarySystemBackground))
-        )
     }
 
     private var bottomCardDock: some View {
@@ -831,208 +739,6 @@ struct GameBoardView: View {
                 .minimumScaleFactor(0.75)
         }
         .frame(maxWidth: .infinity)
-    }
-
-    private var rewardPoolPanel: some View {
-        let rewardPool = viewModel.rewardPoolViewState
-        return VStack(alignment: .leading, spacing: 12) {
-            Text(rewardPool.titleText)
-                .font(.title2.weight(.semibold))
-
-            if let sourceText = rewardPool.sourceText {
-                Text(sourceText)
-                    .font(.callout.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Text(rewardPool.instructionText)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(rewardPool.isActive ? .primary : .secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if let blockingMessage = rewardPool.blockingMessage {
-                Text(blockingMessage)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.red)
-            }
-
-            if rewardPool.rewards.isEmpty {
-                ContentUnavailableView(
-                    AppStrings.GameBoard.noCurrentRewards,
-                    systemImage: "tray"
-                )
-                .frame(maxWidth: .infinity, minHeight: 140)
-            } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 116), spacing: 8)], spacing: 8) {
-                    ForEach(rewardPool.rewards) { token in
-                        Button {
-                            viewModel.selectRewardToken(token.id)
-                        } label: {
-                            rewardToken(token)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(!token.isSelectable)
-                    }
-                }
-            }
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.secondarySystemBackground))
-        )
-    }
-
-    private func rewardToken(_ token: RewardTokenViewState) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top, spacing: 8) {
-                ZStack {
-                    Circle()
-                        .fill(rewardTokenIconBackground(token))
-                    GameTokenIconView(icon: token.icon, size: 22)
-                }
-                .foregroundStyle(rewardTokenIconForeground(token))
-                .frame(width: 30, height: 30)
-
-                Spacer(minLength: 0)
-
-                if let countText = token.countText {
-                    Text(countText)
-                        .font(.caption2.weight(.black))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .background(Capsule().fill(Color.accentColor))
-                }
-            }
-
-            Text(token.title)
-                .font(.caption.weight(.bold))
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Text(token.subtitle)
-                .font(.caption2)
-                .foregroundStyle(token.isUnsupported ? .red : .secondary)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if let reason = token.unavailableReasonText {
-                Text(reason)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.red)
-                    .lineLimit(2)
-            }
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, minHeight: 118, alignment: .topLeading)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(rewardTokenBackground(token))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(rewardTokenBorder(token), lineWidth: token.isSelected ? 2 : 1)
-        )
-        .opacity(token.isSelectable ? 1 : 0.72)
-    }
-
-    private var rightActionPanel: some View {
-        let action = viewModel.rightActionPanelViewState
-        return VStack(alignment: .leading, spacing: 12) {
-            Text(action.title)
-                .font(.title3.weight(.semibold))
-
-            ForEach(action.summaryLines, id: \.self) { line in
-                Text(line)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            if let warningText = action.warningText {
-                Text(warningText)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.red)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            if let primaryTitle = action.primaryButtonTitle {
-                Button {
-                    viewModel.performRightActionPrimary()
-                } label: {
-                    Text(primaryTitle)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(!action.isPrimaryButtonEnabled)
-            }
-
-            if action.isSecondaryButtonVisible,
-               let secondaryTitle = action.secondaryButtonTitle {
-                Button {
-                    viewModel.performRightActionSecondary()
-                } label: {
-                    Text(secondaryTitle)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-            }
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.secondarySystemBackground))
-        )
-    }
-
-    private var sidePlayerInfoPanel: some View {
-        let info = viewModel.sidePlayerInfoViewState
-        return VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                Text(info.avatarText)
-                    .font(.headline.weight(.black))
-                    .foregroundStyle(.white)
-                    .frame(width: 42, height: 42)
-                    .background(Circle().fill(Color.accentColor))
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(AppStrings.GameBoard.currentPlayer)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(info.playerName)
-                        .font(.headline)
-                        .lineLimit(1)
-                }
-            }
-
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                compactMetric(title: AppStrings.GameBoard.remainingDivers, value: info.diverSummaryText)
-                compactMetric(title: AppStrings.GameBoard.eggTotal, value: "\(info.eggCount)")
-                compactMetric(title: AppStrings.GameBoard.youngTotal, value: "\(info.youngCount)")
-                compactMetric(title: AppStrings.GameBoard.schoolTotal, value: "\(info.schoolCount)")
-            }
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.secondarySystemBackground))
-        )
-    }
-
-    private func compactMetric(title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.callout.weight(.bold))
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func hudToastBanner(_ viewState: GameBoardToastViewState) -> some View {
@@ -1693,58 +1399,6 @@ struct GameBoardView: View {
             return .accentColor
         }
         return .clear
-    }
-
-    private func rewardTokenBackground(_ token: RewardTokenViewState) -> Color {
-        if token.isSelected {
-            return Color.accentColor.opacity(0.18)
-        }
-        if token.isUnsupported {
-            return Color.red.opacity(0.08)
-        }
-        return Color(.tertiarySystemBackground)
-    }
-
-    private func rewardTokenBorder(_ token: RewardTokenViewState) -> Color {
-        if token.isSelected {
-            return .accentColor
-        }
-        if token.isUnsupported {
-            return .red.opacity(0.45)
-        }
-        return .secondary.opacity(0.2)
-    }
-
-    private func rewardTokenIconBackground(_ token: RewardTokenViewState) -> Color {
-        switch token.kind {
-        case .drawFish,
-             .recoverFromDiscardOrDraw:
-            return .blue.opacity(0.18)
-        case .placeEgg,
-             .compoundPlaceEgg:
-            return .yellow.opacity(0.25)
-        case .placeYoung,
-             .hatchEgg,
-             .compoundHatchEgg:
-            return .cyan.opacity(0.18)
-        case .moveYoung,
-             .moveSchool,
-             .moveYoungOrSchool:
-            return .green.opacity(0.18)
-        case .skipOrEnd:
-            return .accentColor.opacity(0.18)
-        case .gainCoral,
-             .scatterSchool,
-             .consumeFish,
-             .playFishForFree,
-             .playFishFromHand,
-             .unsupported:
-            return .red.opacity(0.12)
-        }
-    }
-
-    private func rewardTokenIconForeground(_ token: RewardTokenViewState) -> Color {
-        token.isUnsupported ? .red : .primary
     }
 
     private func zoneBackground(_ zone: OceanZone, isHighlighted: Bool) -> Color {

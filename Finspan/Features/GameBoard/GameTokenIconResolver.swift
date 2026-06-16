@@ -13,6 +13,7 @@ enum GameTokenIconKind: Equatable, Hashable {
     case hatch
     case move
     case arrow
+    case wave
     case zone(DiveActionSite)
 }
 
@@ -86,6 +87,8 @@ final class GameTokenIconResolver: @unchecked Sendable {
             return ("SchoolFeederMove", "移", "移动资源")
         case .arrow:
             return ("ArrowDown", "箭头", "箭头")
+        case .wave:
+            return ("Wave", "分", "分数")
         case .zone(.blue):
             return ("FlipperBlue", "蓝", "蓝色潜水点")
         case .zone(.purple):

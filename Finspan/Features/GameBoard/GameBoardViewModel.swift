@@ -1259,6 +1259,189 @@ final class GameBoardViewModel: ObservableObject {
         )
     }
 
+    var bottomRewardDockState: BottomRewardDockState {
+        if let payment = paymentProgressViewState {
+            return BottomRewardDockState(
+                displayMode: .compact,
+                title: AppStrings.GameBoard.playFishPayment,
+                sourceText: payment.cardTitle,
+                instructionText: payment.blockingMessage ?? AppStrings.GameBoard.playFishFromHandPayment,
+                summaryLines: playFishActionSummaryLines(payment),
+                tokens: [],
+                warningText: payment.blockingMessage,
+                fallbackReason: nil,
+                forwardControl: BottomRewardDockControl(
+                    title: "→ \(AppStrings.GameBoard.confirmPlayFish)",
+                    action: .primary,
+                    isEnabled: payment.canConfirm,
+                    accessibilityLabel: AppStrings.GameBoard.confirmPlayFish
+                ),
+                backControl: BottomRewardDockControl(
+                    title: "←",
+                    action: .back,
+                    isEnabled: true,
+                    accessibilityLabel: AppStrings.GameBoard.cancelPlayFish
+                )
+            )
+        }
+
+        let rewardPool = rewardPoolViewState
+        let action = rightActionPanelViewState
+        if rewardPool.isActive || !rewardPool.rewards.isEmpty || action.actionKind != .none || gameEndAbilityPhaseViewState != nil {
+            var tokens = rewardPool.rewards.map(bottomRewardDockToken)
+            if let gameEndAbilityPhaseViewState {
+                tokens.append(contentsOf: gameEndAbilityPhaseViewState.abilityRows.map(bottomRewardDockToken))
+            }
+            let forwardControl = bottomForwardControl(for: action)
+            let backControl = bottomBackControl()
+            let fallbackReason = tokens.first(where: { $0.fallbackReason != nil })?.fallbackReason
+
+            return BottomRewardDockState(
+                displayMode: .compact,
+                title: rewardPool.isActive ? rewardPool.titleText : action.title,
+                sourceText: rewardPool.sourceText,
+                instructionText: rewardPool.isActive ? rewardPool.instructionText : action.summaryLines.first ?? AppStrings.GameBoard.chooseMainAction,
+                summaryLines: rewardPool.isActive ? [] : action.summaryLines,
+                tokens: tokens,
+                warningText: rewardPool.blockingMessage ?? action.warningText,
+                fallbackReason: fallbackReason,
+                forwardControl: forwardControl,
+                backControl: backControl
+            )
+        }
+
+        return BottomRewardDockState(
+            displayMode: .handleOnly,
+            title: AppStrings.GameBoard.currentAction,
+            sourceText: nil,
+            instructionText: AppStrings.GameBoard.chooseMainAction,
+            summaryLines: [],
+            tokens: [],
+            warningText: nil,
+            fallbackReason: nil,
+            forwardControl: nil,
+            backControl: nil
+        )
+    }
+
+    private func bottomRewardDockToken(_ token: RewardTokenViewState) -> BottomRewardDockToken {
+        BottomRewardDockToken(
+            id: token.id,
+            title: token.title,
+            subtitle: token.subtitle,
+            icon: token.icon,
+            countText: token.countText,
+            isSelectable: token.isSelectable,
+            isSelected: token.isSelected,
+            isCompleted: token.isCompleted,
+            isUnsupported: token.isUnsupported,
+            fallbackReason: bottomRewardFallbackReason(for: token.kind),
+            continuationSurfaces: continuationSurfaces(for: token.kind),
+            action: .selectRewardToken(token.id)
+        )
+    }
+
+    private func bottomRewardDockToken(_ row: GameEndAbilityRowViewState) -> BottomRewardDockToken {
+        BottomRewardDockToken(
+            id: row.id,
+            title: row.fishName,
+            subtitle: row.abilitySummary,
+            icon: tokenIconResolver.icon(for: .wave),
+            countText: nil,
+            isSelectable: row.canActivate,
+            isSelected: false,
+            isCompleted: row.isActivated,
+            isUnsupported: !row.isSupported,
+            fallbackReason: row.isSupported ? nil : AppStrings.GameBoard.abilityUnsupported,
+            continuationSurfaces: [.directCommit],
+            action: .activateGameEndAbility(row.source)
+        )
+    }
+
+    private func bottomForwardControl(for action: RightActionPanelViewState) -> BottomRewardDockControl? {
+        if state.phase == .endGamePending,
+           gameEndAbilityPhaseViewState != nil,
+           action.actionKind == .unsupported {
+            return BottomRewardDockControl(
+                title: "→ \(AppStrings.GameBoard.finishGameEndAbilities)",
+                action: .finishGameEndAbilities,
+                isEnabled: action.isPrimaryButtonEnabled,
+                accessibilityLabel: AppStrings.GameBoard.finishGameEndAbilities
+            )
+        }
+        guard let title = action.primaryButtonTitle else {
+            return nil
+        }
+        return BottomRewardDockControl(
+            title: "→ \(title)",
+            action: .primary,
+            isEnabled: action.isPrimaryButtonEnabled,
+            accessibilityLabel: title
+        )
+    }
+
+    private func bottomBackControl() -> BottomRewardDockControl? {
+        guard selectedRewardTokenId != nil
+            || rewardSelectionMode != nil
+            || selectedRecoverDiscardCardId != nil
+        else {
+            return nil
+        }
+        return BottomRewardDockControl(
+            title: "←",
+            action: .back,
+            isEnabled: true,
+            accessibilityLabel: AppStrings.GameBoard.cancel
+        )
+    }
+
+    private func bottomRewardFallbackReason(for kind: RewardTokenKind) -> String? {
+        switch kind {
+        case .recoverFromDiscardOrDraw:
+            return AppStrings.GameBoard.chooseDiscardCardToRecover
+        case .consumeFish:
+            return AppStrings.GameBoard.consumeFishHandCard
+        case .playFishForFree:
+            return AppStrings.GameBoard.playFishForFreeHandCard
+        case .playFishFromHand:
+            return AppStrings.GameBoard.playFishFromHandHandCard
+        case .unsupported:
+            return AppStrings.GameBoard.abilityUnsupported
+        default:
+            return nil
+        }
+    }
+
+    private func continuationSurfaces(for kind: RewardTokenKind) -> [ContinuationSurface] {
+        switch kind {
+        case .drawFish,
+             .skipOrEnd:
+            return [.directCommit]
+        case .recoverFromDiscardOrDraw:
+            return [.discardOverlay, .directCommit]
+        case .placeEgg,
+             .placeYoung,
+             .hatchEgg,
+             .moveYoung,
+             .moveSchool,
+             .moveYoungOrSchool,
+             .compoundPlaceEgg,
+             .compoundHatchEgg,
+             .scatterSchool:
+            return [.boardTarget]
+        case .gainCoral:
+            return [.reefTarget, .fallbackPanel]
+        case .consumeFish:
+            return [.handPicker, .boardTarget, .fallbackPanel]
+        case .playFishForFree:
+            return [.handPicker, .playFishFlow, .fallbackPanel]
+        case .playFishFromHand:
+            return [.handPicker, .playFishFlow, .paymentFlow, .fallbackPanel]
+        case .unsupported:
+            return [.fallbackPanel]
+        }
+    }
+
     var lastActionSummaryText: String? {
         guard let event = eventLog.reversed().first(where: isImportantActionEvent) else {
             return AppStrings.GameBoard.gameStartedSummary
@@ -3148,6 +3331,41 @@ final class GameBoardViewModel: ObservableObject {
             return
         }
         cancelPlayFishSelection()
+    }
+
+    func performBottomRewardDockAction(_ action: BottomRewardDockAction) {
+        switch action {
+        case let .selectRewardToken(tokenId):
+            selectRewardToken(tokenId)
+        case .primary:
+            performRightActionPrimary()
+        case .back:
+            cancelBottomDockStagedSelection()
+        case let .activateGameEndAbility(source):
+            activateGameEndAbility(source)
+        case .finishGameEndAbilities:
+            finishGameEndAbilities()
+        case .openFallbackOverlay:
+            errorMessage = AppStrings.GameBoard.chooseOption
+        }
+    }
+
+    func cancelBottomDockStagedSelection() {
+        if paymentProgressViewState != nil {
+            if rewardSelectionMode != nil {
+                selectedRewardTokenId = nil
+                rewardSelectionMode = nil
+                clearPlayFishSelection()
+            } else {
+                cancelPlayFishSelection()
+            }
+            return
+        }
+
+        selectedRewardTokenId = nil
+        rewardSelectionMode = nil
+        clearRecoverDiscardSelection()
+        errorMessage = nil
     }
 
     func toggleDiscardPaymentCard(_ cardId: CardID) {

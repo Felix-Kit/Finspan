@@ -247,13 +247,15 @@ Focused tests 新增 / 更新 `FishCardLiveMeasurementTests`、`FishCardAbilityP
 - 修复：brush view 改为 block 的 `.background`，不再作为 `ZStack` content；`CardAbilityBlockMetrics` 的 standard / squished / also-if 最小高度分别对齐 live measurement：27.842cqw、17.993cqw、35.286cqw。
 - `background-origin` 实测为 `padding-box`，`background-clip` 实测为 `border-box`；Swift 仍用 unrotated top-leading cover/crop，不使用 cap-inset stretch，不使用纯色正常 fallback。
 
-本轮同时只做 inline ability interaction feasibility audit，不直接替换右侧 pending / reward UI：
+后续交互方向已经从 card inline 主交互调整为 BottomRewardDock 主行动中心：
 
 - 新增 `tools/scripts/audit_inline_ability_interaction.py`。
 - 输出 `tools/generated/card_rendering/inline_ability_interaction_audit.json` 和 `docs/INLINE_ABILITY_INTERACTION_AUDIT.md`。
 - 215 张卡分类：A inline candidates 73，B needs picker/overlay 51，C irreversible/no undo 91，D not enough metadata 0。
-- 推荐 MVP 只覆盖 `placeEgg`、`hatchEgg`、ability-driven `gainCoral`、simple move 和 `→` skip current fish。
-- 不建议现在删除右侧收益栏；draw、discard / hand picker、discard pile picker、play fish flow、all-player、GAME END、hidden information 和 uncertain flow 必须保留 fallback 或 hybrid UI。
+- 推荐当前 MVP 先把 reward / pending / playFish confirm 放入 bottom dock；card ability icon 只作为 source / group highlight 和未来 shortcut。
+- 包含 `ArrowDown` 的能力按组合语义整体高亮，例如 `FishEgg + ArrowDown + Predator`；不把 `ArrowDown` 单独作为可点击 token。
+- 右侧 reward / pending / playFish confirm 面板已从主 board layout 移除。draw、discard / hand picker、discard pile picker、play fish flow、all-player、GAME END、hidden information 和 uncertain flow 仍必须保留 fallback 能力，但入口由 bottom dock 拉起 overlay / sheet / picker / debug helper。
+- dive / zone reward 当前没有稳定 board marker，先走 bottom dock。
 - `→` 建议映射到 `PendingEffectIntent.skipRemaining` / `skipEffectExecution`，单节点可选效果映射到 `skipEffectNode`。
 - `←` 当前只建议撤回未提交的 ViewModel staged selection；没有 engine-level undo command，不应撤回已提交事件，尤其不能撤回 draw / deck order / hidden information / all-player / GAME END。
 

@@ -1,8 +1,10 @@
 # Inline Ability Interaction Audit
 
-This audit is design-only. It does not replace the existing right-side pending/reward UI and does not change Ability Engine behavior.
+This audit is design-only. It does not change Ability Engine behavior, rules, `GameEngine`, `GameState`, or card JSON. The current implementation no longer treats card inline ability taps as the main interaction path; `BottomRewardDock` is the primary action center for pending rewards, ability rewards, `playFish` confirm, GAME END candidates, and external AllPlayers rewards.
 
 The audit now separates inline entry, continuation, committed undo, and source visibility. `needs picker/overlay` does not mean `cannot inline`; it means the inline entry continues through a picker or overlay. `irreversible/no undo` does not mean `cannot inline`; it only means `<-` cannot undo after command submission.
+
+Card ability icons remain useful as source / group highlights and future shortcuts, but the current MVP does not require `InteractiveCardAbilityOverlay`, card icon hit-testing, or tapping a card-face token to resolve an effect. Compound icon runs with `ArrowDown` are treated as one semantic group, not as individual clickable icons.
 
 ## Current Pending Metadata
 
@@ -14,7 +16,8 @@ The audit now separates inline entry, continuation, committed undo, and source v
 - `skipEffectExecution`/`PendingEffectIntent.skipRemaining` can back the `→` control for ending/skipping the current fish ability remainder.
 - There is no engine-level `←` command today. A safe design needs staged ViewModel undo first, and engine transaction/undo metadata only for committed reversible steps.
 - First unified presentation model exists as `BoardCardInteractionTask` / `BoardCardInteractionStep` / `BoardCardInteractionToken` / `BoardCardInteractionControlState`.
-- `IncomingRewardDockState` is the presentation model for external pending rewards where the current player cannot rely on a visible source fish card.
+- `IncomingRewardDockState` is the presentation source-summary model for external pending rewards where the current player cannot rely on a visible source fish card; `BottomRewardDockState` is the current primary dock surface that displays those rewards.
+- Right-side reward / pending / playFish confirmation panels are no longer part of the main board layout. Complex continuation now starts from the bottom dock and opens an overlay / sheet / picker.
 
 ## Classification Summary
 
@@ -68,19 +71,21 @@ The audit now separates inline entry, continuation, committed undo, and source v
 
 ## Hit Area Design
 
-- Add stable ids to `CardAbilityPresentation` icon elements: `abilityElementId`, optional `effectNodeId`, token name, token occurrence index, and source token range.
-- Add `PendingAbilityInlineController` to map current `PendingEffectSet.available` nodes to those ids.
-- Add `InteractiveCardAbilityOverlay` over the zoomed/active card face only; small hand/discard/ocean cards should not become primary hit targets.
-- Add `PendingAbilityTokenHitArea` for minimum tappable areas without changing card layout.
-- Reuse `BoardLegalTargetHighlighter`-style view state to highlight legal slots/fish; engine remains final validator.
-- Add `PendingAbilityUndoModel` for staged-only `←` in MVP.
+Paused as the primary route for this pass:
+
+- Do not add `InteractiveCardAbilityOverlay` yet.
+- Do not require card icon taps to resolve effects.
+- Do not make `ArrowDown` independently clickable.
+- Highlight a source card and its ability icon group when useful, especially compound groups such as `FishEgg + ArrowDown + Predator`.
+- Use bottom dock tokens as the current reliable tap targets.
+
+Future shortcut work can still add stable ids to `CardAbilityPresentation` icon elements (`abilityElementId`, optional `effectNodeId`, token name, token occurrence index, source token range) and map `PendingEffectSet.available` nodes onto those ids after bottom dock interaction is stable.
 
 ## Fallback Policy
 
-- Do not delete the right-side pending/reward UI now.
-- Keep fallback for complex explanations, discard choice, hand picker, discard pile picker, play-fish flows, all-player flows, GAME END, hidden information, and uncertain metadata.
-- The target direction is card/dock entry first, with right-side UI reduced to fallback / debug / complex helper.
-- External rewards prefer `IncomingRewardDock` because the target player may not have a visible source fish card to tap.
+- Do not use the right-side pending/reward UI as a permanent main-board panel.
+- Keep complex continuation for discard choice, hand picker, discard pile picker, play-fish flows, all-player flows, GAME END, hidden information, and uncertain metadata, but launch it from `BottomRewardDock` as overlay / sheet / picker / debug helper.
+- External rewards prefer the bottom dock because the target player may not have a visible source fish card to tap.
 
 ## Representative Records
 
