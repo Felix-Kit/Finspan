@@ -49,7 +49,12 @@ struct FishCardIconRenderDebugSummary: Equatable {
     let alsoIfBlockCount: Int
     let brushOrientation: String
     let brushContentMode: String
+    let brushBackgroundPosition: String
+    let brushBackgroundRepeat: String
     let abilityPanelFrame: String
+    let liveMeasuredAbilityFrame: String?
+    let swiftAbilityFrameDelta: String?
+    let swiftBeforeAbilityFrame: String?
     let arrowFlowMetrics: String
     let alsoIfGapCqw: Double
 }
@@ -103,6 +108,7 @@ enum CardIconRenderabilityAnalyzer {
             )
         )
         .sorted()
+        let liveMeasurement = CardLiveMeasurementCatalog.summary(for: viewState.cardId)
 
         return FishCardIconRenderDebugSummary(
             cardId: viewState.cardId ?? "none",
@@ -125,7 +131,12 @@ enum CardIconRenderabilityAnalyzer {
             alsoIfBlockCount: viewState.abilityPresentation.alsoIfBlockCount,
             brushOrientation: CardAbilityBrushMetrics.live.orientation.rawValue,
             brushContentMode: CardAbilityBrushMetrics.live.assetContentMode,
+            brushBackgroundPosition: CardAbilityBrushMetrics.live.backgroundPosition,
+            brushBackgroundRepeat: CardAbilityBrushMetrics.live.backgroundRepeat,
             abilityPanelFrame: CardAbilityPanelMetrics.live.frameSummary,
+            liveMeasuredAbilityFrame: liveMeasurement?.liveAbilityFrame.summary,
+            swiftAbilityFrameDelta: liveMeasurement?.deltaFrame.summary,
+            swiftBeforeAbilityFrame: liveMeasurement?.swiftBeforeAbilityFrame?.summary,
             arrowFlowMetrics: CardAbilityArrowFlowMetrics.live.summary,
             alsoIfGapCqw: CardAbilityPanelMetrics.live.blockGapCqw
         )

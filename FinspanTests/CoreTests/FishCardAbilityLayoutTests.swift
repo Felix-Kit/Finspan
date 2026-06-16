@@ -50,7 +50,7 @@ final class FishCardAbilityLayoutTests: XCTestCase {
 
         XCTAssertEqual(presentation.blocks.count, 2)
         XCTAssertEqual(presentation.alsoIfBlockCount, 1)
-        XCTAssertEqual(presentation.blockGapCqw, 2)
+        XCTAssertEqual(presentation.blockGapCqw, CardAbilityPanelMetrics.live.blockGapCqw, accuracy: 0.001)
         XCTAssertEqual(presentation.blocks.map(\.layout), [.squished, .alsoIf])
         XCTAssertTrue(presentation.blocks.allSatisfy(\.hasBrushBackground))
 

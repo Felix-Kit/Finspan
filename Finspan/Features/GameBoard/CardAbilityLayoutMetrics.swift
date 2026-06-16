@@ -1,32 +1,30 @@
 import Foundation
 
-/// Live finsearch CSS uses container-query width units (`cqw`) on the card:
-/// `.ability-container { min-width: 28cqw; right: 28cqw; height: calc(100% - 1cqw); padding-top: 1cqw; }`.
+/// Live finsearch CSS uses container-query width units (`cqw`) on the card.
+/// These values are measured from a rendered Chromium DOM snapshot in
+/// `tools/generated/card_rendering/live_measurements.json`; the slight offsets
+/// come from the live card border and CSS content-box sizing.
 struct CardAbilityPanelMetrics: Equatable {
     let widthCqw: Double
-    let liveRightOffsetCqw: Double
+    let rightGapCqw: Double
     let topPaddingCqw: Double
-    let heightReductionCqw: Double
+    let heightCqw: Double
     let blockGapCqw: Double
 
     static let live = CardAbilityPanelMetrics(
-        widthCqw: 28,
-        liveRightOffsetCqw: 28,
-        topPaddingCqw: 1,
-        heightReductionCqw: 1,
-        blockGapCqw: 2
+        widthCqw: 27.851,
+        rightGapCqw: 0.266,
+        topPaddingCqw: 0.266,
+        heightCqw: 65.218,
+        blockGapCqw: 1.986
     )
 
     var leftCqw: Double {
-        CardRenderMetrics.CardFaceLayout.fullCardWidth - liveRightOffsetCqw
+        CardRenderMetrics.CardFaceLayout.fullCardWidth - rightGapCqw - widthCqw
     }
 
     var trailingPaddingCqw: Double {
-        CardRenderMetrics.CardFaceLayout.fullCardWidth - leftCqw - widthCqw
-    }
-
-    var heightCqw: Double {
-        (CardRenderMetrics.CardFaceLayout.fullCardWidth / CardRenderMetrics.cardAspectRatio) - heightReductionCqw
+        rightGapCqw
     }
 
     var frameSummary: String {
@@ -38,9 +36,8 @@ enum CardAbilityBrushOrientation: String, Equatable {
     case horizontalRightToLeft
 }
 
-/// Live CSS keeps the strip asset unrotated with `background-size: cover`.
-/// SwiftUI uses stretch resizing so the strip keeps its horizontal brush direction
-/// instead of being aspect-filled and clipped into a vertical-looking brush.
+/// Live CSS keeps the strip asset unrotated with `background-size: cover` and
+/// default top-left background positioning.
 struct CardAbilityBrushMetrics: Equatable {
     let orientation: CardAbilityBrushOrientation
     let capInsetCqw: Double
@@ -48,14 +45,18 @@ struct CardAbilityBrushMetrics: Equatable {
     let usesRotation: Bool
     let usesPureColorFallback: Bool
     let assetContentMode: String
+    let backgroundPosition: String
+    let backgroundRepeat: String
 
     static let live = CardAbilityBrushMetrics(
         orientation: .horizontalRightToLeft,
-        capInsetCqw: 2,
-        cornerRadiusCqw: 1.3,
+        capInsetCqw: 0,
+        cornerRadiusCqw: 0,
         usesRotation: false,
         usesPureColorFallback: false,
-        assetContentMode: "stretch"
+        assetContentMode: "coverTopLeading",
+        backgroundPosition: "0% 0%",
+        backgroundRepeat: "repeat"
     )
 }
 

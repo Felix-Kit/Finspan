@@ -1,0 +1,510 @@
+#!/usr/bin/env node
+
+import fs from "node:fs";
+import http from "node:http";
+import path from "node:path";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const repoRoot = path.resolve(path.dirname(__filename), "../..");
+const liveRoot = path.join(repoRoot, "references/webpage_live");
+const outputDir = path.join(repoRoot, "tools/generated/card_rendering");
+const screenshotsDir = path.join(outputDir, "screenshots");
+const jsonPath = path.join(outputDir, "live_measurements.json");
+const markdownPath = path.join(repoRoot, "docs/CARD_RENDERING_LIVE_MEASUREMENTS.md");
+
+const targetCards = [
+  { cardId: "base.main.014", sourceId: 14, name: "Banggai Cardinalfish" },
+  { cardId: "base.main.057", sourceId: 57, name: "Great White Shark" },
+  { cardId: "base.main.016", sourceId: 16, name: "Bearded Seadevil" },
+  { cardId: "sr.starter.212", sourceId: 212, name: "Atlantic Barracudina" },
+  { cardId: "sr.main.161", sourceId: 161, name: "Great Barracuda" }
+];
+
+const mimeTypes = new Map([
+  [".html", "text/html"],
+  [".js", "application/javascript"],
+  [".css", "text/css"],
+  [".svg", "image/svg+xml"],
+  [".png", "image/png"],
+  [".webp", "image/webp"],
+  [".json", "application/json"],
+  [".otf", "font/otf"],
+  [".woff", "font/woff"],
+  [".ico", "image/x-icon"]
+]);
+
+function rounded(value, places = 3) {
+  if (value == null || Number.isNaN(value)) {
+    return null;
+  }
+  const factor = 10 ** places;
+  return Math.round(value * factor) / factor;
+}
+
+function createStaticServer(preferredPort = 4173) {
+  const server = http.createServer((request, response) => {
+    let urlPath = decodeURIComponent(new URL(request.url, "http://127.0.0.1").pathname);
+    if (urlPath === "/" || urlPath === "/finsearch" || urlPath === "/finsearch/") {
+      urlPath = "/index.html";
+    }
+    if (urlPath.startsWith("/finsearch/")) {
+      urlPath = urlPath.slice("/finsearch".length);
+    }
+
+    const filePath = path.join(liveRoot, urlPath);
+    if (!filePath.startsWith(liveRoot)) {
+      response.writeHead(403);
+      response.end("forbidden");
+      return;
+    }
+
+    fs.readFile(filePath, (error, contents) => {
+      if (error) {
+        response.writeHead(404);
+        response.end(`not found: ${urlPath}`);
+        return;
+      }
+      response.writeHead(200, {
+        "content-type": mimeTypes.get(path.extname(filePath)) ?? "application/octet-stream"
+      });
+      response.end(contents);
+    });
+  });
+
+  return new Promise((resolve, reject) => {
+    const listen = port => {
+      server.once("error", error => {
+        if (port === preferredPort && error.code === "EADDRINUSE") {
+          listen(0);
+          return;
+        }
+        reject(error);
+      });
+      server.listen(port, "127.0.0.1", () => resolve(server));
+    };
+    listen(preferredPort);
+  });
+}
+
+async function importPlaywright() {
+  const require = createRequire(import.meta.url);
+  try {
+    return require("playwright");
+  } catch (error) {
+    const hint = [
+      "Unable to import Playwright.",
+      "Install it outside the repo, for example:",
+      "  mkdir -p /tmp/finspan-playwright",
+      "  cd /tmp/finspan-playwright",
+      "  npm init -y",
+      "  npm install playwright",
+      "  npx playwright install chromium",
+      "Then run with:",
+      "  NODE_PATH=/tmp/finspan-playwright/node_modules node tools/scripts/measure_live_card_dom.mjs"
+    ].join("\n");
+    throw new Error(`${hint}\n\nOriginal error: ${error.message}`);
+  }
+}
+
+function relativeAssetPath(urlString) {
+  if (!urlString || urlString === "none") {
+    return null;
+  }
+  const match = urlString.match(/\/finsearch\/(.+?)["')]?$/);
+  if (!match) {
+    return null;
+  }
+  return `references/webpage_live/${match[1]}`;
+}
+
+function generateMarkdown(report) {
+  const lines = [];
+  lines.push("# Card Rendering Live Measurements");
+  lines.push("");
+  lines.push(`Generated: ${report.generatedAt}`);
+  lines.push("");
+  lines.push("Source of truth: local render of `references/webpage_live/index.html` through Chromium/Playwright. The local server maps `/finsearch/*` to the mirrored live assets so computed CSS matches the published finsearch paths.");
+  lines.push("");
+  lines.push("## Summary");
+  lines.push("");
+  lines.push("| Card | Card frame px | Ability panel px | Panel cqw | Right gap cqw | Blocks | Brush mode |");
+  lines.push("| --- | ---: | ---: | ---: | ---: | ---: | --- |");
+  for (const card of report.cards) {
+    const panel = card.abilityContainer;
+    const firstBlock = card.abilityBlocks[0];
+    lines.push([
+      `| ${card.cardId} ${card.name}`,
+      `${card.cardFrame.width} x ${card.cardFrame.height}`,
+      panel ? `${panel.width} x ${panel.height}` : "none",
+      panel ? `${panel.cqw.left} / ${panel.cqw.width}` : "none",
+      panel ? panel.cqw.rightGap : "none",
+      card.abilityBlocks.length,
+      firstBlock ? `${firstBlock.background.assetName ?? "none"}; size ${firstBlock.background.size}; pos ${firstBlock.background.position}; repeat ${firstBlock.background.repeat}` : "none"
+    ].join(" | ") + " |");
+  }
+  lines.push("");
+  lines.push("## Brush Background Findings");
+  lines.push("");
+  lines.push("- Live ability blocks use CSS `background-image` on `.ability`, not a foreground `img`.");
+  lines.push("- Computed `background-size` is `cover`.");
+  lines.push("- Computed `background-position` is `0% 0%`.");
+  lines.push("- Computed `background-repeat` is `repeat` because CSS does not override the default, but `background-size: cover` makes the single brush image cover each block frame.");
+  lines.push("- No representative block reports a transform or rotation on the brush element.");
+  lines.push("- The correct Swift mapping is therefore an unrotated, top-leading cover/crop of the same brush raster, with the block frame measured from live layout.");
+  lines.push("");
+  lines.push("## Card Details");
+  lines.push("");
+  for (const card of report.cards) {
+    lines.push(`### ${card.cardId} ${card.name}`);
+    lines.push("");
+    lines.push(`- Card frame: ${JSON.stringify(card.cardFrame)}`);
+    lines.push(`- Ability container: ${card.abilityContainer ? JSON.stringify(card.abilityContainer) : "none"}`);
+    lines.push(`- Swift pre-fix estimated panel frame: ${JSON.stringify(card.swiftBefore.abilityPanelFrame)}`);
+    lines.push("");
+    lines.push("| Block | Classes | Frame px | Frame cqw | Background | Padding px |");
+    lines.push("| ---: | --- | ---: | ---: | --- | --- |");
+    card.abilityBlocks.forEach((block, index) => {
+      lines.push([
+        `| ${index + 1}`,
+        block.className,
+        `${block.frame.width} x ${block.frame.height} @ ${block.frame.left}, ${block.frame.top}`,
+        `x ${block.cqw.left}; y ${block.cqw.top}; w ${block.cqw.width}; h ${block.cqw.height}`,
+        `${block.background.assetName ?? "none"}; ${block.background.size}; ${block.background.position}; ${block.background.repeat}; transform ${block.background.transform}`,
+        `t ${block.padding.top}; r ${block.padding.right}; b ${block.padding.bottom}; l ${block.padding.left}`
+      ].join(" | ") + " |");
+    });
+    if (card.alsoIfGap) {
+      lines.push(`- also-if gap: ${JSON.stringify(card.alsoIfGap)}`);
+    }
+    if (card.arrowDown) {
+      lines.push(`- ArrowDown: ${JSON.stringify(card.arrowDown)}`);
+    }
+    lines.push(`- Ability icons: ${card.abilityIcons.map(icon => `${icon.className}@${icon.cqw.left},${icon.cqw.top} ${icon.cqw.width}x${icon.cqw.height}`).join("; ") || "none"}`);
+    lines.push("");
+  }
+  lines.push("## Fix Guidance");
+  lines.push("");
+  lines.push("- Use measured live cqw frames for `CardAbilityPanelMetrics` instead of undocumented offsets.");
+  lines.push("- Render brush backgrounds with live `cover` semantics and top-leading alignment; do not cap-inset stretch the raster.");
+  lines.push("- Keep ArrowDown metrics tied to measured `.ArrowDown { height: 15cqw; margin: -5cqw 0; }` and representative overlap results.");
+  lines.push("");
+  lines.push("## Applied Swift Mapping");
+  lines.push("");
+  lines.push("- `CardAbilityPanelMetrics.live` now uses the measured container frame: left `71.883cqw`, top `0.266cqw`, width `27.851cqw`, height `65.218cqw`, right gap `0.266cqw`, block gap `1.986cqw`.");
+  lines.push("- `CardAbilityBrushMetrics.live` now records `assetContentMode = coverTopLeading`, `backgroundPosition = 0% 0%`, `backgroundRepeat = repeat`, `capInsetCqw = 0`, and `cornerRadiusCqw = 0`.");
+  lines.push("- `CardAbilityBrushBackgroundView` maps CSS background cover with top-leading alignment by calculating the cover-scaled image size from the block frame and clipping to that frame.");
+  lines.push("- DEBUG card face status can show the live measured frame, current Swift frame, and delta when `tools/generated/card_rendering/live_measurements.json` is present.");
+  lines.push("");
+  return lines.join("\n");
+}
+
+async function measureCard(page, baseUrl, target) {
+  await page.locator("input").fill(target.name);
+  await page.waitForTimeout(500);
+  await page.waitForSelector(".card", { timeout: 10000 });
+
+  const cards = await page.locator(".card").count();
+  if (cards < 1) {
+    throw new Error(`No rendered card found for ${target.name}`);
+  }
+
+  const screenshotPath = path.join(screenshotsDir, `${target.cardId.replaceAll(".", "_")}.png`);
+  await page.locator(".card").first().screenshot({ path: screenshotPath });
+
+  return await page.locator(".card").first().evaluate((card, target) => {
+    const rect = element => {
+      if (!element) return null;
+      const box = element.getBoundingClientRect();
+      return {
+        x: box.x,
+        y: box.y,
+        width: box.width,
+        height: box.height,
+        top: box.top,
+        right: box.right,
+        bottom: box.bottom,
+        left: box.left
+      };
+    };
+    const px = value => Number.parseFloat(value || "0") || 0;
+    const styleMap = (element, names) => {
+      if (!element) return {};
+      const style = getComputedStyle(element);
+      return Object.fromEntries(names.map(name => [name, style[name]]));
+    };
+    const toCqw = (cardRect, value) => Math.round((value / cardRect.width) * 100000) / 1000;
+    const cqwRect = (cardRect, elementRect) => {
+      if (!elementRect) return null;
+      return {
+        left: toCqw(cardRect, elementRect.left - cardRect.left),
+        top: toCqw(cardRect, elementRect.top - cardRect.top),
+        width: toCqw(cardRect, elementRect.width),
+        height: toCqw(cardRect, elementRect.height),
+        rightGap: toCqw(cardRect, cardRect.right - elementRect.right),
+        bottomGap: toCqw(cardRect, cardRect.bottom - elementRect.bottom)
+      };
+    };
+    const computedNumber = (element, name) => px(getComputedStyle(element)[name]);
+    const computedCqwNumber = (cardRect, element, name) => toCqw(cardRect, computedNumber(element, name));
+    const className = element => typeof element?.className === "string" ? element.className : "";
+    const assetNameFromBackground = backgroundImage => {
+      const match = backgroundImage?.match(/\/([^/.]+)\.[a-f0-9]+\.(png|webp|svg)/);
+      return match ? match[1] : null;
+    };
+    const title = card.querySelector(".name .title")?.textContent?.replace(/\s+/g, " ").trim() ?? "";
+    const cardRect = rect(card);
+    const abilityContainer = card.querySelector(".ability-container");
+    const containerRect = rect(abilityContainer);
+    const abilityBlocks = [...card.querySelectorAll(".ability")].map(block => {
+      const blockRect = rect(block);
+      const styles = styleMap(block, [
+        "backgroundImage",
+        "backgroundSize",
+        "backgroundPosition",
+        "backgroundRepeat",
+        "borderRadius",
+        "clipPath",
+        "overflow",
+        "objectFit",
+        "transform",
+        "zIndex",
+        "display",
+        "position",
+        "justifyContent",
+        "alignItems",
+        "gap",
+        "width",
+        "height",
+        "minHeight",
+        "paddingTop",
+        "paddingRight",
+        "paddingBottom",
+        "paddingLeft",
+        "fontSize",
+        "lineHeight"
+      ]);
+      return {
+        className: className(block),
+        frame: blockRect,
+        cqw: cqwRect(cardRect, blockRect),
+        background: {
+          image: styles.backgroundImage,
+          assetName: assetNameFromBackground(styles.backgroundImage),
+          size: styles.backgroundSize,
+          position: styles.backgroundPosition,
+          repeat: styles.backgroundRepeat,
+          transform: styles.transform,
+          borderRadius: styles.borderRadius,
+          overflow: styles.overflow,
+          clipPath: styles.clipPath,
+          zIndex: styles.zIndex
+        },
+        layout: {
+          display: styles.display,
+          position: styles.position,
+          justifyContent: styles.justifyContent,
+          alignItems: styles.alignItems,
+          gap: styles.gap,
+          width: styles.width,
+          height: styles.height,
+          minHeight: styles.minHeight,
+          fontSize: styles.fontSize,
+          lineHeight: styles.lineHeight
+        },
+        padding: {
+          top: px(styles.paddingTop),
+          right: px(styles.paddingRight),
+          bottom: px(styles.paddingBottom),
+          left: px(styles.paddingLeft),
+          cqw: {
+            top: computedCqwNumber(cardRect, block, "paddingTop"),
+            right: computedCqwNumber(cardRect, block, "paddingRight"),
+            bottom: computedCqwNumber(cardRect, block, "paddingBottom"),
+            left: computedCqwNumber(cardRect, block, "paddingLeft")
+          }
+        }
+      };
+    });
+    const titleElements = [...card.querySelectorAll(".ability .ability-text.bold")].map(element => ({
+      text: element.textContent?.replace(/\s+/g, " ").trim() ?? "",
+      className: className(element),
+      frame: rect(element),
+      cqw: cqwRect(cardRect, rect(element)),
+      style: styleMap(element, ["fontSize", "fontWeight", "lineHeight", "paddingLeft", "textAlign", "position", "zIndex"])
+    }));
+    const abilityIcons = [...card.querySelectorAll(".ability img")].map((icon, index) => {
+      const iconRect = rect(icon);
+      const styles = styleMap(icon, [
+        "height",
+        "width",
+        "maxHeight",
+        "maxWidth",
+        "marginTop",
+        "marginRight",
+        "marginBottom",
+        "marginLeft",
+        "position",
+        "bottom",
+        "filter",
+        "zIndex",
+        "objectFit",
+        "transform"
+      ]);
+      return {
+        index,
+        className: className(icon),
+        alt: icon.getAttribute("alt"),
+        src: icon.currentSrc || icon.getAttribute("src"),
+        frame: iconRect,
+        cqw: cqwRect(cardRect, iconRect),
+        style: styles,
+        marginCqw: {
+          top: computedCqwNumber(cardRect, icon, "marginTop"),
+          right: computedCqwNumber(cardRect, icon, "marginRight"),
+          bottom: computedCqwNumber(cardRect, icon, "marginBottom"),
+          left: computedCqwNumber(cardRect, icon, "marginLeft")
+        }
+      };
+    });
+    const arrowIndex = abilityIcons.findIndex(icon => icon.className.includes("ArrowDown"));
+    const arrowDown = arrowIndex >= 0 ? {
+      icon: abilityIcons[arrowIndex],
+      previousIcon: abilityIcons[arrowIndex - 1] ?? null,
+      nextIcon: abilityIcons[arrowIndex + 1] ?? null,
+      topOverlapPx: abilityIcons[arrowIndex - 1] ? abilityIcons[arrowIndex - 1].frame.bottom - abilityIcons[arrowIndex].frame.top : null,
+      bottomOverlapPx: abilityIcons[arrowIndex + 1] ? abilityIcons[arrowIndex].frame.bottom - abilityIcons[arrowIndex + 1].frame.top : null,
+      topOverlapCqw: abilityIcons[arrowIndex - 1] ? toCqw(cardRect, abilityIcons[arrowIndex - 1].frame.bottom - abilityIcons[arrowIndex].frame.top) : null,
+      bottomOverlapCqw: abilityIcons[arrowIndex + 1] ? toCqw(cardRect, abilityIcons[arrowIndex].frame.bottom - abilityIcons[arrowIndex + 1].frame.top) : null
+    } : null;
+    const alsoIfBlocks = abilityBlocks.filter(block => block.className.includes("also-if"));
+    const alsoIfGap = abilityBlocks.length > 1 ? {
+      px: abilityBlocks[1].frame.top - abilityBlocks[0].frame.bottom,
+      cqw: toCqw(cardRect, abilityBlocks[1].frame.top - abilityBlocks[0].frame.bottom)
+    } : null;
+    const silhouette = card.querySelector(".silhouette");
+    const description = card.querySelector(".description");
+    return {
+      cardId: target.cardId,
+      sourceId: target.sourceId,
+      name: target.name,
+      renderedTitle: title,
+      cardText: card.innerText,
+      cardFrame: cardRect,
+      cardAspectRatio: cardRect.width / cardRect.height,
+      abilityContainer: containerRect ? {
+        frame: containerRect,
+        ...containerRect,
+        cqw: cqwRect(cardRect, containerRect),
+        style: styleMap(abilityContainer, [
+          "display",
+          "flexDirection",
+          "gap",
+          "height",
+          "justifyContent",
+          "minWidth",
+          "paddingTop",
+          "position",
+          "right",
+          "transform",
+          "zIndex"
+        ])
+      } : null,
+      abilityBlocks,
+      triggerTitles: titleElements,
+      abilityIcons,
+      arrowDown,
+      alsoIfBlockCount: alsoIfBlocks.length,
+      alsoIfGap,
+      silhouette: silhouette ? { frame: rect(silhouette), cqw: cqwRect(cardRect, rect(silhouette)), style: styleMap(silhouette, ["maxHeight", "maxWidth", "top", "left", "opacity", "filter", "transform", "zIndex"]) } : null,
+      description: description ? { text: description.textContent?.trim() ?? "", frame: rect(description), cqw: cqwRect(cardRect, rect(description)), style: styleMap(description, ["fontSize", "lineHeight", "top", "left", "width", "fontFamily", "fontStyle"]) } : null
+    };
+  }, target);
+}
+
+function attachDerivedData(report) {
+  for (const card of report.cards) {
+    const cardWidth = card.cardFrame.width;
+    const cardHeight = card.cardFrame.height;
+    const unit = cardWidth / 100;
+    const panelWidth = 28 * unit;
+    const panelHeight = (100 / (61 / 40) - 1) * unit;
+    card.swiftBefore = {
+      notes: "Swift state before this pass used CardAbilityPanelMetrics.live width=28cqw, top=1cqw, trailing=0cqw, height=(100/aspect)-1cqw and CardAbilityBrushMetrics.assetContentMode=stretch.",
+      abilityPanelFrame: {
+        left: rounded(card.cardFrame.right - panelWidth),
+        top: rounded(card.cardFrame.top + unit),
+        width: rounded(panelWidth),
+        height: rounded(panelHeight),
+        rightGap: 0,
+        cqw: {
+          left: 72,
+          top: 1,
+          width: 28,
+          height: rounded(100 / (61 / 40) - 1),
+          rightGap: 0
+        }
+      },
+      brushContentMode: "stretch",
+      brushUsesCapInsets: true,
+      brushAlignment: "center"
+    };
+    card.assets = {
+      brushAssets: [...new Set(card.abilityBlocks.map(block => block.background.assetName).filter(Boolean))].map(assetName => ({
+        assetName,
+        webpagePath: relativeAssetPath(card.abilityBlocks.find(block => block.background.assetName === assetName)?.background.image)
+      }))
+    };
+    card.roundedCardFrame = {
+      width: rounded(cardWidth),
+      height: rounded(cardHeight)
+    };
+  }
+}
+
+async function main() {
+  fs.mkdirSync(outputDir, { recursive: true });
+  fs.mkdirSync(screenshotsDir, { recursive: true });
+
+  const { chromium } = await importPlaywright();
+  const server = await createStaticServer();
+  const port = server.address().port;
+  const baseUrl = `http://127.0.0.1:${port}/finsearch/`;
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage({ viewport: { width: 1400, height: 1000 }, deviceScaleFactor: 1 });
+
+  const report = {
+    generatedAt: new Date().toISOString(),
+    measurementSource: {
+      kind: "local-playwright-dom",
+      url: baseUrl,
+      liveRoot: path.relative(repoRoot, liveRoot),
+      viewport: { width: 1400, height: 1000, deviceScaleFactor: 1 },
+      playwright: "chromium"
+    },
+    cards: []
+  };
+
+  try {
+    await page.goto(baseUrl, { waitUntil: "networkidle" });
+    await page.waitForSelector(".card", { timeout: 15000 });
+    for (const target of targetCards) {
+      report.cards.push(await measureCard(page, baseUrl, target));
+    }
+  } finally {
+    await browser.close();
+    await new Promise(resolve => server.close(resolve));
+  }
+
+  attachDerivedData(report);
+  fs.writeFileSync(jsonPath, `${JSON.stringify(report, null, 2)}\n`);
+  fs.writeFileSync(markdownPath, `${generateMarkdown(report)}\n`);
+  console.log(`Wrote ${path.relative(repoRoot, jsonPath)}`);
+  console.log(`Wrote ${path.relative(repoRoot, markdownPath)}`);
+}
+
+main().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

@@ -6,13 +6,13 @@ final class FishCardAbilityPixelAlignmentTests: XCTestCase {
     func testLiveAbilityPanelMetricsMapToFinsearchCss() throws {
         let metrics = CardAbilityPanelMetrics.live
 
-        XCTAssertEqual(metrics.widthCqw, 28)
-        XCTAssertEqual(metrics.liveRightOffsetCqw, 28)
-        XCTAssertEqual(metrics.leftCqw, 72)
-        XCTAssertEqual(metrics.trailingPaddingCqw, 0)
-        XCTAssertEqual(metrics.topPaddingCqw, 1)
-        XCTAssertEqual(metrics.blockGapCqw, 2)
-        XCTAssertEqual(metrics.heightReductionCqw, 1)
+        XCTAssertEqual(metrics.widthCqw, 27.851, accuracy: 0.001)
+        XCTAssertEqual(metrics.rightGapCqw, 0.266, accuracy: 0.001)
+        XCTAssertEqual(metrics.leftCqw, 71.883, accuracy: 0.001)
+        XCTAssertEqual(metrics.trailingPaddingCqw, 0.266, accuracy: 0.001)
+        XCTAssertEqual(metrics.topPaddingCqw, 0.266, accuracy: 0.001)
+        XCTAssertEqual(metrics.blockGapCqw, 1.986, accuracy: 0.001)
+        XCTAssertEqual(metrics.heightCqw, 65.218, accuracy: 0.001)
     }
 
     @MainActor
@@ -20,10 +20,13 @@ final class FishCardAbilityPixelAlignmentTests: XCTestCase {
         let brush = CardAbilityBrushMetrics.live
 
         XCTAssertEqual(brush.orientation, .horizontalRightToLeft)
-        XCTAssertEqual(brush.assetContentMode, "stretch")
+        XCTAssertEqual(brush.assetContentMode, "coverTopLeading")
+        XCTAssertEqual(brush.backgroundPosition, "0% 0%")
+        XCTAssertEqual(brush.backgroundRepeat, "repeat")
         XCTAssertFalse(brush.usesRotation)
         XCTAssertFalse(brush.usesPureColorFallback)
-        XCTAssertEqual(brush.capInsetCqw, 2)
+        XCTAssertEqual(brush.capInsetCqw, 0)
+        XCTAssertEqual(brush.cornerRadiusCqw, 0)
     }
 
     @MainActor
@@ -34,8 +37,8 @@ final class FishCardAbilityPixelAlignmentTests: XCTestCase {
         XCTAssertEqual(cardFace.abilityTriggerText, CardFaceTriggerCopy.ifActivated)
         XCTAssertEqual(block.backgroundAssetPrefix, "IfActivated")
         XCTAssertNotNil(block.backgroundAsset)
-        XCTAssertEqual(CardAbilityPanelMetrics.live.leftCqw, 72)
-        XCTAssertEqual(CardAbilityPanelMetrics.live.widthCqw, 28)
+        XCTAssertEqual(CardAbilityPanelMetrics.live.leftCqw, 71.883, accuracy: 0.001)
+        XCTAssertEqual(CardAbilityPanelMetrics.live.widthCqw, 27.851, accuracy: 0.001)
         XCTAssertEqual(CardAbilityBrushMetrics.live.orientation, .horizontalRightToLeft)
     }
 
@@ -95,10 +98,22 @@ final class FishCardAbilityPixelAlignmentTests: XCTestCase {
         let summary = CardIconRenderabilityAnalyzer.debugSummary(for: cardFace)
 
         XCTAssertEqual(summary.brushOrientation, CardAbilityBrushOrientation.horizontalRightToLeft.rawValue)
-        XCTAssertEqual(summary.brushContentMode, "stretch")
+        XCTAssertEqual(summary.brushContentMode, "coverTopLeading")
+        XCTAssertEqual(summary.brushBackgroundPosition, "0% 0%")
+        XCTAssertEqual(summary.brushBackgroundRepeat, "repeat")
         XCTAssertEqual(summary.abilityPanelFrame, CardAbilityPanelMetrics.live.frameSummary)
         XCTAssertEqual(summary.arrowFlowMetrics, CardAbilityArrowFlowMetrics.live.summary)
         XCTAssertEqual(summary.alsoIfGapCqw, CardAbilityPanelMetrics.live.blockGapCqw)
+    }
+
+    @MainActor
+    func testDebugSummaryIncludesLiveMeasurementDeltaWhenJsonExists() throws {
+        let cardFace = try cardFace(for: "base.main.014")
+        let summary = CardIconRenderabilityAnalyzer.debugSummary(for: cardFace)
+
+        XCTAssertEqual(summary.liveMeasuredAbilityFrame, "x:71.883 y:0.266 w:27.851 h:65.218 r:0.266")
+        XCTAssertEqual(summary.swiftAbilityFrameDelta, "x:0.0 y:0.0 w:0.0 h:0.0 r:0.0")
+        XCTAssertEqual(summary.swiftBeforeAbilityFrame, "x:72.0 y:1.0 w:28.0 h:64.574 r:0.0")
     }
 
     @MainActor

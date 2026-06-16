@@ -110,7 +110,7 @@ Swift resolver 层把 web renderer model 映射到可缓存的 view state：
 
 Pass 1.5 修正了“资源已导入但未完整应用”的 wiring 问题：
 
-- `IfActivated` / `GameEnd` trigger strip 被限制在 ability panel 宽度内，layout metadata 明确区分 full-card width、ability panel width 和 trigger strip width；背景使用 stretch + clipping，不再横向溢出到鱼图区域。
+- `IfActivated` / `GameEnd` trigger strip 被限制在 ability panel 宽度内，layout metadata 明确区分 full-card width、ability panel width 和 trigger strip width；后续 live DOM pass 已把背景改为 CSS-equivalent top-leading cover/crop，不再横向溢出到鱼图区域。
 - cost / requirement 区域统一由 `FishCardFaceViewState.costIcons` 驱动，base cost、egg、young、consume、school fish、NoCost 和 S&R coral requirement 都走 `CardSymbolAssetResolver`。
 - zone 区域统一由 `zoneIcons` 驱动，`Sun` / `Dusk` / `Night` 和 live `midnight == 2` 的 `PlayFishBottomRow` 都走真实 asset；`PlayFishBottomRow` 只作为显示层 live source mapping，不改变 `OceanZone` 规则语义。
 - points 区域新增 `pointsIcon` view-state 字段，分数图标使用 live `Wave` asset，不再在 View 内硬编码无 resolver 图标。
@@ -193,6 +193,8 @@ Focused tests 覆盖：
 
 本轮继续以 live `references/webpage_live/static/css/main.f74b3868.css` / `main.3f6711eb.js` 为 source of truth，只修 ability panel 的像素级方向、位置和 overlap，不改规则、不改 card JSON、不扩展 Ability Engine。
 
+后续 Live DOM Measurement Pass 不再凭肉眼描述调参数：`tools/scripts/measure_live_card_dom.mjs` 使用 Playwright / Chromium 本地渲染 `references/webpage_live/index.html`，把 `/finsearch/*` 映射到本地 mirror，然后对代表卡读取真实 DOM bounding boxes 和 computed style。机器可读结果在 `tools/generated/card_rendering/live_measurements.json`，人工报告在 `docs/CARD_RENDERING_LIVE_MEASUREMENTS.md`。
+
 Live CSS 关键值已映射到 `CardAbilityLayoutMetrics`：
 
 - `.ability-container { min-width: 28cqw; right: 28cqw; height: calc(100% - 1cqw); padding-top: 1cqw; gap: 2cqw; justify-content: center; }`
@@ -203,24 +205,39 @@ Live CSS 关键值已映射到 `CardAbilityLayoutMetrics`：
 - `.icon-group { gap: 1cqw; }`
 - `.ability .AllPlayers { bottom: 4cqw; filter: drop-shadow(0 0 4px #404040); position: absolute; }`
 
+Live DOM 测量结论：
+
+- Banggai Cardinalfish live card frame: 375.328 x 246.797 px。
+- Banggai live ability container: left 71.883cqw、top 0.266cqw、width 27.851cqw、height 65.218cqw、right gap 0.266cqw。
+- Swift 修复前估算 panel frame: left 72cqw、top 1cqw、width 28cqw、height 64.574cqw、right gap 0。
+- `IfActivated` / `GameEnd` brush 是 `.ability` 的 CSS `background-image`，不是 foreground image。
+- computed `background-size` 为 `cover`，`background-position` 为 `0% 0%`，`background-repeat` 为默认 `repeat`，没有 transform / rotation。
+- ArrowDown measured overlap 在 Great White Shark / Bearded Seadevil 上均为约 3.98cqw，来自 live `.ArrowDown { height: 15cqw; margin: -5cqw 0; }`。
+
 Swift 修复点：
 
-- ability panel 从旧的 30cqw / 手写 top padding 改为 live-derived 28cqw panel，右侧边缘对齐 card face，整体 x 位置更接近 Banggai Cardinalfish 等 live IF ACTIVATED 卡。
+- ability panel 从旧的 30cqw / 手写 top padding 改为 live-measured frame：left 71.883cqw、top 0.266cqw、width 27.851cqw、height 65.218cqw、right gap 0.266cqw。
 - panel 使用 live-like full-height container + centered blocks，而不是每个 trigger style 单独估一个 top offset。
-- IF ACTIVATED / GAME END / also-if brush 不再使用 `.scaledToFill()` 裁切；改为统一 `CardAbilityBrushBackgroundView`，保持 strip asset 原始横向方向，使用 stretch resizing 控制拉伸，不旋转、不用纯色正常 fallback。
+- IF ACTIVATED / GAME END / also-if brush 不再使用 cap-inset stretch；`CardAbilityBrushBackgroundView` 现在按 live CSS 实现 unrotated top-leading cover/crop，保留左侧笔触边缘，不用纯色正常 fallback。
 - block padding / min height / content gap 收拢到 `CardAbilityBlockMetrics`，standard、squished、also-if 分别对应 live CSS。
 - arrow-flow 使用 `CardAbilityArrowFlowMetrics`：默认 icon 9cqw、ArrowDown 15cqw、icon-group gap 1cqw、ArrowDown negative margin -5cqw，等效 Swift stack spacing 为 -4cqw，移除旧的额外 ArrowDown vertical offset。
-- DEBUG card face status 面板新增 brush asset、brush orientation、brush content mode、ability panel frame、arrow-flow metrics、also-if gap 和 card id / source id。
+- DEBUG card face status 面板新增 brush asset、brush orientation、brush content mode、background position/repeat、ability panel frame、live measured frame、Swift delta、arrow-flow metrics、also-if gap 和 card id / source id。
 
 本轮代表卡：
 
 - `base.main.057` Great White Shark：arrow-flow overlap 用 live-derived -4cqw spacing，AllPlayers bottom 4cqw。
 - `base.main.016` Bearded Seadevil：使用同一 arrow-flow metrics，不做单卡特判。
-- `base.main.014` Banggai Cardinalfish：IF ACTIVATED brush 方向保持 horizontal strip，panel x/width 改为 live 28cqw / x=72cqw。
+- `base.main.014` Banggai Cardinalfish：IF ACTIVATED brush 方向保持 horizontal strip，panel x/width/top/height 改为 live measured frame。
 - `sr.starter.212` Atlantic Barracudina：also-if gap 保持 2cqw，main / also-if brush 使用同一方向。
 - `sr.main.161` Great Barracuda：S&R badge / coral / AllPlayers 回归未破坏。
 
-Focused tests 新增 `FishCardAbilityPixelAlignmentTests`，覆盖 brush orientation、panel frame、ArrowDown overlap、also-if gap、S&R badge、starter corner 和 debug summary metrics。
+Focused tests 新增 / 更新 `FishCardLiveMeasurementTests`、`FishCardAbilityPanelMeasurementTests`、`FishCardBrushBackgroundTests` 和 `FishCardAbilityPixelAlignmentTests`，覆盖 measurement JSON、brush computed style、panel frame、ArrowDown overlap、also-if gap、S&R badge、starter corner 和 debug summary metrics。
+
+仍待后续截图级微调：
+
+- title / ability copy 的 line wrapping 与网页仍需逐卡截图对照。
+- fish silhouette 的 sub-pixel placement、opacity / blend 仍可继续贴近 live。
+- icon intrinsic aspect 与 Swift square frame 的细节仍可继续在 screenshot pass 中微调，但当前 renderability 仍保持 57 / 57。
 
 ## Resource Diff
 
@@ -321,7 +338,7 @@ Pass 2 固定审计这些代表卡：
 - exact cqw positioning、line-height、font weight 和 text wrapping 尚未逐项像素对齐。
 - ability text 内容来自本地 JSON 的 English / raw source；ability block / icon-run / also-if / badge / corner 已按 live CSS/JS model 分区，但 inline wrapping 仍不是完整 HTML renderer。
 - fish silhouette 的 opacity、blend mode 和裁切仍需截图对照。
-- trigger strip 方向、right-side panel width / x、also-if gap 和 ArrowDown negative margin 已按 live CSS 映射；剩余主要是截图级 font wrapping、icon sub-pixel offset 和 brush cap-inset 微调。
+- trigger strip 方向、right-side panel width / x、also-if gap 和 ArrowDown negative margin 已按 live DOM / computed style 映射；剩余主要是截图级 font wrapping、fish silhouette 和 icon sub-pixel offset 微调。
 - `PlayFishTopRow` / `PlayFishAny` 仍需确认是组合图标、逻辑 token、旧 token 名，还是 live renderer 无独立素材。
 - Swift renderer 仍不是 HTML renderer；不会用 `WKWebView` 渲染每张卡。
 

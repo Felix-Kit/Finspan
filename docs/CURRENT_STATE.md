@@ -141,15 +141,18 @@
 - Trigger / ability brush 正常路径使用 live `IfActivated` / `GameEnd` strip asset，不再用纯色矩形替代；DEBUG 下 asset 缺失才显示红色 outline fallback。
 - S&R 牌显示右下角 `SRLogo` expansion badge；base 牌不显示。
 - Starter 牌显示左上 / 右下 clipped gray corner overlay；该角标来自 live CSS `.corner-overlay`，不是 `StarterIcon` 图片。`StarterIcon` 仍作为 live 搜索 / filter asset 保留。
-- FishCardFaceView Ability Panel Pixel Alignment Pass 已完成：`CardAbilityLayoutMetrics` 将 live `.ability-container` 28cqw width / right offset、1cqw top padding、2cqw block gap、brush orientation 和 ArrowDown 15cqw / -5cqw margin 映射到 SwiftUI；IF ACTIVATED / GAME END / also-if brush 不再 `.scaledToFill()` 裁切，改用 stretch 保持横向笔触方向。
-- DEBUG 牌库卡面状态面板继续扩展：现在可显示 brush asset、brush orientation、brush content mode、ability panel frame、arrow-flow metrics 和 also-if gap，便于在模拟器中核对 pixel alignment。
+- FishCardFaceView Live DOM Measurement + Ability Brush Correctness Pass 已完成：新增 `tools/scripts/measure_live_card_dom.mjs`，用 Playwright / Chromium 本地渲染 `references/webpage_live/index.html`，生成 `tools/generated/card_rendering/live_measurements.json` 和 `docs/CARD_RENDERING_LIVE_MEASUREMENTS.md`。
+- `CardAbilityLayoutMetrics` 现在使用 live DOM measured frame，而不是仅凭 CSS 整数估算：Banggai Cardinalfish ability container 为 left 71.883cqw、top 0.266cqw、width 27.851cqw、height 65.218cqw、right gap 0.266cqw。
+- IF ACTIVATED / GAME END / also-if brush 根因已确认：live 是 `.ability` 的 CSS `background-image`，computed `background-size: cover`、`background-position: 0% 0%`、默认 `background-repeat: repeat`，无 rotation；Swift 之前的 cap-inset stretch 与 live 不一致。
+- `CardAbilityBrushBackgroundView` 已改为 unrotated top-leading cover/crop，匹配 live background semantics，不用纯色正常 fallback。
+- DEBUG 牌库卡面状态面板继续扩展：现在可显示 brush asset、brush orientation、brush content mode、background position/repeat、ability panel frame、live measured frame、Swift delta、arrow-flow metrics 和 also-if gap，便于在模拟器中核对 pixel alignment。
 - Great White Shark 是 QA 样例，不是 special case：`base.main.057` 映射到 `57.*.webp`，`FishEgg` / `ArrowDown` / `Predator` / `AllPlayers` 均解析到 live-derived PNG render asset，cost 显示 `YoungFish` / `ConsumeFish`，length 600 cm 映射到 `FishLengthLarge`，ability presentation 使用 arrow-flow 而非 flat row。
 - Great Northern Tilefish、Banggai Cardinalfish、Bearded Seadevil、Great Barracuda 和 Atlantic Barracudina 也纳入代表卡审计，覆盖 If Activated brush block、arrow-flow overlap、S&R coral requirement / coral token、also-if split block、S&R badge、starter corner、不同 zone 和 flavor text。
 - DEBUG 牌库 QA 搜索已接入：Lobby → 牌库 → 所有牌，可按 English name、canonical card id、sourceId、trigger 或 token 稳定预览代表卡，不依赖随机发牌。
 - Pass 2 全量 215 张真实卡 ability / cost / zone / tag / points / length token 审计结果：missing asset / fallback count 0。
 - Icon renderability focused tests 覆盖 Great White Shark、Great Northern Tilefish、Great Barracuda 和全量 215 张真实卡；代表卡 renderability failures 为 0。
 - 手牌、弃牌堆和 ocean slot 当前仍共用同一完整卡牌牌面。
-- 当前牌面已完成 Pass 2 结构补齐、icon renderability pipeline fix、ability layout / brush / badge / starter corner pass，以及 ability panel pixel alignment pass；仍不是完整 finsearch 像素级复刻。详见 `docs/CARD_RENDERING_FIDELITY.md`。
+- 当前牌面已完成 Pass 2 结构补齐、icon renderability pipeline fix、ability layout / badge / starter corner pass，以及 live DOM measured ability brush correctness pass；仍不是完整 finsearch 像素级复刻。详见 `docs/CARD_RENDERING_FIDELITY.md` 和 `docs/CARD_RENDERING_LIVE_MEASUREMENTS.md`。
 
 ## 当前仍需修复 / 待做
 
@@ -176,6 +179,6 @@
 
 ## 当前建议下一步
 
-1. 做 FishCardFaceView 后续截图级 polish：在 ability panel width / brush direction / ArrowDown overlap 已对齐后，用 live screenshot 做 font wrapping、fish silhouette、icon sub-pixel offset 和 brush cap-inset 对照。
+1. 做 FishCardFaceView 后续截图级 polish：在 ability panel frame / brush background semantics / ArrowDown overlap 已用 live DOM measurement 对齐后，用 live screenshot 做 font wrapping、fish silhouette 和 icon sub-pixel offset 对照。
 2. 继续做 GameBoardViewModel pending UI 小步稳定，重点是 target / payment / discard-selection prompt fallback。
 3. 再修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。

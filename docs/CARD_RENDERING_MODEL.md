@@ -117,15 +117,17 @@ DOM card structure:
   text before SwiftUI rendering; SwiftUI does not parse ability text inside
   `body`
 - right-side ability panel metrics are centralized in `CardAbilityLayoutMetrics`
-  and mapped from live CSS: 28cqw panel width / right offset, 1cqw top
-  padding, full-height centered block container, and 2cqw multi-block gap
+  and mapped from rendered live DOM measurement, not hand-tuned Swift values:
+  71.883cqw left, 0.266cqw top, 27.851cqw width, 65.218cqw height,
+  0.266cqw right gap, and 1.986cqw multi-block gap
 - English flavor / description text in the bottom live `.description` area
 - IF ACTIVATED uses the local `IfActivated` brush/strip background per ability
   block
 - GAME END uses the local `GameEnd` brush/strip background per ability block
 - brush backgrounds use `CardAbilityBrushBackgroundView`, keep the live
-  horizontal strip orientation, and use stretch resizing instead of
-  `.scaledToFill()` clipping; pure color is not a normal fallback path
+  horizontal strip orientation, and match live CSS `background-size: cover`
+  with top-left `background-position: 0% 0%`; pure color is not a normal
+  fallback path
 - WHEN PLAYED remains a transparent icon-composition area
 - ability token parsing covers the current runtime base-game and S&R tokens,
   including `[FishFromHand]`, `[ArrowDown]`, `[PlayFishBottomRow]`,
@@ -160,9 +162,20 @@ and metadata only to decide card-face composition, not gameplay behavior.
 
 The current DEBUG card-face panel reports both renderability and layout
 metadata: brush asset, brush orientation/content mode, ability panel frame,
-arrow-flow metrics, also-if gap, card id, source id, block types, token
-placements, S&R badge, starter corner, AllPlayers shadow, and missing/failing
-icon counts.
+live measured ability frame, Swift frame delta, arrow-flow metrics, also-if
+gap, card id, source id, block types, token placements, S&R badge, starter
+corner, AllPlayers shadow, and missing/failing icon counts.
+
+Live measurement artifacts:
+
+- `tools/scripts/measure_live_card_dom.mjs`
+- `tools/generated/card_rendering/live_measurements.json`
+- `docs/CARD_RENDERING_LIVE_MEASUREMENTS.md`
+
+The measurement script serves `references/webpage_live/` locally and maps
+`/finsearch/*` to that mirror, then uses Chromium / Playwright to extract
+actual bounding boxes and computed style for Banggai Cardinalfish, Great White
+Shark, Bearded Seadevil, Atlantic Barracudina, and Great Barracuda.
 
 The floating hand, discard pile preview/detail, and ocean slots all use this
 same complete card face and adapt by outer frame / scale only. This stage does

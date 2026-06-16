@@ -648,8 +648,22 @@ struct FishCardFaceView: View {
             Text("brushAsset \(summary.abilityBlockBackgrounds.prefix(2).joined(separator: "/"))")
                 .lineLimit(1)
             Text("brush \(summary.brushOrientation)  mode \(summary.brushContentMode)")
+            Text("bg \(summary.brushBackgroundPosition)  repeat \(summary.brushBackgroundRepeat)")
+                .lineLimit(1)
             Text("panel \(summary.abilityPanelFrame)")
                 .lineLimit(1)
+            if let liveFrame = summary.liveMeasuredAbilityFrame {
+                Text("live \(liveFrame)")
+                    .lineLimit(1)
+            }
+            if let delta = summary.swiftAbilityFrameDelta {
+                Text("delta \(delta)")
+                    .lineLimit(1)
+            }
+            if let before = summary.swiftBeforeAbilityFrame {
+                Text("before \(before)")
+                    .lineLimit(1)
+            }
             Text("arrow \(summary.arrowFlowMetrics)")
                 .lineLimit(2)
             Text("gap \(summary.alsoIfGapCqw)cqw")
@@ -696,20 +710,27 @@ private struct CardAbilityBrushBackgroundView: View {
     private let metrics = CardAbilityBrushMetrics.live
 
     var body: some View {
-        Image(uiImage: image)
-            .resizable(
-                capInsets: EdgeInsets(
-                    top: unit * metrics.capInsetCqw,
-                    leading: unit * metrics.capInsetCqw,
-                    bottom: unit * metrics.capInsetCqw,
-                    trailing: unit * metrics.capInsetCqw
-                ),
-                resizingMode: .stretch
-            )
-            .renderingMode(.original)
-            .interpolation(.high)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: unit * metrics.cornerRadiusCqw))
+        GeometryReader { proxy in
+            let frameSize = proxy.size
+            let imageSize = image.size
+            let imageAspectRatio = max(imageSize.width, 1) / max(imageSize.height, 1)
+            let frameAspectRatio = max(frameSize.width, 1) / max(frameSize.height, 1)
+            let scaledWidth = frameAspectRatio > imageAspectRatio
+                ? frameSize.width
+                : frameSize.height * imageAspectRatio
+            let scaledHeight = frameAspectRatio > imageAspectRatio
+                ? frameSize.width / imageAspectRatio
+                : frameSize.height
+
+            Image(uiImage: image)
+                .resizable()
+                .renderingMode(.original)
+                .interpolation(.high)
+                .frame(width: scaledWidth, height: scaledHeight, alignment: .topLeading)
+                .frame(width: frameSize.width, height: frameSize.height, alignment: .topLeading)
+                .clipped()
+        }
+        .clipShape(RoundedRectangle(cornerRadius: unit * metrics.cornerRadiusCqw))
     }
 }
 
