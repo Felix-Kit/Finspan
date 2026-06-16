@@ -5313,6 +5313,7 @@ final class GameBoardViewModelTests: XCTestCase {
                 tokenIndex: tokenIndex,
                 title: "",
                 iconText: "",
+                icon: GameTokenIconResolver.shared.icon(for: .egg),
                 isSelectable: false,
                 isSelectedForPayment: false,
                 selectionMarkerText: nil,

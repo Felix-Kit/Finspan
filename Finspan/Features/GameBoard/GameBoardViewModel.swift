@@ -315,6 +315,7 @@ struct GameTopBarViewState: Equatable {
 struct GameHudViewState: Equatable {
     let leftControls: GameHudControlViewState
     let playerHud: TopPlayerHudViewState
+    let compactResourceHUD: CompactResourceHUDState
     let weeklyGoalHud: WeeklyGoalHudViewState
     let canShowLog: Bool
     let logButtonText: String
@@ -558,6 +559,7 @@ struct SlotResourceTokenViewState: Identifiable, Equatable {
     let tokenIndex: Int
     let title: String
     let iconText: String
+    let icon: GameTokenIconAsset
     let isSelectable: Bool
     let isSelectedForPayment: Bool
     let selectionMarkerText: String?
@@ -579,7 +581,7 @@ struct CoralReefViewState: Identifiable, Equatable {
     var id: String { diveSite.rawValue }
 
     let diveSite: DiveSite
-    let iconAssetName: String
+    let icon: GameTokenIconAsset
     let coralCount: Int
     let maxCoral: Int
     let completionBonus: Int
@@ -859,6 +861,7 @@ struct RewardTokenViewState: Identifiable, Equatable {
     let subtitle: String
     let iconText: String
     let symbolName: String?
+    let icon: GameTokenIconAsset
     let countText: String?
     let isSelectable: Bool
     let isSelected: Bool
@@ -990,6 +993,7 @@ final class GameBoardViewModel: ObservableObject {
     private var fishCardFaceViewStateCache: [CardID: FishCardFaceViewState] = [:]
     private let cardAssetResolver = CardAssetResolver.shared
     private let symbolAssetResolver = CardSymbolAssetResolver.shared
+    private let tokenIconResolver = GameTokenIconResolver.shared
     private let fishImageAssetResolver = FishImageAssetResolver.shared
     private let triggerStyleResolver = CardTriggerStyleResolver.shared
     private var cardCatalog: any CardCatalog {
@@ -1049,10 +1053,67 @@ final class GameBoardViewModel: ObservableObject {
                 placement: .topLeft
             ),
             playerHud: topPlayerHudViewState,
+            compactResourceHUD: compactResourceHUDState,
             weeklyGoalHud: weeklyGoalHudViewState,
             canShowLog: true,
             logButtonText: AppStrings.GameBoard.logButton,
             settingsButtonText: AppStrings.GameBoard.settings
+        )
+    }
+
+    var compactResourceHUDState: CompactResourceHUDState {
+        let totals = activePlayerResourceTotals
+        let reefs = activePlayerState?.ocean.coralReefs ?? []
+        let coralCounts = Dictionary(uniqueKeysWithValues: reefs.map { ($0.diveSite, $0.coralCount) })
+        let entries = [
+            CompactResourceHUDEntry(
+                id: "fish",
+                title: AppStrings.GameBoard.handCount,
+                count: activePlayerState?.hand.count ?? 0,
+                icon: tokenIconResolver.icon(for: .fish)
+            ),
+            CompactResourceHUDEntry(
+                id: ResourceKind.egg.rawValue,
+                title: AppStrings.GameBoard.eggTotal,
+                count: totals.eggs,
+                icon: tokenIconResolver.icon(for: .egg)
+            ),
+            CompactResourceHUDEntry(
+                id: ResourceKind.young.rawValue,
+                title: AppStrings.GameBoard.youngTotal,
+                count: totals.young,
+                icon: tokenIconResolver.icon(for: .young)
+            ),
+            CompactResourceHUDEntry(
+                id: ResourceKind.school.rawValue,
+                title: AppStrings.GameBoard.schoolTotal,
+                count: totals.schools,
+                icon: tokenIconResolver.icon(for: .school)
+            ),
+            CompactResourceHUDEntry(
+                id: "coral-blue",
+                title: AppStrings.oceanDiveSiteName(.blue),
+                count: coralCounts[.blue] ?? 0,
+                icon: tokenIconResolver.icon(for: .coral(.blue))
+            ),
+            CompactResourceHUDEntry(
+                id: "coral-purple",
+                title: AppStrings.oceanDiveSiteName(.purple),
+                count: coralCounts[.purple] ?? 0,
+                icon: tokenIconResolver.icon(for: .coral(.purple))
+            ),
+            CompactResourceHUDEntry(
+                id: "coral-green",
+                title: AppStrings.oceanDiveSiteName(.green),
+                count: coralCounts[.green] ?? 0,
+                icon: tokenIconResolver.icon(for: .coral(.green))
+            )
+        ]
+        return CompactResourceHUDState(
+            entries: entries,
+            accessibilityText: entries
+                .map { "\($0.title) \($0.count)" }
+                .joined(separator: "，")
         )
     }
 
@@ -4785,6 +4846,19 @@ final class GameBoardViewModel: ObservableObject {
         return "?"
     }
 
+    private func resourceTokenIcon(_ kind: ResourceKind) -> GameTokenIconAsset {
+        if kind == .egg {
+            return tokenIconResolver.icon(for: .egg)
+        }
+        if kind == .young {
+            return tokenIconResolver.icon(for: .young)
+        }
+        if kind == .school {
+            return tokenIconResolver.icon(for: .school)
+        }
+        return tokenIconResolver.icon(for: .anyCoral)
+    }
+
     private func pendingChoiceSubtitle(_ choice: PendingChoice) -> String {
         let playerName = players.first(where: { $0.playerId == choice.playerId })?.displayName ?? choice.playerId
         let optionalText = choice.isOptional ? AppStrings.GameBoard.optionalChoice : AppStrings.GameBoard.requiredChoice
@@ -6225,6 +6299,7 @@ final class GameBoardViewModel: ObservableObject {
             subtitle: subtitle,
             iconText: iconText,
             symbolName: symbolName,
+            icon: rewardTokenIcon(kind: kind, title: title, iconText: iconText, symbolName: symbolName),
             countText: countText,
             isSelectable: isSelectable,
             isSelected: selectedRewardTokenId == id,
@@ -6232,6 +6307,65 @@ final class GameBoardViewModel: ObservableObject {
             isUnsupported: isUnsupported,
             unavailableReasonText: unavailableReasonText
         )
+    }
+
+    private func rewardTokenIcon(
+        kind: RewardTokenKind,
+        title: String,
+        iconText: String,
+        symbolName: String?
+    ) -> GameTokenIconAsset {
+        if iconText == "卵" {
+            return tokenIconResolver.icon(for: .egg)
+        }
+        if iconText == "幼" {
+            return tokenIconResolver.icon(for: .young)
+        }
+        if iconText == "群" {
+            return tokenIconResolver.icon(for: .school)
+        }
+        if symbolName == "rectangle.stack.badge.minus" || iconText == "弃" {
+            return tokenIconResolver.icon(for: .discard)
+        }
+        if title.contains(AppStrings.oceanDiveSiteName(.blue)) {
+            return tokenIconResolver.icon(for: .coral(.blue))
+        }
+        if title.contains(AppStrings.oceanDiveSiteName(.purple)) {
+            return tokenIconResolver.icon(for: .coral(.purple))
+        }
+        if title.contains(AppStrings.oceanDiveSiteName(.green)) {
+            return tokenIconResolver.icon(for: .coral(.green))
+        }
+
+        switch kind {
+        case .drawFish,
+             .recoverFromDiscardOrDraw:
+            return tokenIconResolver.icon(for: .draw)
+        case .placeEgg,
+             .compoundPlaceEgg:
+            return tokenIconResolver.icon(for: .egg)
+        case .placeYoung:
+            return tokenIconResolver.icon(for: .young)
+        case .hatchEgg,
+             .compoundHatchEgg:
+            return tokenIconResolver.icon(for: .hatch)
+        case .moveYoung,
+             .moveSchool,
+             .moveYoungOrSchool:
+            return tokenIconResolver.icon(for: .move)
+        case .skipOrEnd,
+             .unsupported:
+            return tokenIconResolver.icon(for: .arrow)
+        case .gainCoral:
+            return tokenIconResolver.icon(for: .anyCoral)
+        case .scatterSchool:
+            return tokenIconResolver.icon(for: .school)
+        case .consumeFish:
+            return tokenIconResolver.icon(for: .consume)
+        case .playFishForFree,
+             .playFishFromHand:
+            return tokenIconResolver.icon(for: .fish)
+        }
     }
 
     private func placeEggOnMatchingFishRewardEntries(
@@ -7045,7 +7179,7 @@ final class GameBoardViewModel: ObservableObject {
         }
         return CoralReefViewState(
             diveSite: reef.diveSite,
-            iconAssetName: coralReefIconAssetName(for: reef.diveSite),
+            icon: tokenIconResolver.icon(for: .coral(reef.diveSite)),
             coralCount: reef.coralCount,
             maxCoral: reef.maxCoral,
             completionBonus: reef.completionBonus,
@@ -7059,17 +7193,6 @@ final class GameBoardViewModel: ObservableObject {
                 completionBonus: reef.completionBonus
             )
         )
-    }
-
-    private func coralReefIconAssetName(for diveSite: DiveSite) -> String {
-        switch diveSite {
-        case .blue:
-            return "BlueCoral"
-        case .purple:
-            return "PurpleCoral"
-        case .green:
-            return "GreenCoral"
-        }
     }
 
     private func coralDiveSite(for choice: PendingChoice) -> DiveSite? {
@@ -7713,6 +7836,7 @@ final class GameBoardViewModel: ObservableObject {
             tokenIndex: tokenIndex,
             title: resourceName(kind),
             iconText: resourceIconText(kind),
+            icon: resourceTokenIcon(kind),
             isSelectable: isSelectable,
             isSelectedForPayment: isSelected,
             selectionMarkerText: isSelected ? AppStrings.GameBoard.paymentSelectionMarker : nil,

@@ -81,6 +81,11 @@
 - 已支持拖拽出牌。
 - 已支持统一支付 UI，弃牌支付和资源支付都在同一出牌确认流程中汇总。
 - 已支持右侧行动确认区，用于出牌、pending choice、奖励选择和移动资源确认。
+- Unified Board/Card Interaction Flow Design 已落地为 presentation model：新增 `BoardCardInteractionTask` / `Step` / `Token` / `SourceOption` / `Target` / `ControlState`，用于表达未来 board/card inline staged selection。该模型不接规则引擎、不修改 `GameState`，最终合法性仍在 `GameEngine`。
+- 已明确区分 cost / requirement token 与 reward / ability token：`playFish` cost icon 是进度展示，玩家直接点击 board / hand / reef 上的合法来源；ability reward icon 才是主动入口。
+- Compact Resource HUD 已接入顶部 HUD，用真实 live-derived token icon 显示手牌、鱼卵、幼鱼、鱼群和三色珊瑚计数。
+- 右侧资源统计大面板已压缩掉；右侧 pending / reward / action fallback UI 仍保留，不删除。
+- `GameTokenIconResolver` / `GameTokenIconView` 已新增，非卡面 UI 的 egg / young / school / fish / coral / draw / discard / consume / hatch / move / zone token 可复用现有 CardAssets icon resolver，尺寸由 HUD / board layout 控制，不由 PNG intrinsic size 控制。
 - 顶部 HUD 已重做，包含玩家头像、当前行动摘要、设置入口和日志入口。
 - 周目标四格和详情面板已接入。
 - 日志已改为折叠 / 弹出查看。
@@ -183,7 +188,7 @@
 
 ## 当前建议下一步
 
-1. 做 FishCardFaceView 后续截图级 polish：在 ability panel frame / brush background semantics / ArrowDown overlap 已用 live DOM measurement 对齐后，用 live screenshot 做 font wrapping、fish silhouette 和 icon sub-pixel offset 对照。
+1. 基于 `docs/UNIFIED_BOARD_CARD_INTERACTION_FLOW.md` 继续推进 staged-only inline MVP，不删除右侧 pending / reward fallback：优先 place egg / hatch / gain coral / simple move。
 2. 继续做 GameBoardViewModel pending UI 小步稳定，重点是 target / payment / discard-selection prompt fallback。
-3. 如果推进 inline ability interaction，先做 staged-only MVP，不删除右侧收益栏：只接 place egg / hatch / gain coral / simple move，并保留 fallback。
+3. 后续再做完整 board/card inline `playFish` 和 dive reward flow；在 BoardLayout 完成前不要大规模改 board slot / marker 对齐。
 4. 再修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。

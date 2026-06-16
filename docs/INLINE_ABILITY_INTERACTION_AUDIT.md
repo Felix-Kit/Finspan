@@ -11,6 +11,8 @@ This audit is design-only. It does not replace the existing right-side pending/r
 - Reversible vs irreversible: not explicit metadata today. It must be added before committed undo is safe.
 - `skipEffectExecution`/`PendingEffectIntent.skipRemaining` can back the `→` control for ending/skipping the current fish ability remainder.
 - There is no engine-level `←` command today. A safe design needs staged ViewModel undo first, and engine transaction/undo metadata only for committed reversible steps.
+- First unified presentation model exists as `BoardCardInteractionTask` / `BoardCardInteractionStep` / `BoardCardInteractionToken` / `BoardCardInteractionControlState`. It is presentation-only and does not replace `PendingEffectSet`, `PendingEffectIntent`, or the right-side fallback UI.
+- `CompactResourceHUDState` now moves resource summary out of the right panel while leaving pending / reward fallback visible when needed.
 
 ## Classification Summary
 
@@ -66,6 +68,8 @@ This audit is design-only. It does not replace the existing right-side pending/r
 - Do not delete the right-side pending/reward UI now.
 - Keep fallback for draw, discard choice, hand picker, discard pile picker, play-fish flows, all-player flows, GAME END, hidden information, and uncertain metadata.
 - Hybrid first phase is preferred: card-face icon selection for simple local resource effects, with right-side minimal step info and existing skip controls retained.
+- `playFish` costs should not use reward-style "click cost icon first" interaction. Cost / requirement icons are progress indicators; players directly click legal board / hand / reef sources. Ability reward icons remain valid active entry points.
+- Full flow design is captured in `docs/UNIFIED_BOARD_CARD_INTERACTION_FLOW.md`.
 
 ## Representative Records
 

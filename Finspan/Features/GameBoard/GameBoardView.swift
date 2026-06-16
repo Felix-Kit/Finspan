@@ -186,6 +186,8 @@ struct GameBoardView: View {
             }
             .frame(maxWidth: .infinity)
 
+            compactResourceHUD(hud.compactResourceHUD)
+
             weeklyGoalBoxes(hud.weeklyGoalHud)
         }
         .padding(.horizontal, 18)
@@ -222,6 +224,34 @@ struct GameBoardView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 4)
         .background(Capsule().fill(Color(.tertiarySystemBackground).opacity(0.92)))
+    }
+
+    private func compactResourceHUD(_ viewState: CompactResourceHUDState) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(viewState.entries) { entry in
+                    HStack(spacing: 4) {
+                        GameTokenIconView(icon: entry.icon, size: 18)
+                        Text(entry.countText)
+                            .font(.caption.weight(.black))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                            .monospacedDigit()
+                    }
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 5)
+                    .background(
+                        Capsule()
+                            .fill(Color(.tertiarySystemBackground).opacity(0.92))
+                    )
+                    .accessibilityLabel("\(entry.title) \(entry.count)")
+                }
+            }
+            .padding(.horizontal, 1)
+        }
+        .frame(maxWidth: 360)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(viewState.accessibilityText)
     }
 
     private func weeklyGoalBoxes(_ viewState: WeeklyGoalHudViewState) -> some View {
@@ -378,8 +408,6 @@ struct GameBoardView: View {
                     Divider()
                     gameEndAbilityPanel(gameEndAbilityPhase)
                 }
-                Divider()
-                sidePlayerInfoPanel
             }
         }
     }
@@ -391,9 +419,13 @@ struct GameBoardView: View {
             Text(panel.compactSubtitle)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Divider()
-            sidePlayerInfoPanel
         }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(.secondarySystemBackground))
+        )
     }
 
     private func gameEndAbilityPanel(_ viewState: GameEndAbilityPhaseViewState) -> some View {
@@ -859,13 +891,7 @@ struct GameBoardView: View {
                 ZStack {
                     Circle()
                         .fill(rewardTokenIconBackground(token))
-                    if let symbolName = token.symbolName {
-                        Image(systemName: symbolName)
-                            .font(.caption.weight(.bold))
-                    } else {
-                        Text(token.iconText)
-                            .font(.caption.weight(.black))
-                    }
+                    GameTokenIconView(icon: token.icon, size: 22)
                 }
                 .foregroundStyle(rewardTokenIconForeground(token))
                 .frame(width: 30, height: 30)
@@ -1469,20 +1495,19 @@ struct GameBoardView: View {
     private func resourceToken(_ token: SlotResourceTokenViewState) -> some View {
         VStack(spacing: 2) {
             ZStack(alignment: .topTrailing) {
-                Text(token.iconText)
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(resourceTokenForegroundColor(token))
-                    .frame(width: 22, height: 22)
-                    .background(
-                        Circle()
-                            .fill(resourceTokenBackgroundColor(token))
+                ZStack {
+                    Circle()
+                        .fill(resourceTokenBackgroundColor(token))
+                    GameTokenIconView(icon: token.icon, size: 16)
+                }
+                .foregroundStyle(resourceTokenForegroundColor(token))
+                .frame(width: 22, height: 22)
+                .overlay(
+                    Circle().stroke(
+                        resourceTokenBorderColor(token),
+                        lineWidth: token.isSelectedForPayment ? 2 : 1
                     )
-                    .overlay(
-                        Circle().stroke(
-                            resourceTokenBorderColor(token),
-                            lineWidth: token.isSelectedForPayment ? 2 : 1
-                        )
-                    )
+                )
 
                 if let marker = token.selectionMarkerText {
                     Text(marker)
@@ -1634,20 +1659,7 @@ struct GameBoardView: View {
     }
 
     private func coralReefIcon(_ reef: CoralReefViewState) -> some View {
-        Group {
-            if let resourceName = localIconResourceName(prefix: reef.iconAssetName) {
-                Image(resourceName, bundle: .main)
-                    .resizable()
-                    .scaledToFit()
-            } else {
-                Circle()
-                    .fill(coralReefColor(reef.diveSite).opacity(0.86))
-                    .overlay(
-                        Circle()
-                            .stroke(.white.opacity(0.75), lineWidth: 1)
-                    )
-            }
-        }
+        GameTokenIconView(icon: reef.icon, size: 16)
         .accessibilityHidden(true)
     }
 
@@ -1767,24 +1779,6 @@ struct GameBoardView: View {
         case .green:
             return .green
         }
-    }
-
-    private func localIconResourceName(prefix: String) -> String? {
-        for directory in ["Resources/CardAssets/icons", "CardAssets/icons"] {
-            for fileExtension in ["svg", "png", "webp"] {
-                let urls = Bundle.main.urls(
-                    forResourcesWithExtension: fileExtension,
-                    subdirectory: directory
-                ) ?? []
-                if let url = urls.first(where: { url in
-                    let baseName = url.deletingPathExtension().lastPathComponent
-                    return baseName == prefix || baseName.hasPrefix("\(prefix).")
-                }) {
-                    return url.lastPathComponent
-                }
-            }
-        }
-        return nil
     }
 
     private func resourceTokenBackgroundColor(_ token: SlotResourceTokenViewState) -> Color {

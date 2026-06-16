@@ -126,6 +126,12 @@
 
 - 顶部 HUD、玩家头像、当前行动摘要、周目标四格、周目标详情面板已接入。
 - 右侧行动确认区已接入。
+- Compact Resource HUD 已接入顶部 HUD：手牌、鱼卵、幼鱼、鱼群和三色珊瑚使用 live-derived CardAssets token icon 横向紧凑显示。
+- 右侧资源统计大面板已从 right-side fallback 区抽离；right-side pending / reward / action fallback 仍保留。
+- 新增 `GameTokenIconResolver` / `GameTokenIconView`，让非卡面 UI 复用 `CardSymbolAssetResolver` / live-derived PNG icon，不使用 SF Symbol、emoji、临时色块或纯文字作为 token 正常路径。
+- Unified staged interaction presentation model 已新增，覆盖 hand card、source fish、dive site / zone、reef / board marker、pending effect node，以及 payment source、reward token、target、confirm、skip、fallback 等 step。
+- `playFish` inline 设计方向已确定：cost / requirement icon 只显示进度，支付来源通过直接点击 board / hand / reef 上的合法资源来选择；reward / ability icon 才作为主动入口。
+- `->` 表达 confirm / skip / fallback forward action；`<-` 只表达未提交 staged selection undo，不表达已提交事件 undo。
 - 日志已改为折叠 / sheet 查看。
 - 已支持强制结束当前对局返回主页。
 - 已支持弃牌堆 normal 只读查看和 `recoverFromDiscardOrDraw` 选择模式。
@@ -177,6 +183,7 @@
 - Ability layout / brush / badge / starter corner pass 已完成：live JS/CSS 的 icon-run、ability-row、also-if split block、AllPlayers drop-shadow、S&R logo 和 starter corner overlay 已进入 Swift presentation model。
 - Live DOM measured ability brush correctness pass 已完成：right-side panel frame、brush cover/top-left background mode、also-if gap、ArrowDown overlap 和 AllPlayers bottom placement 已从真实 DOM / computed style 映射。
 - Inline ability interaction 只完成 feasibility audit：暂不替换右侧收益栏。若后续实施，第一阶段只做 staged ViewModel undo 和 `placeEgg` / `hatchEgg` / `gainCoral` / simple move / `→` skip current fish；draw、hand/discard picker、play fish、AllPlayers、GAME END 和 hidden information 必须 fallback。
+- Unified Board/Card Interaction Flow Design 已完成第一步：新增 `docs/UNIFIED_BOARD_CARD_INTERACTION_FLOW.md` 和 pure presentation model；当前不实现完整 inline ability、完整 inline `playFish`、完整 inline dive reward 或 engine-level undo。
 - 后续用 live renderer screenshot 对 Great White Shark、If Activated、Game End 三类卡做截图级对照。
 - 收敛 title、scientific name、points、length、ability text 的 font size / line-height / wrapping，以及 icon sub-pixel offset 的微调。
 - 调整 fish image frame、opacity、blend、clipping。
@@ -189,7 +196,7 @@
 - 手牌居中。
 - 弃牌堆空时完全隐藏，有牌时悬浮在手牌右侧。
 - empty slot 不显示 unknown fish。
-- 右侧行动玩家摘要精简。
+- 右侧行动玩家摘要已由 Compact Resource HUD 压缩第一步替代；后续继续精简 right-side fallback 的视觉密度。
 - 顶部行动摘要 toast 化。
 
 ### P5 BoardLayout 和真实背景板
