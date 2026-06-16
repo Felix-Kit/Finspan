@@ -82,6 +82,8 @@
 - 已支持统一支付 UI，弃牌支付和资源支付都在同一出牌确认流程中汇总。
 - 已支持右侧行动确认区，用于出牌、pending choice、奖励选择和移动资源确认。
 - Unified Board/Card Interaction Flow Design 已落地为 presentation model：新增 `BoardCardInteractionTask` / `Step` / `Token` / `SourceOption` / `Target` / `ControlState`，用于表达未来 board/card inline staged selection。该模型不接规则引擎、不修改 `GameState`，最终合法性仍在 `GameEngine`。
+- Inline 交互分类已从单轴 A/B/C/D 调整为四维模型：`InlineEntrySurface`、`ContinuationSurface`、`CommitReversibility`、`SourceVisibility`。`needs picker / overlay` 不再等于不能 inline；`irreversible / no undo` 也不再等于不能 inline，只表示提交后不能用 `<-` 撤回。
+- 新增 `IncomingRewardDockState` presentation model，用于 AllPlayers 目标玩家、不可见 source card、board / dive-site marker 或 GAME END dock 等外部 pending reward 的入口；本轮只建模，不实现完整 inline 执行流程。
 - 已明确区分 cost / requirement token 与 reward / ability token：`playFish` cost icon 是进度展示，玩家直接点击 board / hand / reef 上的合法来源；ability reward icon 才是主动入口。
 - Compact Resource HUD 已接入顶部 HUD，用真实 live-derived token icon 显示手牌、鱼卵、幼鱼、鱼群和三色珊瑚计数。
 - 右侧资源统计大面板已压缩掉；右侧 pending / reward / action fallback UI 仍保留，不删除。
@@ -150,9 +152,9 @@
 - `CardAbilityLayoutMetrics` 现在使用 live DOM measured frame，而不是仅凭 CSS 整数估算：Banggai Cardinalfish ability container 为 left 71.883cqw、top 0.266cqw、width 27.851cqw、height 65.218cqw、right gap 0.266cqw。
 - IF ACTIVATED / GAME END / also-if brush 根因已确认：live 是 `.ability` 的 CSS `background-image`，computed `background-size: cover`、`background-position: 0% 0%`、默认 `background-repeat: repeat`，无 rotation；Swift 之前的 cap-inset stretch 与 live 不一致。
 - `CardAbilityBrushBackgroundView` 已改为 unrotated top-leading cover/crop，匹配 live background semantics，不用纯色正常 fallback。
-- Inline Ability Interaction feasibility audit 已完成但未实现替换 UI：新增 `tools/scripts/audit_inline_ability_interaction.py`，输出 `tools/generated/card_rendering/inline_ability_interaction_audit.json` 和 `docs/INLINE_ABILITY_INTERACTION_AUDIT.md`。
-- 215 张卡 inline 交互分类：A inline candidates 73、B needs picker/overlay 51、C irreversible/no undo 91、D not enough metadata 0。
-- 当前建议不删除右侧收益栏。第一阶段 MVP 只适合 `placeEgg` / `hatchEgg` / ability-driven `gainCoral` / simple move / `→` skip current fish；draw、discard / hand picker、play fish flow、AllPlayers、GAME END 和隐藏信息相关能力必须 fallback 或 hybrid。
+- Inline Ability Interaction audit 已更新为四维分类：`tools/scripts/audit_inline_ability_interaction.py` 输出每张卡的 `inlineEntrySurface`、`continuationSurface`、`commitReversibility`、`sourceVisibility`、`requiresFallback`、`requiresOverlay` 和 `canStartInline`。
+- 215 张卡 legacy 分类仍为 A inline candidates 73、B needs picker/overlay 51、C irreversible/no undo 91、D not enough metadata 0；新口径下 card ability icon entry 215、incoming reward dock entry 34、GAME END dock entry 39、D not enough metadata 0。
+- 当前建议不删除右侧收益栏。右侧 pending UI 保留为 fallback / debug / complex helper；外部收益优先由 `IncomingRewardDockState` 作为 bottom dock 入口承载。`recoverFromDiscardOrDraw`、`consumeFishFromHand`、`playFishForFree` / `playFishFromHand`、`drawFish`、GAME END 和 AllPlayers 都已在 audit / model 中按新口径表达。
 - `→` 可映射到 `PendingEffectIntent.skipRemaining` / `skipEffectExecution` 或单节点 `skipEffectNode`；`←` 当前只适合撤回未提交的 ViewModel staged selection，不能撤回已提交 `GameEvent`。
 - DEBUG 牌库卡面状态面板继续扩展：现在可显示 brush asset、brush orientation、brush content mode、background position/repeat、ability panel frame、live measured frame、Swift delta、arrow-flow metrics 和 also-if gap，便于在模拟器中核对 pixel alignment。
 - Great White Shark 是 QA 样例，不是 special case：`base.main.057` 映射到 `57.*.webp`，`FishEgg` / `ArrowDown` / `Predator` / `AllPlayers` 均解析到 live-derived PNG render asset，cost 显示 `YoungFish` / `ConsumeFish`，length 600 cm 映射到 `FishLengthLarge`，ability presentation 使用 arrow-flow 而非 flat row。

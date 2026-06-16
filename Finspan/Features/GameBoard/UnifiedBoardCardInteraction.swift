@@ -3,9 +3,20 @@ import Foundation
 struct BoardCardInteractionTask: Identifiable, Equatable {
     let id: String
     let source: BoardCardInteractionSource
+    let taxonomy: BoardCardInteractionTaxonomy
     let steps: [BoardCardInteractionStep]
     let controls: BoardCardInteractionControlState
     let hintText: String?
+}
+
+struct BoardCardInteractionTaxonomy: Equatable {
+    let inlineEntrySurfaces: [InlineEntrySurface]
+    let continuationSurfaces: [ContinuationSurface]
+    let commitReversibility: CommitReversibility
+    let sourceVisibility: SourceVisibility
+    let requiresFallback: Bool
+    let requiresOverlay: Bool
+    let canStartInline: Bool
 }
 
 struct BoardCardInteractionStep: Identifiable, Equatable {
@@ -59,7 +70,42 @@ enum BoardCardInteractionSource: Equatable {
     case zone(diveSite: DiveActionSite, zone: OceanZone)
     case reef(DiveSite)
     case boardMarker(String)
+    case incomingRewardDock(String)
+    case gameEndDock(String)
     case pendingEffectNode(choiceId: PendingChoiceID, nodeId: String?)
+}
+
+enum InlineEntrySurface: String, Equatable {
+    case cardAbilityIcon
+    case boardZoneIcon
+    case incomingRewardDock
+    case gameEndDock
+    case noInlineEntry
+}
+
+enum ContinuationSurface: String, Equatable {
+    case directCommit
+    case boardTarget
+    case handPicker
+    case discardOverlay
+    case playFishFlow
+    case paymentFlow
+    case reefTarget
+    case fallbackPanel
+}
+
+enum CommitReversibility: String, Equatable {
+    case stagedOnlyUndo
+    case committedUndoSupported
+    case noCommittedUndo
+}
+
+enum SourceVisibility: String, Equatable {
+    case ownVisibleSourceCard
+    case opponentSourceCard
+    case boardZoneOrDiveSite
+    case gameEndSourceCard
+    case externalPendingReward
 }
 
 enum BoardCardInteractionStepKind: String, Equatable {
@@ -135,4 +181,41 @@ enum BoardCardInteractionAction: Equatable {
 enum BoardCardInteractionControlVisibility: String, Equatable {
     case visible
     case hidden
+}
+
+struct IncomingRewardDockState: Identifiable, Equatable {
+    let id: String
+    let sourceSummary: IncomingRewardDockSourceSummary
+    let tokens: [IncomingRewardDockToken]
+    let controls: BoardCardInteractionControlState
+    let fallbackReason: String?
+    let isVisible: Bool
+}
+
+struct IncomingRewardDockSourceSummary: Equatable {
+    let sourcePlayerId: PlayerID
+    let sourcePlayerName: String
+    let sourcePlayerColorName: String
+    let sourceFishName: String?
+    let sourceCardId: CardID?
+    let triggerText: String
+    let sourceVisibility: SourceVisibility
+}
+
+struct IncomingRewardDockToken: Identifiable, Equatable {
+    let id: String
+    let kind: BoardCardInteractionTokenKind
+    let icon: GameTokenIconAsset
+    let title: String
+    let state: BoardCardInteractionSelectionState
+    let continuationSurfaces: [ContinuationSurface]
+    let action: IncomingRewardDockAction
+    let fallbackReason: String?
+}
+
+enum IncomingRewardDockAction: Equatable {
+    case selectRewardToken(String)
+    case skipCurrentReward(PendingChoiceID)
+    case stagedUndo
+    case showFallback
 }

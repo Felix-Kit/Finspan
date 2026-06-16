@@ -26,9 +26,22 @@ The first shared model is presentation-only:
 - `BoardCardInteractionTarget`
 - `BoardCardInteractionAction`
 - `BoardCardInteractionControlState`
+- `BoardCardInteractionTaxonomy`
 - `CompactResourceHUDState`
+- `IncomingRewardDockState`
 
 It can represent sources from hand cards, visible fish cards, dive sites/zones, reefs/board markers, and pending effect nodes. It can represent steps for payment source, reward token, target slot/fish/reef, hand card, discard card, confirm, skip, and fallback. It intentionally does not validate rules or mutate `GameState`; final legality remains in `GameEngine`.
+
+## Inline Taxonomy
+
+Inline interaction is now modeled across independent dimensions:
+
+- `InlineEntrySurface`: `cardAbilityIcon`, `boardZoneIcon`, `incomingRewardDock`, `gameEndDock`, or `noInlineEntry`.
+- `ContinuationSurface`: `directCommit`, `boardTarget`, `handPicker`, `discardOverlay`, `playFishFlow`, `paymentFlow`, `reefTarget`, or `fallbackPanel`.
+- `CommitReversibility`: `stagedOnlyUndo`, `committedUndoSupported`, or `noCommittedUndo`.
+- `SourceVisibility`: `ownVisibleSourceCard`, `opponentSourceCard`, `boardZoneOrDiveSite`, `gameEndSourceCard`, or `externalPendingReward`.
+
+This matters because `needs picker / overlay` is not the same as `cannot inline`. It means an inline entry can launch a picker or overlay continuation. `irreversible / no undo` is also not the same as `cannot inline`; it only means `<-` cannot undo after command submission.
 
 ## Token Roles
 
@@ -84,17 +97,22 @@ Special cases:
 
 ## Ability Staged Flow
 
-The inline audit classified 215 cards as A inline candidates 73, B needs picker/overlay 51, C irreversible/no undo 91, D not enough metadata 0. This model supports staged local resource effects first:
+The inline audit still preserves the legacy reference counts A inline candidates 73, B needs picker/overlay 51, C irreversible/no undo 91, D not enough metadata 0, but those are no longer used as a single inline/no-inline decision. The new audit records entry surface, continuation surface, committed undo, and source visibility separately.
 
 - `placeEgg`: click egg reward icon, then highlight legal fish/slots.
 - `hatchEgg`: click hatch icon, then highlight legal egg-bearing slots.
 - `gainCoral`: click coral reward icon, then highlight legal reef.
 - simple move: click move icon, then choose source and target.
 - `scatterSchool`: partial inline; choose source school and any legal young targets, then submit or skip remaining.
+- `recoverFromDiscardOrDraw`: click recover/discard icon; continue through discard overlay when discard targets exist, or direct draw fallback when none are available. After draw, no committed undo.
+- `consumeFishFromHand`: click consume icon; continue through hand picker, then board target.
+- `playFishForFree` / `playFishFromHand`: click play-fish icon; continue through hand picker into staged `playFish`. Paid play also includes payment flow.
+- `drawFish`: click draw icon from a card or incoming dock; direct commit; no committed undo.
+- `GAME END`: use `gameEndDock` or visible source-card icon; direct score or target continuation depending on effect; no committed undo.
+- `AllPlayers`: source player can use the source card icon; target players use `IncomingRewardDock`. One target player's skip / staged undo does not affect other players.
 
 Fallback remains required for:
 
-- draw and other hidden information;
 - hand picker;
 - discard pile picker;
 - recover from discard or draw;
@@ -103,6 +121,21 @@ Fallback remains required for:
 - AllPlayers effects;
 - GAME END;
 - insufficient metadata or ambiguous mapping.
+
+## Incoming Reward Dock
+
+External rewards cannot rely only on source fish card highlighting. A target player may be resolving an AllPlayers reward from another player's fish, a hidden or off-board source, a board/dive-site marker, or a later GAME END candidate. `IncomingRewardDockState` is the presentation-only model for those cases.
+
+The dock carries:
+
+- source player avatar / color / name;
+- source fish mini summary: fish name, card id, trigger text;
+- visible reward icons using `GameTokenIconResolver`;
+- continuation hints such as `handPicker`, `discardOverlay`, `boardTarget`, `directCommit`, or `fallbackPanel`;
+- fallback reason text when the current MVP still needs the right-side helper;
+- `->` / `<-` controls scoped to the current player's own pending reward.
+
+The dock appears only while there is an external pending reward and disappears after completion or skip. It does not submit commands by itself; it is an entry surface and staged presentation model.
 
 ## Dive / Zone Reward Flow
 
@@ -157,4 +190,4 @@ Keep the right-side pending / reward UI and overlays for:
 - ambiguous source-to-cost matching;
 - insufficient metadata.
 
-The current first implementation only adds the shared presentation model and Compact Resource HUD. Full inline ability interaction, full inline `playFish`, full inline dive reward, engine undo, Ability Engine changes, BoardLayout, online rooms, Nautoma, and saved-state migration remain out of scope.
+The future target is: card / board / dock entry first, right-side UI as fallback / debug / complex helper. The current implementation only adds the shared presentation model, refined taxonomy, `IncomingRewardDockState`, and Compact Resource HUD. Full inline ability interaction, full inline `playFish`, full inline dive reward, engine undo, Ability Engine changes, rule changes, card JSON changes, BoardLayout, online rooms, Nautoma, and saved-state migration remain out of scope.

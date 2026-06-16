@@ -2,6 +2,8 @@
 
 This audit is design-only. It does not replace the existing right-side pending/reward UI and does not change Ability Engine behavior.
 
+The audit now separates inline entry, continuation, committed undo, and source visibility. `needs picker/overlay` does not mean `cannot inline`; it means the inline entry continues through a picker or overlay. `irreversible/no undo` does not mean `cannot inline`; it only means `<-` cannot undo after command submission.
+
 ## Current Pending Metadata
 
 - Source fish card id: available through `PendingEffectSet.sourceCardId`; `AbilityEngineV2Adapter.sourceCardId(for:)` bridges legacy `PendingChoice` progress/source data.
@@ -11,35 +13,45 @@ This audit is design-only. It does not replace the existing right-side pending/r
 - Reversible vs irreversible: not explicit metadata today. It must be added before committed undo is safe.
 - `skipEffectExecution`/`PendingEffectIntent.skipRemaining` can back the `→` control for ending/skipping the current fish ability remainder.
 - There is no engine-level `←` command today. A safe design needs staged ViewModel undo first, and engine transaction/undo metadata only for committed reversible steps.
-- First unified presentation model exists as `BoardCardInteractionTask` / `BoardCardInteractionStep` / `BoardCardInteractionToken` / `BoardCardInteractionControlState`. It is presentation-only and does not replace `PendingEffectSet`, `PendingEffectIntent`, or the right-side fallback UI.
-- `CompactResourceHUDState` now moves resource summary out of the right panel while leaving pending / reward fallback visible when needed.
+- First unified presentation model exists as `BoardCardInteractionTask` / `BoardCardInteractionStep` / `BoardCardInteractionToken` / `BoardCardInteractionControlState`.
+- `IncomingRewardDockState` is the presentation model for external pending rewards where the current player cannot rely on a visible source fish card.
 
 ## Classification Summary
 
 - Total cards audited: 215
-- A inline candidates: 73
-- B needs picker/overlay: 51
-- C irreversible/no undo: 91
-- D not enough metadata: 0
-- Inline supported yes/partial/no: {'no': 58, 'yes': 66, 'partial': 91}
-- Requires overlay yes/no: {'no': 113, 'yes': 102}
-- Undo supported yes/partial/no: {'no': 91, 'partial': 58, 'yes': 66}
+- Legacy A inline candidates: 73
+- Legacy B needs picker/overlay: 51
+- Legacy C irreversible/no undo: 91
+- Legacy D not enough metadata: 0
+- cardIcon entry count: 215
+- boardIcon entry count: 0
+- incomingRewardDock entry count: 34
+- gameEndDock entry count: 39
+- directCommit count: 83
+- boardTarget count: 139
+- handPicker count: 47
+- discardOverlay count: 26
+- playFishFlow count: 21
+- paymentFlow count: 14
+- noCommittedUndo count: 61
+- stagedOnlyUndo count: 154
+- fallbackRequired count: 102
 
-## Suitable For Inline Interaction
+## Four Independent Dimensions
 
-- `placeEgg`, `placeEggOnMatchingFish`, `placeYoung`, `hatchEgg`, `moveYoungOrSchool`, and ability-driven `gainCoral` are the best candidates.
-- `scatterSchool` is a partial candidate because it needs source plus one-or-more target selection, but it can still be expressed as staged icon + board highlighting.
-- MVP recommendation: `placeEgg`, `hatchEgg`, `gainCoral`, simple move, and `→` skip current fish. Keep right-side context visible during MVP.
+- `inlineEntrySurface`: `cardAbilityIcon`, `boardZoneIcon`, `incomingRewardDock`, `gameEndDock`, or `noInlineEntry`.
+- `continuationSurface`: `directCommit`, `boardTarget`, `handPicker`, `discardOverlay`, `playFishFlow`, `paymentFlow`, `reefTarget`, or `fallbackPanel`.
+- `commitReversibility`: `stagedOnlyUndo`, `committedUndoSupported`, or `noCommittedUndo`.
+- `sourceVisibility`: `ownVisibleSourceCard`, `opponentSourceCard`, `boardZoneOrDiveSite`, `gameEndSourceCard`, or `externalPendingReward`.
 
-## Needs Picker Or Overlay
+## Representative Reclassification
 
-- `recoverFromDiscardOrDraw`, `consumeFishFromHand`, `playFishForFree`, and `playFishFromHand` require hand/discard/card picker or play-fish payment flow.
-- These can use a hybrid approach: clicking a card-face icon selects the effect, then the existing pending UI or a focused overlay handles card selection/payment.
-
-## Irreversible Or No Undo
-
-- `drawFish`, deck/recover flows after deck choice, hidden information, all-player flows after another player has acted, and `gameEndScore` should not support committed undo.
-- For these, `←` should only cancel local staged selection before command submission.
+- `recoverFromDiscardOrDraw`: `cardAbilityIcon` entry, `discardOverlay` or `directCommit` continuation, staged undo before command, no committed undo after draw.
+- `consumeFishFromHand`: `cardAbilityIcon` entry, `handPicker` plus `boardTarget` continuation, staged undo before command.
+- `playFishForFree` / `playFishFromHand`: `cardAbilityIcon` entry, `handPicker` plus `playFishFlow`; paid play also carries `paymentFlow`.
+- `drawFish`: `cardAbilityIcon` or `incomingRewardDock` entry, `directCommit` continuation, `noCommittedUndo`.
+- `GAME END`: `gameEndDock` or visible `cardAbilityIcon` entry, `directCommit` or target continuation depending on effect, `noCommittedUndo`.
+- `AllPlayers`: source player uses `cardAbilityIcon`; target players use `incomingRewardDock`. Each target player skip / staged undo is scoped to their own pending step.
 
 ## `→` Mapping
 
@@ -66,36 +78,35 @@ This audit is design-only. It does not replace the existing right-side pending/r
 ## Fallback Policy
 
 - Do not delete the right-side pending/reward UI now.
-- Keep fallback for draw, discard choice, hand picker, discard pile picker, play-fish flows, all-player flows, GAME END, hidden information, and uncertain metadata.
-- Hybrid first phase is preferred: card-face icon selection for simple local resource effects, with right-side minimal step info and existing skip controls retained.
-- `playFish` costs should not use reward-style "click cost icon first" interaction. Cost / requirement icons are progress indicators; players directly click legal board / hand / reef sources. Ability reward icons remain valid active entry points.
-- Full flow design is captured in `docs/UNIFIED_BOARD_CARD_INTERACTION_FLOW.md`.
+- Keep fallback for complex explanations, discard choice, hand picker, discard pile picker, play-fish flows, all-player flows, GAME END, hidden information, and uncertain metadata.
+- The target direction is card/dock entry first, with right-side UI reduced to fallback / debug / complex helper.
+- External rewards prefer `IncomingRewardDock` because the target player may not have a visible source fish card to tap.
 
 ## Representative Records
 
-- `base.main.001` Abyssal Anglerfish | gameEnd | C.irreversibleNoUndo | inline no | undo no | gameEndScore
-- `base.main.002` Abyssal Halosaur | whenPlayed | B.needsPickerOverlay | inline no | undo partial | playFishFromHand
-- `base.main.003` Abyssal Spiderfish | whenPlayed | A.inlineCandidate | inline yes | undo yes | hatchEgg
-- `base.main.004` Angelshark | gameEnd | C.irreversibleNoUndo | inline no | undo no | gameEndScore
-- `base.main.005` Angler | ifActivated | A.inlineCandidate | inline yes | undo yes | moveYoungOrSchool
-- `base.main.006` Arabian Carpetshark | whenPlayed | A.inlineCandidate | inline yes | undo yes | placeEggOnMatchingFish
-- `base.main.007` Atlantic Bluefin Tuna | whenPlayed | C.irreversibleNoUndo | inline no | undo no | drawFish, recoverFromDiscardOrDraw
-- `base.main.008` Atlantic Bonito | gameEnd | C.irreversibleNoUndo | inline no | undo no | gameEndScore
-- `base.main.009` Atlantic Mackerel | ifActivated | A.inlineCandidate | inline yes | undo yes | placeEgg
-- `base.main.010` Atlantic Sailfish | whenPlayed | C.irreversibleNoUndo | inline no | undo no | drawFish
-- `base.main.011` Atlantic Salmon | gameEnd | C.irreversibleNoUndo | inline no | undo no | gameEndScore, playFishFromHand
-- `base.main.012` Atlantic Sturgeon | ifActivated | B.needsPickerOverlay | inline no | undo partial | recoverFromDiscardOrDraw
-- `base.main.013` Atlantic Wolffish | ifActivated | A.inlineCandidate | inline yes | undo yes | hatchEgg
-- `base.main.014` Banggai Cardinalfish | ifActivated | A.inlineCandidate | inline yes | undo yes | hatchEgg
-- `base.main.015` Barramundi | ifActivated | A.inlineCandidate | inline yes | undo yes | placeEgg
-- `base.main.016` Bearded Seadevil | whenPlayed | C.irreversibleNoUndo | inline partial | undo no | placeEggOnMatchingFish
-- `base.main.017` Bigeye Tuna | ifActivated | A.inlineCandidate | inline yes | undo yes | placeEgg
-- `base.main.018` Bigeye Smooth-Head | whenPlayed | A.inlineCandidate | inline yes | undo yes | placeEggOnMatchingFish
-- `base.main.019` Binocular Fish | gameEnd | C.irreversibleNoUndo | inline partial | undo no | gameEndScore, placeEggOnMatchingFish
-- `base.main.020` Black Cardinalfish | whenPlayed | A.inlineCandidate | inline yes | undo yes | hatchEgg, moveYoungOrSchool
-- `base.main.021` Black Hagfish | whenPlayed | B.needsPickerOverlay | inline partial | undo partial | recoverFromDiscardOrDraw, placeYoung
-- `base.main.022` Black Swallower | whenPlayed | B.needsPickerOverlay | inline no | undo partial | playFishFromHand
-- `base.main.023` Blob Sculpin | gameEnd | C.irreversibleNoUndo | inline no | undo no | gameEndScore, playFishFromHand
-- `base.main.024` Blue Tang | whenPlayed | A.inlineCandidate | inline yes | undo yes | placeYoung, moveYoungOrSchool
+- `base.main.001` Abyssal Anglerfish | gameEnd | entry cardAbilityIcon, gameEndDock | continuation directCommit | undo noCommittedUndo | gameEndScore
+- `base.main.002` Abyssal Halosaur | whenPlayed | entry cardAbilityIcon | continuation handPicker, playFishFlow, paymentFlow | undo stagedOnlyUndo | playFishFromHand
+- `base.main.003` Abyssal Spiderfish | whenPlayed | entry cardAbilityIcon | continuation boardTarget | undo stagedOnlyUndo | hatchEgg
+- `base.main.004` Angelshark | gameEnd | entry cardAbilityIcon, gameEndDock | continuation directCommit | undo noCommittedUndo | gameEndScore
+- `base.main.005` Angler | ifActivated | entry cardAbilityIcon | continuation boardTarget | undo stagedOnlyUndo | moveYoungOrSchool
+- `base.main.006` Arabian Carpetshark | whenPlayed | entry cardAbilityIcon | continuation boardTarget | undo stagedOnlyUndo | placeEggOnMatchingFish
+- `base.main.007` Atlantic Bluefin Tuna | whenPlayed | entry cardAbilityIcon | continuation directCommit, discardOverlay | undo noCommittedUndo | drawFish, recoverFromDiscardOrDraw
+- `base.main.008` Atlantic Bonito | gameEnd | entry cardAbilityIcon, gameEndDock | continuation directCommit | undo noCommittedUndo | gameEndScore
+- `base.main.009` Atlantic Mackerel | ifActivated | entry cardAbilityIcon | continuation boardTarget | undo stagedOnlyUndo | placeEgg
+- `base.main.010` Atlantic Sailfish | whenPlayed | entry cardAbilityIcon | continuation directCommit | undo noCommittedUndo | drawFish
+- `base.main.011` Atlantic Salmon | gameEnd | entry cardAbilityIcon, gameEndDock | continuation directCommit, handPicker, playFishFlow, paymentFlow | undo noCommittedUndo | gameEndScore, playFishFromHand
+- `base.main.012` Atlantic Sturgeon | ifActivated | entry cardAbilityIcon | continuation discardOverlay, directCommit | undo stagedOnlyUndo | recoverFromDiscardOrDraw
+- `base.main.013` Atlantic Wolffish | ifActivated | entry cardAbilityIcon | continuation boardTarget | undo stagedOnlyUndo | hatchEgg
+- `base.main.014` Banggai Cardinalfish | ifActivated | entry cardAbilityIcon | continuation boardTarget | undo stagedOnlyUndo | hatchEgg
+- `base.main.015` Barramundi | ifActivated | entry cardAbilityIcon | continuation boardTarget | undo stagedOnlyUndo | placeEgg
+- `base.main.016` Bearded Seadevil | whenPlayed | entry cardAbilityIcon, incomingRewardDock | continuation boardTarget | undo stagedOnlyUndo | placeEggOnMatchingFish
+- `base.main.017` Bigeye Tuna | ifActivated | entry cardAbilityIcon | continuation boardTarget | undo stagedOnlyUndo | placeEgg
+- `base.main.018` Bigeye Smooth-Head | whenPlayed | entry cardAbilityIcon | continuation boardTarget | undo stagedOnlyUndo | placeEggOnMatchingFish
+- `base.main.019` Binocular Fish | gameEnd | entry cardAbilityIcon, gameEndDock | continuation directCommit, boardTarget | undo noCommittedUndo | gameEndScore, placeEggOnMatchingFish
+- `base.main.020` Black Cardinalfish | whenPlayed | entry cardAbilityIcon | continuation boardTarget | undo stagedOnlyUndo | hatchEgg, moveYoungOrSchool
+- `base.main.021` Black Hagfish | whenPlayed | entry cardAbilityIcon | continuation discardOverlay, directCommit, boardTarget | undo stagedOnlyUndo | recoverFromDiscardOrDraw, placeYoung
+- `base.main.022` Black Swallower | whenPlayed | entry cardAbilityIcon | continuation handPicker, playFishFlow, paymentFlow | undo stagedOnlyUndo | playFishFromHand
+- `base.main.023` Blob Sculpin | gameEnd | entry cardAbilityIcon, gameEndDock | continuation directCommit, handPicker, playFishFlow, paymentFlow | undo noCommittedUndo | gameEndScore, playFishFromHand
+- `base.main.024` Blue Tang | whenPlayed | entry cardAbilityIcon | continuation boardTarget | undo stagedOnlyUndo | placeYoung, moveYoungOrSchool
 
 Full per-card output is in `tools/generated/card_rendering/inline_ability_interaction_audit.json`.

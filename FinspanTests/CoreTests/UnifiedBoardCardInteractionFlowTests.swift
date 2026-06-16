@@ -50,6 +50,12 @@ final class UnifiedBoardCardInteractionFlowTests: XCTestCase {
         let task = BoardCardInteractionTask(
             id: "play-no-cost",
             source: .handCard(handCardId),
+            taxonomy: taxonomy(
+                entry: [.cardAbilityIcon],
+                continuation: [.boardTarget],
+                reversibility: .stagedOnlyUndo,
+                visibility: .ownVisibleSourceCard
+            ),
             steps: [targetStep],
             controls: BoardCardInteractionControlState(
                 forward: BoardCardInteractionControl(visibility: .visible, action: .confirmPlayFish, isEnabled: true),
@@ -92,6 +98,12 @@ final class UnifiedBoardCardInteractionFlowTests: XCTestCase {
         let task = BoardCardInteractionTask(
             id: "twilight-coral",
             source: .reef(.purple),
+            taxonomy: taxonomy(
+                entry: [.boardZoneIcon],
+                continuation: [.paymentFlow, .reefTarget],
+                reversibility: .stagedOnlyUndo,
+                visibility: .boardZoneOrDiveSite
+            ),
             steps: [
                 BoardCardInteractionStep(
                     id: "payment",
@@ -138,6 +150,14 @@ final class UnifiedBoardCardInteractionFlowTests: XCTestCase {
         let task = BoardCardInteractionTask(
             id: "discard-picker",
             source: .pendingEffectNode(choiceId: choiceId, nodeId: "recover"),
+            taxonomy: taxonomy(
+                entry: [.cardAbilityIcon],
+                continuation: [.discardOverlay, .directCommit, .fallbackPanel],
+                reversibility: .stagedOnlyUndo,
+                visibility: .ownVisibleSourceCard,
+                requiresFallback: true,
+                requiresOverlay: true
+            ),
             steps: [
                 BoardCardInteractionStep(
                     id: "fallback",
@@ -187,6 +207,12 @@ final class UnifiedBoardCardInteractionFlowTests: XCTestCase {
         BoardCardInteractionTask(
             id: "play-fish",
             source: .handCard(handCardId),
+            taxonomy: taxonomy(
+                entry: [.cardAbilityIcon],
+                continuation: [.paymentFlow, .boardTarget],
+                reversibility: .stagedOnlyUndo,
+                visibility: .ownVisibleSourceCard
+            ),
             steps: [
                 BoardCardInteractionStep(
                     id: "payment",
@@ -214,6 +240,12 @@ final class UnifiedBoardCardInteractionFlowTests: XCTestCase {
         BoardCardInteractionTask(
             id: "ability",
             source: .sourceFishCard(cardId: "base.main.010", slot: blueTopSlot),
+            taxonomy: taxonomy(
+                entry: [.cardAbilityIcon],
+                continuation: [.boardTarget],
+                reversibility: .stagedOnlyUndo,
+                visibility: .ownVisibleSourceCard
+            ),
             steps: [
                 BoardCardInteractionStep(
                     id: "reward",
@@ -268,6 +300,26 @@ final class UnifiedBoardCardInteractionFlowTests: XCTestCase {
             back: BoardCardInteractionControl(visibility: .visible, action: .stagedUndo, isEnabled: true),
             fallbackPanelVisible: false,
             compactHintText: nil
+        )
+    }
+
+    private func taxonomy(
+        entry: [InlineEntrySurface],
+        continuation: [ContinuationSurface],
+        reversibility: CommitReversibility,
+        visibility: SourceVisibility,
+        requiresFallback: Bool = false,
+        requiresOverlay: Bool = false,
+        canStartInline: Bool = true
+    ) -> BoardCardInteractionTaxonomy {
+        BoardCardInteractionTaxonomy(
+            inlineEntrySurfaces: entry,
+            continuationSurfaces: continuation,
+            commitReversibility: reversibility,
+            sourceVisibility: visibility,
+            requiresFallback: requiresFallback,
+            requiresOverlay: requiresOverlay,
+            canStartInline: canStartInline
         )
     }
 }

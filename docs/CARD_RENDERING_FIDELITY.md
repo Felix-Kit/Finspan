@@ -79,7 +79,7 @@ Swift resolver 层把 web renderer model 映射到可缓存的 view state：
 
 `GameBoardViewModel` 和 `CardLibraryViewModel` 负责构造静态 `FishCardFaceViewState`。`FishCardFaceView` 只读取 view state 展示，不在 `body` 内解析 ability text，不扫描 bundle。
 
-`GameTokenIconResolver` 是非卡面 UI 的复用层。Compact Resource HUD、棋盘资源 token、珊瑚礁 badge 和 right-side reward token 正常路径都通过 live-derived CardAssets icon 渲染，不使用 SF Symbol、emoji、临时色块或纯文字作为 token 图标。布局尺寸由调用方明确 frame 控制，不由 PNG intrinsic size 控制。
+`GameTokenIconResolver` 是非卡面 UI 的复用层。Compact Resource HUD、棋盘资源 token、珊瑚礁 badge、right-side reward token 和 `IncomingRewardDockToken` 正常路径都通过 live-derived CardAssets icon 渲染，不使用 SF Symbol、emoji、临时色块或纯文字作为 token 图标。布局尺寸由调用方明确 frame 控制，不由 PNG intrinsic size 控制。
 
 已接入的 token / icon 包括：
 
