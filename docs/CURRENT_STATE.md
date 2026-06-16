@@ -145,6 +145,10 @@
 - `CardAbilityLayoutMetrics` 现在使用 live DOM measured frame，而不是仅凭 CSS 整数估算：Banggai Cardinalfish ability container 为 left 71.883cqw、top 0.266cqw、width 27.851cqw、height 65.218cqw、right gap 0.266cqw。
 - IF ACTIVATED / GAME END / also-if brush 根因已确认：live 是 `.ability` 的 CSS `background-image`，computed `background-size: cover`、`background-position: 0% 0%`、默认 `background-repeat: repeat`，无 rotation；Swift 之前的 cap-inset stretch 与 live 不一致。
 - `CardAbilityBrushBackgroundView` 已改为 unrotated top-leading cover/crop，匹配 live background semantics，不用纯色正常 fallback。
+- Inline Ability Interaction feasibility audit 已完成但未实现替换 UI：新增 `tools/scripts/audit_inline_ability_interaction.py`，输出 `tools/generated/card_rendering/inline_ability_interaction_audit.json` 和 `docs/INLINE_ABILITY_INTERACTION_AUDIT.md`。
+- 215 张卡 inline 交互分类：A inline candidates 73、B needs picker/overlay 51、C irreversible/no undo 91、D not enough metadata 0。
+- 当前建议不删除右侧收益栏。第一阶段 MVP 只适合 `placeEgg` / `hatchEgg` / ability-driven `gainCoral` / simple move / `→` skip current fish；draw、discard / hand picker、play fish flow、AllPlayers、GAME END 和隐藏信息相关能力必须 fallback 或 hybrid。
+- `→` 可映射到 `PendingEffectIntent.skipRemaining` / `skipEffectExecution` 或单节点 `skipEffectNode`；`←` 当前只适合撤回未提交的 ViewModel staged selection，不能撤回已提交 `GameEvent`。
 - DEBUG 牌库卡面状态面板继续扩展：现在可显示 brush asset、brush orientation、brush content mode、background position/repeat、ability panel frame、live measured frame、Swift delta、arrow-flow metrics 和 also-if gap，便于在模拟器中核对 pixel alignment。
 - Great White Shark 是 QA 样例，不是 special case：`base.main.057` 映射到 `57.*.webp`，`FishEgg` / `ArrowDown` / `Predator` / `AllPlayers` 均解析到 live-derived PNG render asset，cost 显示 `YoungFish` / `ConsumeFish`，length 600 cm 映射到 `FishLengthLarge`，ability presentation 使用 arrow-flow 而非 flat row。
 - Great Northern Tilefish、Banggai Cardinalfish、Bearded Seadevil、Great Barracuda 和 Atlantic Barracudina 也纳入代表卡审计，覆盖 If Activated brush block、arrow-flow overlap、S&R coral requirement / coral token、also-if split block、S&R badge、starter corner、不同 zone 和 flavor text。
@@ -181,4 +185,5 @@
 
 1. 做 FishCardFaceView 后续截图级 polish：在 ability panel frame / brush background semantics / ArrowDown overlap 已用 live DOM measurement 对齐后，用 live screenshot 做 font wrapping、fish silhouette 和 icon sub-pixel offset 对照。
 2. 继续做 GameBoardViewModel pending UI 小步稳定，重点是 target / payment / discard-selection prompt fallback。
-3. 再修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。
+3. 如果推进 inline ability interaction，先做 staged-only MVP，不删除右侧收益栏：只接 place egg / hatch / gain coral / simple move，并保留 fallback。
+4. 再修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。

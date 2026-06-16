@@ -30,6 +30,17 @@ final class FishCardAbilityPixelAlignmentTests: XCTestCase {
     }
 
     @MainActor
+    func testAbilityBlockHeightsUseLiveMeasuredDomValues() throws {
+        let standard = CardAbilityBlockMetrics.live(for: .standard, panelStyle: .tanBrush)
+        let squished = CardAbilityBlockMetrics.live(for: .squished, panelStyle: .tanBrush)
+        let alsoIf = CardAbilityBlockMetrics.live(for: .alsoIf, panelStyle: .tanBrush)
+
+        XCTAssertEqual(standard.minTotalHeightCqw, 27.842, accuracy: 0.001)
+        XCTAssertEqual(squished.minTotalHeightCqw, 17.993, accuracy: 0.001)
+        XCTAssertEqual(alsoIf.minTotalHeightCqw, 35.286, accuracy: 0.001)
+    }
+
+    @MainActor
     func testBanggaiCardinalfishIfActivatedUsesLivePanelAndBrushMetrics() throws {
         let cardFace = try cardFace(for: "base.main.014")
         let block = try XCTUnwrap(cardFace.abilityPresentation.blocks.first)

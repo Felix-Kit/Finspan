@@ -19,7 +19,9 @@ const targetCards = [
   { cardId: "base.main.057", sourceId: 57, name: "Great White Shark" },
   { cardId: "base.main.016", sourceId: 16, name: "Bearded Seadevil" },
   { cardId: "sr.starter.212", sourceId: 212, name: "Atlantic Barracudina" },
-  { cardId: "sr.main.161", sourceId: 161, name: "Great Barracuda" }
+  { cardId: "sr.main.161", sourceId: 161, name: "Great Barracuda" },
+  { cardId: "base.main.001", sourceId: 1, name: "Abyssal Anglerfish" },
+  { cardId: "base.main.056", sourceId: 56, name: "Great Northern Tilefish" }
 ];
 
 const mimeTypes = new Map([
@@ -112,11 +114,60 @@ function relativeAssetPath(urlString) {
   if (!urlString || urlString === "none") {
     return null;
   }
-  const match = urlString.match(/\/finsearch\/(.+?)["')]?$/);
-  if (!match) {
+  const cleaned = urlString
+    .trim()
+    .replace(/^url\(["']?/, "")
+    .replace(/["']?\)$/, "");
+  let pathname = cleaned;
+  try {
+    pathname = new URL(cleaned).pathname;
+  } catch {
+    // `cleaned` may already be a path-like value from a CSS url().
+  }
+  const match = pathname.match(/\/finsearch\/(.+)$/);
+  if (!match?.[1]) {
     return null;
   }
   return `references/webpage_live/${match[1]}`;
+}
+
+function pngDimensions(filePath) {
+  if (!filePath.endsWith(".png") || !fs.existsSync(filePath)) {
+    return null;
+  }
+  const buffer = fs.readFileSync(filePath);
+  if (
+    buffer.length < 24
+    || buffer.readUInt32BE(0) !== 0x89504e47
+    || buffer.readUInt32BE(4) !== 0x0d0a1a0a
+    || buffer.toString("ascii", 12, 16) !== "IHDR"
+  ) {
+    return null;
+  }
+  return {
+    width: buffer.readUInt32BE(16),
+    height: buffer.readUInt32BE(20)
+  };
+}
+
+function coverRenderingMetrics(frame, intrinsic) {
+  if (!frame || !intrinsic || intrinsic.width <= 0 || intrinsic.height <= 0) {
+    return null;
+  }
+  const coverScale = Math.max(frame.width / intrinsic.width, frame.height / intrinsic.height);
+  const renderedWidth = intrinsic.width * coverScale;
+  const renderedHeight = intrinsic.height * coverScale;
+  return {
+    intrinsicWidth: intrinsic.width,
+    intrinsicHeight: intrinsic.height,
+    intrinsicAspectRatio: rounded(intrinsic.width / intrinsic.height),
+    frameAspectRatio: rounded(frame.width / frame.height),
+    coverScale: rounded(coverScale, 6),
+    renderedWidth: rounded(renderedWidth),
+    renderedHeight: rounded(renderedHeight),
+    cropRight: rounded(Math.max(0, renderedWidth - frame.width)),
+    cropBottom: rounded(Math.max(0, renderedHeight - frame.height))
+  };
 }
 
 function generateMarkdown(report) {
@@ -141,7 +192,7 @@ function generateMarkdown(report) {
       panel ? `${panel.cqw.left} / ${panel.cqw.width}` : "none",
       panel ? panel.cqw.rightGap : "none",
       card.abilityBlocks.length,
-      firstBlock ? `${firstBlock.background.assetName ?? "none"}; size ${firstBlock.background.size}; pos ${firstBlock.background.position}; repeat ${firstBlock.background.repeat}` : "none"
+      firstBlock ? `${firstBlock.background.assetName ?? "none"}; size ${firstBlock.background.size}; pos ${firstBlock.background.position}; repeat ${firstBlock.background.repeat}; origin ${firstBlock.background.origin}; clip ${firstBlock.background.clip}` : "none"
     ].join(" | ") + " |");
   }
   lines.push("");
@@ -151,6 +202,7 @@ function generateMarkdown(report) {
   lines.push("- Computed `background-size` is `cover`.");
   lines.push("- Computed `background-position` is `0% 0%`.");
   lines.push("- Computed `background-repeat` is `repeat` because CSS does not override the default, but `background-size: cover` makes the single brush image cover each block frame.");
+  lines.push("- Computed `background-origin` is `padding-box`; computed `background-clip` is `border-box`.");
   lines.push("- No representative block reports a transform or rotation on the brush element.");
   lines.push("- The correct Swift mapping is therefore an unrotated, top-leading cover/crop of the same brush raster, with the block frame measured from live layout.");
   lines.push("");
@@ -163,15 +215,17 @@ function generateMarkdown(report) {
     lines.push(`- Ability container: ${card.abilityContainer ? JSON.stringify(card.abilityContainer) : "none"}`);
     lines.push(`- Swift pre-fix estimated panel frame: ${JSON.stringify(card.swiftBefore.abilityPanelFrame)}`);
     lines.push("");
-    lines.push("| Block | Classes | Frame px | Frame cqw | Background | Padding px |");
-    lines.push("| ---: | --- | ---: | ---: | --- | --- |");
+    lines.push("| Block | Classes | Frame px | Frame cqw | Content inset cqw | Background | Rendered brush | Padding px |");
+    lines.push("| ---: | --- | ---: | ---: | ---: | --- | --- | --- |");
     card.abilityBlocks.forEach((block, index) => {
       lines.push([
         `| ${index + 1}`,
         block.className,
         `${block.frame.width} x ${block.frame.height} @ ${block.frame.left}, ${block.frame.top}`,
         `x ${block.cqw.left}; y ${block.cqw.top}; w ${block.cqw.width}; h ${block.cqw.height}`,
-        `${block.background.assetName ?? "none"}; ${block.background.size}; ${block.background.position}; ${block.background.repeat}; transform ${block.background.transform}`,
+        block.contentInsetsCqw ? `t ${block.contentInsetsCqw.top}; b ${block.contentInsetsCqw.bottom}; l ${block.contentInsetsCqw.left}; r ${block.contentInsetsCqw.right}` : "none",
+        `${block.background.assetName ?? "none"}; ${block.background.size}; ${block.background.position}; ${block.background.repeat}; origin ${block.background.origin}; clip ${block.background.clip}; transform ${block.background.transform}`,
+        block.background.rendered ? `${block.background.rendered.renderedWidth} x ${block.background.rendered.renderedHeight}; crop r ${block.background.rendered.cropRight}; b ${block.background.rendered.cropBottom}` : "none",
         `t ${block.padding.top}; r ${block.padding.right}; b ${block.padding.bottom}; l ${block.padding.left}`
       ].join(" | ") + " |");
     });
@@ -194,7 +248,9 @@ function generateMarkdown(report) {
   lines.push("");
   lines.push("- `CardAbilityPanelMetrics.live` now uses the measured container frame: left `71.883cqw`, top `0.266cqw`, width `27.851cqw`, height `65.218cqw`, right gap `0.266cqw`, block gap `1.986cqw`.");
   lines.push("- `CardAbilityBrushMetrics.live` now records `assetContentMode = coverTopLeading`, `backgroundPosition = 0% 0%`, `backgroundRepeat = repeat`, `capInsetCqw = 0`, and `cornerRadiusCqw = 0`.");
-  lines.push("- `CardAbilityBrushBackgroundView` maps CSS background cover with top-leading alignment by calculating the cover-scaled image size from the block frame and clipping to that frame.");
+  lines.push("- `CardAbilityBrushBackgroundView` maps CSS background cover with top-leading alignment by calculating the cover-scaled image size from the measured block frame and clipping to that frame.");
+  lines.push("- Swift applies the brush as a block `.background`, not a `ZStack` content child, because live CSS background images do not participate in ability block layout.");
+  lines.push("- `CardAbilityBlockMetrics` uses measured minimum heights: standard `27.842cqw`, squished `17.993cqw`, also-if `35.286cqw`.");
   lines.push("- DEBUG card face status can show the live measured frame, current Swift frame, and delta when `tools/generated/card_rendering/live_measurements.json` is present.");
   lines.push("");
   return lines.join("\n");
@@ -246,6 +302,47 @@ async function measureCard(page, baseUrl, target) {
         bottomGap: toCqw(cardRect, cardRect.bottom - elementRect.bottom)
       };
     };
+    const unionRect = rects => {
+      const nonEmpty = rects.filter(item => item && item.width > 0 && item.height > 0);
+      if (nonEmpty.length === 0) return null;
+      const left = Math.min(...nonEmpty.map(item => item.left));
+      const top = Math.min(...nonEmpty.map(item => item.top));
+      const right = Math.max(...nonEmpty.map(item => item.right));
+      const bottom = Math.max(...nonEmpty.map(item => item.bottom));
+      return {
+        x: left,
+        y: top,
+        width: right - left,
+        height: bottom - top,
+        top,
+        right,
+        bottom,
+        left
+      };
+    };
+    const contentFrameFor = block => {
+      const children = [...block.querySelectorAll(".ability-text, .icon-group, img, .points")];
+      return unionRect(children.map(rect));
+    };
+    const contentInsets = (outer, inner) => {
+      if (!outer || !inner) return null;
+      return {
+        top: inner.top - outer.top,
+        right: outer.right - inner.right,
+        bottom: outer.bottom - inner.bottom,
+        left: inner.left - outer.left
+      };
+    };
+    const contentInsetsCqw = (cardRect, outer, inner) => {
+      const insets = contentInsets(outer, inner);
+      if (!insets) return null;
+      return {
+        top: toCqw(cardRect, insets.top),
+        right: toCqw(cardRect, insets.right),
+        bottom: toCqw(cardRect, insets.bottom),
+        left: toCqw(cardRect, insets.left)
+      };
+    };
     const computedNumber = (element, name) => px(getComputedStyle(element)[name]);
     const computedCqwNumber = (cardRect, element, name) => toCqw(cardRect, computedNumber(element, name));
     const className = element => typeof element?.className === "string" ? element.className : "";
@@ -264,6 +361,10 @@ async function measureCard(page, baseUrl, target) {
         "backgroundSize",
         "backgroundPosition",
         "backgroundRepeat",
+        "backgroundOrigin",
+        "backgroundClip",
+        "backgroundAttachment",
+        "backgroundColor",
         "borderRadius",
         "clipPath",
         "overflow",
@@ -283,18 +384,28 @@ async function measureCard(page, baseUrl, target) {
         "paddingBottom",
         "paddingLeft",
         "fontSize",
-        "lineHeight"
+        "lineHeight",
+        "boxSizing"
       ]);
+      const contentFrame = contentFrameFor(block);
       return {
         className: className(block),
         frame: blockRect,
         cqw: cqwRect(cardRect, blockRect),
+        contentFrame,
+        contentCqw: cqwRect(cardRect, contentFrame),
+        contentInsets: contentInsets(blockRect, contentFrame),
+        contentInsetsCqw: contentInsetsCqw(cardRect, blockRect, contentFrame),
         background: {
           image: styles.backgroundImage,
           assetName: assetNameFromBackground(styles.backgroundImage),
           size: styles.backgroundSize,
           position: styles.backgroundPosition,
           repeat: styles.backgroundRepeat,
+          origin: styles.backgroundOrigin,
+          clip: styles.backgroundClip,
+          attachment: styles.backgroundAttachment,
+          color: styles.backgroundColor,
           transform: styles.transform,
           borderRadius: styles.borderRadius,
           overflow: styles.overflow,
@@ -311,7 +422,8 @@ async function measureCard(page, baseUrl, target) {
           height: styles.height,
           minHeight: styles.minHeight,
           fontSize: styles.fontSize,
-          lineHeight: styles.lineHeight
+          lineHeight: styles.lineHeight,
+          boxSizing: styles.boxSizing
         },
         padding: {
           top: px(styles.paddingTop),
@@ -456,6 +568,21 @@ function attachDerivedData(report) {
         webpagePath: relativeAssetPath(card.abilityBlocks.find(block => block.background.assetName === assetName)?.background.image)
       }))
     };
+    for (const block of card.abilityBlocks) {
+      const relativePath = relativeAssetPath(block.background.image);
+      const absolutePath = relativePath ? path.join(repoRoot, relativePath) : null;
+      const intrinsic = absolutePath ? pngDimensions(absolutePath) : null;
+      block.background.webpagePath = relativePath;
+      block.background.rendered = coverRenderingMetrics(block.frame, intrinsic);
+      if (block.background.rendered && card.cardFrame.width > 0) {
+        block.background.rendered.cqw = {
+          renderedWidth: rounded((block.background.rendered.renderedWidth / card.cardFrame.width) * 100),
+          renderedHeight: rounded((block.background.rendered.renderedHeight / card.cardFrame.width) * 100),
+          cropRight: rounded((block.background.rendered.cropRight / card.cardFrame.width) * 100),
+          cropBottom: rounded((block.background.rendered.cropBottom / card.cardFrame.width) * 100)
+        };
+      }
+    }
     card.roundedCardFrame = {
       width: rounded(cardWidth),
       height: rounded(cardHeight)

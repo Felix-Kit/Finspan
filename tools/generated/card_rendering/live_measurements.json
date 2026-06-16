@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-16T02:30:12.533Z",
+  "generatedAt": "2026-06-16T03:55:25.968Z",
   "measurementSource": {
     "kind": "local-playwright-dom",
     "url": "http://127.0.0.1:4173/finsearch/",
@@ -91,17 +91,69 @@
             "rightGap": 0.266,
             "bottomGap": 18.463
           },
+          "contentFrame": {
+            "x": 379.765625,
+            "y": 363.328125,
+            "width": 82.59375,
+            "height": 63.640625,
+            "top": 363.328125,
+            "right": 462.359375,
+            "bottom": 426.96875,
+            "left": 379.765625
+          },
+          "contentCqw": {
+            "left": 74.805,
+            "top": 23.896,
+            "width": 22.006,
+            "height": 16.956,
+            "rightGap": 3.189,
+            "bottomGap": 24.903
+          },
+          "contentInsets": {
+            "top": 16.6875,
+            "right": 10.96875,
+            "bottom": 24.171875,
+            "left": 10.96875
+          },
+          "contentInsetsCqw": {
+            "top": 4.446,
+            "right": 2.922,
+            "bottom": 6.44,
+            "left": 2.922
+          },
           "background": {
             "image": "url(\"http://127.0.0.1:4173/finsearch/static/media/IfActivated.f4ec95e03e7c3189135e.png\")",
             "assetName": "IfActivated",
             "size": "cover",
             "position": "0% 0%",
             "repeat": "repeat",
+            "origin": "padding-box",
+            "clip": "border-box",
+            "attachment": "scroll",
+            "color": "rgba(0, 0, 0, 0)",
             "transform": "none",
             "borderRadius": "0px",
             "overflow": "visible",
             "clipPath": "none",
-            "zIndex": "auto"
+            "zIndex": "auto",
+            "webpagePath": "references/webpage_live/static/media/IfActivated.f4ec95e03e7c3189135e.png",
+            "rendered": {
+              "intrinsicWidth": 472,
+              "intrinsicHeight": 295,
+              "intrinsicAspectRatio": 1.6,
+              "frameAspectRatio": 1,
+              "coverScale": 0.354237,
+              "renderedWidth": 167.2,
+              "renderedHeight": 104.5,
+              "cropRight": 62.669,
+              "cropBottom": 0,
+              "cqw": {
+                "renderedWidth": 44.548,
+                "renderedHeight": 27.842,
+                "cropRight": 16.697,
+                "cropBottom": 0
+              }
+            }
           },
           "layout": {
             "display": "flex",
@@ -113,7 +165,8 @@
             "height": "74.6562px",
             "minHeight": "74.6656px",
             "fontSize": "15.3065px",
-            "lineHeight": "15.3065px"
+            "lineHeight": "15.3065px",
+            "boxSizing": "content-box"
           },
           "padding": {
             "top": 11.1998,
@@ -297,7 +350,7 @@
         "brushAssets": [
           {
             "assetName": "IfActivated",
-            "webpagePath": "references/webpage_live/static/media/IfActivated.f4ec95e03e7c3189135e.png\""
+            "webpagePath": "references/webpage_live/static/media/IfActivated.f4ec95e03e7c3189135e.png"
           }
         ]
       },
@@ -385,17 +438,53 @@
             "rightGap": 0.266,
             "bottomGap": 8.376
           },
+          "contentFrame": {
+            "x": 375.140625,
+            "y": 319.953125,
+            "width": 91.84375,
+            "height": 184.546875,
+            "top": 319.953125,
+            "right": 466.984375,
+            "bottom": 504.5,
+            "left": 375.140625
+          },
+          "contentCqw": {
+            "left": 73.573,
+            "top": 12.339,
+            "width": 24.47,
+            "height": 49.169,
+            "rightGap": 1.957,
+            "bottomGap": 4.246
+          },
+          "contentInsets": {
+            "top": 11.1875,
+            "right": 6.34375,
+            "bottom": -15.5,
+            "left": 6.34375
+          },
+          "contentInsetsCqw": {
+            "top": 2.981,
+            "right": 1.69,
+            "bottom": -4.13,
+            "left": 1.69
+          },
           "background": {
             "image": "none",
             "assetName": null,
             "size": "cover",
             "position": "0% 0%",
             "repeat": "repeat",
+            "origin": "padding-box",
+            "clip": "border-box",
+            "attachment": "scroll",
+            "color": "rgba(0, 0, 0, 0)",
             "transform": "none",
             "borderRadius": "0px",
             "overflow": "visible",
             "clipPath": "none",
-            "zIndex": "auto"
+            "zIndex": "auto",
+            "webpagePath": null,
+            "rendered": null
           },
           "layout": {
             "display": "flex",
@@ -407,7 +496,8 @@
             "height": "150.391px",
             "minHeight": "74.6656px",
             "fontSize": "15.3065px",
-            "lineHeight": "15.3065px"
+            "lineHeight": "15.3065px",
+            "boxSizing": "content-box"
           },
           "padding": {
             "top": 11.1998,
@@ -955,17 +1045,53 @@
             "rightGap": 0.266,
             "bottomGap": 7.627
           },
+          "contentFrame": {
+            "x": 374.6875,
+            "y": 317.15625,
+            "width": 92.734375,
+            "height": 187.34375,
+            "top": 317.15625,
+            "right": 467.421875,
+            "bottom": 504.5,
+            "left": 374.6875
+          },
+          "contentCqw": {
+            "left": 73.452,
+            "top": 11.594,
+            "width": 24.708,
+            "height": 49.915,
+            "rightGap": 1.84,
+            "bottomGap": 4.246
+          },
+          "contentInsets": {
+            "top": 11.1875,
+            "right": 5.90625,
+            "bottom": -12.6875,
+            "left": 5.890625
+          },
+          "contentInsetsCqw": {
+            "top": 2.981,
+            "right": 1.574,
+            "bottom": -3.38,
+            "left": 1.569
+          },
           "background": {
             "image": "none",
             "assetName": null,
             "size": "cover",
             "position": "0% 0%",
             "repeat": "repeat",
+            "origin": "padding-box",
+            "clip": "border-box",
+            "attachment": "scroll",
+            "color": "rgba(0, 0, 0, 0)",
             "transform": "none",
             "borderRadius": "0px",
             "overflow": "visible",
             "clipPath": "none",
-            "zIndex": "auto"
+            "zIndex": "auto",
+            "webpagePath": null,
+            "rendered": null
           },
           "layout": {
             "display": "flex",
@@ -977,7 +1103,8 @@
             "height": "156px",
             "minHeight": "74.6656px",
             "fontSize": "15.3065px",
-            "lineHeight": "15.3065px"
+            "lineHeight": "15.3065px",
+            "boxSizing": "content-box"
           },
           "padding": {
             "top": 11.1998,
@@ -1525,17 +1652,69 @@
             "rightGap": 0.266,
             "bottomGap": 40.036
           },
+          "contentFrame": {
+            "x": 379.765625,
+            "y": 310.09375,
+            "width": 82.59375,
+            "height": 52.625,
+            "top": 310.09375,
+            "right": 462.359375,
+            "bottom": 362.71875,
+            "left": 379.765625
+          },
+          "contentCqw": {
+            "left": 74.805,
+            "top": 9.712,
+            "width": 22.006,
+            "height": 14.021,
+            "rightGap": 3.189,
+            "bottomGap": 42.022
+          },
+          "contentInsets": {
+            "top": 7.453125,
+            "right": 10.96875,
+            "bottom": 7.453125,
+            "left": 10.96875
+          },
+          "contentInsetsCqw": {
+            "top": 1.986,
+            "right": 2.922,
+            "bottom": 1.986,
+            "left": 2.922
+          },
           "background": {
             "image": "url(\"http://127.0.0.1:4173/finsearch/static/media/IfActivated.f4ec95e03e7c3189135e.png\")",
             "assetName": "IfActivated",
             "size": "cover",
             "position": "0% 0%",
             "repeat": "repeat",
+            "origin": "padding-box",
+            "clip": "border-box",
+            "attachment": "scroll",
+            "color": "rgba(0, 0, 0, 0)",
             "transform": "none",
             "borderRadius": "0px",
             "overflow": "visible",
             "clipPath": "none",
-            "zIndex": "auto"
+            "zIndex": "auto",
+            "webpagePath": "references/webpage_live/static/media/IfActivated.f4ec95e03e7c3189135e.png",
+            "rendered": {
+              "intrinsicWidth": 472,
+              "intrinsicHeight": 295,
+              "intrinsicAspectRatio": 1.6,
+              "frameAspectRatio": 1.548,
+              "coverScale": 0.228919,
+              "renderedWidth": 108.05,
+              "renderedHeight": 67.531,
+              "cropRight": 3.519,
+              "cropBottom": 0,
+              "cqw": {
+                "renderedWidth": 28.788,
+                "renderedHeight": 17.993,
+                "cropRight": 0.938,
+                "cropBottom": 0
+              }
+            }
           },
           "layout": {
             "display": "flex",
@@ -1547,7 +1726,8 @@
             "height": "52.625px",
             "minHeight": "auto",
             "fontSize": "15.3065px",
-            "lineHeight": "15.3065px"
+            "lineHeight": "15.3065px",
+            "boxSizing": "content-box"
           },
           "padding": {
             "top": 7.46656,
@@ -1582,17 +1762,69 @@
             "rightGap": 0.266,
             "bottomGap": 2.764
           },
+          "contentFrame": {
+            "x": 372.515625,
+            "y": 388.8125,
+            "width": 97.09375,
+            "height": 104.75,
+            "top": 388.8125,
+            "right": 469.609375,
+            "bottom": 493.5625,
+            "left": 372.515625
+          },
+          "contentCqw": {
+            "left": 72.874,
+            "top": 30.686,
+            "width": 25.869,
+            "height": 27.909,
+            "rightGap": 1.257,
+            "bottomGap": 7.16
+          },
+          "contentInsets": {
+            "top": 11.1875,
+            "right": 3.71875,
+            "bottom": 16.5,
+            "left": 3.71875
+          },
+          "contentInsetsCqw": {
+            "top": 2.981,
+            "right": 0.991,
+            "bottom": 4.396,
+            "left": 0.991
+          },
           "background": {
             "image": "url(\"http://127.0.0.1:4173/finsearch/static/media/IfActivated.f4ec95e03e7c3189135e.png\")",
             "assetName": "IfActivated",
             "size": "cover",
             "position": "0% 0%",
             "repeat": "repeat",
+            "origin": "padding-box",
+            "clip": "border-box",
+            "attachment": "scroll",
+            "color": "rgba(0, 0, 0, 0)",
             "transform": "none",
             "borderRadius": "0px",
             "overflow": "visible",
             "clipPath": "none",
-            "zIndex": "auto"
+            "zIndex": "auto",
+            "webpagePath": "references/webpage_live/static/media/IfActivated.f4ec95e03e7c3189135e.png",
+            "rendered": {
+              "intrinsicWidth": 472,
+              "intrinsicHeight": 295,
+              "intrinsicAspectRatio": 1.6,
+              "frameAspectRatio": 0.789,
+              "coverScale": 0.448941,
+              "renderedWidth": 211.9,
+              "renderedHeight": 132.438,
+              "cropRight": 107.369,
+              "cropBottom": 0,
+              "cqw": {
+                "renderedWidth": 56.457,
+                "renderedHeight": 35.286,
+                "cropRight": 28.607,
+                "cropBottom": 0
+              }
+            }
           },
           "layout": {
             "display": "block",
@@ -1604,7 +1836,8 @@
             "height": "110.062px",
             "minHeight": "74.6656px",
             "fontSize": "15.3065px",
-            "lineHeight": "15.3065px"
+            "lineHeight": "15.3065px",
+            "boxSizing": "content-box"
           },
           "padding": {
             "top": 11.1998,
@@ -1975,7 +2208,7 @@
         "brushAssets": [
           {
             "assetName": "IfActivated",
-            "webpagePath": "references/webpage_live/static/media/IfActivated.f4ec95e03e7c3189135e.png\""
+            "webpagePath": "references/webpage_live/static/media/IfActivated.f4ec95e03e7c3189135e.png"
           }
         ]
       },
@@ -2063,17 +2296,53 @@
             "rightGap": 0.266,
             "bottomGap": 13.892
           },
+          "contentFrame": {
+            "x": 375.140625,
+            "y": 340.671875,
+            "width": 92.046875,
+            "height": 163.828125,
+            "top": 340.671875,
+            "right": 467.1875,
+            "bottom": 504.5,
+            "left": 375.140625
+          },
+          "contentCqw": {
+            "left": 73.573,
+            "top": 17.859,
+            "width": 24.524,
+            "height": 43.649,
+            "rightGap": 1.903,
+            "bottomGap": 4.246
+          },
+          "contentInsets": {
+            "top": 11.1875,
+            "right": 6.140625,
+            "bottom": -36.203125,
+            "left": 6.34375
+          },
+          "contentInsetsCqw": {
+            "top": 2.981,
+            "right": 1.636,
+            "bottom": -9.646,
+            "left": 1.69
+          },
           "background": {
             "image": "none",
             "assetName": null,
             "size": "cover",
             "position": "0% 0%",
             "repeat": "repeat",
+            "origin": "padding-box",
+            "clip": "border-box",
+            "attachment": "scroll",
+            "color": "rgba(0, 0, 0, 0)",
             "transform": "none",
             "borderRadius": "0px",
             "overflow": "visible",
             "clipPath": "none",
-            "zIndex": "auto"
+            "zIndex": "auto",
+            "webpagePath": null,
+            "rendered": null
           },
           "layout": {
             "display": "flex",
@@ -2085,7 +2354,8 @@
             "height": "108.969px",
             "minHeight": "74.6656px",
             "fontSize": "15.3065px",
-            "lineHeight": "15.3065px"
+            "lineHeight": "15.3065px",
+            "boxSizing": "content-box"
           },
           "padding": {
             "top": 11.1998,
@@ -2359,6 +2629,746 @@
       },
       "assets": {
         "brushAssets": []
+      },
+      "roundedCardFrame": {
+        "width": 375.328,
+        "height": 246.797
+      }
+    },
+    {
+      "cardId": "base.main.001",
+      "sourceId": 1,
+      "name": "Abyssal Anglerfish",
+      "renderedTitle": "Abyssal Anglerfish",
+      "cardText": "ABYSSAL ANGLERFISH\nMelanocetus murrayi\n2\n12 cm\nGAME END:\n3\nif no tokens on this fish\nUnlike some anglerfishes, the tiny males of this deepsea blackdevil are not believed to be parasitic.",
+      "cardFrame": {
+        "x": 99,
+        "y": 273.640625,
+        "width": 375.328125,
+        "height": 246.796875,
+        "top": 273.640625,
+        "right": 474.328125,
+        "bottom": 520.4375,
+        "left": 99
+      },
+      "cardAspectRatio": 1.5207977207977208,
+      "abilityContainer": {
+        "frame": {
+          "x": 368.796875,
+          "y": 274.640625,
+          "width": 104.53125,
+          "height": 244.78125,
+          "top": 274.640625,
+          "right": 473.328125,
+          "bottom": 519.421875,
+          "left": 368.796875
+        },
+        "x": 368.796875,
+        "y": 274.640625,
+        "width": 104.53125,
+        "height": 244.78125,
+        "top": 274.640625,
+        "right": 473.328125,
+        "bottom": 519.421875,
+        "left": 368.796875,
+        "cqw": {
+          "left": 71.883,
+          "top": 0.266,
+          "width": 27.851,
+          "height": 65.218,
+          "rightGap": 0.266,
+          "bottomGap": 0.271
+        },
+        "style": {
+          "display": "flex",
+          "flexDirection": "column",
+          "gap": "7.46656px",
+          "height": "241.062px",
+          "justifyContent": "center",
+          "minWidth": "104.532px",
+          "paddingTop": "3.73328px",
+          "position": "relative",
+          "right": "104.532px",
+          "transform": "none",
+          "zIndex": "auto"
+        }
+      },
+      "abilityBlocks": [
+        {
+          "className": "ability",
+          "frame": {
+            "x": 368.796875,
+            "y": 338.625,
+            "width": 104.53125,
+            "height": 120.53125,
+            "top": 338.625,
+            "right": 473.328125,
+            "bottom": 459.15625,
+            "left": 368.796875
+          },
+          "cqw": {
+            "left": 71.883,
+            "top": 17.314,
+            "width": 27.851,
+            "height": 32.114,
+            "rightGap": 0.266,
+            "bottomGap": 16.327
+          },
+          "contentFrame": {
+            "x": 368.796875,
+            "y": 349.8125,
+            "width": 104.53125,
+            "height": 90.6875,
+            "top": 349.8125,
+            "right": 473.328125,
+            "bottom": 440.5,
+            "left": 368.796875
+          },
+          "contentCqw": {
+            "left": 71.883,
+            "top": 20.295,
+            "width": 27.851,
+            "height": 24.162,
+            "rightGap": 0.266,
+            "bottomGap": 21.298
+          },
+          "contentInsets": {
+            "top": 11.1875,
+            "right": 0,
+            "bottom": 18.65625,
+            "left": 0
+          },
+          "contentInsetsCqw": {
+            "top": 2.981,
+            "right": 0,
+            "bottom": 4.971,
+            "left": 0
+          },
+          "background": {
+            "image": "url(\"http://127.0.0.1:4173/finsearch/static/media/GameEnd.1c86787c5a74319ee78f.png\")",
+            "assetName": "GameEnd",
+            "size": "cover",
+            "position": "0% 0%",
+            "repeat": "repeat",
+            "origin": "padding-box",
+            "clip": "border-box",
+            "attachment": "scroll",
+            "color": "rgba(0, 0, 0, 0)",
+            "transform": "none",
+            "borderRadius": "0px",
+            "overflow": "visible",
+            "clipPath": "none",
+            "zIndex": "auto",
+            "webpagePath": "references/webpage_live/static/media/GameEnd.1c86787c5a74319ee78f.png",
+            "rendered": {
+              "intrinsicWidth": 472,
+              "intrinsicHeight": 295,
+              "intrinsicAspectRatio": 1.6,
+              "frameAspectRatio": 0.867,
+              "coverScale": 0.408581,
+              "renderedWidth": 192.85,
+              "renderedHeight": 120.531,
+              "cropRight": 88.319,
+              "cropBottom": 0,
+              "cqw": {
+                "renderedWidth": 51.382,
+                "renderedHeight": 32.114,
+                "cropRight": 23.531,
+                "cropBottom": 0
+              }
+            }
+          },
+          "layout": {
+            "display": "flex",
+            "position": "static",
+            "justifyContent": "space-around",
+            "alignItems": "center",
+            "gap": "3.73328px",
+            "width": "104.531px",
+            "height": "90.6875px",
+            "minHeight": "74.6656px",
+            "fontSize": "15.3065px",
+            "lineHeight": "15.3065px",
+            "boxSizing": "content-box"
+          },
+          "padding": {
+            "top": 11.1998,
+            "right": 0,
+            "bottom": 18.6664,
+            "left": 0,
+            "cqw": {
+              "top": 2.984,
+              "right": 0,
+              "bottom": 4.973,
+              "left": 0
+            }
+          }
+        }
+      ],
+      "triggerTitles": [
+        {
+          "text": "GAME END:",
+          "className": "ability-text bold",
+          "frame": {
+            "x": 386.125,
+            "y": 349.8125,
+            "width": 69.859375,
+            "height": 15.3125,
+            "top": 349.8125,
+            "right": 455.984375,
+            "bottom": 365.125,
+            "left": 386.125
+          },
+          "cqw": {
+            "left": 76.5,
+            "top": 20.295,
+            "width": 18.613,
+            "height": 4.08,
+            "rightGap": 4.887,
+            "bottomGap": 41.38
+          },
+          "style": {
+            "fontSize": "15.3065px",
+            "fontWeight": "700",
+            "lineHeight": "15.3065px",
+            "paddingLeft": "14.9331px",
+            "textAlign": "start",
+            "position": "static",
+            "zIndex": "auto"
+          }
+        }
+      ],
+      "abilityIcons": [
+        {
+          "index": 0,
+          "className": "",
+          "alt": "Wave",
+          "src": "http://127.0.0.1:4173/finsearch/static/media/Wave.a9ed18c1399d7f3ef5e5c652ff6a6ed8.svg",
+          "frame": {
+            "x": 400.5,
+            "y": 366.96875,
+            "width": 39.015625,
+            "height": 33.59375,
+            "top": 366.96875,
+            "right": 439.515625,
+            "bottom": 400.5625,
+            "left": 400.5
+          },
+          "cqw": {
+            "left": 80.33,
+            "top": 24.866,
+            "width": 10.395,
+            "height": 8.951,
+            "rightGap": 9.275,
+            "bottomGap": 31.939
+          },
+          "style": {
+            "height": "33.5938px",
+            "width": "39.0156px",
+            "maxHeight": "none",
+            "maxWidth": "none",
+            "marginTop": "0px",
+            "marginRight": "0px",
+            "marginBottom": "0px",
+            "marginLeft": "-13.0665px",
+            "position": "relative",
+            "bottom": "5.59992px",
+            "filter": "none",
+            "zIndex": "auto",
+            "objectFit": "fill",
+            "transform": "none"
+          },
+          "marginCqw": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": -3.481
+          }
+        }
+      ],
+      "arrowDown": null,
+      "alsoIfBlockCount": 0,
+      "alsoIfGap": null,
+      "silhouette": {
+        "frame": {
+          "x": 182.125,
+          "y": 345.5625,
+          "width": 179.15625,
+          "height": 117.296875,
+          "top": 345.5625,
+          "right": 361.28125,
+          "bottom": 462.859375,
+          "left": 182.125
+        },
+        "cqw": {
+          "left": 22.147,
+          "top": 19.162,
+          "width": 47.733,
+          "height": 31.252,
+          "rightGap": 30.119,
+          "bottomGap": 15.341
+        },
+        "style": {
+          "maxHeight": "126.932px",
+          "maxWidth": "179.197px",
+          "top": "70.9323px",
+          "left": "82.1322px",
+          "opacity": "1",
+          "filter": "none",
+          "transform": "none",
+          "zIndex": "auto"
+        }
+      },
+      "description": {
+        "text": "Unlike some anglerfishes, the tiny males of this deepsea blackdevil are not believed to be parasitic.",
+        "frame": {
+          "x": 182.125,
+          "y": 461.296875,
+          "width": 186.65625,
+          "height": 36,
+          "top": 461.296875,
+          "right": 368.78125,
+          "bottom": 497.296875,
+          "left": 182.125
+        },
+        "cqw": {
+          "left": 22.147,
+          "top": 49.998,
+          "width": 49.731,
+          "height": 9.592,
+          "rightGap": 28.121,
+          "bottomGap": 6.165
+        },
+        "style": {
+          "fontSize": "9.3332px",
+          "lineHeight": "normal",
+          "top": "186.664px",
+          "left": "82.1322px",
+          "width": "186.656px",
+          "fontFamily": "\"Lexus Roman Optical\"",
+          "fontStyle": "normal"
+        }
+      },
+      "swiftBefore": {
+        "notes": "Swift state before this pass used CardAbilityPanelMetrics.live width=28cqw, top=1cqw, trailing=0cqw, height=(100/aspect)-1cqw and CardAbilityBrushMetrics.assetContentMode=stretch.",
+        "abilityPanelFrame": {
+          "left": 369.236,
+          "top": 277.394,
+          "width": 105.092,
+          "height": 242.364,
+          "rightGap": 0,
+          "cqw": {
+            "left": 72,
+            "top": 1,
+            "width": 28,
+            "height": 64.574,
+            "rightGap": 0
+          }
+        },
+        "brushContentMode": "stretch",
+        "brushUsesCapInsets": true,
+        "brushAlignment": "center"
+      },
+      "assets": {
+        "brushAssets": [
+          {
+            "assetName": "GameEnd",
+            "webpagePath": "references/webpage_live/static/media/GameEnd.1c86787c5a74319ee78f.png"
+          }
+        ]
+      },
+      "roundedCardFrame": {
+        "width": 375.328,
+        "height": 246.797
+      }
+    },
+    {
+      "cardId": "base.main.056",
+      "sourceId": 56,
+      "name": "Great Northern Tilefish",
+      "renderedTitle": "Great Northern Tilefish",
+      "cardText": "GREAT NORTHERN TILEFISH\nLopholatilus chamaeleonticeps\n4\n125 cm\nIF ACTIVATED:\nThis colorful fish is known as the clown of the sea. It burrows into the sediment at the bottom of the ocean.",
+      "cardFrame": {
+        "x": 99,
+        "y": 273.640625,
+        "width": 375.328125,
+        "height": 246.796875,
+        "top": 273.640625,
+        "right": 474.328125,
+        "bottom": 520.4375,
+        "left": 99
+      },
+      "cardAspectRatio": 1.5207977207977208,
+      "abilityContainer": {
+        "frame": {
+          "x": 368.796875,
+          "y": 274.640625,
+          "width": 104.53125,
+          "height": 244.78125,
+          "top": 274.640625,
+          "right": 473.328125,
+          "bottom": 519.421875,
+          "left": 368.796875
+        },
+        "x": 368.796875,
+        "y": 274.640625,
+        "width": 104.53125,
+        "height": 244.78125,
+        "top": 274.640625,
+        "right": 473.328125,
+        "bottom": 519.421875,
+        "left": 368.796875,
+        "cqw": {
+          "left": 71.883,
+          "top": 0.266,
+          "width": 27.851,
+          "height": 65.218,
+          "rightGap": 0.266,
+          "bottomGap": 0.271
+        },
+        "style": {
+          "display": "flex",
+          "flexDirection": "column",
+          "gap": "7.46656px",
+          "height": "241.062px",
+          "justifyContent": "center",
+          "minWidth": "104.532px",
+          "paddingTop": "3.73328px",
+          "position": "relative",
+          "right": "104.532px",
+          "transform": "none",
+          "zIndex": "auto"
+        }
+      },
+      "abilityBlocks": [
+        {
+          "className": "ability",
+          "frame": {
+            "x": 368.796875,
+            "y": 339,
+            "width": 104.53125,
+            "height": 119.78125,
+            "top": 339,
+            "right": 473.328125,
+            "bottom": 458.78125,
+            "left": 368.796875
+          },
+          "cqw": {
+            "left": 71.883,
+            "top": 17.414,
+            "width": 27.851,
+            "height": 31.914,
+            "rightGap": 0.266,
+            "bottomGap": 16.427
+          },
+          "contentFrame": {
+            "x": 379.765625,
+            "y": 350.1875,
+            "width": 82.59375,
+            "height": 89.9375,
+            "top": 350.1875,
+            "right": 462.359375,
+            "bottom": 440.125,
+            "left": 379.765625
+          },
+          "contentCqw": {
+            "left": 74.805,
+            "top": 20.395,
+            "width": 22.006,
+            "height": 23.962,
+            "rightGap": 3.189,
+            "bottomGap": 21.398
+          },
+          "contentInsets": {
+            "top": 11.1875,
+            "right": 10.96875,
+            "bottom": 18.65625,
+            "left": 10.96875
+          },
+          "contentInsetsCqw": {
+            "top": 2.981,
+            "right": 2.922,
+            "bottom": 4.971,
+            "left": 2.922
+          },
+          "background": {
+            "image": "url(\"http://127.0.0.1:4173/finsearch/static/media/IfActivated.f4ec95e03e7c3189135e.png\")",
+            "assetName": "IfActivated",
+            "size": "cover",
+            "position": "0% 0%",
+            "repeat": "repeat",
+            "origin": "padding-box",
+            "clip": "border-box",
+            "attachment": "scroll",
+            "color": "rgba(0, 0, 0, 0)",
+            "transform": "none",
+            "borderRadius": "0px",
+            "overflow": "visible",
+            "clipPath": "none",
+            "zIndex": "auto",
+            "webpagePath": "references/webpage_live/static/media/IfActivated.f4ec95e03e7c3189135e.png",
+            "rendered": {
+              "intrinsicWidth": 472,
+              "intrinsicHeight": 295,
+              "intrinsicAspectRatio": 1.6,
+              "frameAspectRatio": 0.873,
+              "coverScale": 0.406038,
+              "renderedWidth": 191.65,
+              "renderedHeight": 119.781,
+              "cropRight": 87.119,
+              "cropBottom": 0,
+              "cqw": {
+                "renderedWidth": 51.062,
+                "renderedHeight": 31.914,
+                "cropRight": 23.211,
+                "cropBottom": 0
+              }
+            }
+          },
+          "layout": {
+            "display": "flex",
+            "position": "static",
+            "justifyContent": "space-around",
+            "alignItems": "center",
+            "gap": "3.73328px",
+            "width": "104.531px",
+            "height": "89.9375px",
+            "minHeight": "74.6656px",
+            "fontSize": "15.3065px",
+            "lineHeight": "15.3065px",
+            "boxSizing": "content-box"
+          },
+          "padding": {
+            "top": 11.1998,
+            "right": 0,
+            "bottom": 18.6664,
+            "left": 0,
+            "cqw": {
+              "top": 2.984,
+              "right": 0,
+              "bottom": 4.973,
+              "left": 0
+            }
+          }
+        }
+      ],
+      "triggerTitles": [
+        {
+          "text": "IF ACTIVATED:",
+          "className": "ability-text bold",
+          "frame": {
+            "x": 379.765625,
+            "y": 350.1875,
+            "width": 82.59375,
+            "height": 15.3125,
+            "top": 350.1875,
+            "right": 462.359375,
+            "bottom": 365.5,
+            "left": 379.765625
+          },
+          "cqw": {
+            "left": 74.805,
+            "top": 20.395,
+            "width": 22.006,
+            "height": 4.08,
+            "rightGap": 3.189,
+            "bottomGap": 41.281
+          },
+          "style": {
+            "fontSize": "15.3065px",
+            "fontWeight": "700",
+            "lineHeight": "15.3065px",
+            "paddingLeft": "14.9331px",
+            "textAlign": "start",
+            "position": "static",
+            "zIndex": "auto"
+          }
+        }
+      ],
+      "abilityIcons": [
+        {
+          "index": 0,
+          "className": "FishHatch",
+          "alt": "FishHatch",
+          "src": "http://127.0.0.1:4173/finsearch/static/media/FishHatch.58ff38c722190a38c540.svg",
+          "frame": {
+            "x": 390.046875,
+            "y": 369.21875,
+            "width": 62.015625,
+            "height": 33.59375,
+            "top": 369.21875,
+            "right": 452.0625,
+            "bottom": 402.8125,
+            "left": 390.046875
+          },
+          "cqw": {
+            "left": 77.545,
+            "top": 25.465,
+            "width": 16.523,
+            "height": 8.951,
+            "rightGap": 5.932,
+            "bottomGap": 31.339
+          },
+          "style": {
+            "height": "33.5938px",
+            "width": "62.0156px",
+            "maxHeight": "none",
+            "maxWidth": "none",
+            "marginTop": "0px",
+            "marginRight": "0px",
+            "marginBottom": "0px",
+            "marginLeft": "0px",
+            "position": "static",
+            "bottom": "auto",
+            "filter": "none",
+            "zIndex": "auto",
+            "objectFit": "fill",
+            "transform": "none"
+          },
+          "marginCqw": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          }
+        },
+        {
+          "index": 1,
+          "className": "FishHatch",
+          "alt": "FishHatch",
+          "src": "http://127.0.0.1:4173/finsearch/static/media/FishHatch.58ff38c722190a38c540.svg",
+          "frame": {
+            "x": 390.046875,
+            "y": 406.53125,
+            "width": 62.015625,
+            "height": 33.59375,
+            "top": 406.53125,
+            "right": 452.0625,
+            "bottom": 440.125,
+            "left": 390.046875
+          },
+          "cqw": {
+            "left": 77.545,
+            "top": 35.407,
+            "width": 16.523,
+            "height": 8.951,
+            "rightGap": 5.932,
+            "bottomGap": 21.398
+          },
+          "style": {
+            "height": "33.5938px",
+            "width": "62.0156px",
+            "maxHeight": "none",
+            "maxWidth": "none",
+            "marginTop": "0px",
+            "marginRight": "0px",
+            "marginBottom": "0px",
+            "marginLeft": "0px",
+            "position": "static",
+            "bottom": "auto",
+            "filter": "none",
+            "zIndex": "auto",
+            "objectFit": "fill",
+            "transform": "none"
+          },
+          "marginCqw": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          }
+        }
+      ],
+      "arrowDown": null,
+      "alsoIfBlockCount": 0,
+      "alsoIfGap": null,
+      "silhouette": {
+        "frame": {
+          "x": 182.125,
+          "y": 345.5625,
+          "width": 179.171875,
+          "height": 93.890625,
+          "top": 345.5625,
+          "right": 361.296875,
+          "bottom": 439.453125,
+          "left": 182.125
+        },
+        "cqw": {
+          "left": 22.147,
+          "top": 19.162,
+          "width": 47.737,
+          "height": 25.016,
+          "rightGap": 30.115,
+          "bottomGap": 21.577
+        },
+        "style": {
+          "maxHeight": "126.932px",
+          "maxWidth": "179.197px",
+          "top": "70.9323px",
+          "left": "82.1322px",
+          "opacity": "1",
+          "filter": "none",
+          "transform": "none",
+          "zIndex": "auto"
+        }
+      },
+      "description": {
+        "text": "This colorful fish is known as the clown of the sea. It burrows into the sediment at the bottom of the ocean.",
+        "frame": {
+          "x": 182.125,
+          "y": 461.296875,
+          "width": 186.65625,
+          "height": 36,
+          "top": 461.296875,
+          "right": 368.78125,
+          "bottom": 497.296875,
+          "left": 182.125
+        },
+        "cqw": {
+          "left": 22.147,
+          "top": 49.998,
+          "width": 49.731,
+          "height": 9.592,
+          "rightGap": 28.121,
+          "bottomGap": 6.165
+        },
+        "style": {
+          "fontSize": "9.3332px",
+          "lineHeight": "normal",
+          "top": "186.664px",
+          "left": "82.1322px",
+          "width": "186.656px",
+          "fontFamily": "\"Lexus Roman Optical\"",
+          "fontStyle": "normal"
+        }
+      },
+      "swiftBefore": {
+        "notes": "Swift state before this pass used CardAbilityPanelMetrics.live width=28cqw, top=1cqw, trailing=0cqw, height=(100/aspect)-1cqw and CardAbilityBrushMetrics.assetContentMode=stretch.",
+        "abilityPanelFrame": {
+          "left": 369.236,
+          "top": 277.394,
+          "width": 105.092,
+          "height": 242.364,
+          "rightGap": 0,
+          "cqw": {
+            "left": 72,
+            "top": 1,
+            "width": 28,
+            "height": 64.574,
+            "rightGap": 0
+          }
+        },
+        "brushContentMode": "stretch",
+        "brushUsesCapInsets": true,
+        "brushAlignment": "center"
+      },
+      "assets": {
+        "brushAssets": [
+          {
+            "assetName": "IfActivated",
+            "webpagePath": "references/webpage_live/static/media/IfActivated.f4ec95e03e7c3189135e.png"
+          }
+        ]
       },
       "roundedCardFrame": {
         "width": 375.328,

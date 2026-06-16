@@ -41,6 +41,22 @@ final class FishCardLiveMeasurementTests: XCTestCase {
         XCTAssertFalse(brush.usesPureColorFallback)
     }
 
+    func testBrushMeasurementIncludesOriginClipAndCoverCrop() throws {
+        let report = try liveMeasurementReport()
+        let cards = try XCTUnwrap(report["cards"] as? [[String: Any]])
+        let banggai = try XCTUnwrap(cards.first { $0["cardId"] as? String == "base.main.014" })
+        let blocks = try XCTUnwrap(banggai["abilityBlocks"] as? [[String: Any]])
+        let background = try XCTUnwrap(blocks.first?["background"] as? [String: Any])
+        let rendered = try XCTUnwrap(background["rendered"] as? [String: Any])
+
+        XCTAssertEqual(background["origin"] as? String, "padding-box")
+        XCTAssertEqual(background["clip"] as? String, "border-box")
+        XCTAssertEqual(rendered["intrinsicWidth"] as? Int, 472)
+        XCTAssertEqual(rendered["intrinsicHeight"] as? Int, 295)
+        XCTAssertEqual(rendered["cropBottom"] as? Double ?? -1, 0, accuracy: 0.001)
+        XCTAssertGreaterThan(rendered["cropRight"] as? Double ?? 0, 60)
+    }
+
     func testAtlanticBarracudinaAlsoIfGapUsesLiveMeasurement() throws {
         let summary = try XCTUnwrap(CardLiveMeasurementCatalog.summary(for: "sr.starter.212"))
 

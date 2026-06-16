@@ -112,6 +112,8 @@
 - FishCardFaceView Live DOM Measurement + Ability Brush Correctness Pass 已完成：`tools/scripts/measure_live_card_dom.mjs` 用 Playwright / Chromium 真实渲染 `references/webpage_live/index.html`，生成 `tools/generated/card_rendering/live_measurements.json` 和 `docs/CARD_RENDERING_LIVE_MEASUREMENTS.md`。
 - `CardAbilityLayoutMetrics` 已从 live DOM measurement 更新：ability container left 71.883cqw、top 0.266cqw、width 27.851cqw、height 65.218cqw、right gap 0.266cqw；also-if gap 1.986cqw。
 - IF ACTIVATED / GAME END / also-if brush 已确认使用 CSS `background-image`，computed `background-size: cover`、`background-position: 0% 0%`、默认 `background-repeat: repeat`、无 rotation；SwiftUI 已改为 top-leading cover/crop，不再使用 cap-inset stretch 或纯色正常 fallback。
+- Inline Ability Interaction feasibility audit 已完成：`tools/scripts/audit_inline_ability_interaction.py` 对 215 张真实卡按 runtime JSON / token metadata 分类，并生成 `docs/INLINE_ABILITY_INTERACTION_AUDIT.md` 与 `tools/generated/card_rendering/inline_ability_interaction_audit.json`。
+- Inline audit 统计：A inline candidates 73、B needs picker/overlay 51、C irreversible/no undo 91、D not enough metadata 0。当前不建议删除右侧 pending / reward UI；未来 MVP 只覆盖 staged local resource effects，并保持 fallback。
 - S&R expansion badge 已接入：`sr.*` 牌显示右下角 `SRLogo`，base 牌不显示。
 - Starter corner 已接入：`.starter.` 牌显示左上 / 右下 clipped gray corner overlay；这是 live CSS `.corner-overlay` 的 SwiftUI vector 还原，不使用 `StarterIcon` 作为牌面角标。
 - Great White Shark、Great Northern Tilefish、Great Barracuda、Atlantic Barracudina 仅作为 QA 样例，不写 special case；代表卡的 token sequence、brush block、also-if conditional、badge/corner、cost / requirement、zone、length、Wave、fish image 和 flavor text 都通过通用 resolver / view-state mapping 生效。
@@ -174,6 +176,7 @@
 - Icon renderability pipeline fix 已完成：不再把 resolver success 当作可见性证明，新增 PNG 像素审计和 runtime bundle decode 测试。
 - Ability layout / brush / badge / starter corner pass 已完成：live JS/CSS 的 icon-run、ability-row、also-if split block、AllPlayers drop-shadow、S&R logo 和 starter corner overlay 已进入 Swift presentation model。
 - Live DOM measured ability brush correctness pass 已完成：right-side panel frame、brush cover/top-left background mode、also-if gap、ArrowDown overlap 和 AllPlayers bottom placement 已从真实 DOM / computed style 映射。
+- Inline ability interaction 只完成 feasibility audit：暂不替换右侧收益栏。若后续实施，第一阶段只做 staged ViewModel undo 和 `placeEgg` / `hatchEgg` / `gainCoral` / simple move / `→` skip current fish；draw、hand/discard picker、play fish、AllPlayers、GAME END 和 hidden information 必须 fallback。
 - 后续用 live renderer screenshot 对 Great White Shark、If Activated、Game End 三类卡做截图级对照。
 - 收敛 title、scientific name、points、length、ability text 的 font size / line-height / wrapping，以及 icon sub-pixel offset 的微调。
 - 调整 fish image frame、opacity、blend、clipping。
@@ -235,4 +238,5 @@
 
 1. 先做 FishCardFaceView 后续像素级 layout / font / spacing 修正。
 2. 再稳定 GameBoardViewModel pending UI。
-3. 之后修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。
+3. 如需推进 inline ability interaction，先按 `docs/INLINE_ABILITY_INTERACTION_AUDIT.md` 做 staged-only MVP，不删除右侧收益栏。
+4. 之后修 UI bug：底部 dock、手牌居中、弃牌堆隐藏、empty slot 占位。

@@ -76,7 +76,7 @@ struct CardAbilityBlockMetrics: Equatable {
                 topPaddingCqw: 3,
                 bottomPaddingCqw: 5,
                 contentGapCqw: 1,
-                minTotalHeightCqw: 28,
+                minTotalHeightCqw: 27.842,
                 textFontSizeCqw: panelStyle == .none ? 3.45 : 4.1
             )
         case .squished:
@@ -85,7 +85,7 @@ struct CardAbilityBlockMetrics: Equatable {
                 topPaddingCqw: 2,
                 bottomPaddingCqw: 2,
                 contentGapCqw: 0.55,
-                minTotalHeightCqw: 15,
+                minTotalHeightCqw: 17.993,
                 textFontSizeCqw: 3.55
             )
         case .alsoIf:
@@ -94,7 +94,7 @@ struct CardAbilityBlockMetrics: Equatable {
                 topPaddingCqw: 3,
                 bottomPaddingCqw: 3,
                 contentGapCqw: 0.7,
-                minTotalHeightCqw: 18,
+                minTotalHeightCqw: 35.286,
                 textFontSizeCqw: 3.45
             )
         }

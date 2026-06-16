@@ -233,6 +233,27 @@ Swift 修复点：
 
 Focused tests 新增 / 更新 `FishCardLiveMeasurementTests`、`FishCardAbilityPanelMeasurementTests`、`FishCardBrushBackgroundTests` 和 `FishCardAbilityPixelAlignmentTests`，覆盖 measurement JSON、brush computed style、panel frame、ArrowDown overlap、also-if gap、S&R badge、starter corner 和 debug summary metrics。
 
+## Inline Ability Interaction Audit + Brush Measurement Fix
+
+本轮继续遵守“不凭描述手调参数”的原则，先重新生成 live measurement，再修 SwiftUI 的 brush role：
+
+- `tools/scripts/measure_live_card_dom.mjs` 现在额外记录 `background-origin`、`background-clip`、block content union / content inset、brush PNG intrinsic size，以及 CSS `cover` 后的 rendered size / right crop / bottom crop。
+- 代表卡扩展到 Banggai Cardinalfish、Great White Shark、Bearded Seadevil、Atlantic Barracudina、Great Barracuda、Abyssal Anglerfish 和 Great Northern Tilefish，用于覆盖 IF ACTIVATED、GAME END、also-if、arrow-flow 和 S&R badge/corner。
+- 实测 `IfActivated` / `GameEnd` brush PNG 原始尺寸为 472 x 295，live 使用 `background-size: cover` 和 top-left crop；例如 Banggai Cardinalfish block 为 27.842cqw 高，cover 后只裁右侧约 16.697cqw，不裁上下。
+- Swift 根因：`CardAbilityBrushBackgroundView` 内部使用 `GeometryReader`，但之前作为 `ZStack` 子视图参与 layout，可能把背景当成内容尺寸来源，导致 ability block 过长、上下留白过多。live CSS background 不参与 layout。
+- 修复：brush view 改为 block 的 `.background`，不再作为 `ZStack` content；`CardAbilityBlockMetrics` 的 standard / squished / also-if 最小高度分别对齐 live measurement：27.842cqw、17.993cqw、35.286cqw。
+- `background-origin` 实测为 `padding-box`，`background-clip` 实测为 `border-box`；Swift 仍用 unrotated top-leading cover/crop，不使用 cap-inset stretch，不使用纯色正常 fallback。
+
+本轮同时只做 inline ability interaction feasibility audit，不直接替换右侧 pending / reward UI：
+
+- 新增 `tools/scripts/audit_inline_ability_interaction.py`。
+- 输出 `tools/generated/card_rendering/inline_ability_interaction_audit.json` 和 `docs/INLINE_ABILITY_INTERACTION_AUDIT.md`。
+- 215 张卡分类：A inline candidates 73，B needs picker/overlay 51，C irreversible/no undo 91，D not enough metadata 0。
+- 推荐 MVP 只覆盖 `placeEgg`、`hatchEgg`、ability-driven `gainCoral`、simple move 和 `→` skip current fish。
+- 不建议现在删除右侧收益栏；draw、discard / hand picker、discard pile picker、play fish flow、all-player、GAME END、hidden information 和 uncertain flow 必须保留 fallback 或 hybrid UI。
+- `→` 建议映射到 `PendingEffectIntent.skipRemaining` / `skipEffectExecution`，单节点可选效果映射到 `skipEffectNode`。
+- `←` 当前只建议撤回未提交的 ViewModel staged selection；没有 engine-level undo command，不应撤回已提交事件，尤其不能撤回 draw / deck order / hidden information / all-player / GAME END。
+
 仍待后续截图级微调：
 
 - title / ability copy 的 line wrapping 与网页仍需逐卡截图对照。

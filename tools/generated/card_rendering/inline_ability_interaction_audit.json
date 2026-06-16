@@ -1,0 +1,4798 @@
+{
+  "generatedFrom": "Finspan/Resources/Cards/*.json",
+  "note": "Design audit only; no runtime behavior changes.",
+  "stats": {
+    "total": 215,
+    "categories": {
+      "C.irreversibleNoUndo": 91,
+      "B.needsPickerOverlay": 51,
+      "A.inlineCandidate": 73
+    },
+    "inlineSupported": {
+      "no": 58,
+      "yes": 66,
+      "partial": 91
+    },
+    "requiresOverlay": {
+      "no": 113,
+      "yes": 102
+    },
+    "undoSupported": {
+      "no": 91,
+      "partial": 58,
+      "yes": 66
+    },
+    "effectTypes": {
+      "gameEndScore": 39,
+      "playFishFromHand": 14,
+      "hatchEgg": 33,
+      "moveYoungOrSchool": 33,
+      "placeEggOnMatchingFish": 26,
+      "drawFish": 22,
+      "recoverFromDiscardOrDraw": 26,
+      "placeEgg": 26,
+      "placeYoung": 12,
+      "consumeFishFromHand": 26,
+      "scatterSchool": 12,
+      "gainCoral": 55,
+      "playFishForFree": 7
+    }
+  },
+  "records": [
+    {
+      "cardId": "base.main.001",
+      "sourceId": 1,
+      "englishName": "Abyssal Anglerfish",
+      "trigger": "gameEnd",
+      "abilityText": "3 [Wave] if no tokens on this fish",
+      "tokens": [
+        "Wave"
+      ],
+      "effectTypes": [
+        "gameEndScore"
+      ],
+      "patternLabel": "scoring-only GAME END",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.002",
+      "sourceId": 2,
+      "englishName": "Abyssal Halosaur",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishFromHand][ArrowDown][PlayFishBottomRow]",
+      "tokens": [
+        "FishFromHand",
+        "ArrowDown",
+        "PlayFishBottomRow"
+      ],
+      "effectTypes": [
+        "playFishFromHand"
+      ],
+      "patternLabel": "play fish paying cost",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.003",
+      "sourceId": 3,
+      "englishName": "Abyssal Spiderfish",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishHatch][FishHatch][FishHatch]",
+      "tokens": [
+        "FishHatch",
+        "FishHatch",
+        "FishHatch"
+      ],
+      "effectTypes": [
+        "hatchEgg"
+      ],
+      "patternLabel": "hatch egg",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.004",
+      "sourceId": 4,
+      "englishName": "Angelshark",
+      "trigger": "gameEnd",
+      "abilityText": "10 [Wave] if [ConsumeFish3] (there are 3+ fish under this one)",
+      "tokens": [
+        "Wave",
+        "ConsumeFish3"
+      ],
+      "effectTypes": [
+        "gameEndScore"
+      ],
+      "patternLabel": "scoring-only GAME END",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.005",
+      "sourceId": 5,
+      "englishName": "Angler",
+      "trigger": "ifActivated",
+      "abilityText": "[SchoolFeederMove]",
+      "tokens": [
+        "SchoolFeederMove"
+      ],
+      "effectTypes": [
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "move young/school",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.006",
+      "sourceId": 6,
+      "englishName": "Arabian Carpetshark",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishEgg][ArrowDown][Predator] on each",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "Predator"
+      ],
+      "effectTypes": [
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "place egg on each matching fish",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.007",
+      "sourceId": 7,
+      "englishName": "Atlantic Bluefin Tuna",
+      "trigger": "whenPlayed",
+      "abilityText": "[DrawCard][DrawCard][Discard][Discard]",
+      "tokens": [
+        "DrawCard",
+        "DrawCard",
+        "Discard",
+        "Discard"
+      ],
+      "effectTypes": [
+        "drawFish",
+        "recoverFromDiscardOrDraw"
+      ],
+      "patternLabel": "mixed compound effect pool",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.008",
+      "sourceId": 8,
+      "englishName": "Atlantic Bonito",
+      "trigger": "gameEnd",
+      "abilityText": "6 [Wave] if [ConsumeFish2] (there are 2+ fish under this one)",
+      "tokens": [
+        "Wave",
+        "ConsumeFish2"
+      ],
+      "effectTypes": [
+        "gameEndScore"
+      ],
+      "patternLabel": "scoring-only GAME END",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.009",
+      "sourceId": 9,
+      "englishName": "Atlantic Mackerel",
+      "trigger": "ifActivated",
+      "abilityText": "[FishEgg][FishEgg]",
+      "tokens": [
+        "FishEgg",
+        "FishEgg"
+      ],
+      "effectTypes": [
+        "placeEgg"
+      ],
+      "patternLabel": "place egg single target",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.010",
+      "sourceId": 10,
+      "englishName": "Atlantic Sailfish",
+      "trigger": "whenPlayed",
+      "abilityText": "[DrawCard][DrawCard][DrawCard]",
+      "tokens": [
+        "DrawCard",
+        "DrawCard",
+        "DrawCard"
+      ],
+      "effectTypes": [
+        "drawFish"
+      ],
+      "patternLabel": "draw fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.011",
+      "sourceId": 11,
+      "englishName": "Atlantic Salmon",
+      "trigger": "gameEnd",
+      "abilityText": "[FishFromHand][ArrowDown][Estuary]",
+      "tokens": [
+        "FishFromHand",
+        "ArrowDown",
+        "Estuary"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "playFishFromHand"
+      ],
+      "patternLabel": "play fish paying cost",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.012",
+      "sourceId": 12,
+      "englishName": "Atlantic Sturgeon",
+      "trigger": "ifActivated",
+      "abilityText": "[Discard]",
+      "tokens": [
+        "Discard"
+      ],
+      "effectTypes": [
+        "recoverFromDiscardOrDraw"
+      ],
+      "patternLabel": "recover from discard or draw",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.013",
+      "sourceId": 13,
+      "englishName": "Atlantic Wolffish",
+      "trigger": "ifActivated",
+      "abilityText": "[FishHatch]",
+      "tokens": [
+        "FishHatch"
+      ],
+      "effectTypes": [
+        "hatchEgg"
+      ],
+      "patternLabel": "hatch egg",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.014",
+      "sourceId": 14,
+      "englishName": "Banggai Cardinalfish",
+      "trigger": "ifActivated",
+      "abilityText": "[FishHatch]",
+      "tokens": [
+        "FishHatch"
+      ],
+      "effectTypes": [
+        "hatchEgg"
+      ],
+      "patternLabel": "hatch egg",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.015",
+      "sourceId": 15,
+      "englishName": "Barramundi",
+      "trigger": "ifActivated",
+      "abilityText": "[FishEgg]",
+      "tokens": [
+        "FishEgg"
+      ],
+      "effectTypes": [
+        "placeEgg"
+      ],
+      "patternLabel": "place egg single target",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.016",
+      "sourceId": 16,
+      "englishName": "Bearded Seadevil",
+      "trigger": "whenPlayed",
+      "abilityText": "(all players) [FishEgg][ArrowDown][FishLengthSmall] on each [AllPlayers]",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "FishLengthSmall",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "all players · place egg on each matching fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.017",
+      "sourceId": 17,
+      "englishName": "Bigeye Tuna",
+      "trigger": "ifActivated",
+      "abilityText": "[FishEgg]",
+      "tokens": [
+        "FishEgg"
+      ],
+      "effectTypes": [
+        "placeEgg"
+      ],
+      "patternLabel": "place egg single target",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.018",
+      "sourceId": 18,
+      "englishName": "Bigeye Smooth-Head",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishEgg][ArrowDown][FlipperPurple] on each",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "FlipperPurple"
+      ],
+      "effectTypes": [
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "place egg on each matching fish",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.019",
+      "sourceId": 19,
+      "englishName": "Binocular Fish",
+      "trigger": "gameEnd",
+      "abilityText": "[FishEgg][ArrowDown][FishLengthSmall] on each",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "FishLengthSmall"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "place egg on each matching fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.020",
+      "sourceId": 20,
+      "englishName": "Black Cardinalfish",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishHatch][FishHatch][SchoolFeederMove]",
+      "tokens": [
+        "FishHatch",
+        "FishHatch",
+        "SchoolFeederMove"
+      ],
+      "effectTypes": [
+        "hatchEgg",
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "mixed hatch + move",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.021",
+      "sourceId": 21,
+      "englishName": "Black Hagfish",
+      "trigger": "whenPlayed",
+      "abilityText": "[YoungFish][Discard]",
+      "tokens": [
+        "YoungFish",
+        "Discard"
+      ],
+      "effectTypes": [
+        "recoverFromDiscardOrDraw",
+        "placeYoung"
+      ],
+      "patternLabel": "mixed compound effect pool",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.022",
+      "sourceId": 22,
+      "englishName": "Black Swallower",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishFromHand][ArrowDown][FlipperGreen]",
+      "tokens": [
+        "FishFromHand",
+        "ArrowDown",
+        "FlipperGreen"
+      ],
+      "effectTypes": [
+        "playFishFromHand"
+      ],
+      "patternLabel": "play fish paying cost",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.023",
+      "sourceId": 23,
+      "englishName": "Blob Sculpin",
+      "trigger": "gameEnd",
+      "abilityText": "[FishFromHand][ArrowDown][FlipperGreen]",
+      "tokens": [
+        "FishFromHand",
+        "ArrowDown",
+        "FlipperGreen"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "playFishFromHand"
+      ],
+      "patternLabel": "play fish paying cost",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.024",
+      "sourceId": 24,
+      "englishName": "Blue Tang",
+      "trigger": "whenPlayed",
+      "abilityText": "[SchoolFeederMove][YoungFish]",
+      "tokens": [
+        "SchoolFeederMove",
+        "YoungFish"
+      ],
+      "effectTypes": [
+        "placeYoung",
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "mixed young + move",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.025",
+      "sourceId": 25,
+      "englishName": "Bluespine Unicornfish",
+      "trigger": "ifActivated",
+      "abilityText": "(all players) [FishHatch][AllPlayers]",
+      "tokens": [
+        "FishHatch",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "hatchEgg"
+      ],
+      "patternLabel": "all players · hatch egg",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.026",
+      "sourceId": 26,
+      "englishName": "Bluestreak Cleaner Wrasse",
+      "trigger": "ifActivated",
+      "abilityText": "[Discard][Discard]",
+      "tokens": [
+        "Discard",
+        "Discard"
+      ],
+      "effectTypes": [
+        "recoverFromDiscardOrDraw"
+      ],
+      "patternLabel": "recover from discard or draw",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.027",
+      "sourceId": 27,
+      "englishName": "Bluntnose Sixgill Shark",
+      "trigger": "whenPlayed",
+      "abilityText": "(all players) [FishEgg][ArrowDown][FlipperPurple] on each [AllPlayers]",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "FlipperPurple",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "all players · place egg on each matching fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.028",
+      "sourceId": 28,
+      "englishName": "Chinese Trumpetfish",
+      "trigger": "gameEnd",
+      "abilityText": "[FishEgg][ArrowDown][FishLengthMedium] on each",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "FishLengthMedium"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "place egg on each matching fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.029",
+      "sourceId": 29,
+      "englishName": "Chola Guitarfish",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishFromHand][ArrowDown][FlipperPurple]",
+      "tokens": [
+        "FishFromHand",
+        "ArrowDown",
+        "FlipperPurple"
+      ],
+      "effectTypes": [
+        "playFishFromHand"
+      ],
+      "patternLabel": "play fish paying cost",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.030",
+      "sourceId": 30,
+      "englishName": "Clown Anemonefish",
+      "trigger": "gameEnd",
+      "abilityText": "6 [Wave] if [YoungFish][YoungFish] (exactly 2 on this fish)",
+      "tokens": [
+        "Wave",
+        "YoungFish",
+        "YoungFish"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "placeYoung"
+      ],
+      "patternLabel": "scoring-only GAME END",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.031",
+      "sourceId": 31,
+      "englishName": "Common Fangtooth",
+      "trigger": "gameEnd",
+      "abilityText": "3 [Wave] if [ConsumeFish1] (1+ fish under this one)",
+      "tokens": [
+        "Wave",
+        "ConsumeFish1"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "scoring-only GAME END",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.032",
+      "sourceId": 32,
+      "englishName": "Cookiecutter Shark",
+      "trigger": "gameEnd",
+      "abilityText": "5 [Wave] if [PlayFishBottomRow] (this fish is in the bottom row)",
+      "tokens": [
+        "Wave",
+        "PlayFishBottomRow"
+      ],
+      "effectTypes": [
+        "gameEndScore"
+      ],
+      "patternLabel": "scoring-only GAME END",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.033",
+      "sourceId": 33,
+      "englishName": "Cownose Ray",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishFromHand][ArrowDown][FlipperPurple]",
+      "tokens": [
+        "FishFromHand",
+        "ArrowDown",
+        "FlipperPurple"
+      ],
+      "effectTypes": [
+        "playFishFromHand"
+      ],
+      "patternLabel": "play fish paying cost",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.034",
+      "sourceId": 34,
+      "englishName": "Creolefish",
+      "trigger": "ifActivated",
+      "abilityText": "[ConsumeFish1]",
+      "tokens": [
+        "ConsumeFish1"
+      ],
+      "effectTypes": [
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "consume shorter fish from hand",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.035",
+      "sourceId": 35,
+      "englishName": "Crocodilefish",
+      "trigger": "gameEnd",
+      "abilityText": "[FishFromHand][ArrowDown][FlipperBlue]",
+      "tokens": [
+        "FishFromHand",
+        "ArrowDown",
+        "FlipperBlue"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "playFishFromHand"
+      ],
+      "patternLabel": "play fish paying cost",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.036",
+      "sourceId": 36,
+      "englishName": "Deepsea Lizardfish",
+      "trigger": "whenPlayed",
+      "abilityText": "(all players) [FishHatch][SchoolFeederMove][AllPlayers]",
+      "tokens": [
+        "FishHatch",
+        "SchoolFeederMove",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "hatchEgg",
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "all players · mixed hatch + move",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.037",
+      "sourceId": 37,
+      "englishName": "Diamond Stingray",
+      "trigger": "whenPlayed",
+      "abilityText": "[Discard][Discard][Discard][SchoolFeederMove]",
+      "tokens": [
+        "Discard",
+        "Discard",
+        "Discard",
+        "SchoolFeederMove"
+      ],
+      "effectTypes": [
+        "recoverFromDiscardOrDraw",
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "mixed compound effect pool",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.038",
+      "sourceId": 38,
+      "englishName": "Elsman's Whipnose",
+      "trigger": "whenPlayed",
+      "abilityText": "[DrawCard][Discard][SchoolFeederMove]",
+      "tokens": [
+        "DrawCard",
+        "Discard",
+        "SchoolFeederMove"
+      ],
+      "effectTypes": [
+        "drawFish",
+        "recoverFromDiscardOrDraw",
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "mixed compound effect pool",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.039",
+      "sourceId": 39,
+      "englishName": "Emperor Red Snapper",
+      "trigger": "ifActivated",
+      "abilityText": "[FishEgg]",
+      "tokens": [
+        "FishEgg"
+      ],
+      "effectTypes": [
+        "placeEgg"
+      ],
+      "patternLabel": "place egg single target",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.040",
+      "sourceId": 40,
+      "englishName": "Escolar",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishEgg][ArrowDown][FishLengthLarge] on each",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "FishLengthLarge"
+      ],
+      "effectTypes": [
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "place egg on each matching fish",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.041",
+      "sourceId": 41,
+      "englishName": "European Anchovy",
+      "trigger": "gameEnd",
+      "abilityText": "[FishEgg][ArrowDown][Estuary]",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "Estuary"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "place egg on each matching fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.042",
+      "sourceId": 42,
+      "englishName": "European Flounder",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishEgg][ArrowDown][Estuary]",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "Estuary"
+      ],
+      "effectTypes": [
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "place egg on each matching fish",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.043",
+      "sourceId": 43,
+      "englishName": "European Sturgeon",
+      "trigger": "ifActivated",
+      "abilityText": "[Discard]",
+      "tokens": [
+        "Discard"
+      ],
+      "effectTypes": [
+        "recoverFromDiscardOrDraw"
+      ],
+      "patternLabel": "recover from discard or draw",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.044",
+      "sourceId": 44,
+      "englishName": "Faceless Cusk",
+      "trigger": "gameEnd",
+      "abilityText": "[FishFromHand][ArrowDown][PlayFishBottomRow]",
+      "tokens": [
+        "FishFromHand",
+        "ArrowDown",
+        "PlayFishBottomRow"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "playFishFromHand"
+      ],
+      "patternLabel": "play fish paying cost",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.045",
+      "sourceId": 45,
+      "englishName": "False Catshark",
+      "trigger": "whenPlayed",
+      "abilityText": "(all players) [SchoolFeederMove][SchoolFeederMove][AllPlayers]",
+      "tokens": [
+        "SchoolFeederMove",
+        "SchoolFeederMove",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "all players · move young/school",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.046",
+      "sourceId": 46,
+      "englishName": "False Cleanerfish",
+      "trigger": "ifActivated",
+      "abilityText": "[Discard]",
+      "tokens": [
+        "Discard"
+      ],
+      "effectTypes": [
+        "recoverFromDiscardOrDraw"
+      ],
+      "patternLabel": "recover from discard or draw",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.047",
+      "sourceId": 47,
+      "englishName": "Flabby Whalefish",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishEgg][FishEgg][FishHatch]",
+      "tokens": [
+        "FishEgg",
+        "FishEgg",
+        "FishHatch"
+      ],
+      "effectTypes": [
+        "placeEgg",
+        "hatchEgg"
+      ],
+      "patternLabel": "mixed egg + hatch",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.048",
+      "sourceId": 48,
+      "englishName": "Footballfish",
+      "trigger": "ifActivated",
+      "abilityText": "[SchoolFeederMove]",
+      "tokens": [
+        "SchoolFeederMove"
+      ],
+      "effectTypes": [
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "move young/school",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.049",
+      "sourceId": 49,
+      "englishName": "Giant Devil Ray",
+      "trigger": "whenPlayed",
+      "abilityText": "[YoungFish][YoungFish]",
+      "tokens": [
+        "YoungFish",
+        "YoungFish"
+      ],
+      "effectTypes": [
+        "placeYoung"
+      ],
+      "patternLabel": "place young",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.050",
+      "sourceId": 50,
+      "englishName": "Giant Hatchetfish",
+      "trigger": "ifActivated",
+      "abilityText": "(all players) [DrawCard][AllPlayers]",
+      "tokens": [
+        "DrawCard",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "drawFish"
+      ],
+      "patternLabel": "all players · draw fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; targets all players and can cross local-player boundaries",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.051",
+      "sourceId": 51,
+      "englishName": "Giant Hawkfish",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishHatch][SchoolFeederMove]",
+      "tokens": [
+        "FishHatch",
+        "SchoolFeederMove"
+      ],
+      "effectTypes": [
+        "hatchEgg",
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "mixed hatch + move",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.052",
+      "sourceId": 52,
+      "englishName": "Giant Manta Ray",
+      "trigger": "whenPlayed",
+      "abilityText": "[YoungFish][YoungFish][YoungFish]",
+      "tokens": [
+        "YoungFish",
+        "YoungFish",
+        "YoungFish"
+      ],
+      "effectTypes": [
+        "placeYoung"
+      ],
+      "patternLabel": "place young",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.053",
+      "sourceId": 53,
+      "englishName": "Giant Oarfish",
+      "trigger": "whenPlayed",
+      "abilityText": "(all players) [FishEgg][ArrowDown][FlipperBlue] on each [AllPlayers]",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "FlipperBlue",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "all players · place egg on each matching fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.054",
+      "sourceId": 54,
+      "englishName": "Giant Trevally",
+      "trigger": "gameEnd",
+      "abilityText": "[FishFromHand][ArrowDown][FlipperPurple]",
+      "tokens": [
+        "FishFromHand",
+        "ArrowDown",
+        "FlipperPurple"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "playFishFromHand"
+      ],
+      "patternLabel": "play fish paying cost",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.055",
+      "sourceId": 55,
+      "englishName": "Gray Triggerfish",
+      "trigger": "ifActivated",
+      "abilityText": "[Discard]",
+      "tokens": [
+        "Discard"
+      ],
+      "effectTypes": [
+        "recoverFromDiscardOrDraw"
+      ],
+      "patternLabel": "recover from discard or draw",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.056",
+      "sourceId": 56,
+      "englishName": "Great Northern Tilefish",
+      "trigger": "ifActivated",
+      "abilityText": "[FishHatch][FishHatch]",
+      "tokens": [
+        "FishHatch",
+        "FishHatch"
+      ],
+      "effectTypes": [
+        "hatchEgg"
+      ],
+      "patternLabel": "hatch egg",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.057",
+      "sourceId": 57,
+      "englishName": "Great White Shark",
+      "trigger": "whenPlayed",
+      "abilityText": "(all players) [FishEgg][ArrowDown][Predator] on each [AllPlayers]",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "Predator",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "all players · place egg on each matching fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.058",
+      "sourceId": 58,
+      "englishName": "Greenland Shark",
+      "trigger": "whenPlayed",
+      "abilityText": "(all players) [FishEgg][ArrowDown][FishLengthLarge] on each [AllPlayers]",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "FishLengthLarge",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "all players · place egg on each matching fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.059",
+      "sourceId": 59,
+      "englishName": "Grideye Fish",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishEgg][ArrowDown][PlayFishBottomRow] on each",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "PlayFishBottomRow"
+      ],
+      "effectTypes": [
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "place egg on each matching fish",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.060",
+      "sourceId": 60,
+      "englishName": "Haddock",
+      "trigger": "ifActivated",
+      "abilityText": "(all players) [DrawCard][AllPlayers]",
+      "tokens": [
+        "DrawCard",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "drawFish"
+      ],
+      "patternLabel": "all players · draw fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; targets all players and can cross local-player boundaries",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.061",
+      "sourceId": 61,
+      "englishName": "Hogfish",
+      "trigger": "whenPlayed",
+      "abilityText": "[Discard][Discard][SchoolFeederMove]",
+      "tokens": [
+        "Discard",
+        "Discard",
+        "SchoolFeederMove"
+      ],
+      "effectTypes": [
+        "recoverFromDiscardOrDraw",
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "mixed compound effect pool",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.062",
+      "sourceId": 62,
+      "englishName": "Honeycomb Scaly Dragonfish",
+      "trigger": "gameEnd",
+      "abilityText": "[YoungFish][SchoolFeederMove]",
+      "tokens": [
+        "YoungFish",
+        "SchoolFeederMove"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "placeYoung",
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "mixed young + move",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.063",
+      "sourceId": 63,
+      "englishName": "Humpback Anglerfish",
+      "trigger": "whenPlayed",
+      "abilityText": "(all players) [FishEgg][ArrowDown][PlayFishBottomRow] on each [AllPlayers]",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "PlayFishBottomRow",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "all players · place egg on each matching fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.064",
+      "sourceId": 64,
+      "englishName": "Humphead Wrasse",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishEgg][ArrowDown][FlipperGreen] on each",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "FlipperGreen"
+      ],
+      "effectTypes": [
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "place egg on each matching fish",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.065",
+      "sourceId": 65,
+      "englishName": "Indo-Pacific Sailfish",
+      "trigger": "whenPlayed",
+      "abilityText": "[DrawCard][DrawCard][FishHatch]",
+      "tokens": [
+        "DrawCard",
+        "DrawCard",
+        "FishHatch"
+      ],
+      "effectTypes": [
+        "drawFish",
+        "hatchEgg"
+      ],
+      "patternLabel": "mixed compound effect pool",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.066",
+      "sourceId": 66,
+      "englishName": "Japanese Anchovy",
+      "trigger": "ifActivated",
+      "abilityText": "[FishEgg]",
+      "tokens": [
+        "FishEgg"
+      ],
+      "effectTypes": [
+        "placeEgg"
+      ],
+      "patternLabel": "place egg single target",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.067",
+      "sourceId": 67,
+      "englishName": "Kaluga",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishFromHand][ArrowDown][Estuary]",
+      "tokens": [
+        "FishFromHand",
+        "ArrowDown",
+        "Estuary"
+      ],
+      "effectTypes": [
+        "playFishFromHand"
+      ],
+      "patternLabel": "play fish paying cost",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.068",
+      "sourceId": 68,
+      "englishName": "Kawakawa",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishEgg][ArrowDown][FlipperBlue]",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "FlipperBlue"
+      ],
+      "effectTypes": [
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "place egg on each matching fish",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.069",
+      "sourceId": 69,
+      "englishName": "Largetooth Flounder",
+      "trigger": "gameEnd",
+      "abilityText": "[FishEgg][ArrowDown][FlipperGreen]",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "FlipperGreen"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "place egg on each matching fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.070",
+      "sourceId": 70,
+      "englishName": "Leafy Seadragon",
+      "trigger": "gameEnd",
+      "abilityText": "3 [Wave] if [SchoolFish] on this fish",
+      "tokens": [
+        "Wave",
+        "SchoolFish"
+      ],
+      "effectTypes": [
+        "gameEndScore"
+      ],
+      "patternLabel": "scoring-only GAME END",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.071",
+      "sourceId": 71,
+      "englishName": "Little Skate",
+      "trigger": "ifActivated",
+      "abilityText": "(all players) [SchoolFeederMove][AllPlayers]",
+      "tokens": [
+        "SchoolFeederMove",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "all players · move young/school",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.072",
+      "sourceId": 72,
+      "englishName": "Live Sharksucker",
+      "trigger": "whenPlayed",
+      "abilityText": "[ConsumeFish1][ConsumeFish1]",
+      "tokens": [
+        "ConsumeFish1",
+        "ConsumeFish1"
+      ],
+      "effectTypes": [
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "consume shorter fish from hand",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.073",
+      "sourceId": 73,
+      "englishName": "Long-Snouted Lancetfish",
+      "trigger": "whenPlayed",
+      "abilityText": "[DrawCard][DrawCard][DrawCard][SchoolFeederMove]",
+      "tokens": [
+        "DrawCard",
+        "DrawCard",
+        "DrawCard",
+        "SchoolFeederMove"
+      ],
+      "effectTypes": [
+        "drawFish",
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "mixed move + draw",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.074",
+      "sourceId": 74,
+      "englishName": "Longspine Porcupinefish",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishEgg][ArrowDown][FishLengthMedium] on each",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "FishLengthMedium"
+      ],
+      "effectTypes": [
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "place egg on each matching fish",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.075",
+      "sourceId": 75,
+      "englishName": "Mahi-Mahi",
+      "trigger": "ifActivated",
+      "abilityText": "[FishEgg]",
+      "tokens": [
+        "FishEgg"
+      ],
+      "effectTypes": [
+        "placeEgg"
+      ],
+      "patternLabel": "place egg single target",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.076",
+      "sourceId": 76,
+      "englishName": "Maltese Ray",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishEgg][ArrowDown][FishLengthSmall] on each",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "FishLengthSmall"
+      ],
+      "effectTypes": [
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "place egg on each matching fish",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.077",
+      "sourceId": 77,
+      "englishName": "Mariana Snailfish",
+      "trigger": "gameEnd",
+      "abilityText": "[FishEgg][ArrowDown][PlayFishBottomRow] on each",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "PlayFishBottomRow"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "place egg on each matching fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.078",
+      "sourceId": 78,
+      "englishName": "Mediterranean Damselfish",
+      "trigger": "ifActivated",
+      "abilityText": "[FishEgg]",
+      "tokens": [
+        "FishEgg"
+      ],
+      "effectTypes": [
+        "placeEgg"
+      ],
+      "patternLabel": "place egg single target",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.079",
+      "sourceId": 79,
+      "englishName": "Mediterranean Parrotfish",
+      "trigger": "ifActivated",
+      "abilityText": "[FishHatch]",
+      "tokens": [
+        "FishHatch"
+      ],
+      "effectTypes": [
+        "hatchEgg"
+      ],
+      "patternLabel": "hatch egg",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.080",
+      "sourceId": 80,
+      "englishName": "Midwater Scorpionfish",
+      "trigger": "ifActivated",
+      "abilityText": "[SchoolFeederMove]",
+      "tokens": [
+        "SchoolFeederMove"
+      ],
+      "effectTypes": [
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "move young/school",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.081",
+      "sourceId": 81,
+      "englishName": "Ocean Sunfish",
+      "trigger": "gameEnd",
+      "abilityText": "[FishEgg][ArrowDown][FishLengthLarge] on each",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "FishLengthLarge"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "place egg on each matching fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.082",
+      "sourceId": 82,
+      "englishName": "Oceanic Puffer",
+      "trigger": "ifActivated",
+      "abilityText": "(all players) [SchoolFeederMove][AllPlayers]",
+      "tokens": [
+        "SchoolFeederMove",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "all players · move young/school",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.083",
+      "sourceId": 83,
+      "englishName": "Pacific Sardine",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishEgg][FishEgg][FishHatch][FishHatch]",
+      "tokens": [
+        "FishEgg",
+        "FishEgg",
+        "FishHatch",
+        "FishHatch"
+      ],
+      "effectTypes": [
+        "placeEgg",
+        "hatchEgg"
+      ],
+      "patternLabel": "mixed egg + hatch",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.084",
+      "sourceId": 84,
+      "englishName": "Pacific White Skate",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishHatch][YoungFish]",
+      "tokens": [
+        "FishHatch",
+        "YoungFish"
+      ],
+      "effectTypes": [
+        "placeYoung",
+        "hatchEgg"
+      ],
+      "patternLabel": "mixed compound effect pool",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.085",
+      "sourceId": 85,
+      "englishName": "Pale Chimaera",
+      "trigger": "gameEnd",
+      "abilityText": "10 [Wave] if [FishEgg] + [YoungFish] + [SchoolFish] on this fish",
+      "tokens": [
+        "Wave",
+        "FishEgg",
+        "YoungFish",
+        "SchoolFish"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "placeEgg",
+        "placeYoung"
+      ],
+      "patternLabel": "scoring-only GAME END",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.086",
+      "sourceId": 86,
+      "englishName": "Paintspotted Moray",
+      "trigger": "whenPlayed",
+      "abilityText": "[Discard][Discard][Discard]",
+      "tokens": [
+        "Discard",
+        "Discard",
+        "Discard"
+      ],
+      "effectTypes": [
+        "recoverFromDiscardOrDraw"
+      ],
+      "patternLabel": "recover from discard or draw",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.087",
+      "sourceId": 87,
+      "englishName": "Paraliparis",
+      "trigger": "ifActivated",
+      "abilityText": "(all players) [DrawCard][AllPlayers]",
+      "tokens": [
+        "DrawCard",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "drawFish"
+      ],
+      "patternLabel": "all players · draw fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; targets all players and can cross local-player boundaries",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.088",
+      "sourceId": 88,
+      "englishName": "Patagonian Toothfish",
+      "trigger": "whenPlayed",
+      "abilityText": "[DrawCard][FishEgg][FishHatch][SchoolFeederMove]",
+      "tokens": [
+        "DrawCard",
+        "FishEgg",
+        "FishHatch",
+        "SchoolFeederMove"
+      ],
+      "effectTypes": [
+        "drawFish",
+        "placeEgg",
+        "hatchEgg",
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "mixed compound effect pool",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.089",
+      "sourceId": 89,
+      "englishName": "Pelican Eel",
+      "trigger": "whenPlayed",
+      "abilityText": "(all players) [FishEgg][ArrowDown][FishLengthMedium] on each [AllPlayers]",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "FishLengthMedium",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "all players · place egg on each matching fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.090",
+      "sourceId": 90,
+      "englishName": "Pennant Coralfish",
+      "trigger": "ifActivated",
+      "abilityText": "[ConsumeFish1]",
+      "tokens": [
+        "ConsumeFish1"
+      ],
+      "effectTypes": [
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "consume shorter fish from hand",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.091",
+      "sourceId": 91,
+      "englishName": "Pilotfish",
+      "trigger": "whenPlayed",
+      "abilityText": "[Discard][Discard][Discard][Discard]",
+      "tokens": [
+        "Discard",
+        "Discard",
+        "Discard",
+        "Discard"
+      ],
+      "effectTypes": [
+        "recoverFromDiscardOrDraw"
+      ],
+      "patternLabel": "recover from discard or draw",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.092",
+      "sourceId": 92,
+      "englishName": "Plate Fish",
+      "trigger": "ifActivated",
+      "abilityText": "[FishHatch]",
+      "tokens": [
+        "FishHatch"
+      ],
+      "effectTypes": [
+        "hatchEgg"
+      ],
+      "patternLabel": "hatch egg",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.093",
+      "sourceId": 93,
+      "englishName": "Pudgy Cusk-Eel",
+      "trigger": "gameEnd",
+      "abilityText": "[FishEgg][ArrowDown][FlipperBlue] on each",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "FlipperBlue"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "place egg on each matching fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.094",
+      "sourceId": 94,
+      "englishName": "Pygmy Seahorse",
+      "trigger": "ifActivated",
+      "abilityText": "[FishHatch]",
+      "tokens": [
+        "FishHatch"
+      ],
+      "effectTypes": [
+        "hatchEgg"
+      ],
+      "patternLabel": "hatch egg",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.095",
+      "sourceId": 95,
+      "englishName": "Red Lionfish",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishFromHand][ArrowDown][Sun]",
+      "tokens": [
+        "FishFromHand",
+        "ArrowDown",
+        "Sun"
+      ],
+      "effectTypes": [
+        "playFishFromHand"
+      ],
+      "patternLabel": "play fish paying cost",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.096",
+      "sourceId": 96,
+      "englishName": "Red Scorpionfish",
+      "trigger": "ifActivated",
+      "abilityText": "[SchoolFeederMove]",
+      "tokens": [
+        "SchoolFeederMove"
+      ],
+      "effectTypes": [
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "move young/school",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.097",
+      "sourceId": 97,
+      "englishName": "Rockmover Wrasse",
+      "trigger": "ifActivated",
+      "abilityText": "[ConsumeFish1]",
+      "tokens": [
+        "ConsumeFish1"
+      ],
+      "effectTypes": [
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "consume shorter fish from hand",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.098",
+      "sourceId": 98,
+      "englishName": "Sailfin Flying Fish",
+      "trigger": "ifActivated",
+      "abilityText": "[Discard]",
+      "tokens": [
+        "Discard"
+      ],
+      "effectTypes": [
+        "recoverFromDiscardOrDraw"
+      ],
+      "patternLabel": "recover from discard or draw",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.099",
+      "sourceId": 99,
+      "englishName": "Sargassum Fish",
+      "trigger": "ifActivated",
+      "abilityText": "[ConsumeFish1][ConsumeFish1]",
+      "tokens": [
+        "ConsumeFish1",
+        "ConsumeFish1"
+      ],
+      "effectTypes": [
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "consume shorter fish from hand",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.100",
+      "sourceId": 100,
+      "englishName": "Scaleless Black Dragonfish",
+      "trigger": "ifActivated",
+      "abilityText": "[ConsumeFish1]",
+      "tokens": [
+        "ConsumeFish1"
+      ],
+      "effectTypes": [
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "consume shorter fish from hand",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.101",
+      "sourceId": 101,
+      "englishName": "Shortspine African Angler",
+      "trigger": "whenPlayed",
+      "abilityText": "[SchoolFeederMove][DrawCard][DrawCard]",
+      "tokens": [
+        "SchoolFeederMove",
+        "DrawCard",
+        "DrawCard"
+      ],
+      "effectTypes": [
+        "drawFish",
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "mixed move + draw",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.102",
+      "sourceId": 102,
+      "englishName": "Shortspine Spurdog",
+      "trigger": "whenPlayed",
+      "abilityText": "[YoungFish]",
+      "tokens": [
+        "YoungFish"
+      ],
+      "effectTypes": [
+        "placeYoung"
+      ],
+      "patternLabel": "place young",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.103",
+      "sourceId": 103,
+      "englishName": "Silver Lightfish",
+      "trigger": "ifActivated",
+      "abilityText": "(all players) [FishHatch][AllPlayers]",
+      "tokens": [
+        "FishHatch",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "hatchEgg"
+      ],
+      "patternLabel": "all players · hatch egg",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.104",
+      "sourceId": 104,
+      "englishName": "Skipjack Tuna",
+      "trigger": "ifActivated",
+      "abilityText": "(all players) [FishHatch][AllPlayers]",
+      "tokens": [
+        "FishHatch",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "hatchEgg"
+      ],
+      "patternLabel": "all players · hatch egg",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.105",
+      "sourceId": 105,
+      "englishName": "Sloan's Viperfish",
+      "trigger": "gameEnd",
+      "abilityText": "[FishEgg][ArrowDown][Predator] on each",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "Predator"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "place egg on each matching fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.106",
+      "sourceId": 106,
+      "englishName": "Smooth Oreo Dory",
+      "trigger": "ifActivated",
+      "abilityText": "[FishEgg]",
+      "tokens": [
+        "FishEgg"
+      ],
+      "effectTypes": [
+        "placeEgg"
+      ],
+      "patternLabel": "place egg single target",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.107",
+      "sourceId": 107,
+      "englishName": "Snaggletooth",
+      "trigger": "ifActivated",
+      "abilityText": "[SchoolFeederMove][SchoolFeederMove]",
+      "tokens": [
+        "SchoolFeederMove",
+        "SchoolFeederMove"
+      ],
+      "effectTypes": [
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "move young/school",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.108",
+      "sourceId": 108,
+      "englishName": "Snipe Eel",
+      "trigger": "ifActivated",
+      "abilityText": "(all players) [FishEgg][AllPlayers]",
+      "tokens": [
+        "FishEgg",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "placeEgg"
+      ],
+      "patternLabel": "all players · place egg single target",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.109",
+      "sourceId": 109,
+      "englishName": "Speckled Butterflyfish",
+      "trigger": "gameEnd",
+      "abilityText": "[FishHatch][FishHatch][FishHatch][SchoolFeederMove]",
+      "tokens": [
+        "FishHatch",
+        "FishHatch",
+        "FishHatch",
+        "SchoolFeederMove"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "hatchEgg",
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "mixed hatch + move",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.110",
+      "sourceId": 110,
+      "englishName": "Spiny Seadevil",
+      "trigger": "whenPlayed",
+      "abilityText": "[Discard][Discard][Discard]",
+      "tokens": [
+        "Discard",
+        "Discard",
+        "Discard"
+      ],
+      "effectTypes": [
+        "recoverFromDiscardOrDraw"
+      ],
+      "patternLabel": "recover from discard or draw",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.111",
+      "sourceId": 111,
+      "englishName": "Spookfish",
+      "trigger": "ifActivated",
+      "abilityText": "(all players) [FishEgg][AllPlayers]",
+      "tokens": [
+        "FishEgg",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "placeEgg"
+      ],
+      "patternLabel": "all players · place egg single target",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.112",
+      "sourceId": 112,
+      "englishName": "Spotted Parrotfish",
+      "trigger": "ifActivated",
+      "abilityText": "[FishHatch]",
+      "tokens": [
+        "FishHatch"
+      ],
+      "effectTypes": [
+        "hatchEgg"
+      ],
+      "patternLabel": "hatch egg",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.113",
+      "sourceId": 113,
+      "englishName": "Stonefish",
+      "trigger": "ifActivated",
+      "abilityText": "[SchoolFeederMove]",
+      "tokens": [
+        "SchoolFeederMove"
+      ],
+      "effectTypes": [
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "move young/school",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.114",
+      "sourceId": 114,
+      "englishName": "Stoplight Loosejaw",
+      "trigger": "whenPlayed",
+      "abilityText": "[SchoolFeederMove][SchoolFeederMove][SchoolFeederMove]",
+      "tokens": [
+        "SchoolFeederMove",
+        "SchoolFeederMove",
+        "SchoolFeederMove"
+      ],
+      "effectTypes": [
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "move young/school",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.115",
+      "sourceId": 115,
+      "englishName": "Striped Marlin",
+      "trigger": "gameEnd",
+      "abilityText": "[FishFromHand][ArrowDown][Sun]",
+      "tokens": [
+        "FishFromHand",
+        "ArrowDown",
+        "Sun"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "playFishFromHand"
+      ],
+      "patternLabel": "play fish paying cost",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.116",
+      "sourceId": 116,
+      "englishName": "Swordfish",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishHatch][DrawCard][DrawCard][DrawCard]",
+      "tokens": [
+        "FishHatch",
+        "DrawCard",
+        "DrawCard",
+        "DrawCard"
+      ],
+      "effectTypes": [
+        "drawFish",
+        "hatchEgg"
+      ],
+      "patternLabel": "mixed compound effect pool",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.117",
+      "sourceId": 117,
+      "englishName": "Tripodfish",
+      "trigger": "gameEnd",
+      "abilityText": "[ConsumeFish1][ConsumeFish1]",
+      "tokens": [
+        "ConsumeFish1",
+        "ConsumeFish1"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "consume shorter fish from hand",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.118",
+      "sourceId": 118,
+      "englishName": "Tropical Two-Wing Flying Fish",
+      "trigger": "ifActivated",
+      "abilityText": "[Discard]",
+      "tokens": [
+        "Discard"
+      ],
+      "effectTypes": [
+        "recoverFromDiscardOrDraw"
+      ],
+      "patternLabel": "recover from discard or draw",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.119",
+      "sourceId": 119,
+      "englishName": "Whale Shark",
+      "trigger": "whenPlayed",
+      "abilityText": "(all players) [FishEgg][ArrowDown][FlipperGreen] on each [AllPlayers]",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "FlipperGreen",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "all players · place egg on each matching fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.120",
+      "sourceId": 120,
+      "englishName": "White Suckerfish",
+      "trigger": "ifActivated",
+      "abilityText": "[ConsumeFish1]",
+      "tokens": [
+        "ConsumeFish1"
+      ],
+      "effectTypes": [
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "consume shorter fish from hand",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "base.main.121",
+      "sourceId": 121,
+      "englishName": "White-Spotted Puffer",
+      "trigger": "ifActivated",
+      "abilityText": "(all players) [SchoolFeederMove][AllPlayers]",
+      "tokens": [
+        "SchoolFeederMove",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "all players · move young/school",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.122",
+      "sourceId": 122,
+      "englishName": "Whitemargin Stargazer",
+      "trigger": "ifActivated",
+      "abilityText": "[SchoolFeederMove]",
+      "tokens": [
+        "SchoolFeederMove"
+      ],
+      "effectTypes": [
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "move young/school",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.123",
+      "sourceId": 123,
+      "englishName": "Wolftrap Angler",
+      "trigger": "ifActivated",
+      "abilityText": "[SchoolFeederMove]",
+      "tokens": [
+        "SchoolFeederMove"
+      ],
+      "effectTypes": [
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "move young/school",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.main.124",
+      "sourceId": 124,
+      "englishName": "Yellow Boxfish",
+      "trigger": "ifActivated",
+      "abilityText": "(all players) [SchoolFeederMove][AllPlayers]",
+      "tokens": [
+        "SchoolFeederMove",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "all players · move young/school",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.main.125",
+      "sourceId": 125,
+      "englishName": "Yellowtail Snapper",
+      "trigger": "gameEnd",
+      "abilityText": "[FishEgg][ArrowDown][FlipperPurple] on each",
+      "tokens": [
+        "FishEgg",
+        "ArrowDown",
+        "FlipperPurple"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "placeEggOnMatchingFish"
+      ],
+      "patternLabel": "place egg on each matching fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.starter.126",
+      "sourceId": 126,
+      "englishName": "Barreleye",
+      "trigger": "ifActivated",
+      "abilityText": "[FishHatch]",
+      "tokens": [
+        "FishHatch"
+      ],
+      "effectTypes": [
+        "hatchEgg"
+      ],
+      "patternLabel": "hatch egg",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.starter.127",
+      "sourceId": 127,
+      "englishName": "Blue Lanternfish",
+      "trigger": "whenPlayed",
+      "abilityText": "[DrawCard][DrawCard][DrawCard][DrawCard]",
+      "tokens": [
+        "DrawCard",
+        "DrawCard",
+        "DrawCard",
+        "DrawCard"
+      ],
+      "effectTypes": [
+        "drawFish"
+      ],
+      "patternLabel": "draw fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.starter.128",
+      "sourceId": 128,
+      "englishName": "Bonefish",
+      "trigger": "ifActivated",
+      "abilityText": "(all players) [FishEgg][AllPlayers]",
+      "tokens": [
+        "FishEgg",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "placeEgg"
+      ],
+      "patternLabel": "all players · place egg single target",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.starter.129",
+      "sourceId": 129,
+      "englishName": "Smoothcheek Lanternfish",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishEgg][FishEgg][DrawCard][DrawCard]",
+      "tokens": [
+        "FishEgg",
+        "FishEgg",
+        "DrawCard",
+        "DrawCard"
+      ],
+      "effectTypes": [
+        "drawFish",
+        "placeEgg"
+      ],
+      "patternLabel": "mixed compound effect pool",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.starter.130",
+      "sourceId": 130,
+      "englishName": "Longfin Batfish",
+      "trigger": "ifActivated",
+      "abilityText": "(all players) [DrawCard][AllPlayers]",
+      "tokens": [
+        "DrawCard",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "drawFish"
+      ],
+      "patternLabel": "all players · draw fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; targets all players and can cross local-player boundaries",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.starter.131",
+      "sourceId": 131,
+      "englishName": "Mandarinfish",
+      "trigger": "whenPlayed",
+      "abilityText": "[DrawCard][DrawCard][DrawCard][FishEgg]",
+      "tokens": [
+        "DrawCard",
+        "DrawCard",
+        "DrawCard",
+        "FishEgg"
+      ],
+      "effectTypes": [
+        "drawFish",
+        "placeEgg"
+      ],
+      "patternLabel": "mixed compound effect pool",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.starter.132",
+      "sourceId": 132,
+      "englishName": "Orange Roughy",
+      "trigger": "whenPlayed",
+      "abilityText": "[DrawCard][DrawCard][DrawCard][Discard]",
+      "tokens": [
+        "DrawCard",
+        "DrawCard",
+        "DrawCard",
+        "Discard"
+      ],
+      "effectTypes": [
+        "drawFish",
+        "recoverFromDiscardOrDraw"
+      ],
+      "patternLabel": "mixed compound effect pool",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.starter.133",
+      "sourceId": 133,
+      "englishName": "Porkfish",
+      "trigger": "ifActivated",
+      "abilityText": "[FishEgg]",
+      "tokens": [
+        "FishEgg"
+      ],
+      "effectTypes": [
+        "placeEgg"
+      ],
+      "patternLabel": "place egg single target",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "base.starter.134",
+      "sourceId": 134,
+      "englishName": "Saddleback Butterflyfish",
+      "trigger": "ifActivated",
+      "abilityText": "(all players) [FishHatch][AllPlayers]",
+      "tokens": [
+        "FishHatch",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "hatchEgg"
+      ],
+      "patternLabel": "all players · hatch egg",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "base.starter.135",
+      "sourceId": 135,
+      "englishName": "White-Banded Triggerfish",
+      "trigger": "ifActivated",
+      "abilityText": "[Discard]",
+      "tokens": [
+        "Discard"
+      ],
+      "effectTypes": [
+        "recoverFromDiscardOrDraw"
+      ],
+      "patternLabel": "recover from discard or draw",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.136",
+      "sourceId": 136,
+      "englishName": "American Pocket Shark",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishFromHandConsume][FishFromHandConsume]",
+      "tokens": [
+        "FishFromHandConsume",
+        "FishFromHandConsume"
+      ],
+      "effectTypes": [
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "consume fish from hand",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.137",
+      "sourceId": 137,
+      "englishName": "Angular Roughshark",
+      "trigger": "whenPlayed",
+      "abilityText": "[SchoolFeederMove][SchoolFeederMove][UnSchoolFish]",
+      "tokens": [
+        "SchoolFeederMove",
+        "SchoolFeederMove",
+        "UnSchoolFish"
+      ],
+      "effectTypes": [
+        "moveYoungOrSchool",
+        "scatterSchool"
+      ],
+      "patternLabel": "mixed scatter compound",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "partial",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.138",
+      "sourceId": 138,
+      "englishName": "Armored Searobin",
+      "trigger": "ifActivated",
+      "abilityText": "[Discard] also, if [BlueCoral][BlueCoral][BlueCoral] in this dive site: [DrawCard]",
+      "tokens": [
+        "Discard",
+        "BlueCoral",
+        "BlueCoral",
+        "BlueCoral",
+        "DrawCard"
+      ],
+      "effectTypes": [
+        "drawFish",
+        "recoverFromDiscardOrDraw",
+        "gainCoral"
+      ],
+      "patternLabel": "colored coral conditional bonus (blue x3)",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.139",
+      "sourceId": 139,
+      "englishName": "Atlantic Thornyhead",
+      "trigger": "ifActivated",
+      "abilityText": "[FishHatch] also, if [GreenCoral][GreenCoral][GreenCoral] in this dive site: [FishEgg]",
+      "tokens": [
+        "FishHatch",
+        "GreenCoral",
+        "GreenCoral",
+        "GreenCoral",
+        "FishEgg"
+      ],
+      "effectTypes": [
+        "placeEgg",
+        "hatchEgg",
+        "gainCoral"
+      ],
+      "patternLabel": "colored coral conditional bonus (green x3)",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.140",
+      "sourceId": 140,
+      "englishName": "Basking Shark",
+      "trigger": "ifActivated",
+      "abilityText": "[ConsumeFish1]",
+      "tokens": [
+        "ConsumeFish1"
+      ],
+      "effectTypes": [
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "consume shorter fish from hand",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.141",
+      "sourceId": 141,
+      "englishName": "Blackmouth Angler",
+      "trigger": "gameEnd",
+      "abilityText": "[FreePlayFishFromHand] if no [AnyCoral] in this fish's dive site",
+      "tokens": [
+        "FreePlayFishFromHand",
+        "AnyCoral"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "gainCoral",
+        "playFishForFree"
+      ],
+      "patternLabel": "free play from source dive site with no coral",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.142",
+      "sourceId": 142,
+      "englishName": "Blacktip Shark",
+      "trigger": "whenPlayed",
+      "abilityText": "[GreenCoral][UnSchoolFish]",
+      "tokens": [
+        "GreenCoral",
+        "UnSchoolFish"
+      ],
+      "effectTypes": [
+        "scatterSchool",
+        "gainCoral"
+      ],
+      "patternLabel": "mixed coral compound",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "partial",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.143",
+      "sourceId": 143,
+      "englishName": "Blue Shark",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishHatch][FishHatch][SchoolFeederMove]",
+      "tokens": [
+        "FishHatch",
+        "FishHatch",
+        "SchoolFeederMove"
+      ],
+      "effectTypes": [
+        "hatchEgg",
+        "moveYoungOrSchool"
+      ],
+      "patternLabel": "mixed hatch + move",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.144",
+      "sourceId": 144,
+      "englishName": "Bluering Angelfish",
+      "trigger": "ifActivated",
+      "abilityText": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [ConsumeFish1]",
+      "tokens": [
+        "FishEgg",
+        "PurpleCoral",
+        "PurpleCoral",
+        "PurpleCoral",
+        "ConsumeFish1"
+      ],
+      "effectTypes": [
+        "placeEgg",
+        "gainCoral",
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "colored coral conditional bonus (purple x3)",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.145",
+      "sourceId": 145,
+      "englishName": "Bonnethead Shark",
+      "trigger": "whenPlayed",
+      "abilityText": "[PurpleCoral][UnSchoolFish]",
+      "tokens": [
+        "PurpleCoral",
+        "UnSchoolFish"
+      ],
+      "effectTypes": [
+        "scatterSchool",
+        "gainCoral"
+      ],
+      "patternLabel": "mixed coral compound",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "partial",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.146",
+      "sourceId": 146,
+      "englishName": "Broadnose Sevengill Shark",
+      "trigger": "gameEnd",
+      "abilityText": "[UnSchoolFish][UnSchoolFish]",
+      "tokens": [
+        "UnSchoolFish",
+        "UnSchoolFish"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "scatterSchool"
+      ],
+      "patternLabel": "scatter school",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.147",
+      "sourceId": 147,
+      "englishName": "Common Bluestripe Snapper",
+      "trigger": "gameEnd",
+      "abilityText": "[BlueCoral][BlueCoral][BlueCoral]",
+      "tokens": [
+        "BlueCoral",
+        "BlueCoral",
+        "BlueCoral"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "gainCoral"
+      ],
+      "patternLabel": "gain coral",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.148",
+      "sourceId": 148,
+      "englishName": "Daggertooth",
+      "trigger": "ifActivated",
+      "abilityText": "[FishHatch] also, if [GreenCoral][GreenCoral][GreenCoral] in this dive site: [Discard]",
+      "tokens": [
+        "FishHatch",
+        "GreenCoral",
+        "GreenCoral",
+        "GreenCoral",
+        "Discard"
+      ],
+      "effectTypes": [
+        "recoverFromDiscardOrDraw",
+        "hatchEgg",
+        "gainCoral"
+      ],
+      "patternLabel": "colored coral conditional bonus (green x3)",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.149",
+      "sourceId": 149,
+      "englishName": "Dusky Shark",
+      "trigger": "gameEnd",
+      "abilityText": "[FreePlayFishFromHand][FishLengthMedium]only",
+      "tokens": [
+        "FreePlayFishFromHand",
+        "FishLengthMedium"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "playFishForFree"
+      ],
+      "patternLabel": "play fish for free",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.150",
+      "sourceId": 150,
+      "englishName": "Dwarf Lanternshark",
+      "trigger": "whenPlayed",
+      "abilityText": "[FreePlayFishFromHand][Bioluminescent] only",
+      "tokens": [
+        "FreePlayFishFromHand",
+        "Bioluminescent"
+      ],
+      "effectTypes": [
+        "playFishForFree"
+      ],
+      "patternLabel": "play fish for free",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.151",
+      "sourceId": 151,
+      "englishName": "Epaulette Shark",
+      "trigger": "whenPlayed",
+      "abilityText": "[BlueCoral][UnSchoolFish]",
+      "tokens": [
+        "BlueCoral",
+        "UnSchoolFish"
+      ],
+      "effectTypes": [
+        "scatterSchool",
+        "gainCoral"
+      ],
+      "patternLabel": "mixed coral compound",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "partial",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.152",
+      "sourceId": 152,
+      "englishName": "Filetail Catshark",
+      "trigger": "ifActivated",
+      "abilityText": "[FishFromHandConsume]",
+      "tokens": [
+        "FishFromHandConsume"
+      ],
+      "effectTypes": [
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "consume fish from hand",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.153",
+      "sourceId": 153,
+      "englishName": "Fire Dartfish",
+      "trigger": "gameEnd",
+      "abilityText": "[PurpleCoral][PurpleCoral][PurpleCoral]",
+      "tokens": [
+        "PurpleCoral",
+        "PurpleCoral",
+        "PurpleCoral"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "gainCoral"
+      ],
+      "patternLabel": "gain coral",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.154",
+      "sourceId": 154,
+      "englishName": "Flame Angelfish",
+      "trigger": "ifActivated",
+      "abilityText": "[PurpleCoral]",
+      "tokens": [
+        "PurpleCoral"
+      ],
+      "effectTypes": [
+        "gainCoral"
+      ],
+      "patternLabel": "gain coral",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.155",
+      "sourceId": 155,
+      "englishName": "Foxface Rabbitfish",
+      "trigger": "ifActivated",
+      "abilityText": "[PurpleCoral]",
+      "tokens": [
+        "PurpleCoral"
+      ],
+      "effectTypes": [
+        "gainCoral"
+      ],
+      "patternLabel": "gain coral",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.156",
+      "sourceId": 156,
+      "englishName": "Frilled Shark",
+      "trigger": "gameEnd",
+      "abilityText": "[FreePlayFishFromHand][FishLengthMedium] only",
+      "tokens": [
+        "FreePlayFishFromHand",
+        "FishLengthMedium"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "playFishForFree"
+      ],
+      "patternLabel": "play fish for free",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.157",
+      "sourceId": 157,
+      "englishName": "Furry Coffinfish",
+      "trigger": "ifActivated",
+      "abilityText": "[Discard] also, if [BlueCoral][BlueCoral][BlueCoral] in this dive site: [SchoolFeederMove]",
+      "tokens": [
+        "Discard",
+        "BlueCoral",
+        "BlueCoral",
+        "BlueCoral",
+        "SchoolFeederMove"
+      ],
+      "effectTypes": [
+        "recoverFromDiscardOrDraw",
+        "moveYoungOrSchool",
+        "gainCoral"
+      ],
+      "patternLabel": "colored coral conditional bonus (blue x3)",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.158",
+      "sourceId": 158,
+      "englishName": "Ghostly Seadevil",
+      "trigger": "ifActivated",
+      "abilityText": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [SchoolFeederMove]",
+      "tokens": [
+        "FishEgg",
+        "PurpleCoral",
+        "PurpleCoral",
+        "PurpleCoral",
+        "SchoolFeederMove"
+      ],
+      "effectTypes": [
+        "placeEgg",
+        "moveYoungOrSchool",
+        "gainCoral"
+      ],
+      "patternLabel": "colored coral conditional bonus (purple x3)",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.159",
+      "sourceId": 159,
+      "englishName": "Giant Moray",
+      "trigger": "whenPlayed",
+      "abilityText": "(all players) [PurpleCoral][PurpleCoral] [AllPlayers]",
+      "tokens": [
+        "PurpleCoral",
+        "PurpleCoral",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "gainCoral"
+      ],
+      "patternLabel": "all players · gain coral",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.160",
+      "sourceId": 160,
+      "englishName": "Goblin Shark",
+      "trigger": "whenPlayed",
+      "abilityText": "(all players) [SchoolFeederMove][FishFromHandConsume][AllPlayers]",
+      "tokens": [
+        "SchoolFeederMove",
+        "FishFromHandConsume",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "moveYoungOrSchool",
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "all players · mixed compound effect pool",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.161",
+      "sourceId": 161,
+      "englishName": "Great Barracuda",
+      "trigger": "whenPlayed",
+      "abilityText": "(all players) [BlueCoral][BlueCoral][AllPlayers]",
+      "tokens": [
+        "BlueCoral",
+        "BlueCoral",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "gainCoral"
+      ],
+      "patternLabel": "all players · gain coral",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.162",
+      "sourceId": 162,
+      "englishName": "Great Hammerhead",
+      "trigger": "whenPlayed",
+      "abilityText": "(all players) [UnSchoolFish][FishFromHandConsume][AllPlayers]",
+      "tokens": [
+        "UnSchoolFish",
+        "FishFromHandConsume",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "scatterSchool",
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "all players · mixed scatter + consume",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.163",
+      "sourceId": 163,
+      "englishName": "Gray Reef Shark",
+      "trigger": "whenPlayed",
+      "abilityText": "[PurpleCoral][FishFromHandConsume]",
+      "tokens": [
+        "PurpleCoral",
+        "FishFromHandConsume"
+      ],
+      "effectTypes": [
+        "gainCoral",
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "mixed coral compound",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.164",
+      "sourceId": 164,
+      "englishName": "Gulper Shark",
+      "trigger": "whenPlayed",
+      "abilityText": "[UnSchoolFish][FishFromHandConsume]",
+      "tokens": [
+        "UnSchoolFish",
+        "FishFromHandConsume"
+      ],
+      "effectTypes": [
+        "scatterSchool",
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "mixed scatter + consume",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.165",
+      "sourceId": 165,
+      "englishName": "Indian Sail-fin Surgeonfish",
+      "trigger": "ifActivated",
+      "abilityText": "[BlueCoral][PurpleCoral]",
+      "tokens": [
+        "BlueCoral",
+        "PurpleCoral"
+      ],
+      "effectTypes": [
+        "gainCoral"
+      ],
+      "patternLabel": "gain coral",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.166",
+      "sourceId": 166,
+      "englishName": "Jensen's Skate",
+      "trigger": "ifActivated",
+      "abilityText": "[Discard] also, if [BlueCoral][BlueCoral][BlueCoral] in this dive site: [FishHatch]",
+      "tokens": [
+        "Discard",
+        "BlueCoral",
+        "BlueCoral",
+        "BlueCoral",
+        "FishHatch"
+      ],
+      "effectTypes": [
+        "recoverFromDiscardOrDraw",
+        "hatchEgg",
+        "gainCoral"
+      ],
+      "patternLabel": "colored coral conditional bonus (blue x3)",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.167",
+      "sourceId": 167,
+      "englishName": "Kitefin Shark",
+      "trigger": "whenPlayed",
+      "abilityText": "[SchoolFeederMove][FishFromHandConsume]",
+      "tokens": [
+        "SchoolFeederMove",
+        "FishFromHandConsume"
+      ],
+      "effectTypes": [
+        "moveYoungOrSchool",
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "mixed compound effect pool",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.168",
+      "sourceId": 168,
+      "englishName": "Lemon Shark",
+      "trigger": "whenPlayed",
+      "abilityText": "[BlueCoral][FishHatch][UnSchoolFish]",
+      "tokens": [
+        "BlueCoral",
+        "FishHatch",
+        "UnSchoolFish"
+      ],
+      "effectTypes": [
+        "hatchEgg",
+        "scatterSchool",
+        "gainCoral"
+      ],
+      "patternLabel": "mixed coral compound",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "partial",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.169",
+      "sourceId": 169,
+      "englishName": "Leopard Shark",
+      "trigger": "whenPlayed",
+      "abilityText": "[PurpleCoral][UnSchoolFish][Discard]",
+      "tokens": [
+        "PurpleCoral",
+        "UnSchoolFish",
+        "Discard"
+      ],
+      "effectTypes": [
+        "recoverFromDiscardOrDraw",
+        "scatterSchool",
+        "gainCoral"
+      ],
+      "patternLabel": "mixed coral compound",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.170",
+      "sourceId": 170,
+      "englishName": "Lollipop Catshark",
+      "trigger": "whenPlayed",
+      "abilityText": "[FreePlayFishFromHand][FishLengthSmall] only",
+      "tokens": [
+        "FreePlayFishFromHand",
+        "FishLengthSmall"
+      ],
+      "effectTypes": [
+        "playFishForFree"
+      ],
+      "patternLabel": "play fish for free",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.171",
+      "sourceId": 171,
+      "englishName": "Longnose Hawkfish",
+      "trigger": "ifActivated",
+      "abilityText": "[BlueCoral]",
+      "tokens": [
+        "BlueCoral"
+      ],
+      "effectTypes": [
+        "gainCoral"
+      ],
+      "patternLabel": "gain coral",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.172",
+      "sourceId": 172,
+      "englishName": "Malabar Grouper",
+      "trigger": "whenPlayed",
+      "abilityText": "(all players) [BlueCoral][PurpleCoral][GreenCoral][AllPlayers]",
+      "tokens": [
+        "BlueCoral",
+        "PurpleCoral",
+        "GreenCoral",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "gainCoral"
+      ],
+      "patternLabel": "all players · gain coral",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.173",
+      "sourceId": 173,
+      "englishName": "Megamouth Shark",
+      "trigger": "whenPlayed",
+      "abilityText": "[DrawCard][DrawCard][DrawCard][DrawCard][DrawCard]",
+      "tokens": [
+        "DrawCard",
+        "DrawCard",
+        "DrawCard",
+        "DrawCard",
+        "DrawCard"
+      ],
+      "effectTypes": [
+        "drawFish"
+      ],
+      "patternLabel": "draw fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.174",
+      "sourceId": 174,
+      "englishName": "Mimic Goatfish",
+      "trigger": "gameEnd",
+      "abilityText": "[AnyCoral][AnyCoral]",
+      "tokens": [
+        "AnyCoral",
+        "AnyCoral"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "gainCoral"
+      ],
+      "patternLabel": "gain coral",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.175",
+      "sourceId": 175,
+      "englishName": "Moorish Idol",
+      "trigger": "ifActivated",
+      "abilityText": "[BlueCoral]",
+      "tokens": [
+        "BlueCoral"
+      ],
+      "effectTypes": [
+        "gainCoral"
+      ],
+      "patternLabel": "gain coral",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.176",
+      "sourceId": 176,
+      "englishName": "Ninja Lanternshark",
+      "trigger": "whenPlayed",
+      "abilityText": "[YoungFish][UnSchoolFish]",
+      "tokens": [
+        "YoungFish",
+        "UnSchoolFish"
+      ],
+      "effectTypes": [
+        "placeYoung",
+        "scatterSchool"
+      ],
+      "patternLabel": "mixed scatter compound",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "partial",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.177",
+      "sourceId": 177,
+      "englishName": "Nurse Shark",
+      "trigger": "whenPlayed",
+      "abilityText": "[BlueCoral][FishFromHandConsume]",
+      "tokens": [
+        "BlueCoral",
+        "FishFromHandConsume"
+      ],
+      "effectTypes": [
+        "gainCoral",
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "mixed coral compound",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.178",
+      "sourceId": 178,
+      "englishName": "Owlfish",
+      "trigger": "ifActivated",
+      "abilityText": "[Discard] also, if [BlueCoral][BlueCoral][BlueCoral] in this dive site: [FishEgg]",
+      "tokens": [
+        "Discard",
+        "BlueCoral",
+        "BlueCoral",
+        "BlueCoral",
+        "FishEgg"
+      ],
+      "effectTypes": [
+        "recoverFromDiscardOrDraw",
+        "placeEgg",
+        "gainCoral"
+      ],
+      "patternLabel": "colored coral conditional bonus (blue x3)",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.179",
+      "sourceId": 179,
+      "englishName": "Portuguese Dogfish",
+      "trigger": "whenPlayed",
+      "abilityText": "[YoungFish][FishFromHandConsume]",
+      "tokens": [
+        "YoungFish",
+        "FishFromHandConsume"
+      ],
+      "effectTypes": [
+        "placeYoung",
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "mixed young + consume",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.180",
+      "sourceId": 180,
+      "englishName": "Prickly Anglerfish",
+      "trigger": "ifActivated",
+      "abilityText": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [DrawCard]",
+      "tokens": [
+        "FishEgg",
+        "PurpleCoral",
+        "PurpleCoral",
+        "PurpleCoral",
+        "DrawCard"
+      ],
+      "effectTypes": [
+        "drawFish",
+        "placeEgg",
+        "gainCoral"
+      ],
+      "patternLabel": "colored coral conditional bonus (purple x3)",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.181",
+      "sourceId": 181,
+      "englishName": "Red-lipped Batfish",
+      "trigger": "gameEnd",
+      "abilityText": "[BlueCoral][PurpleCoral][GreenCoral]",
+      "tokens": [
+        "BlueCoral",
+        "PurpleCoral",
+        "GreenCoral"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "gainCoral"
+      ],
+      "patternLabel": "gain coral",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.182",
+      "sourceId": 182,
+      "englishName": "Reef Triggerfish",
+      "trigger": "whenPlayed",
+      "abilityText": "[FishFromHand][ArrowDown][AnyCoral][AnyCoral][AnyCoral] (in a dive site with at least 3)",
+      "tokens": [
+        "FishFromHand",
+        "ArrowDown",
+        "AnyCoral",
+        "AnyCoral",
+        "AnyCoral"
+      ],
+      "effectTypes": [
+        "gainCoral",
+        "playFishFromHand"
+      ],
+      "patternLabel": "play fish paying cost",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.183",
+      "sourceId": 183,
+      "englishName": "Ribbon Sawtail Fish",
+      "trigger": "ifActivated",
+      "abilityText": "[FishHatch] also, if [GreenCoral][GreenCoral][GreenCoral] in this dive site: [DrawCard]",
+      "tokens": [
+        "FishHatch",
+        "GreenCoral",
+        "GreenCoral",
+        "GreenCoral",
+        "DrawCard"
+      ],
+      "effectTypes": [
+        "drawFish",
+        "hatchEgg",
+        "gainCoral"
+      ],
+      "patternLabel": "colored coral conditional bonus (green x3)",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.184",
+      "sourceId": 184,
+      "englishName": "Ribboned Sweetlips",
+      "trigger": "ifActivated",
+      "abilityText": "[PurpleCoral]",
+      "tokens": [
+        "PurpleCoral"
+      ],
+      "effectTypes": [
+        "gainCoral"
+      ],
+      "patternLabel": "gain coral",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.185",
+      "sourceId": 185,
+      "englishName": "Rose-veiled Fairy Wrasse",
+      "trigger": "ifActivated",
+      "abilityText": "[BlueCoral]",
+      "tokens": [
+        "BlueCoral"
+      ],
+      "effectTypes": [
+        "gainCoral"
+      ],
+      "patternLabel": "gain coral",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.186",
+      "sourceId": 186,
+      "englishName": "Rough Abyssal Grenadier",
+      "trigger": "ifActivated",
+      "abilityText": "[FishHatch] also, if [GreenCoral][GreenCoral][GreenCoral] in this dive site: [FishFromHandConsume]",
+      "tokens": [
+        "FishHatch",
+        "GreenCoral",
+        "GreenCoral",
+        "GreenCoral",
+        "FishFromHandConsume"
+      ],
+      "effectTypes": [
+        "hatchEgg",
+        "gainCoral",
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "colored coral conditional bonus (green x3)",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.187",
+      "sourceId": 187,
+      "englishName": "Roving Coral Grouper",
+      "trigger": "whenPlayed",
+      "abilityText": "(all players) [GreenCoral][GreenCoral][AllPlayers]",
+      "tokens": [
+        "GreenCoral",
+        "GreenCoral",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "gainCoral"
+      ],
+      "patternLabel": "all players · gain coral",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.188",
+      "sourceId": 188,
+      "englishName": "Sablefish",
+      "trigger": "ifActivated",
+      "abilityText": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [FishHatch]",
+      "tokens": [
+        "FishEgg",
+        "PurpleCoral",
+        "PurpleCoral",
+        "PurpleCoral",
+        "FishHatch"
+      ],
+      "effectTypes": [
+        "placeEgg",
+        "hatchEgg",
+        "gainCoral"
+      ],
+      "patternLabel": "colored coral conditional bonus (purple x3)",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.189",
+      "sourceId": 189,
+      "englishName": "Sand Tiger Shark",
+      "trigger": "whenPlayed",
+      "abilityText": "[GreenCoral][UnSchoolFish][DrawCard]",
+      "tokens": [
+        "GreenCoral",
+        "UnSchoolFish",
+        "DrawCard"
+      ],
+      "effectTypes": [
+        "drawFish",
+        "scatterSchool",
+        "gainCoral"
+      ],
+      "patternLabel": "mixed coral compound",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.190",
+      "sourceId": 190,
+      "englishName": "Sarcastic Fringehead",
+      "trigger": "ifActivated",
+      "abilityText": "[DrawCard][DrawCard]",
+      "tokens": [
+        "DrawCard",
+        "DrawCard"
+      ],
+      "effectTypes": [
+        "drawFish"
+      ],
+      "patternLabel": "draw fish",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.191",
+      "sourceId": 191,
+      "englishName": "Shortfin Mako",
+      "trigger": "whenPlayed",
+      "abilityText": "(all players) [FishFromHandConsume][FishFromHandConsume][AllPlayers]",
+      "tokens": [
+        "FishFromHandConsume",
+        "FishFromHandConsume",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "all players · consume fish from hand",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.192",
+      "sourceId": 192,
+      "englishName": "Shortnose Demon Catshark",
+      "trigger": "whenPlayed",
+      "abilityText": "[FreePlayFishFromHand][FishLengthMedium]",
+      "tokens": [
+        "FreePlayFishFromHand",
+        "FishLengthMedium"
+      ],
+      "effectTypes": [
+        "playFishForFree"
+      ],
+      "patternLabel": "play fish for free",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.193",
+      "sourceId": 193,
+      "englishName": "Sixgill Sawshark",
+      "trigger": "gameEnd",
+      "abilityText": "[YoungFish][FishFromHandConsume]",
+      "tokens": [
+        "YoungFish",
+        "FishFromHandConsume"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "placeYoung",
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "mixed young + consume",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.194",
+      "sourceId": 194,
+      "englishName": "Spotted Scat",
+      "trigger": "whenPlayed",
+      "abilityText": "[BlueCoral][PurpleCoral]",
+      "tokens": [
+        "BlueCoral",
+        "PurpleCoral"
+      ],
+      "effectTypes": [
+        "gainCoral"
+      ],
+      "patternLabel": "gain coral",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.195",
+      "sourceId": 195,
+      "englishName": "Spotted Wobbegong",
+      "trigger": "whenPlayed",
+      "abilityText": "[GreenCoral][FishFromHandConsume]",
+      "tokens": [
+        "GreenCoral",
+        "FishFromHandConsume"
+      ],
+      "effectTypes": [
+        "gainCoral",
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "mixed coral compound",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.196",
+      "sourceId": 196,
+      "englishName": "Starry Pipefish",
+      "trigger": "ifActivated",
+      "abilityText": "[BlueCoral]",
+      "tokens": [
+        "BlueCoral"
+      ],
+      "effectTypes": [
+        "gainCoral"
+      ],
+      "patternLabel": "gain coral",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.197",
+      "sourceId": 197,
+      "englishName": "Stellate Puffer",
+      "trigger": "whenPlayed",
+      "abilityText": "[PurpleCoral][GreenCoral]",
+      "tokens": [
+        "PurpleCoral",
+        "GreenCoral"
+      ],
+      "effectTypes": [
+        "gainCoral"
+      ],
+      "patternLabel": "gain coral",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.198",
+      "sourceId": 198,
+      "englishName": "Striated Frogfish",
+      "trigger": "ifActivated",
+      "abilityText": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [Discard]",
+      "tokens": [
+        "FishEgg",
+        "PurpleCoral",
+        "PurpleCoral",
+        "PurpleCoral",
+        "Discard"
+      ],
+      "effectTypes": [
+        "recoverFromDiscardOrDraw",
+        "placeEgg",
+        "gainCoral"
+      ],
+      "patternLabel": "colored coral conditional bonus (purple x3)",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.199",
+      "sourceId": 199,
+      "englishName": "Striped Eel Catfish",
+      "trigger": "whenPlayed",
+      "abilityText": "[BlueCoral][GreenCoral]",
+      "tokens": [
+        "BlueCoral",
+        "GreenCoral"
+      ],
+      "effectTypes": [
+        "gainCoral"
+      ],
+      "patternLabel": "gain coral",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.200",
+      "sourceId": 200,
+      "englishName": "Swell Shark",
+      "trigger": "whenPlayed",
+      "abilityText": "[FreePlayFishFromHand][Camouflage] only",
+      "tokens": [
+        "FreePlayFishFromHand",
+        "Camouflage"
+      ],
+      "effectTypes": [
+        "playFishForFree"
+      ],
+      "patternLabel": "play fish for free",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.main.201",
+      "sourceId": 201,
+      "englishName": "Sydney's Pygmy Pipehorse",
+      "trigger": "ifActivated",
+      "abilityText": "[PurpleCoral]",
+      "tokens": [
+        "PurpleCoral"
+      ],
+      "effectTypes": [
+        "gainCoral"
+      ],
+      "patternLabel": "gain coral",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.202",
+      "sourceId": 202,
+      "englishName": "Tasseled Scorpionfish",
+      "trigger": "gameEnd",
+      "abilityText": "5 [Wave] if [AnyCoral][AnyCoral][AnyCoral] in ALL your dive sites",
+      "tokens": [
+        "Wave",
+        "AnyCoral",
+        "AnyCoral",
+        "AnyCoral"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "gainCoral"
+      ],
+      "patternLabel": "scoring-only GAME END",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.203",
+      "sourceId": 203,
+      "englishName": "Tiger Shark",
+      "trigger": "whenPlayed",
+      "abilityText": "(all players) [FishHatch][FishFromHandConsume][AllPlayers]",
+      "tokens": [
+        "FishHatch",
+        "FishFromHandConsume",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "hatchEgg",
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "all players · mixed compound effect pool",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.204",
+      "sourceId": 204,
+      "englishName": "Tomato Clownfish",
+      "trigger": "ifActivated",
+      "abilityText": "[BlueCoral]",
+      "tokens": [
+        "BlueCoral"
+      ],
+      "effectTypes": [
+        "gainCoral"
+      ],
+      "patternLabel": "gain coral",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.205",
+      "sourceId": 205,
+      "englishName": "Toothy Goby",
+      "trigger": "ifActivated",
+      "abilityText": "[PurpleCoral]",
+      "tokens": [
+        "PurpleCoral"
+      ],
+      "effectTypes": [
+        "gainCoral"
+      ],
+      "patternLabel": "gain coral",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.206",
+      "sourceId": 206,
+      "englishName": "Variegated Lizardfish",
+      "trigger": "gameEnd",
+      "abilityText": "3 [Wave] if [AnyCoral][AnyCoral][AnyCoral][AnyCoral][AnyCoral] (in a dive site with at least 5)",
+      "tokens": [
+        "Wave",
+        "AnyCoral",
+        "AnyCoral",
+        "AnyCoral",
+        "AnyCoral",
+        "AnyCoral"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "gainCoral"
+      ],
+      "patternLabel": "scoring-only GAME END",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.207",
+      "sourceId": 207,
+      "englishName": "Velvet Belly Lanternshark",
+      "trigger": "whenPlayed",
+      "abilityText": "[UnSchoolFish][UnSchoolFish]",
+      "tokens": [
+        "UnSchoolFish",
+        "UnSchoolFish"
+      ],
+      "effectTypes": [
+        "scatterSchool"
+      ],
+      "patternLabel": "scatter school",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "partial",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.main.208",
+      "sourceId": 208,
+      "englishName": "Yellow Clown Goby",
+      "trigger": "gameEnd",
+      "abilityText": "[GreenCoral][GreenCoral][GreenCoral]",
+      "tokens": [
+        "GreenCoral",
+        "GreenCoral",
+        "GreenCoral"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "gainCoral"
+      ],
+      "patternLabel": "gain coral",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "no",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.209",
+      "sourceId": 209,
+      "englishName": "Yokozuna Slickhead",
+      "trigger": "gameEnd",
+      "abilityText": "[FishFromHand][ArrowDown][AnyCoral][AnyCoral][AnyCoral][AnyCoral][AnyCoral] (in a dive site with at least 5)",
+      "tokens": [
+        "FishFromHand",
+        "ArrowDown",
+        "AnyCoral",
+        "AnyCoral",
+        "AnyCoral",
+        "AnyCoral",
+        "AnyCoral"
+      ],
+      "effectTypes": [
+        "gameEndScore",
+        "gainCoral",
+        "playFishFromHand"
+      ],
+      "patternLabel": "play fish paying cost",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "contains draw/deck-order or GAME END scoring effects; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    },
+    {
+      "cardId": "sr.main.210",
+      "sourceId": 210,
+      "englishName": "Zebra Seahorse",
+      "trigger": "ifActivated",
+      "abilityText": "[AnyCoral]",
+      "tokens": [
+        "AnyCoral"
+      ],
+      "effectTypes": [
+        "gainCoral"
+      ],
+      "patternLabel": "gain coral",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.starter.211",
+      "sourceId": 211,
+      "englishName": "African Coelacanth",
+      "trigger": "whenPlayed",
+      "abilityText": "[Discard][Discard][Discard][Discard][Discard]",
+      "tokens": [
+        "Discard",
+        "Discard",
+        "Discard",
+        "Discard",
+        "Discard"
+      ],
+      "effectTypes": [
+        "recoverFromDiscardOrDraw"
+      ],
+      "patternLabel": "recover from discard or draw",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "no",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.starter.212",
+      "sourceId": 212,
+      "englishName": "Atlantic Barracudina",
+      "trigger": "ifActivated",
+      "abilityText": "[FishHatch] also, if [GreenCoral][GreenCoral][GreenCoral] in this dive site: [SchoolFeederMove]",
+      "tokens": [
+        "FishHatch",
+        "GreenCoral",
+        "GreenCoral",
+        "GreenCoral",
+        "SchoolFeederMove"
+      ],
+      "effectTypes": [
+        "hatchEgg",
+        "moveYoungOrSchool",
+        "gainCoral"
+      ],
+      "patternLabel": "colored coral conditional bonus (green x3)",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.starter.213",
+      "sourceId": 213,
+      "englishName": "Blue Antimora",
+      "trigger": "ifActivated",
+      "abilityText": "[Discard] also, if [BlueCoral][BlueCoral][BlueCoral] in this dive site: [FishFromHandConsume]",
+      "tokens": [
+        "Discard",
+        "BlueCoral",
+        "BlueCoral",
+        "BlueCoral",
+        "FishFromHandConsume"
+      ],
+      "effectTypes": [
+        "recoverFromDiscardOrDraw",
+        "gainCoral",
+        "consumeFishFromHand"
+      ],
+      "patternLabel": "colored coral conditional bonus (blue x3)",
+      "primaryCategory": "B.needsPickerOverlay",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "partial",
+      "why": "Effect requires hand/discard/card/placement picker state beyond a single card-face icon hit area.",
+      "recommendedUI": "Use existing pending UI or a modal/side overlay; card icon may only launch the picker."
+    },
+    {
+      "cardId": "sr.starter.214",
+      "sourceId": 214,
+      "englishName": "Fanfin Anglerfish",
+      "trigger": "ifActivated",
+      "abilityText": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [GreenCoral]",
+      "tokens": [
+        "FishEgg",
+        "PurpleCoral",
+        "PurpleCoral",
+        "PurpleCoral",
+        "GreenCoral"
+      ],
+      "effectTypes": [
+        "placeEgg",
+        "gainCoral"
+      ],
+      "patternLabel": "colored coral conditional bonus (purple x3)",
+      "primaryCategory": "A.inlineCandidate",
+      "inlineSupported": "yes",
+      "requiresOverlay": "no",
+      "undoSupported": "yes",
+      "why": "Effect maps to visible board resource/slot targets and can be represented by card-face reward icons.",
+      "recommendedUI": "Inline card icon interaction with board target highlighting; keep a skip control."
+    },
+    {
+      "cardId": "sr.starter.215",
+      "sourceId": 215,
+      "englishName": "Illuminated Netdevil",
+      "trigger": "ifActivated",
+      "abilityText": "(all players) [AnyCoral][AllPlayers]",
+      "tokens": [
+        "AnyCoral",
+        "AllPlayers"
+      ],
+      "effectTypes": [
+        "gainCoral"
+      ],
+      "patternLabel": "all players · gain coral",
+      "primaryCategory": "C.irreversibleNoUndo",
+      "inlineSupported": "partial",
+      "requiresOverlay": "yes",
+      "undoSupported": "no",
+      "why": "targets all players and can cross local-player boundaries; also contains local resource effects that could be inline before the irreversible step",
+      "recommendedUI": "Use fallback or hybrid UI; do not offer committed undo past irreversible steps."
+    }
+  ]
+}

@@ -224,8 +224,6 @@ struct FishCardFaceView: View {
         )
 
         ZStack(alignment: .center) {
-            abilityBlockBackground(block, unit: unit)
-
             VStack(spacing: unit * blockMetrics.contentGapCqw) {
                 ForEach(Array(contentElements.prefix(12).enumerated()), id: \.offset) { _, element in
                     abilityElement(element, blockLayout: block.layout, unit: unit)
@@ -243,6 +241,9 @@ struct FishCardFaceView: View {
         }
         .frame(width: unit * CardAbilityPanelMetrics.live.widthCqw)
         .frame(minHeight: unit * blockMetrics.minTotalHeightCqw)
+        .background {
+            abilityBlockBackground(block, unit: unit)
+        }
         .clipped()
     }
 
