@@ -130,6 +130,11 @@
 - 顶部 HUD、玩家头像、当前行动摘要、周目标四格、周目标详情面板已接入。
 - 右侧行动确认区已从主棋盘 layout 移除。
 - `BottomRewardDock` 已接入底部 overlay：空闲时 hidden / handle-only，有 pending 时 compact，点击可 expanded；承载 reward token list、pending action、GAME END candidate、AllPlayers external reward、`playFish` confirm、`->` 和 `<-`。
+- `BottomDockOverlayRoute` / `BottomDockOverlayState` 已接入，用于由 bottom dock 统一拉起 discard pile selection、hand card picker、playFish staging、reef target picker、debug fallback 和 GAME END candidate helper。
+- `recoverFromDiscardOrDraw` 的 dock flow 已稳定：recover token 打开弃牌堆 recover selection overlay；Draw Instead 走现有 draw fallback；弃牌为空时 dock 直接显示 draw fallback。
+- `consumeFishFromHand` 的 dock flow 已稳定为 hand picker first，再继续到 board consumer target；不在 dock 内塞复杂选择。
+- `playFishForFree` / `playFishFromHand` 的 dock flow 已稳定为 hand picker -> staged `playFish`；free play 不要求支付，paid play 继续进入 payment selection，确认 / 取消都由 dock controls 承载。
+- `drawFish` direct commit、GAME END candidate activation / finish、AllPlayers target-player external reward 继续由 dock 表达；提交后没有 committed undo。
 - Compact Resource HUD 已接入顶部 HUD：手牌、鱼卵、幼鱼、鱼群和三色珊瑚使用 live-derived CardAssets token icon 横向紧凑显示。
 - 右侧资源统计大面板已从 right-side fallback 区抽离；right-side pending / reward / action / playFish confirm 面板不再占主布局。
 - 新增 `GameTokenIconResolver` / `GameTokenIconView`，让非卡面 UI 复用 `CardSymbolAssetResolver` / live-derived PNG icon，不使用 SF Symbol、emoji、临时色块或纯文字作为 token 正常路径。
@@ -203,6 +208,7 @@
 - 弃牌堆空时完全隐藏，有牌时悬浮在手牌右侧。
 - empty slot 不显示 unknown fish。
 - 右侧行动玩家摘要已由 Compact Resource HUD 和 BottomRewardDock 替代；后续继续细化 bottom dock fallback 的 overlay / sheet / picker，而不是恢复右侧常驻栏。
+- 右侧 reward / pending / playFish confirm 面板没有恢复；fallback 通过 dock-launched overlay / sheet / picker / debug helper 承载。
 - 顶部行动摘要 toast 化。
 
 ### P5 BoardLayout 和真实背景板
@@ -249,7 +255,7 @@
 
 ## 当前建议下一步
 
-1. 先稳定 BottomRewardDock 的 overlay / sheet / picker fallback，覆盖 recover、hand picker、playFish ability flow、GAME END 和 AllPlayers。
+1. 继续 polish BottomRewardDock 的 overlay / sheet / picker 体验，重点是尺寸、取消恢复、手牌遮挡和错误提示。
 2. 再稳定 GameBoardViewModel pending UI，继续减少 target / payment / discard-selection prompt fallback 分散逻辑。
 3. 如需推进 inline ability interaction，先把 card icon 当作 shortcut / highlight，不作为主交互路径。
 4. 之后修 UI bug：手牌居中、弃牌堆隐藏、empty slot 占位。

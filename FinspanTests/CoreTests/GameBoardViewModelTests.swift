@@ -4134,7 +4134,7 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertTrue(oceanSlot(in: viewModel, address: Self.slotAddress).isHighlightedByRewardSelection)
     }
 
-    func testConsumeFishFromHandShowsConsumerRewardTokenAndHighlightsVisibleFishCard() throws {
+    func testConsumeFishFromHandShowsHandPickerRewardToken() throws {
         let choice = consumeFishFromHandPendingChoice()
         let service = makeService(hand: ["consume.short"], pendingChoices: [choice.choiceId: choice])
         setContent(.fishCard("consume.consumer"), at: Self.slotAddress, in: service)
@@ -4148,9 +4148,8 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(token.title, AppStrings.GameBoard.consumeFishFromHand)
         viewModel.selectRewardToken(token.id)
 
-        XCTAssertEqual(viewModel.rewardPoolViewState.instructionText, AppStrings.GameBoard.consumeFishConsumer)
-        XCTAssertTrue(oceanSlot(in: viewModel, address: Self.slotAddress).isHighlightedByRewardSelection)
-        XCTAssertFalse(oceanSlot(in: viewModel, address: Self.forageTargetAddress).isHighlightedByRewardSelection)
+        XCTAssertEqual(viewModel.rewardPoolViewState.instructionText, AppStrings.GameBoard.consumeFishHandCard)
+        XCTAssertEqual(viewModel.bottomDockOverlayState?.route, .handCardPicker)
     }
 
     func testConsumeFishFromHandHandStepOnlyAllowsShorterHandFishAndBuildsResolveCommand() throws {
@@ -4464,7 +4463,7 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(payload.payload, .none)
     }
 
-    func testRecoverRewardTokenRecoversDiscardCardWhenDiscardPileHasCards() {
+    func testRecoverRewardTokenOpensDiscardOverlayWhenDiscardPileHasCards() {
         let choice = pendingChoice(kind: .recoverFromDiscardOrDraw)
         let service = makeService(
             hand: ["fish-2"],
@@ -4475,14 +4474,13 @@ final class GameBoardViewModelTests: XCTestCase {
         let token = viewModel.rewardPoolViewState.rewards[0]
 
         XCTAssertEqual(token.kind, .recoverFromDiscardOrDraw)
-        XCTAssertEqual(token.subtitle, "Fish 9")
+        XCTAssertEqual(token.subtitle, AppStrings.GameBoard.chooseDiscardCardToRecover)
 
         viewModel.selectRewardToken(token.id)
 
-        guard case let .resolveEffectNode(payload) = service.submittedCommands.last?.payload else {
-            return XCTFail("Expected resolveEffectNode command.")
-        }
-        XCTAssertEqual(payload.payload, .selectedDiscardCard("fish-9"))
+        XCTAssertTrue(service.submittedCommands.isEmpty)
+        XCTAssertEqual(viewModel.discardPileDetailViewState?.mode, .recoverSelection)
+        XCTAssertEqual(viewModel.bottomDockOverlayState?.route, .discardPileSelection)
     }
 
     func testClickingEndAbilityRewardTokenBuildsFinishAbilityCommand() throws {

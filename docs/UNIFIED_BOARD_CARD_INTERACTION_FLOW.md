@@ -33,6 +33,8 @@ The first shared model is presentation-only:
 - `BottomRewardDockToken`
 - `BottomRewardDockAction`
 - `BottomRewardDockDisplayMode`
+- `BottomDockOverlayRoute`
+- `BottomDockOverlayState`
 
 It can represent sources from hand cards, visible fish cards, dive sites/zones, reefs/board markers, and pending effect nodes. It can represent steps for payment source, reward token, target slot/fish/reef, hand card, discard card, confirm, skip, and fallback. It intentionally does not validate rules or mutate `GameState`; final legality remains in `GameEngine`.
 
@@ -119,6 +121,19 @@ The dock carries:
 
 The old right-side reward list, pending action list, and playFish confirmation panel have been removed from the main board layout. Complex continuations still exist, but the dock is the entry point that opens a discard overlay, hand picker, playFish staged flow, or debug / helper sheet.
 
+## Bottom Dock Fallback Routes
+
+`BottomDockOverlayRoute` is the shared presentation route for complex continuations that used to be explained by the right-side panel. The current routes are:
+
+- `discardPileSelection`: opened by `recoverFromDiscardOrDraw` when recoverable discard cards exist. The existing discard pile sheet enters recover selection mode; choosing a discard submits the existing selected-discard command path, and Draw Instead submits the existing draw fallback.
+- `handCardPicker`: opened by `consumeFishFromHand`, `playFishForFree`, and `playFishFromHand` when the next continuation is a hand card choice. The picker uses real hand card faces and disables illegal cards with a reason.
+- `playFishStaging`: shown when an ability-driven play-fish flow has selected a hand card and moved to target/payment staging. `playFishForFree` skips payment; paid `playFishFromHand` uses the existing direct resource / hand payment staging.
+- `reefTargetPicker`: reserved for coral / reef target continuation when a compact target picker is better than board-only highlighting.
+- `debugFallback`: a dock-launched helper for metadata gaps or temporary complex explanations. It does not restore a permanent right-side panel.
+- `gameEndCandidate`: reserved for GAME END candidate details when a direct dock token is not enough.
+
+The overlay state is driven by `GameBoardViewModel` and SwiftUI presentation only. Closing an overlay clears staged UI selection or returns to the dock context; it does not mutate `GameState`. Completion still sends existing commands such as `resolveEffectNode`, `skipEffectNode`, `skipEffectExecution`, `activateGameEndAbility`, `finishGameEndAbilities`, or `PlayerCommand.playFish`.
+
 ## Ability Staged Flow
 
 The inline audit still preserves the legacy reference counts A inline candidates 73, B needs picker/overlay 51, C irreversible/no undo 91, D not enough metadata 0, but those are no longer used as a single inline/no-inline decision. The new audit records entry surface, continuation surface, committed undo, and source visibility separately. Card inline remains auxiliary for now; dock entry is primary.
@@ -129,11 +144,11 @@ The inline audit still preserves the legacy reference counts A inline candidates
 - simple move: click move icon, then choose source and target.
 - `scatterSchool`: partial inline; choose source school and any legal young targets, then submit or skip remaining.
 - `recoverFromDiscardOrDraw`: choose the recover token in the bottom dock; continue through discard overlay when discard targets exist, or direct draw fallback when none are available. After draw, no committed undo.
-- `consumeFishFromHand`: choose the consume token in the bottom dock; continue through hand picker, then board target.
-- `playFishForFree` / `playFishFromHand`: choose the play-fish token in the bottom dock; continue through hand picker into staged `playFish`. Paid play also includes payment flow.
+- `consumeFishFromHand`: choose the consume token in the bottom dock; continue through hand picker, then board target. The hand picker uses existing hand card faces and only stages the hand card until a legal consumer target is chosen.
+- `playFishForFree` / `playFishFromHand`: choose the play-fish token in the bottom dock; continue through hand picker into staged `playFish`. `playFishForFree` does not require payment; paid play also includes payment flow and keeps cost / requirement icons as progress display rather than first-click buttons.
 - `drawFish`: choose draw in the bottom dock; direct commit; no committed undo.
-- `GAME END`: use game-end dock candidates; direct score or target continuation depending on effect; no committed undo.
-- `AllPlayers`: source player may see a source card highlight, but target players use the bottom incoming reward dock. One target player's skip / staged undo does not affect other players.
+- `GAME END`: use game-end dock candidates; direct score or target continuation depending on effect; no committed undo. `finishGameEndAbilities` remains the forward completion path.
+- `AllPlayers`: source player may see a source card highlight, but target players use the bottom incoming reward dock with source player / fish / trigger summary. One target player's skip / staged undo does not affect other players.
 
 Fallback remains required for:
 
@@ -185,15 +200,16 @@ These are payment-source selections. The coral reward marker is the entry point;
 `->` means the forward action for the current staged task:
 
 - staged `playFish` complete: confirm `PlayerCommand.playFish`;
-- active pending effect: `PendingEffectIntent.skipEffect` / `skipEffectNode`, or `skipRemaining` / `skipEffectExecution`;
+- active pending effect: commit the selected dock token when the token is direct, or `PendingEffectIntent.skipEffect` / `skipEffectNode`, or `skipRemaining` / `skipEffectExecution` when forward means skip/end;
 - active dive reward: skip current optional reward through existing pending choice / effect intent;
-- fallback panel: open or focus the fallback action.
+- fallback panel: open or focus the dock-launched overlay / sheet / picker.
 
 `<-` means staged-only undo:
 
 - remove selected reward icon;
 - remove selected source;
 - remove selected target;
+- close hand / discard / debug overlay before submission;
 - return from target step to reward/source step.
 
 `<-` never means committed undo. It cannot undo draw, hidden information, submitted `GameEvent`, another player's AllPlayers step, or GAME END scoring.

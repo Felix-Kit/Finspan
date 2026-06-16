@@ -18,6 +18,7 @@ Card ability icons remain useful as source / group highlights and future shortcu
 - First unified presentation model exists as `BoardCardInteractionTask` / `BoardCardInteractionStep` / `BoardCardInteractionToken` / `BoardCardInteractionControlState`.
 - `IncomingRewardDockState` is the presentation source-summary model for external pending rewards where the current player cannot rely on a visible source fish card; `BottomRewardDockState` is the current primary dock surface that displays those rewards.
 - Right-side reward / pending / playFish confirmation panels are no longer part of the main board layout. Complex continuation now starts from the bottom dock and opens an overlay / sheet / picker.
+- `BottomDockOverlayRoute` now centralizes the dock fallback continuations: `discardPileSelection`, `handCardPicker`, `playFishStaging`, `reefTargetPicker`, `debugFallback`, and `gameEndCandidate`.
 
 ## Classification Summary
 
@@ -86,6 +87,10 @@ Future shortcut work can still add stable ids to `CardAbilityPresentation` icon 
 - Do not use the right-side pending/reward UI as a permanent main-board panel.
 - Keep complex continuation for discard choice, hand picker, discard pile picker, play-fish flows, all-player flows, GAME END, hidden information, and uncertain metadata, but launch it from `BottomRewardDock` as overlay / sheet / picker / debug helper.
 - External rewards prefer the bottom dock because the target player may not have a visible source fish card to tap.
+- `recoverFromDiscardOrDraw` opens the existing discard pile recover selection overlay from the dock when discard targets exist; empty discard falls back to a dock direct draw token.
+- `consumeFishFromHand` opens a dock-launched hand picker, then continues to board target selection for the consuming fish.
+- `playFishForFree` / `playFishFromHand` open a dock-launched hand picker, then enter staged `playFish`; only paid play includes payment flow.
+- GAME END candidates and AllPlayers target-player rewards are also dock entries; no right-side permanent panel is restored for these cases.
 
 ## Representative Records
 

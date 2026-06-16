@@ -61,6 +61,25 @@ struct BottomRewardDockState: Equatable {
     }
 }
 
+enum BottomDockOverlayRoute: String, Equatable {
+    case discardPileSelection
+    case handCardPicker
+    case playFishStaging
+    case reefTargetPicker
+    case debugFallback
+    case gameEndCandidate
+}
+
+struct BottomDockOverlayState: Equatable {
+    let route: BottomDockOverlayRoute
+    let title: String
+    let instructionText: String
+    let handCards: [HandCardViewState]
+    let debugText: String?
+
+    var usesMainBoardRightPanel: Bool { false }
+}
+
 struct BottomRewardDockView: View {
     let state: BottomRewardDockState
     let isExpanded: Bool

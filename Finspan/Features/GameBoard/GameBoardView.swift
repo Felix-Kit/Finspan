@@ -74,6 +74,12 @@ struct GameBoardView: View {
                             discardPileDetailOverlay(detail)
                                 .zIndex(20)
                         }
+
+                        if let overlay = viewModel.bottomDockOverlayState,
+                           overlay.route != .discardPileSelection {
+                            bottomDockOverlay(overlay)
+                                .zIndex(21)
+                        }
                     }
                     .toolbar(.hidden, for: .navigationBar)
                     .ignoresSafeArea(.container, edges: [.top, .bottom])
@@ -585,6 +591,108 @@ struct GameBoardView: View {
                 }
             }
         }
+    }
+
+    private func bottomDockOverlay(_ overlay: BottomDockOverlayState) -> some View {
+        ZStack {
+            Color.black.opacity(0.62)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    viewModel.dismissBottomDockOverlay()
+                }
+
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(overlay.title)
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(.white)
+                        Text(overlay.instructionText)
+                            .font(.callout.weight(.medium))
+                            .foregroundStyle(.white.opacity(0.82))
+                    }
+                    Spacer()
+                    Button(AppStrings.GameBoard.cancel) {
+                        viewModel.dismissBottomDockOverlay()
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.white)
+                }
+
+                switch overlay.route {
+                case .handCardPicker:
+                    bottomDockHandPicker(overlay)
+                case .debugFallback:
+                    bottomDockDebugFallback(overlay)
+                case .playFishStaging,
+                     .reefTargetPicker,
+                     .gameEndCandidate,
+                     .discardPileSelection:
+                    bottomDockDebugFallback(overlay)
+                }
+            }
+            .padding(18)
+            .frame(maxWidth: 860, maxHeight: 560, alignment: .topLeading)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(.regularMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.white.opacity(0.28), lineWidth: 1)
+            )
+            .padding(.horizontal, 32)
+            .padding(.vertical, 34)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .contentShape(Rectangle())
+            .onTapGesture {}
+        }
+    }
+
+    private func bottomDockHandPicker(_ overlay: BottomDockOverlayState) -> some View {
+        ScrollView(.horizontal, showsIndicators: true) {
+            HStack(alignment: .top, spacing: 14) {
+                ForEach(overlay.handCards) { card in
+                    Button {
+                        viewModel.selectHandCard(card.cardId)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 8) {
+                            FishCardFaceView(viewState: card.cardFace)
+                                .frame(width: 132, height: 132 / CardRenderMetrics.cardAspectRatio)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .stroke(card.isPlayable ? Color.green : Color.red.opacity(0.65), lineWidth: card.isPlayable ? 2 : 1)
+                                }
+                            Text(card.displayName)
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+                            Text(card.unavailableReasonText ?? card.placementSummaryText)
+                                .font(.caption2)
+                                .foregroundStyle(card.isPlayable ? Color.white.opacity(0.72) : Color.red.opacity(0.88))
+                                .lineLimit(2)
+                        }
+                        .frame(width: 150, alignment: .topLeading)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!card.isPlayable)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    private func bottomDockDebugFallback(_ overlay: BottomDockOverlayState) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(overlay.debugText ?? overlay.instructionText)
+                .font(.callout)
+                .foregroundStyle(.white.opacity(0.84))
+                .fixedSize(horizontal: false, vertical: true)
+            Text(AppStrings.GameBoard.chooseOption)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.62))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var weeklyAchievementPanel: some View {

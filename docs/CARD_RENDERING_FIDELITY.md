@@ -255,6 +255,7 @@ Focused tests 新增 / 更新 `FishCardLiveMeasurementTests`、`FishCardAbilityP
 - 推荐当前 MVP 先把 reward / pending / playFish confirm 放入 bottom dock；card ability icon 只作为 source / group highlight 和未来 shortcut。
 - 包含 `ArrowDown` 的能力按组合语义整体高亮，例如 `FishEgg + ArrowDown + Predator`；不把 `ArrowDown` 单独作为可点击 token。
 - 右侧 reward / pending / playFish confirm 面板已从主 board layout 移除。draw、discard / hand picker、discard pile picker、play fish flow、all-player、GAME END、hidden information 和 uncertain flow 仍必须保留 fallback 能力，但入口由 bottom dock 拉起 overlay / sheet / picker / debug helper。
+- 本轮 dock fallback flow 已稳定：recover token 打开弃牌堆 recover selection overlay；consume token 打开 hand picker 后继续 board target；playFishForFree / playFishFromHand token 打开 hand picker 后进入 staged playFish；GAME END candidate 和 AllPlayers target reward 继续由 dock source summary 承载。
 - dive / zone reward 当前没有稳定 board marker，先走 bottom dock。
 - `→` 建议映射到 `PendingEffectIntent.skipRemaining` / `skipEffectExecution`，单节点可选效果映射到 `skipEffectNode`。
 - `←` 当前只建议撤回未提交的 ViewModel staged selection；没有 engine-level undo command，不应撤回已提交事件，尤其不能撤回 draw / deck order / hidden information / all-player / GAME END。

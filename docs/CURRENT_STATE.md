@@ -83,6 +83,11 @@
 - `BottomRewardDock` 已成为主行动中心，用于 pending reward、ability reward、dive / zone reward、GAME END candidate、AllPlayers 外部收益、出牌确认、`->` forward / confirm / skip 和 `<-` staged undo / cancel。
 - 右侧 reward / pending / playFish confirm 面板已从主棋盘 layout 移除，不再常驻占用右侧空间。
 - 复杂 fallback 不再通过右侧常驻栏承载；由 bottom dock 拉起 overlay / sheet / picker / debug helper。
+- `BottomDockOverlayRoute` / `BottomDockOverlayState` 已接入，用于统一 dock fallback continuation：弃牌堆选择、手牌选择、playFish staging、reef target、debug fallback 和 GAME END candidate。
+- `recoverFromDiscardOrDraw` 的 dock token 现在会在有可恢复弃牌时打开现有弃牌堆 recover selection overlay；弃牌为空时仍由 dock 走 draw fallback，draw 后不支持 committed undo。
+- `consumeFishFromHand` 的 dock token 现在打开 hand picker，再继续到 board target 选择吞噬者；非法手牌由 hand picker 显示 disabled / reason。
+- `playFishForFree` / `playFishFromHand` 的 dock token 现在打开 hand picker，再进入 staged `playFish` flow；免费出牌不要求支付，paid play 继续使用现有直接资源 / 手牌支付选择，`->` / `<-` 仍由 bottom dock 表达。
+- `drawFish` 可由 dock token direct commit；GAME END candidate 和 AllPlayers target-player external reward 继续由 bottom dock 承载 source summary、reward token 和 skip / staged undo。
 - Unified Board/Card Interaction Flow Design 已落地为 presentation model：新增 `BoardCardInteractionTask` / `Step` / `Token` / `SourceOption` / `Target` / `ControlState`，用于表达未来 board/card inline staged selection。该模型不接规则引擎、不修改 `GameState`，最终合法性仍在 `GameEngine`。
 - Inline 交互分类已从单轴 A/B/C/D 调整为四维模型：`InlineEntrySurface`、`ContinuationSurface`、`CommitReversibility`、`SourceVisibility`。`needs picker / overlay` 不再等于不能 inline；`irreversible / no undo` 也不再等于不能 inline，只表示提交后不能用 `<-` 撤回。
 - 新增 `IncomingRewardDockState` presentation model，用于 AllPlayers 目标玩家、不可见 source card、board / dive-site marker 或 GAME END dock 等外部 pending reward 的来源摘要；实际入口由 `BottomRewardDock` 承载。
@@ -176,7 +181,7 @@
 - 让手牌真正居中。
 - 弃牌堆空时完全隐藏。
 - empty slot 不显示 unknown fish card。
-- bottom dock 的 picker / sheet fallback 仍需继续细化，避免复杂说明回到常驻右侧栏。
+- bottom dock 的 picker / sheet fallback 仍需继续做交互细节打磨，但主路径已经不回到常驻右侧栏。
 - 顶部行动摘要应改成自动消失的 toast。
 
 ### 规则与功能
@@ -193,7 +198,7 @@
 
 ## 当前建议下一步
 
-1. 继续稳定 `BottomRewardDock` 的 overlay / sheet / picker fallback，优先 recover / hand picker / playFish staged flow。
+1. 继续做 bottom dock fallback 的交互细节打磨，重点是 overlay 尺寸、手牌遮挡、取消恢复上下文和错误提示。
 2. 继续做 GameBoardViewModel pending UI 小步稳定，重点是 target / payment / discard-selection prompt fallback。
 3. 后续再考虑 card icon shortcut；在 bottom dock 体验稳定、BoardLayout 完成前不要推进完整 card inline ability tap。
 4. 再修 UI bug：手牌居中、弃牌堆隐藏、empty slot 占位。
