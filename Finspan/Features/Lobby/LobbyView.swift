@@ -423,6 +423,14 @@ private struct WeeklyGoalSetupSection: View {
             Text(AppStrings.Lobby.weeklyGoalSetup)
                 .font(.headline)
 
+            if viewModel.availableWeeklyGoalBoardSets.count > 1 {
+                Picker(AppStrings.Lobby.weeklyGoalBoardSet, selection: $viewModel.weeklyGoalBoardSet) {
+                    Text(AppStrings.Lobby.weeklyGoalBaseSet).tag(AchievementBoardSet.base)
+                    Text(AppStrings.Lobby.weeklyGoalSharksAndReefsSet).tag(AchievementBoardSet.sharksAndReefs)
+                }
+                .pickerStyle(.segmented)
+            }
+
             Picker(AppStrings.Lobby.weeklyGoalSetup, selection: $viewModel.weeklyGoalBoardSide) {
                 Text(AppStrings.Lobby.weeklyGoalSideA).tag(AchievementBoardSide.sideA)
                 Text(AppStrings.Lobby.weeklyGoalSideB).tag(AchievementBoardSide.sideB)
@@ -552,17 +560,17 @@ private struct WeeklyGoalTileContent: View {
                 Text(AppStrings.Lobby.weeklyGoalWeekTitle(option.week))
                     .font(.caption.weight(.semibold))
                 Spacer()
-                Text(option.sourceExpansion == .sharksAndReefs ? "S&R" : "Base")
+                Text(option.boardSet == .sharksAndReefs ? AppStrings.Lobby.weeklyGoalSharksAndReefsSet : AppStrings.Lobby.weeklyGoalBaseSet)
                     .font(.caption2.weight(.bold))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(Capsule().fill(Color.cyan.opacity(0.16)))
             }
-            Text(option.title)
+            Text(option.shortTitle)
                 .font(.headline)
-            Text("每项 1-2 分")
+            Text(option.isImplementedForScoring ? "每项 \(option.pointsPerUnit) 分" : AppStrings.GameBoard.weeklyGoalScoringPending)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(option.isImplementedForScoring ? Color.secondary : Color.orange)
         }
     }
 }

@@ -297,19 +297,34 @@ struct GameBoardView: View {
     }
 
     private func weeklyGoalBoxes(_ viewState: WeeklyGoalHudViewState) -> some View {
-        HStack(spacing: 6) {
+        LazyVGrid(columns: [GridItem(.fixed(58)), GridItem(.fixed(58))], spacing: 6) {
             ForEach(viewState.boxes) { box in
                 Button {
                     viewModel.selectWeeklyGoalBox(box.index)
                 } label: {
-                    VStack(spacing: 2) {
-                        Text(box.iconText)
-                            .font(.subheadline)
+                    VStack(spacing: 3) {
+                        HStack(spacing: 2) {
+                            ForEach(Array(box.icons.enumerated()), id: \.offset) { _, icon in
+                                GameTokenIconView(icon: icon, size: box.isCurrent ? 16 : 14)
+                            }
+                        }
+                        .frame(height: 17)
                         Text(box.title)
                             .font(.caption2.weight(.black))
                             .lineLimit(1)
+                        if box.isCompleted {
+                            Text(AppStrings.GameBoard.weeklyGoalCompleted)
+                                .font(.system(size: 7, weight: .bold))
+                                .foregroundStyle(.green)
+                                .lineLimit(1)
+                        } else if let status = box.statusText {
+                            Text(status)
+                                .font(.system(size: 7, weight: .bold))
+                                .foregroundStyle(.orange)
+                                .lineLimit(1)
+                        }
                     }
-                    .frame(width: box.isCurrent ? 62 : 54, height: box.isCurrent ? 52 : 46)
+                    .frame(width: box.isCurrent ? 62 : 56, height: box.isCurrent ? 58 : 52)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
                             .fill(box.isGameEndBox ? Color.indigo.opacity(0.18) : Color(.secondarySystemBackground))
@@ -318,7 +333,6 @@ struct GameBoardView: View {
                         RoundedRectangle(cornerRadius: 8)
                             .stroke(box.isCurrent ? Color.yellow : Color.secondary.opacity(0.28), lineWidth: box.isCurrent ? 3 : 1)
                     )
-                    .offset(y: box.isCurrent ? 4 : 0)
                 }
                 .buttonStyle(.plain)
             }
@@ -897,14 +911,22 @@ struct GameBoardView: View {
                 ForEach(detail.weeklyScoreItems) { item in
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
-                            Text(item.iconText)
-                                .font(.title2)
+                            HStack(spacing: 4) {
+                                ForEach(Array(item.icons.enumerated()), id: \.offset) { _, icon in
+                                    GameTokenIconView(icon: icon, size: 22)
+                                }
+                            }
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(item.title)
                                     .font(.headline)
                                 Text(item.description)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                                if let status = item.statusText {
+                                    Text(status)
+                                        .font(.caption2.weight(.bold))
+                                        .foregroundStyle(.orange)
+                                }
                             }
                             Spacer()
                             Text(item.scoringText)

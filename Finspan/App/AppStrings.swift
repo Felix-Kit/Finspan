@@ -68,6 +68,9 @@ enum AppStrings {
         static let sharksAndReefsExpansion = "Sharks & Reefs"
         static let nautomaExpansion = "Nautoma（暂未实现）"
         static let weeklyGoalSetup = "周目标面板"
+        static let weeklyGoalBoardSet = "成就板"
+        static let weeklyGoalBaseSet = "Base"
+        static let weeklyGoalSharksAndReefsSet = "S&R"
         static let weeklyGoalSideA = "A 面"
         static let weeklyGoalSideB = "B 面"
         static let weeklyGoalSelectionMode = "B 面目标"
@@ -166,6 +169,8 @@ enum AppStrings {
         static let gameEndGoalDescription = "第 4 周结束后，以任意顺序发动自己海洋中任意多个“游戏结束”能力，随后进行最终计分。"
         static let gameEndGoalNote = "第 4 格不是周奖励分。"
         static let finalScoreHiddenHint = "最终计分会在游戏结束后显示。"
+        static let weeklyGoalScoringPending = "计分待接入"
+        static let weeklyGoalCompleted = "已结算"
         static let settledScoreText = "已结算分"
         static let weeklyGoalNotScoredText = "未结算"
         static let logButton = "日志"
@@ -649,6 +654,34 @@ enum AppStrings {
             return "弃牌"
         case .sunlitFish:
             return "阳光带鱼牌"
+        case .smallFish:
+            return "小型鱼"
+        case .mediumFish:
+            return "中型鱼"
+        case .largeFish:
+            return "大型鱼"
+        case .consumedFish:
+            return "被吞食的鱼"
+        case .predatorTags:
+            return "捕食者标签"
+        case .markedFish:
+            return "上方有标记的鱼"
+        case .unmarkedFish:
+            return "上方没有标记的鱼"
+        case .activatedCards:
+            return "若发动卡牌"
+        case .everyTwoEggs:
+            return "每 2 枚鱼卵"
+        case .everyThreeEggs:
+            return "每 3 枚鱼卵"
+        case .distinctTags:
+            return "不同标签"
+        case .printedPointsHigh:
+            return "高分值鱼"
+        case .printedPointsLow:
+            return "低分值鱼"
+        case .completeReefBonus:
+            return "完成珊瑚礁"
         }
     }
 
@@ -662,6 +695,21 @@ enum AppStrings {
             return "个"
         case .rowsOfFish:
             return "行"
+        case .smallFish,
+             .mediumFish,
+             .largeFish,
+             .consumedFish,
+             .predatorTags,
+             .markedFish,
+             .unmarkedFish,
+             .activatedCards,
+             .everyTwoEggs,
+             .everyThreeEggs,
+             .distinctTags,
+             .printedPointsHigh,
+             .printedPointsLow,
+             .completeReefBonus:
+            return "个"
         }
     }
 

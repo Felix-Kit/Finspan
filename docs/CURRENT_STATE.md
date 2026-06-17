@@ -97,6 +97,11 @@
 - `GameTokenIconResolver` / `GameTokenIconView` 已新增，非卡面 UI 的 egg / young / school / fish / coral / draw / discard / consume / hatch / move / zone token 可复用现有 CardAssets icon resolver，尺寸由 HUD / board layout 控制，不由 PNG intrinsic size 控制。
 - 顶部 HUD 已重做，包含玩家头像、当前行动摘要、设置入口和日志入口。
 - 周目标四格和详情面板已接入。
+- Weekly Achievement Board MVP 已接入：`GameConfig.weeklyGoalSetup` 现在可表达 Base / Sharks & Reefs board set、A 面 / B 面、B 面随机或手动前三周 tile。
+- Base / S&R Side A 固定第 1-3 周目标和第 4 周 GAME END 说明格已建模；Base / S&R Side B tile pool 已按 week1 / week2 / week3 分池，第四周不从 pool 选。
+- Lobby 创建房间支持选择 achievement board set 和 A/B 面；启用 S&R 时默认 S&R A 面，也可切回 Base board。B 面 random 使用 setup seed deterministic 选择，manual selection 禁止跨周池 / 跨 board set。
+- 游戏内周目标 HUD / 详情面板现在使用 resolved weekly goal tile，未实现计分 tile 显示“计分待接入”。周目标 icon 通过 `WeeklyGoalIconToken` -> `GameTokenIconResolver` 使用 live-derived assets，不再用 emoji / SF Symbol / 文本符号作为正常路径。
+- 已将实体周目标参考图压缩存入 `docs/references/weekly_goals/`，仅作为 UI 和人工录入参考；文案和 tile 归类仍可后续校对。
 - 日志已改为折叠 / 弹出查看。
 - 已支持强制结束当前对局并返回主页。
 - 已支持弃牌堆 normal 只读查看，以及 `recoverFromDiscardOrDraw` pending effect 下的弃牌选择模式。
@@ -192,7 +197,7 @@
 
 - Ability Engine v2 saved-state migration / legacy cleanup 后置：当前不是正式发布阶段，legacy adapter 继续保持行为稳定，直到旧本地房间和旧 pending-choice payload 有明确迁移路径。
 - GameBoardViewModel pending UI stabilization 后续：继续把 no-target prompt、follow-up target / payment / discard-selection choices 的显示逻辑收敛到 metadata fallback helper。
-- S&R achievements。
+- Weekly Achievement Board 后续：继续人工校对 Base / S&R Side B tile 文案和图标；把需要卡牌目录或规则确认的小/中/大型鱼、标签、printed points 区间、完成珊瑚礁奖励等 tile 逐步接入计分。
 - Side B weekly bonus +3。
 - 真实 board 背景和 slot 对齐系统。
 - BoardLayout / SVG marker / JSON layout pipeline。

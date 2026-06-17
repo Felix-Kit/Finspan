@@ -23,8 +23,18 @@ final class LobbyViewModel: ObservableObject {
             configureGameDataMode(selectedGameDataMode)
         }
     }
-    @Published var isSharksAndReefsExpansionEnabled = false
+    @Published var isSharksAndReefsExpansionEnabled = false {
+        didSet {
+            if isSharksAndReefsExpansionEnabled {
+                weeklyGoalBoardSet = .sharksAndReefs
+            } else {
+                weeklyGoalBoardSet = .base
+            }
+            selectedWeeklyGoalIdsByWeek = [:]
+        }
+    }
     @Published private(set) var isNautomaExpansionEnabled = false
+    @Published var weeklyGoalBoardSet: AchievementBoardSet = .base
     @Published var weeklyGoalBoardSide: AchievementBoardSide = .sideA
     @Published var weeklyGoalSelectionMode: WeeklyGoalSelectionMode = .random
     @Published var selectedWeeklyGoalIdsByWeek: [Int: WeeklyGoalID] = [:]
@@ -73,19 +83,20 @@ final class LobbyViewModel: ObservableObject {
     }
 
     var weeklyGoalSetupValidationError: String? {
-        guard weeklyGoalBoardSide == .sideB,
-              weeklyGoalSelectionMode == .custom
-        else {
-            return nil
-        }
-        for week in WeeklyGoalCatalog.supportedWeeks {
-            guard let selectedGoalId = selectedWeeklyGoalIdsByWeek[week],
-                  availableWeeklyGoalOptions(for: week).contains(where: { $0.id == selectedGoalId })
-            else {
-                return AppStrings.Lobby.weeklyGoalMissingSelection
+        if weeklyGoalBoardSide == .sideB,
+           weeklyGoalSelectionMode == .custom {
+            for week in WeeklyGoalCatalog.supportedWeeks {
+                guard let selectedGoalId = selectedWeeklyGoalIdsByWeek[week],
+                      availableWeeklyGoalOptions(for: week).contains(where: { $0.id == selectedGoalId })
+                else {
+                    return AppStrings.Lobby.weeklyGoalMissingSelection
+                }
             }
         }
-        return nil
+        return WeeklyGoalCatalog.validationError(
+            setupConfig: weeklyGoalSetupConfig,
+            enabledExpansions: selectedEnabledExpansionsForWeeklyGoals
+        )
     }
 
     var requiresProfileSetup: Bool {
@@ -386,17 +397,26 @@ final class LobbyViewModel: ObservableObject {
         isNautomaExpansionEnabled = false
     }
 
+    var availableWeeklyGoalBoardSets: [AchievementBoardSet] {
+        isSharksAndReefsExpansionEnabled ? AchievementBoardSet.allCases : [.base]
+    }
+
     func availableWeeklyGoalOptions(for week: Int) -> [WeeklyGoalOptionViewData] {
         WeeklyGoalCatalog.availableGoals(
             for: week,
+            boardSet: weeklyGoalBoardSet,
             enabledExpansions: selectedEnabledExpansionsForWeeklyGoals
         )
         .map { goal in
             WeeklyGoalOptionViewData(
                 id: goal.id,
                 title: goal.title,
+                shortTitle: goal.shortTitle,
                 week: goal.week,
-                sourceExpansion: goal.sourceExpansion
+                boardSet: goal.boardSet,
+                sourceExpansion: goal.sourceExpansion,
+                pointsPerUnit: goal.pointsPerUnit,
+                isImplementedForScoring: goal.isImplementedForScoring
             )
         }
     }
@@ -454,6 +474,7 @@ final class LobbyViewModel: ObservableObject {
 
     private var weeklyGoalSetupConfig: WeeklyGoalSetupConfig {
         WeeklyGoalSetupConfig(
+            boardSet: weeklyGoalBoardSet,
             boardSide: weeklyGoalBoardSide,
             selectionMode: weeklyGoalSelectionMode,
             selectedGoalIdsByWeek: selectedWeeklyGoalIdsByWeek
@@ -482,15 +503,16 @@ final class LobbyViewModel: ObservableObject {
     }
 
     private func weeklyGoalSetupSummary(_ setup: WeeklyGoalSetupConfig) -> String {
+        let setName = weeklyGoalBoardSetName(setup.boardSet)
         switch setup.boardSide {
         case .sideA:
-            return AppStrings.Lobby.weeklyGoalSideA
+            return "\(setName) · \(AppStrings.Lobby.weeklyGoalSideA)"
         case .sideB:
             switch setup.selectionMode {
             case .random:
-                return AppStrings.Lobby.weeklyGoalSideBRandomSummary
+                return "\(setName) · \(AppStrings.Lobby.weeklyGoalSideBRandomSummary)"
             case .custom:
-                return AppStrings.Lobby.weeklyGoalSideBCustomSummary
+                return "\(setName) · \(AppStrings.Lobby.weeklyGoalSideBCustomSummary)"
             }
         }
     }
@@ -505,8 +527,9 @@ final class LobbyViewModel: ObservableObject {
             guard let goalId = setup.selectedGoalIdsByWeek[week],
                   let goal = WeeklyGoalCatalog.availableGoals(
                     for: week,
+                    boardSet: setup.boardSet,
                     enabledExpansions: selectedEnabledExpansionsForWeeklyGoals
-                  ).first(where: { $0.id == goalId })
+                ).first(where: { $0.id == goalId })
             else {
                 return nil
             }
@@ -537,13 +560,26 @@ final class LobbyViewModel: ObservableObject {
             isHostedByLocalPlayer: room.hostPlayerId == localPlayerId
         )
     }
+
+    private func weeklyGoalBoardSetName(_ set: AchievementBoardSet) -> String {
+        switch set {
+        case .base:
+            return AppStrings.Lobby.weeklyGoalBaseSet
+        case .sharksAndReefs:
+            return AppStrings.Lobby.weeklyGoalSharksAndReefsSet
+        }
+    }
 }
 
 struct WeeklyGoalOptionViewData: Identifiable, Equatable {
     let id: WeeklyGoalID
     let title: String
+    let shortTitle: String
     let week: Int
+    let boardSet: AchievementBoardSet
     let sourceExpansion: Expansion?
+    let pointsPerUnit: Int
+    let isImplementedForScoring: Bool
 }
 
 struct RoomLobbyViewData: Equatable {

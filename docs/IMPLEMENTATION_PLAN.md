@@ -221,11 +221,13 @@
 
 ### P6 S&R 成就和周目标
 
-- S&R achievement tiles。
-- Side A / Side B。
-- Side B 前三周随机 tile。
-- 最高分 +3。
-- 第 4 周 GAME END 说明格。
+- Weekly Achievement Board MVP 已完成第一步：Base / Sharks & Reefs board set、Side A / Side B、B 面前三周分池 tile、第四周固定 GAME END 说明格已建模。
+- Lobby 创建房间已接入 board set / side / selection mode。未启用 S&R 时默认 Base A；启用 S&R 时默认 S&R A，也可选择 Base board。
+- B 面 random selection 由 setup seed deterministic 解析；manual selection 按 week pool 校验，不允许跨周池或跨 board set。
+- 游戏内周目标 HUD / detail 使用 resolved weekly goal tile，并通过 `GameTokenIconResolver` 渲染周目标 token icon。
+- 当前已保持低风险计分：鱼卵 / 幼鱼、整排鱼、鱼群、珊瑚数量、弃牌堆卡牌、透光带鱼、被吞食鱼。
+- 未确认或缺少卡牌目录支持的 tile 已标记“计分待接入”：小/中/大型鱼、捕食者标签、标记鱼、若发动卡牌、每 2 / 3 枚鱼卵、不同标签、printed points 高低区间、完成珊瑚礁奖励作为周目标 tile。
+- 后续继续人工校对 `docs/references/weekly_goals/` 中的实体参考图和中文文案，再补 Side B highest +3 / 复杂 tile scoring。
 
 ### P7 多玩家 / 联机 / 产品化
 

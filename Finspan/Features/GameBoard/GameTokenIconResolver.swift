@@ -2,18 +2,28 @@ import SwiftUI
 
 enum GameTokenIconKind: Equatable, Hashable {
     case fish
+    case smallFish
+    case mediumFish
+    case largeFish
     case egg
     case young
     case school
     case coral(DiveSite)
     case anyCoral
+    case completeReefBonus
     case draw
     case discard
+    case card
     case consume
+    case predator
     case hatch
     case move
     case arrow
     case wave
+    case sun
+    case twilight
+    case night
+    case gameEnd
     case zone(DiveActionSite)
 }
 
@@ -61,6 +71,12 @@ final class GameTokenIconResolver: @unchecked Sendable {
         switch kind {
         case .fish:
             return ("FishFromHand", "鱼", "鱼牌")
+        case .smallFish:
+            return ("FishLengthSmall", "小", "小型鱼")
+        case .mediumFish:
+            return ("FishLengthMedium", "中", "中型鱼")
+        case .largeFish:
+            return ("FishLengthLarge", "大", "大型鱼")
         case .egg:
             return ("FishEgg", "卵", "鱼卵")
         case .young:
@@ -75,12 +91,18 @@ final class GameTokenIconResolver: @unchecked Sendable {
             return ("GreenCoral", "绿珊瑚", "绿色珊瑚")
         case .anyCoral:
             return ("AnyCoral", "珊瑚", "任意珊瑚")
+        case .completeReefBonus:
+            return ("AnyCoral", "礁", "完成珊瑚礁奖励")
         case .draw:
             return ("DrawCard", "抽牌", "抽牌")
         case .discard:
             return ("Discard", "弃", "弃牌")
+        case .card:
+            return ("DrawCard", "卡", "卡牌")
         case .consume:
             return ("ConsumeFish1", "吞", "覆盖鱼")
+        case .predator:
+            return ("Predator", "捕", "捕食者标签")
         case .hatch:
             return ("FishHatch", "孵", "孵化")
         case .move:
@@ -89,6 +111,14 @@ final class GameTokenIconResolver: @unchecked Sendable {
             return ("ArrowDown", "箭头", "箭头")
         case .wave:
             return ("Wave", "分", "分数")
+        case .sun:
+            return ("Sun", "光", "透光带")
+        case .twilight:
+            return ("Dusk", "暮", "暮光带")
+        case .night:
+            return ("Night", "夜", "深海带")
+        case .gameEnd:
+            return ("Wave", "终", "游戏结束")
         case .zone(.blue):
             return ("FlipperBlue", "蓝", "蓝色潜水点")
         case .zone(.purple):

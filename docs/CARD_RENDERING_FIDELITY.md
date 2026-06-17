@@ -81,6 +81,8 @@ Swift resolver 层把 web renderer model 映射到可缓存的 view state：
 
 `GameTokenIconResolver` 是非卡面 UI 的复用层。Compact Resource HUD、棋盘资源 token、珊瑚礁 badge、right-side reward token 和 `IncomingRewardDockToken` 正常路径都通过 live-derived CardAssets icon 渲染，不使用 SF Symbol、emoji、临时色块或纯文字作为 token 图标。布局尺寸由调用方明确 frame 控制，不由 PNG intrinsic size 控制。
 
+Weekly Achievement Board MVP 也复用同一路径：`WeeklyGoalIconToken` 在 `GameBoardViewModel` 中映射到 `GameTokenIconKind`，再由 `GameTokenIconResolver` / `GameTokenIconView` 渲染。周目标 HUD / 详情面板不再用 emoji 或文本符号表达鱼卵、幼鱼、鱼群、珊瑚、区域、鱼长度、捕食者、弃牌和 GAME END。
+
 已接入的 token / icon 包括：
 
 - `ArrowDown`
@@ -96,6 +98,9 @@ Swift resolver 层把 web renderer model 映射到可缓存的 view state：
 - `FreePlayFishFromHand`
 - `AllPlayers`
 - `Predator`
+- `FishLengthSmall`
+- `FishLengthMedium`
+- `FishLengthLarge`
 - `Sun` / `Sunlit`
 - `Dusk` / `Twilight`
 - `Night` / `Midnight`
@@ -103,9 +108,6 @@ Swift resolver 层把 web renderer model 映射到可缓存的 view state：
 - `PurpleCoral`
 - `GreenCoral`
 - `AnyCoral`
-- `FishLengthSmall`
-- `FishLengthMedium`
-- `FishLengthLarge`
 - `PlayFishBottomRow`
 - `WhenPlayed`
 - `IfActivated`

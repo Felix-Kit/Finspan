@@ -7,6 +7,20 @@ enum AchievementKind: String, Codable, Equatable, Sendable {
     case coralCount
     case discardPileCards
     case sunlitFish
+    case smallFish
+    case mediumFish
+    case largeFish
+    case consumedFish
+    case predatorTags
+    case markedFish
+    case unmarkedFish
+    case activatedCards
+    case everyTwoEggs
+    case everyThreeEggs
+    case distinctTags
+    case printedPointsHigh
+    case printedPointsLow
+    case completeReefBonus
 }
 
 struct WeeklyAchievementResult: Codable, Equatable, Sendable {
@@ -28,7 +42,9 @@ struct SideAWeeklyAchievementScorer: Sendable {
         }
 
         return playerStates.map { playerState in
-            let quantity = quantity(for: goal.kind, playerState: playerState)
+            let quantity = goal.isImplementedForScoring
+                ? quantity(for: goal.kind, playerState: playerState)
+                : 0
             return WeeklyAchievementResult(
                 week: week,
                 kind: goal.kind,
@@ -80,6 +96,24 @@ struct SideAWeeklyAchievementScorer: Sendable {
             return playerState.ocean.slots.filter { slot in
                 slot.address.zone == .sunlit && slot.content.hasFish
             }.count
+        case .consumedFish:
+            return playerState.ocean.slots.reduce(0) { total, slot in
+                total + slot.consumedFish.count
+            }
+        case .smallFish,
+             .mediumFish,
+             .largeFish,
+             .predatorTags,
+             .markedFish,
+             .unmarkedFish,
+             .activatedCards,
+             .everyTwoEggs,
+             .everyThreeEggs,
+             .distinctTags,
+             .printedPointsHigh,
+             .printedPointsLow,
+             .completeReefBonus:
+            return 0
         }
     }
 

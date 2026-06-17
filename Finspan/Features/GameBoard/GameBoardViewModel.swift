@@ -437,9 +437,11 @@ struct WeeklyGoalBoxViewState: Identifiable, Equatable {
 
     let index: Int
     let title: String
-    let iconText: String
+    let icons: [GameTokenIconAsset]
     let shortDescription: String
+    let statusText: String?
     let isCurrent: Bool
+    let isCompleted: Bool
     let isGameEndBox: Bool
 }
 
@@ -455,9 +457,10 @@ struct WeeklyGoalDetailItemViewState: Identifiable, Equatable {
 
     let index: Int
     let title: String
-    let iconText: String
+    let icons: [GameTokenIconAsset]
     let description: String
     let scoringText: String
+    let statusText: String?
     let playerScores: [WeeklyGoalPlayerScoreViewState]
     let isCurrent: Bool
 }
@@ -1704,23 +1707,28 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     private func weeklyGoalBoxViewState(_ index: Int) -> WeeklyGoalBoxViewState {
-        WeeklyGoalBoxViewState(
+        let goal = weeklyGoalDefinition(for: index)
+        return WeeklyGoalBoxViewState(
             index: index,
             title: AppStrings.GameBoard.weeklyGoalBoxTitle(index),
-            iconText: weeklyGoalIconText(index),
+            icons: weeklyGoalIcons(for: goal, week: index),
             shortDescription: weeklyGoalDescription(index),
+            statusText: weeklyGoalStatusText(goal, week: index),
             isCurrent: min(max(state.currentWeek, 1), 4) == index,
+            isCompleted: state.weeklyAchievementResults.contains { $0.week == index },
             isGameEndBox: index == 4
         )
     }
 
     private func weeklyGoalDetailItem(_ week: Int) -> WeeklyGoalDetailItemViewState {
-        WeeklyGoalDetailItemViewState(
+        let goal = weeklyGoalDefinition(for: week)
+        return WeeklyGoalDetailItemViewState(
             index: week,
             title: AppStrings.GameBoard.weeklyGoalBoxTitle(week),
-            iconText: weeklyGoalIconText(week),
+            icons: weeklyGoalIcons(for: goal, week: week),
             description: weeklyGoalDescription(week),
             scoringText: weeklyGoalScoringText(week),
+            statusText: weeklyGoalStatusText(goal, week: week),
             playerScores: players.map { player in
                 WeeklyGoalPlayerScoreViewState(
                     playerId: player.playerId,
@@ -1732,34 +1740,35 @@ final class GameBoardViewModel: ObservableObject {
         )
     }
 
-    private func weeklyGoalIconText(_ index: Int) -> String {
-        guard let kind = weeklyGoalDefinition(for: index)?.kind else {
-            return index == 4 ? "★" : "?"
-        }
-        switch kind {
-        case .eggsAndYoung:
-            return "🥚"
-        case .rowsOfFish:
-            return "▦"
-        case .schools:
-            return "●"
-        case .coralCount:
-            return "◌"
-        case .discardPileCards:
-            return "▤"
-        case .sunlitFish:
-            return "☀"
-        }
+    private func weeklyGoalIcons(
+        for goal: WeeklyGoalDefinition?,
+        week: Int
+    ) -> [GameTokenIconAsset] {
+        let tokens = goal?.iconTokens ?? (week == 4 ? [.gameEnd] : [.fish])
+        return tokens.prefix(3).map { tokenIconResolver.icon(for: gameTokenIconKind(for: $0)) }
     }
 
     private func weeklyGoalDescription(_ index: Int) -> String {
         if let goal = weeklyGoalDefinition(for: index) {
-            return weeklyGoalDescription(for: goal.kind)
+            return goal.description
         }
         if index == 4 {
             return AppStrings.GameBoard.gameEndGoalShortDescription
         }
         return "?"
+    }
+
+    private func weeklyGoalStatusText(
+        _ goal: WeeklyGoalDefinition?,
+        week: Int
+    ) -> String? {
+        guard week != 4,
+              let goal,
+              !goal.isImplementedForScoring
+        else {
+            return nil
+        }
+        return AppStrings.GameBoard.weeklyGoalScoringPending
     }
 
     private func weeklyGoalDescription(for kind: AchievementKind) -> String {
@@ -1776,6 +1785,34 @@ final class GameBoardViewModel: ObservableObject {
             return AppStrings.GameBoard.discardPileCardsGoalDescription
         case .sunlitFish:
             return AppStrings.GameBoard.sunlitFishGoalDescription
+        case .smallFish:
+            return "小型鱼"
+        case .mediumFish:
+            return "中型鱼"
+        case .largeFish:
+            return "大型鱼"
+        case .consumedFish:
+            return "被吞食的鱼"
+        case .predatorTags:
+            return "每个捕食者标签"
+        case .markedFish:
+            return "上方有标记的鱼"
+        case .unmarkedFish:
+            return "上方没有标记的鱼"
+        case .activatedCards:
+            return "若发动卡牌"
+        case .everyTwoEggs:
+            return "每 2 枚鱼卵"
+        case .everyThreeEggs:
+            return "每 3 枚鱼卵"
+        case .distinctTags:
+            return "鱼类中的不同标签"
+        case .printedPointsHigh:
+            return "分值高于 4 的鱼"
+        case .printedPointsLow:
+            return "分值 1-3 之间的鱼"
+        case .completeReefBonus:
+            return "完成珊瑚礁奖励"
         }
     }
 
@@ -1823,10 +1860,79 @@ final class GameBoardViewModel: ObservableObject {
             return playerState.ocean.slots.filter { slot in
                 slot.address.zone == .sunlit && slot.content.hasFish
             }.count
+        case .consumedFish:
+            return playerState.ocean.slots.reduce(0) { total, slot in
+                total + slot.consumedFish.count
+            }
+        case .smallFish,
+             .mediumFish,
+             .largeFish,
+             .predatorTags,
+             .markedFish,
+             .unmarkedFish,
+             .activatedCards,
+             .everyTwoEggs,
+             .everyThreeEggs,
+             .distinctTags,
+             .printedPointsHigh,
+             .printedPointsLow,
+             .completeReefBonus:
+            return 0
+        }
+    }
+
+    private func gameTokenIconKind(for token: WeeklyGoalIconToken) -> GameTokenIconKind {
+        switch token {
+        case .egg:
+            return .egg
+        case .young:
+            return .young
+        case .school:
+            return .school
+        case .fish:
+            return .fish
+        case .smallFish:
+            return .smallFish
+        case .mediumFish:
+            return .mediumFish
+        case .largeFish:
+            return .largeFish
+        case .predator:
+            return .predator
+        case .consumedFish:
+            return .consume
+        case .card:
+            return .card
+        case .discard:
+            return .discard
+        case .sun:
+            return .sun
+        case .twilight:
+            return .twilight
+        case .night:
+            return .night
+        case .blueCoral:
+            return .coral(.blue)
+        case .purpleCoral:
+            return .coral(.purple)
+        case .greenCoral:
+            return .coral(.green)
+        case .anyCoral:
+            return .anyCoral
+        case .completeReefBonus:
+            return .completeReefBonus
+        case .gameEnd:
+            return .gameEnd
+        case .wave:
+            return .wave
         }
     }
 
     private func weeklyGoalScoringText(_ week: Int) -> String {
+        if let goal = weeklyGoalDefinition(for: week),
+           !goal.isImplementedForScoring {
+            return AppStrings.GameBoard.weeklyGoalScoringPending
+        }
         if state.currentWeek <= week,
            let activePlayerState = state.playerGameStates[state.activePlayerId ?? ""] {
             return AppStrings.GameBoard.currentProjectedScoreText(
