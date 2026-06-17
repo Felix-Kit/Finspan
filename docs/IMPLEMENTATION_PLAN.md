@@ -229,7 +229,9 @@
 
 ### P7 多玩家 / 联机 / 产品化
 
-- 点击对手头像查看 board。
+- 点击对手头像查看 board 已完成：GameBoardViewModel presentation 层分离 `activePlayerId`、`localPlayerId` 和 `viewingPlayerId`，头像切换只改变展示，不发送规则命令、不修改 `GameState`。
+- 对手 board 为只读展示；自己的 pending / staged `playFish` / GAME END / AllPlayers 上下文仍由 `BottomRewardDock` 承载。需要回到自己 board 选目标或支付来源时，dock 显示返回提示。
+- AllPlayers 和 GAME END 的 dock source summary 可跳转到来源玩家 board，并在可定位时高亮来源鱼。
 - 本地多人完整流程。
 - 局域网联机。
 - reconnect / 房间恢复。

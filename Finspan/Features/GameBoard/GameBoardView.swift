@@ -210,30 +210,57 @@ struct GameBoardView: View {
     }
 
     private func playerHud(_ viewState: TopPlayerHudViewState) -> some View {
-        HStack(spacing: 8) {
-            ForEach(viewState.players) { player in
-                Button {
-                    viewModel.selectPlayerAvatar(player.playerId)
-                } label: {
-                    VStack(spacing: 2) {
-                        Text(player.avatarText)
-                            .font(player.isActive ? .callout.weight(.black) : .caption.weight(.bold))
-                            .foregroundStyle(.white)
-                            .frame(width: player.isActive ? 38 : 32, height: player.isActive ? 38 : 32)
-                            .background(Circle().fill(avatarColor(player.colorName)))
-                            .overlay(
-                                Circle()
-                                    .stroke(player.isActive ? Color.yellow : (player.isSelectedForPreview ? Color.accentColor : Color.white.opacity(0.7)), lineWidth: player.isActive ? 3 : 1.5)
-                            )
-                            .shadow(color: player.isActive ? Color.yellow.opacity(0.28) : .clear, radius: 5)
+        VStack(spacing: 5) {
+            HStack(spacing: 8) {
+                ForEach(viewState.players) { player in
+                    Button {
+                        viewModel.selectPlayerAvatar(player.playerId)
+                    } label: {
+                        VStack(spacing: 2) {
+                            ZStack(alignment: .bottomTrailing) {
+                                Text(player.avatarText)
+                                    .font(player.isActive ? .callout.weight(.black) : .caption.weight(.bold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: player.isActive ? 38 : 32, height: player.isActive ? 38 : 32)
+                                    .background(Circle().fill(avatarColor(player.colorName)))
+                                    .overlay(
+                                        Circle()
+                                            .stroke(player.isViewing ? Color.accentColor : Color.white.opacity(0.7), lineWidth: player.isViewing ? 3 : 1.5)
+                                    )
+                                    .shadow(color: player.isActive ? Color.yellow.opacity(0.28) : .clear, radius: 5)
 
-                        Text(player.displayName)
-                            .font(.caption2.weight(player.isActive ? .black : .semibold))
-                            .foregroundStyle(player.isActive ? .primary : .secondary)
-                            .lineLimit(1)
+                                if player.isActive {
+                                    Circle()
+                                        .fill(Color.yellow)
+                                        .frame(width: 10, height: 10)
+                                        .overlay(Circle().stroke(Color(.systemBackground), lineWidth: 1.5))
+                                }
+                            }
+
+                            Text(player.displayName)
+                                .font(.caption2.weight(player.isViewing ? .black : .semibold))
+                                .foregroundStyle(player.isViewing ? .primary : .secondary)
+                                .lineLimit(1)
+                        }
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(player.isViewing ? "\(player.displayName)，\(AppStrings.GameBoard.viewing)" : player.displayName)
                 }
-                .buttonStyle(.plain)
+            }
+
+            if let message = viewState.perspectiveMessage {
+                HStack(spacing: 8) {
+                    Text(message)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Button(viewState.returnToLocalPlayerText) {
+                        viewModel.returnToLocalPlayerBoard()
+                    }
+                    .font(.caption2.weight(.bold))
+                    .buttonStyle(.bordered)
+                    .controlSize(.mini)
+                }
             }
         }
         .padding(.horizontal, 10)
@@ -1250,6 +1277,13 @@ struct GameBoardView: View {
                         Text(rewardSelectionReasonText)
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.blue)
+                            .lineLimit(1)
+                    }
+
+                    if let readOnlyReasonText = slot.readOnlyReasonText {
+                        Text(readOnlyReasonText)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
                 }

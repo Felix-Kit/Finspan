@@ -215,7 +215,7 @@ final class GameBoardViewModelTests: XCTestCase {
 
         XCTAssertEqual(service.gameState, originalState)
         XCTAssertEqual(viewModel.selectedViewedPlayerId, "player-2")
-        XCTAssertEqual(viewModel.opponentBoardPreviewMessage, AppStrings.GameBoard.opponentBoardPreviewUnavailable)
+        XCTAssertEqual(viewModel.opponentBoardPreviewMessage, AppStrings.GameBoard.viewingPlayerBoard(name: "玩家 2"))
         XCTAssertEqual(viewModel.state.activePlayerId, "player-1")
     }
 
@@ -5288,7 +5288,9 @@ final class GameBoardViewModelTests: XCTestCase {
                 isValidDropTarget: false,
                 dropTargetReasonText: nil,
                 isHighlightedByRewardSelection: false,
-                rewardSelectionReasonText: nil
+                rewardSelectionReasonText: nil,
+                isReadOnly: false,
+                readOnlyReasonText: nil
             )
         }
         return slot

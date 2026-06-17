@@ -300,6 +300,7 @@ struct HandViewState: Equatable {
     let canSelectMainCard: Bool
     let canSelectDiscardPayment: Bool
     let blockingMessage: String?
+    let perspectiveMessage: String?
 }
 
 struct GameTopBarViewState: Equatable {
@@ -341,8 +342,12 @@ struct TopPlayerHudViewState: Equatable {
     let activePlayerId: PlayerID?
     let lastActionSummaryText: String?
     let playerCountText: String
-    let selectedViewedPlayerId: PlayerID?
-    let opponentBoardPreviewMessage: String?
+    let viewingPlayerId: PlayerID?
+    let viewingPlayerName: String?
+    let localPlayerId: PlayerID?
+    let perspectiveMessage: String?
+    let isViewingOpponentBoard: Bool
+    let returnToLocalPlayerText: String
 }
 
 struct PlayerAvatarViewState: Identifiable, Equatable {
@@ -353,6 +358,7 @@ struct PlayerAvatarViewState: Identifiable, Equatable {
     let colorName: String?
     let avatarText: String
     let isActive: Bool
+    let isViewing: Bool
     let isSelectedForPreview: Bool
 }
 
@@ -549,6 +555,8 @@ struct OceanSlotViewData: Identifiable, Equatable {
     let dropTargetReasonText: String?
     let isHighlightedByRewardSelection: Bool
     let rewardSelectionReasonText: String?
+    let isReadOnly: Bool
+    let readOnlyReasonText: String?
 }
 
 struct SlotResourceTokenViewState: Identifiable, Equatable {
@@ -980,6 +988,7 @@ final class GameBoardViewModel: ObservableObject {
     @Published private(set) var selectedRewardTokenId: String?
     @Published private var rewardSelectionMode: RewardSelectionMode?
     @Published private(set) var selectedViewedPlayerId: PlayerID?
+    @Published private(set) var highlightedViewedSourceSlot: OceanSlotAddress?
     @Published private(set) var selectedWeeklyGoalDetailWeek: Int?
     @Published private(set) var isEventLogPresented = false
     @Published private(set) var isDiscardPileDetailPresented = false
@@ -1026,6 +1035,32 @@ final class GameBoardViewModel: ObservableObject {
         return players.first(where: { $0.playerId == activePlayerId })?.displayName ?? activePlayerId
     }
 
+    var activePlayerId: PlayerID? {
+        state.activePlayerId
+    }
+
+    var localPlayerId: PlayerID? {
+        actionPlayerId ?? state.activePlayerId ?? players.first?.playerId ?? state.players.first?.id
+    }
+
+    var viewingPlayerId: PlayerID? {
+        selectedViewedPlayerId ?? localPlayerId
+    }
+
+    var viewingPlayerName: String {
+        guard let viewingPlayerId else {
+            return "-"
+        }
+        return displayName(for: viewingPlayerId)
+    }
+
+    var isViewingOpponentBoard: Bool {
+        guard let viewingPlayerId, let localPlayerId else {
+            return false
+        }
+        return viewingPlayerId != localPlayerId
+    }
+
     var topBarViewState: GameTopBarViewState {
         let totals = activePlayerResourceTotals
         return GameTopBarViewState(
@@ -1067,8 +1102,8 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     var compactResourceHUDState: CompactResourceHUDState {
-        let totals = activePlayerResourceTotals
-        let reefs = activePlayerState?.ocean.coralReefs ?? []
+        let totals = viewingPlayerResourceTotals
+        let reefs = viewingPlayerState?.ocean.coralReefs ?? []
         let coralCounts = Dictionary(uniqueKeysWithValues: reefs.map { ($0.diveSite, $0.coralCount) })
         let entries = [
             CompactResourceHUDEntry(
@@ -1139,8 +1174,12 @@ final class GameBoardViewModel: ObservableObject {
             activePlayerId: state.activePlayerId,
             lastActionSummaryText: lastActionSummaryText,
             playerCountText: AppStrings.GameBoard.topBarPlayerCountText(players.count),
-            selectedViewedPlayerId: selectedViewedPlayerId,
-            opponentBoardPreviewMessage: opponentBoardPreviewMessage
+            viewingPlayerId: viewingPlayerId,
+            viewingPlayerName: viewingPlayerName,
+            localPlayerId: localPlayerId,
+            perspectiveMessage: boardPerspectiveMessage,
+            isViewingOpponentBoard: isViewingOpponentBoard,
+            returnToLocalPlayerText: AppStrings.GameBoard.returnToOwnBoard
         )
     }
 
@@ -1270,10 +1309,11 @@ final class GameBoardViewModel: ObservableObject {
                 displayMode: .compact,
                 title: AppStrings.GameBoard.playFishPayment,
                 sourceText: payment.cardTitle,
+                sourcePlayerId: localPlayerId,
                 instructionText: payment.blockingMessage ?? AppStrings.GameBoard.playFishFromHandPayment,
                 summaryLines: playFishActionSummaryLines(payment),
                 tokens: [],
-                warningText: payment.blockingMessage,
+                warningText: bottomDockPerspectiveWarning ?? payment.blockingMessage,
                 fallbackReason: nil,
                 forwardControl: BottomRewardDockControl(
                     title: "→ \(AppStrings.GameBoard.confirmPlayFish)",
@@ -1305,10 +1345,13 @@ final class GameBoardViewModel: ObservableObject {
                 displayMode: .compact,
                 title: rewardPool.isActive ? rewardPool.titleText : action.title,
                 sourceText: rewardPool.sourceText,
+                sourcePlayerId: rewardPool.isActive
+                    ? bottomRewardSourcePlayerId(for: activeRewardChoice)
+                    : bottomRewardGameEndSourcePlayerId(),
                 instructionText: rewardPool.isActive ? rewardPool.instructionText : action.summaryLines.first ?? AppStrings.GameBoard.chooseMainAction,
                 summaryLines: rewardPool.isActive ? [] : action.summaryLines,
                 tokens: tokens,
-                warningText: rewardPool.blockingMessage ?? action.warningText,
+                warningText: bottomDockPerspectiveWarning ?? rewardPool.blockingMessage ?? action.warningText,
                 fallbackReason: fallbackReason,
                 forwardControl: forwardControl,
                 backControl: backControl
@@ -1451,6 +1494,31 @@ final class GameBoardViewModel: ObservableObject {
         )
     }
 
+    private func bottomRewardSourcePlayerId(for choice: PendingChoice?) -> PlayerID? {
+        guard let choice else {
+            return nil
+        }
+        if let allPlayersProgress = choice.allPlayersProgress {
+            return allPlayersProgress.sourcePlayerId
+        }
+        return choice.playerId
+    }
+
+    private func bottomRewardSourceSlot(for choice: PendingChoice?) -> OceanSlotAddress? {
+        guard let choice else {
+            return nil
+        }
+        if let allPlayersProgress = choice.allPlayersProgress {
+            return allPlayersProgress.sourceAddress
+        }
+        return nil
+    }
+
+    private func bottomRewardGameEndSourcePlayerId() -> PlayerID? {
+        gameEndAbilityPhaseViewState?.abilityRows.first(where: { $0.canActivate })?.source.playerId
+            ?? gameEndAbilityPhaseViewState?.abilityRows.first?.source.playerId
+    }
+
     private func bottomForwardControl(for action: RightActionPanelViewState) -> BottomRewardDockControl? {
         if state.phase == .endGamePending,
            gameEndAbilityPhaseViewState != nil,
@@ -1505,6 +1573,18 @@ final class GameBoardViewModel: ObservableObject {
         }
     }
 
+    private var bottomDockPerspectiveWarning: String? {
+        guard isViewingOpponentBoard else {
+            return nil
+        }
+        if isSelectingPlayFish
+            || rewardSelectionMode != nil
+            || activeRewardChoice != nil {
+            return returnToOwnBoardPrompt
+        }
+        return nil
+    }
+
     private func continuationSurfaces(for kind: RewardTokenKind) -> [ContinuationSurface] {
         switch kind {
         case .drawFish,
@@ -1543,12 +1623,14 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     var opponentBoardPreviewMessage: String? {
-        guard let selectedViewedPlayerId,
-              selectedViewedPlayerId != state.activePlayerId
-        else {
+        boardPerspectiveMessage
+    }
+
+    var boardPerspectiveMessage: String? {
+        guard isViewingOpponentBoard else {
             return nil
         }
-        return AppStrings.GameBoard.opponentBoardPreviewUnavailable
+        return AppStrings.GameBoard.viewingPlayerBoard(name: viewingPlayerName)
     }
 
     private var activePlayerColorName: String? {
@@ -1580,6 +1662,26 @@ final class GameBoardViewModel: ObservableObject {
         }
     }
 
+    private var viewingPlayerResourceTotals: (eggs: Int, young: Int, schools: Int) {
+        guard let viewingPlayerState else {
+            return (0, 0, 0)
+        }
+        return viewingPlayerState.ocean.slots.reduce(into: (eggs: 0, young: 0, schools: 0)) { totals, slot in
+            for resource in slot.resources {
+                switch resource.kind {
+                case .egg:
+                    totals.eggs += resource.amount
+                case .young:
+                    totals.young += resource.amount
+                case .school:
+                    totals.schools += resource.amount
+                default:
+                    break
+                }
+            }
+        }
+    }
+
     private func playerAvatarViewState(_ player: RoomPlayer) -> PlayerAvatarViewState {
         PlayerAvatarViewState(
             playerId: player.playerId,
@@ -1587,7 +1689,8 @@ final class GameBoardViewModel: ObservableObject {
             colorName: player.color.map(AppStrings.colorName),
             avatarText: avatarText(for: player.playerId),
             isActive: player.playerId == state.activePlayerId,
-            isSelectedForPreview: player.playerId == selectedViewedPlayerId
+            isViewing: player.playerId == viewingPlayerId,
+            isSelectedForPreview: player.playerId == viewingPlayerId
         )
     }
 
@@ -2221,6 +2324,41 @@ final class GameBoardViewModel: ObservableObject {
         return nil
     }
 
+    private var actionPlayerId: PlayerID? {
+        if let choice = activeRewardChoice {
+            return choice.playerId
+        }
+        if let paymentChoice = gameEndPlayFishFromHandPaymentChoice {
+            return paymentChoice.playerId
+        }
+        return state.activePlayerId
+    }
+
+    private var viewingPlayerState: PlayerGameState? {
+        guard let viewingPlayerId else {
+            return nil
+        }
+        return state.playerGameStates[viewingPlayerId]
+    }
+
+    private var isViewingActionPlayerBoard: Bool {
+        guard let viewingPlayerId, let localPlayerId else {
+            return false
+        }
+        return viewingPlayerId == localPlayerId
+    }
+
+    private func canInteractWithBoardAddress(_ address: OceanSlotAddress) -> Bool {
+        guard let localPlayerId else {
+            return false
+        }
+        return address.playerId == localPlayerId && isViewingActionPlayerBoard
+    }
+
+    private var returnToOwnBoardPrompt: String {
+        AppStrings.GameBoard.returnToOwnBoardToChooseTarget
+    }
+
     var handCards: [GameBoardCardViewData] {
         guard let activePlayerState else {
             return []
@@ -2347,7 +2485,8 @@ final class GameBoardViewModel: ObservableObject {
                 canSelectCards: false,
                 canSelectMainCard: false,
                 canSelectDiscardPayment: false,
-                blockingMessage: AppStrings.GameBoard.noActivePlayer
+                blockingMessage: AppStrings.GameBoard.noActivePlayer,
+                perspectiveMessage: nil
             )
         }
 
@@ -2363,7 +2502,8 @@ final class GameBoardViewModel: ObservableObject {
             canSelectCards: canSelectCards,
             canSelectMainCard: canSelectCards,
             canSelectDiscardPayment: canSelectDiscardPaymentCards,
-            blockingMessage: handBlockingMessage
+            blockingMessage: handBlockingMessage,
+            perspectiveMessage: handPerspectiveMessage
         )
     }
 
@@ -2384,10 +2524,10 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     var oceanSlots: [OceanSlotViewData] {
-        guard let activePlayerState else {
+        guard let viewingPlayerState else {
             return []
         }
-        return activePlayerState.ocean.slots
+        return viewingPlayerState.ocean.slots
             .sorted { left, right in
                 if left.address.diveSite.rawValue == right.address.diveSite.rawValue {
                     return left.address.rowIndex < right.address.rowIndex
@@ -2661,6 +2801,13 @@ final class GameBoardViewModel: ObservableObject {
         return nil
     }
 
+    private var handPerspectiveMessage: String? {
+        guard isViewingOpponentBoard else {
+            return nil
+        }
+        return AppStrings.GameBoard.handRemainsOwnWhileViewingOpponent
+    }
+
     private func canSelectDiscardPaymentCard(_ cardId: CardID) -> Bool {
         guard canSelectDiscardPaymentCards,
               let selectedCardId,
@@ -2929,6 +3076,10 @@ final class GameBoardViewModel: ObservableObject {
             return
         }
         dragHoverSlotAddress = address
+        if let address, !canInteractWithBoardAddress(address) {
+            errorMessage = returnToOwnBoardPrompt
+            return
+        }
         guard let address,
               let activePlayerState,
               let slot = activePlayerState.ocean.slots.first(where: { $0.address == address })
@@ -2953,6 +3104,12 @@ final class GameBoardViewModel: ObservableObject {
             guard beginDraggingHandCard(draggingCardId) else {
                 return false
             }
+        }
+        guard canInteractWithBoardAddress(targetAddress) else {
+            draggingHandCardId = nil
+            dragHoverSlotAddress = nil
+            errorMessage = returnToOwnBoardPrompt
+            return false
         }
         guard let activePlayerState,
               let slot = activePlayerState.ocean.slots.first(where: { $0.address == targetAddress })
@@ -2989,6 +3146,10 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     func selectTargetSlot(_ address: OceanSlotAddress) {
+        guard canInteractWithBoardAddress(address) else {
+            errorMessage = returnToOwnBoardPrompt
+            return
+        }
         if handleRewardSlotTap(address) {
             return
         }
@@ -3357,11 +3518,32 @@ final class GameBoardViewModel: ObservableObject {
 
     func selectPlayerAvatar(_ playerId: PlayerID) {
         selectedViewedPlayerId = playerId
-        if playerId != state.activePlayerId {
-            errorMessage = AppStrings.GameBoard.opponentBoardPreviewUnavailable
-        } else {
-            errorMessage = nil
+        highlightedViewedSourceSlot = nil
+        errorMessage = nil
+    }
+
+    func returnToLocalPlayerBoard() {
+        selectedViewedPlayerId = localPlayerId
+        highlightedViewedSourceSlot = nil
+        errorMessage = nil
+    }
+
+    func viewSourcePlayer(_ playerId: PlayerID) {
+        selectedViewedPlayerId = playerId
+        highlightedViewedSourceSlot = sourceSlotForPlayer(playerId)
+        errorMessage = nil
+    }
+
+    private func sourceSlotForPlayer(_ playerId: PlayerID) -> OceanSlotAddress? {
+        if let choice = activeRewardChoice,
+           bottomRewardSourcePlayerId(for: choice) == playerId {
+            return bottomRewardSourceSlot(for: choice)
         }
+        if let row = gameEndAbilityPhaseViewState?.abilityRows.first(where: { $0.source.playerId == playerId && $0.canActivate })
+            ?? gameEndAbilityPhaseViewState?.abilityRows.first(where: { $0.source.playerId == playerId }) {
+            return row.source.slotAddress
+        }
+        return nil
     }
 
     func selectWeeklyGoalBox(_ index: Int) {
@@ -3506,6 +3688,8 @@ final class GameBoardViewModel: ObservableObject {
         case .openFallbackOverlay:
             isBottomDockDebugFallbackPresented = true
             errorMessage = nil
+        case let .viewSourcePlayer(playerId):
+            viewSourcePlayer(playerId)
         }
     }
 
@@ -3562,6 +3746,10 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     func toggleResourcePayment(address: OceanSlotAddress, kind: ResourceKind, tokenIndex: Int) {
+        guard canInteractWithBoardAddress(address) else {
+            errorMessage = AppStrings.GameBoard.returnToOwnBoardToChoosePayment
+            return
+        }
         guard !hasBlockingPendingChoices else {
             return
         }
@@ -5086,6 +5274,14 @@ final class GameBoardViewModel: ObservableObject {
                 availability: .unavailable,
                 unavailableReason: .noSelectedCard,
                 message: AppStrings.GameBoard.slotSelectFishFirst
+            )
+        }
+
+        guard canInteractWithBoardAddress(slot.address) else {
+            return PlayFishSlotPreview(
+                availability: .unavailable,
+                unavailableReason: .occupied,
+                message: AppStrings.GameBoard.readOnlyBoard
             )
         }
 
@@ -7541,9 +7737,11 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     private func oceanSlotViewData(_ slot: OceanSlot) -> OceanSlotViewData {
-        let isHighlighted = slotIsHighlightedByDiveQueue(slot)
+        let isSourceHighlight = slot.address == highlightedViewedSourceSlot
+        let isHighlighted = slotIsHighlightedByDiveQueue(slot) || isSourceHighlight
         let preview = playFishSlotPreview(for: slot)
-        let isDropTarget = draggingHandCardId != nil
+        let isReadOnly = !canInteractWithBoardAddress(slot.address)
+        let isDropTarget = draggingHandCardId != nil && !isReadOnly
         let rewardHighlightText = rewardSelectionHighlightText(for: slot)
         return OceanSlotViewData(
             address: slot.address,
@@ -7552,9 +7750,9 @@ final class GameBoardViewModel: ObservableObject {
             resourcesText: resourcesText(slot.resources),
             cardFace: fishCardFaceViewState(content: slot.content),
             isOccupied: slot.content != .empty,
-            isSelected: selectedTargetSlot == slot.address,
+            isSelected: !isReadOnly && selectedTargetSlot == slot.address,
             isHighlightedByDiveQueue: isHighlighted,
-            highlightReasonText: isHighlighted ? slotDiveQueueHighlightText(slot) : nil,
+            highlightReasonText: isSourceHighlight ? AppStrings.GameBoard.sourceFishHighlight : (isHighlighted ? slotDiveQueueHighlightText(slot) : nil),
             playFishPreview: preview,
             resourceTokens: resourceTokens(for: slot),
             aspectRatio: slotAspectRatio,
@@ -7563,13 +7761,15 @@ final class GameBoardViewModel: ObservableObject {
             dropTargetReasonText: isDropTarget
                 ? dropTargetReasonText(preview: preview)
                 : nil,
-            isHighlightedByRewardSelection: rewardHighlightText != nil,
-            rewardSelectionReasonText: rewardHighlightText
+            isHighlightedByRewardSelection: !isReadOnly && rewardHighlightText != nil,
+            rewardSelectionReasonText: isReadOnly ? nil : rewardHighlightText,
+            isReadOnly: isReadOnly,
+            readOnlyReasonText: isReadOnly ? AppStrings.GameBoard.readOnlyBoard : nil
         )
     }
 
     private func coralReefViewState(for diveSite: DiveSite) -> CoralReefViewState? {
-        guard let reef = activePlayerState?.ocean.coralReefs.first(where: { $0.diveSite == diveSite }) else {
+        guard let reef = viewingPlayerState?.ocean.coralReefs.first(where: { $0.diveSite == diveSite }) else {
             return nil
         }
         return CoralReefViewState(
@@ -8247,7 +8447,8 @@ final class GameBoardViewModel: ObservableObject {
             tokenIndex: tokenIndex
         )
         let isSelected = selectedResourcePaymentTokens.contains(key)
-        let isSelectable = resourceTokenIsSelectable(kind: kind, isSelected: isSelected)
+        let isReadOnly = !canInteractWithBoardAddress(slot.address)
+        let isSelectable = !isReadOnly && resourceTokenIsSelectable(kind: kind, isSelected: isSelected)
         return SlotResourceTokenViewState(
             address: slot.address,
             kind: kind,
@@ -8258,7 +8459,7 @@ final class GameBoardViewModel: ObservableObject {
             isSelectable: isSelectable,
             isSelectedForPayment: isSelected,
             selectionMarkerText: isSelected ? AppStrings.GameBoard.paymentSelectionMarker : nil,
-            unavailableReasonText: resourceTokenUnavailableReason(
+            unavailableReasonText: isReadOnly ? AppStrings.GameBoard.readOnlyBoard : resourceTokenUnavailableReason(
                 kind: kind,
                 isSelected: isSelected,
                 isSelectable: isSelectable

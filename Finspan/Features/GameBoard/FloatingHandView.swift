@@ -13,6 +13,14 @@ struct FloatingHandView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
+            if let perspectiveMessage = viewState.perspectiveMessage {
+                Text(perspectiveMessage)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.blue)
+                    .padding(.horizontal, 18)
+                    .shadow(color: .white.opacity(0.8), radius: 2)
+            }
+
             if let blockingMessage = viewState.blockingMessage {
                 Text(blockingMessage)
                     .font(.caption.weight(.semibold))

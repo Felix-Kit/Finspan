@@ -14,6 +14,7 @@ enum BottomRewardDockAction: Equatable {
     case activateGameEndAbility(GameEndAbilitySource)
     case finishGameEndAbilities
     case openFallbackOverlay
+    case viewSourcePlayer(PlayerID)
 }
 
 struct BottomRewardDockControl: Equatable {
@@ -42,6 +43,7 @@ struct BottomRewardDockState: Equatable {
     let displayMode: BottomRewardDockDisplayMode
     let title: String
     let sourceText: String?
+    var sourcePlayerId: PlayerID? = nil
     let instructionText: String
     let summaryLines: [String]
     let tokens: [BottomRewardDockToken]
@@ -146,10 +148,7 @@ struct BottomRewardDockView: View {
             .buttonStyle(.plain)
 
             if isExpanded, let sourceText = state.sourceText {
-                Text(sourceText)
-                    .font(.callout.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                sourceSummary(sourceText)
             }
 
             if !state.tokens.isEmpty {
@@ -196,6 +195,31 @@ struct BottomRewardDockView: View {
         )
         .padding(.horizontal, 18)
         .padding(.bottom, 12)
+    }
+
+    @ViewBuilder
+    private func sourceSummary(_ sourceText: String) -> some View {
+        if let sourcePlayerId = state.sourcePlayerId {
+            Button {
+                onAction(.viewSourcePlayer(sourcePlayerId))
+            } label: {
+                HStack(spacing: 6) {
+                    Text(sourceText)
+                        .lineLimit(2)
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.caption.weight(.bold))
+                }
+                .font(.callout.weight(.medium))
+                .foregroundStyle(Color.accentColor)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(sourceText)，\(AppStrings.GameBoard.viewSourceBoard)")
+        } else {
+            Text(sourceText)
+                .font(.callout.weight(.medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        }
     }
 
     private func tokenStrip(isExpanded: Bool) -> some View {

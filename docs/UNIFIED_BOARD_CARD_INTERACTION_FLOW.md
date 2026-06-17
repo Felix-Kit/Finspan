@@ -121,6 +121,20 @@ The dock carries:
 
 The old right-side reward list, pending action list, and playFish confirmation panel have been removed from the main board layout. Complex continuations still exist, but the dock is the entry point that opens a discard overlay, hand picker, playFish staged flow, or debug / helper sheet.
 
+## Player Board Perspective
+
+The board now separates the rules actor from the board being viewed:
+
+- `activePlayerId` remains rules-derived from `GameState` / turn state.
+- `localPlayerId` is the current local/action perspective used for command construction.
+- `viewingPlayerId` is presentation-only and decides which player's ocean, resources, reef state, and diver state are rendered.
+
+Changing `viewingPlayerId` never sends a `PlayerCommand`, never mutates `GameState`, and never changes whose turn it is. Top HUD player avatars are selectable: tapping an opponent switches the board to that player's ocean, while the active-player indicator remains separate from the viewing selection. Tapping `返回自己` restores the local player's board.
+
+Opponent boards are read-only. When `viewingPlayerId != localPlayerId`, slot selection, drag-to-play, resource payment source selection, and pending reward target selection are blocked with a return-to-own-board prompt. The board may still show fish, resources, coral reef state, and source highlights for inspection. The current implementation keeps the local player's hand visible with the explicit message `正在查看对手，手牌仍为你自己的手牌`, so the player does not mistake the visible hand for the opponent's hidden hand.
+
+`BottomRewardDock` is intentionally not scoped to the viewed board. It continues to show the current pending reward, staged `playFish`, AllPlayers reward, or GAME END candidate even while the user is inspecting an opponent board. If the pending action requires selecting a target or payment source on the local board, the dock shows `请返回自己面板选择目标` or the equivalent payment prompt. External source summaries in the dock can switch `viewingPlayerId` to the source player and highlight the source fish slot when that address is known. This supports AllPlayers target rewards and GAME END source inspection without making card inline taps the primary interaction.
+
 ## Bottom Dock Fallback Routes
 
 `BottomDockOverlayRoute` is the shared presentation route for complex continuations that used to be explained by the right-side panel. The current routes are:

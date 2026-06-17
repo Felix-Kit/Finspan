@@ -164,6 +164,10 @@
 - 当前暂停 card inline 作为主交互。`BottomRewardDock` 是 reward / pending / playFish confirm 的主入口；card inline 只保留 source/highlight/group hint，`ArrowDown` 前后 token 作为组合语义整体高亮，不单独可点。
 - 外部收益优先由 `IncomingRewardDockState` 提供 source 摘要，并通过 bottom dock 展示。`recoverFromDiscardOrDraw`、`consumeFishFromHand`、`playFishForFree` / `playFishFromHand`、`drawFish`、GAME END 和 AllPlayers 都已在 audit / model 中按新口径表达。
 - `→` 可映射到 `PendingEffectIntent.skipRemaining` / `skipEffectExecution` 或单节点 `skipEffectNode`；`←` 当前只适合撤回未提交的 ViewModel staged selection，不能撤回已提交 `GameEvent`。
+- Player Board Perspective 已完成：`activePlayerId` / `localPlayerId` / `viewingPlayerId` 在 presentation 层分离，顶部玩家头像可切换正在查看的 board，`activePlayerId` 仍只由规则状态决定。
+- 查看对手 board 时显示该玩家 ocean / resources / reef / source highlight，但 board 为只读：不能向对手 board 出牌，不能选择对手资源作为自己的 payment source，也不能在对手 board 上解决自己的 pending target。
+- 查看对手时手牌仍显示本地/当前行动玩家自己的手牌，并显示“正在查看对手，手牌仍为你自己的手牌”，避免误认为看到了对手手牌。
+- `BottomRewardDock` 不因 `viewingPlayerId` 切换而丢失 pending / playFish / GAME END / AllPlayers 上下文；当 pending 必须回到自己 board 选目标或支付来源时，dock 显示返回自己面板提示。dock source summary 可跳到 AllPlayers 或 GAME END 来源玩家 board，并在可定位时高亮来源鱼。
 - DEBUG 牌库卡面状态面板继续扩展：现在可显示 brush asset、brush orientation、brush content mode、background position/repeat、ability panel frame、live measured frame、Swift delta、arrow-flow metrics 和 also-if gap，便于在模拟器中核对 pixel alignment。
 - Great White Shark 是 QA 样例，不是 special case：`base.main.057` 映射到 `57.*.webp`，`FishEgg` / `ArrowDown` / `Predator` / `AllPlayers` 均解析到 live-derived PNG render asset，cost 显示 `YoungFish` / `ConsumeFish`，length 600 cm 映射到 `FishLengthLarge`，ability presentation 使用 arrow-flow 而非 flat row。
 - Great Northern Tilefish、Banggai Cardinalfish、Bearded Seadevil、Great Barracuda 和 Atlantic Barracudina 也纳入代表卡审计，覆盖 If Activated brush block、arrow-flow overlap、S&R coral requirement / coral token、also-if split block、S&R badge、starter corner、不同 zone 和 flavor text。
@@ -192,13 +196,13 @@
 - Side B weekly bonus +3。
 - 真实 board 背景和 slot 对齐系统。
 - BoardLayout / SVG marker / JSON layout pipeline。
-- 点击对手头像查看对手 board。
 - Nautoma 后置。
 - 联机 / reconnect / 房间恢复后置。
 
 ## 当前建议下一步
 
-1. 继续做 bottom dock fallback 的交互细节打磨，重点是 overlay 尺寸、手牌遮挡、取消恢复上下文和错误提示。
-2. 继续做 GameBoardViewModel pending UI 小步稳定，重点是 target / payment / discard-selection prompt fallback。
-3. 后续再考虑 card icon shortcut；在 bottom dock 体验稳定、BoardLayout 完成前不要推进完整 card inline ability tap。
-4. 再修 UI bug：手牌居中、弃牌堆隐藏、empty slot 占位。
+1. 继续做 Player Board Perspective 细节打磨，重点是 source highlight 的可见性、返回自己快捷入口位置和 GAME END 多玩家浏览体验。
+2. 继续做 bottom dock fallback 的交互细节打磨，重点是 overlay 尺寸、手牌遮挡、取消恢复上下文和错误提示。
+3. 继续做 GameBoardViewModel pending UI 小步稳定，重点是 target / payment / discard-selection prompt fallback。
+4. 后续再考虑 card icon shortcut；在 bottom dock 体验稳定、BoardLayout 完成前不要推进完整 card inline ability tap。
+5. 再修 UI bug：手牌居中、弃牌堆隐藏、empty slot 占位。

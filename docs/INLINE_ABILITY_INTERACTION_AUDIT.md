@@ -17,6 +17,7 @@ Card ability icons remain useful as source / group highlights and future shortcu
 - There is no engine-level `←` command today. A safe design needs staged ViewModel undo first, and engine transaction/undo metadata only for committed reversible steps.
 - First unified presentation model exists as `BoardCardInteractionTask` / `BoardCardInteractionStep` / `BoardCardInteractionToken` / `BoardCardInteractionControlState`.
 - `IncomingRewardDockState` is the presentation source-summary model for external pending rewards where the current player cannot rely on a visible source fish card; `BottomRewardDockState` is the current primary dock surface that displays those rewards.
+- External source summaries can now switch `viewingPlayerId` to the source player board for read-only inspection and highlight a known source slot. This supports AllPlayers and GAME END source review without making card-face icon taps the primary interaction.
 - Right-side reward / pending / playFish confirmation panels are no longer part of the main board layout. Complex continuation now starts from the bottom dock and opens an overlay / sheet / picker.
 - `BottomDockOverlayRoute` now centralizes the dock fallback continuations: `discardPileSelection`, `handCardPicker`, `playFishStaging`, `reefTargetPicker`, `debugFallback`, and `gameEndCandidate`.
 
