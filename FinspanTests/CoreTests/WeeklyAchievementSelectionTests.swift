@@ -50,20 +50,50 @@ final class WeeklyAchievementSelectionTests: XCTestCase {
         )
     }
 
-    func testSharksAndReefsRandomUsesOnlySharksAndReefsPool() throws {
+    func testSharksAndReefsRandomUsesMergedPoolDeterministically() throws {
         let config = WeeklyGoalSetupConfig(
             boardSet: .sharksAndReefs,
             boardSide: .sideB,
             selectionMode: .random
         )
 
-        let goals = try WeeklyGoalCatalog.resolveGoals(
+        let first = try WeeklyGoalCatalog.resolveGoals(
+            setupConfig: config,
+            enabledExpansions: [.sharksAndReefs],
+            randomSeed: 77
+        )
+        let second = try WeeklyGoalCatalog.resolveGoals(
             setupConfig: config,
             enabledExpansions: [.sharksAndReefs],
             randomSeed: 77
         )
 
-        XCTAssertEqual(goals.map(\.week), [1, 2, 3])
-        XCTAssertTrue(goals.allSatisfy { $0.boardSet == .sharksAndReefs })
+        XCTAssertEqual(first, second)
+        XCTAssertEqual(first.map(\.week), [1, 2, 3])
+    }
+
+    func testSharksAndReefsManualSelectionAcceptsBaseAndExpansionTiles() throws {
+        let config = WeeklyGoalSetupConfig(
+            boardSet: .sharksAndReefs,
+            boardSide: .sideB,
+            selectionMode: .custom,
+            selectedGoalIdsByWeek: [
+                1: "base.sideB.week1.eggsAndYoung",
+                2: "sr.sideB.week2.predatorTags",
+                3: "base.sideB.week3.schools"
+            ]
+        )
+
+        let goals = try WeeklyGoalCatalog.resolveGoals(
+            setupConfig: config,
+            enabledExpansions: [.sharksAndReefs],
+            randomSeed: 0
+        )
+
+        XCTAssertEqual(goals.map(\.id), [
+            "base.sideB.week1.eggsAndYoung",
+            "sr.sideB.week2.predatorTags",
+            "base.sideB.week3.schools"
+        ])
     }
 }

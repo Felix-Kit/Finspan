@@ -92,14 +92,14 @@
 - Inline 交互分类已从单轴 A/B/C/D 调整为四维模型：`InlineEntrySurface`、`ContinuationSurface`、`CommitReversibility`、`SourceVisibility`。`needs picker / overlay` 不再等于不能 inline；`irreversible / no undo` 也不再等于不能 inline，只表示提交后不能用 `<-` 撤回。
 - 新增 `IncomingRewardDockState` presentation model，用于 AllPlayers 目标玩家、不可见 source card、board / dive-site marker 或 GAME END dock 等外部 pending reward 的来源摘要；实际入口由 `BottomRewardDock` 承载。
 - 已明确区分 cost / requirement token 与 reward / ability token：`playFish` cost icon 是进度展示，玩家直接点击 board / hand / reef 上的合法来源；ability reward icon 才是主动入口。
-- Compact Resource HUD 已接入顶部 HUD，用真实 live-derived token icon 显示手牌、鱼卵、幼鱼、鱼群和三色珊瑚计数。
+- Compact Resource HUD 已接入顶部 HUD，只用真实 live-derived token icon 显示鱼卵、幼鱼和鱼群计数。手牌数量留在手牌区域，三色珊瑚移到各 dive-site column 的 twilight / reef 区域附近。
 - 右侧资源统计大面板已压缩掉；右侧 pending / reward / action / playFish confirm 面板已从主 layout 移除。
 - `GameTokenIconResolver` / `GameTokenIconView` 已新增，非卡面 UI 的 egg / young / school / fish / coral / draw / discard / consume / hatch / move / zone token 可复用现有 CardAssets icon resolver，尺寸由 HUD / board layout 控制，不由 PNG intrinsic size 控制。
 - 顶部 HUD 已重做，包含玩家头像、当前行动摘要、设置入口和日志入口。
-- 周目标四格和详情面板已接入。
+- 主棋盘右上角已接入四个横向并排的小方块周目标入口；点击后只打开所选周详情，header 按“第 X 周、图标、标题”排列，不在详情中重复铺四张大卡。
 - Weekly Achievement Board MVP 已接入：`GameConfig.weeklyGoalSetup` 现在可表达 Base / Sharks & Reefs board set、A 面 / B 面、B 面随机或手动前三周 tile。
-- Base / S&R Side A 固定第 1-3 周目标和第 4 周 GAME END 说明格已建模；Base / S&R Side B tile pool 已按 week1 / week2 / week3 分池，第四周不从 pool 选。
-- Lobby 创建房间支持选择 achievement board set 和 A/B 面；启用 S&R 时默认 S&R A 面，也可切回 Base board。B 面 random 使用 setup seed deterministic 选择，manual selection 禁止跨周池 / 跨 board set。
+- Base / S&R Side A 固定第 1-3 周目标和第 4 周 GAME END 说明格已建模；Base Side B 按周使用 Base pool，S&R Side B 按周使用 Base + S&R 合并池，第四周不从 pool 选。
+- Lobby 创建房间支持选择 achievement board set 和 A/B 面；启用 S&R 时默认 S&R A 面，也可切回 Base board。B 面 random 使用 setup seed deterministic 选择，manual selection 禁止跨周池，S&R board 可选同周 Base 或 S&R tile。
 - 游戏内周目标 HUD / 详情面板现在使用 resolved weekly goal tile，未实现计分 tile 显示“计分待接入”。周目标 icon 通过 `WeeklyGoalIconToken` -> `GameTokenIconResolver` 使用 live-derived assets，不再用 emoji / SF Symbol / 文本符号作为正常路径。
 - 已将实体周目标参考图压缩存入 `docs/references/weekly_goals/`，仅作为 UI 和人工录入参考；文案和 tile 归类仍可后续校对。
 - 日志已改为折叠 / 弹出查看。
@@ -114,8 +114,8 @@
 - `BaseGameCardCatalog` 已支持从本地 JSON 加载。
 - `Finspan/Resources/Cards/base_main_fish_cards.json` 已包含 base main fish 125 张。
 - `Finspan/Resources/Cards/base_starter_fish_cards.json` 已包含 base starter fish 10 张。
-- 已支持 `baseGame` / `sample` 数据源切换。
-- `SampleCardCatalog` 仍保留用于本地开发和 sample flow。
+- 正常 Lobby 只提供 reviewed `baseGame` 数据源。
+- `SampleCardCatalog` / `.sample` factory path 仍保留给单元测试和显式开发 fixture，不进入普通房间创建 UI。
 
 ### 能力系统
 

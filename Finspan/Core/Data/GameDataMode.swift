@@ -5,6 +5,10 @@ enum GameDataMode: String, Codable, CaseIterable, Identifiable, Sendable {
     case baseGame
 
     var id: String { rawValue }
+
+    /// Normal room setup uses reviewed local card data. Sample data remains available
+    /// to tests and explicit development fixtures through `CardCatalogFactory`.
+    static let runtimeCases: [GameDataMode] = [.baseGame]
 }
 
 typealias CardCatalogMode = GameDataMode

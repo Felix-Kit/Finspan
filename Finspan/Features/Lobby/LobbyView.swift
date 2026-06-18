@@ -394,7 +394,7 @@ private struct CreateRoomSetupView: View {
             Text(AppStrings.Lobby.gameDataMode)
                 .font(.headline)
             Picker(AppStrings.Lobby.gameDataMode, selection: $viewModel.selectedGameDataMode) {
-                ForEach(GameDataMode.allCases) { mode in
+                ForEach(GameDataMode.runtimeCases) { mode in
                     Text(AppStrings.gameDataModeName(mode)).tag(mode)
                 }
             }

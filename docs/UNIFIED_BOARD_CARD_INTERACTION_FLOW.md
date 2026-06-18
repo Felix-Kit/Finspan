@@ -61,6 +61,7 @@ Cost / requirement token:
 - Player clicks legal sources directly on board / hand / reef.
 - The system auto-matches the source to an unmet cost when unambiguous.
 - The token changes to completed / dim after the source is selected.
+- Board egg / young / school tokens are rendered directly over the fish card's left size-class icon area without badge frames; their transparent hit targets still produce staged UI selection only.
 - Clicking the same selected source again unstages it.
 - If one source can satisfy multiple costs and cannot be inferred safely, use fallback.
 

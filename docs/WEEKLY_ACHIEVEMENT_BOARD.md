@@ -39,7 +39,7 @@ Sharks & Reefs A 面前三周同样固定，但 board scoring notes 额外显示
 - 珊瑚每个 1 分。
 - 完成珊瑚礁的奖励分数。
 
-Base B 面和 Sharks & Reefs B 面只从各自 set 的前三周 pool 选择，不混池。每一周只从对应周 pool 选择 1 个 tile。
+Base B 面只使用 Base 前三周 pool。启用 Sharks & Reefs 并选择 S&R board 时，每周 pool 是同一周的 Base tile + S&R tile 合并池；不会排除 Base tile，也不会跨周混池。每一周只从对应周 pool 选择 1 个 tile。
 
 ## 房间创建
 
@@ -56,16 +56,16 @@ Lobby 创建房间新增 achievement board set 选择：
 
 - 必须选择第 1 / 2 / 3 周。
 - 不允许跨周池。
-- 不允许 Base board 选择 S&R tile，或 S&R board 选择 Base tile。
+- Base board 不允许选择 S&R tile；S&R board 允许在对应周的 Base + S&R 合并池中选择。
 - 未启用 S&R 时不能选择 S&R board。
 
 `LocalAuthoritativeRoomService` 仍通过既有 setup builder 把 resolved weekly goals 写入 setup / `GameState`，所有玩家看到同一组周目标。
 
 ## 游戏内展示
 
-游戏内顶部周目标 HUD 继续提供四格入口，但每格使用实体板语义：
+游戏内主棋盘右上角提供四个横向并排的小方块入口，每格使用实体板语义：
 
-- 第 1 / 2 / 3 / 4 周固定 2x2 结构。
+- 第 1 / 2 / 3 / 4 周入口只显示周数、简化图标、短标题、分值和状态，不是完整详情卡。
 - A 面显示固定 tile。
 - B 面显示房间 setup resolved 的 tile。
 - 第 4 周显示 GAME END 固定说明。
@@ -73,7 +73,18 @@ Lobby 创建房间新增 achievement board set 选择：
 - 已结算周显示完成状态。
 - 未实现计分的 tile 显示“计分待接入”。
 
-详情面板显示每周说明、当前投影 / 已结算分、各玩家得分和第 4 周 GAME END 说明。
+点击入口后只打开所选周的详情，不在详情顶部重复铺四张大卡。详情 header 按“第 X 周 -> 图标 -> 标题”横向对齐，随后显示说明、计分规则、当前投影 / 已结算分和各玩家得分；第 4 周显示固定 GAME END 说明。
+
+## 资源展示调整
+
+- 顶部 Compact Resource HUD 只显示鱼卵、幼鱼和鱼群。
+- 三色珊瑚从顶部 HUD 移到各 dive-site column 的 twilight 区域前，继续使用 `GameTokenIconResolver` 的 live-derived icon。
+- ocean slot 上的鱼卵 / 幼鱼 / 鱼群改为直接叠放在鱼牌左侧 size-class 图标区域；不再使用外框 badge，也不覆盖鱼名、能力、分数、长度或 zone icon。
+- 资源选择仍是 ViewModel staged selection，最终变更继续通过既有 command/event/reducer 路径。
+
+## Runtime 数据源
+
+正常 Lobby 只提供 reviewed `baseGame` 数据源。`SampleCardCatalog` 和 `.sample` factory path 仍保留给单元测试与显式开发 fixture，不进入普通房间创建 UI。
 
 ## 图标
 

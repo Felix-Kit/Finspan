@@ -519,7 +519,7 @@ enum WeeklyGoalCatalog {
         case .base:
             return baseSideBGoals
         case .sharksAndReefs:
-            return sharksAndReefsSideBGoals
+            return baseSideBGoals + sharksAndReefsSideBGoals
         }
     }
 

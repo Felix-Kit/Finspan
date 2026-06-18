@@ -13,7 +13,7 @@
 - deterministic setup / `randomSeed` 不能破坏。
 - 随机性仍由 room service 控制，不能在 `GameEngine`、reducer 或 SwiftUI 中引入未受控随机。
 - rule logic 不写进 SwiftUI；SwiftUI 只做状态展示、临时选择和命令构造。
-- `sample` flow 和 `baseGame` flow 都要保留。
+- `baseGame` 是正常 Lobby runtime；`sample` factory path 只保留给测试和显式开发 fixture。
 
 ## 当前已完成
 
@@ -87,7 +87,7 @@
 ### 10. Catalog Mode 和 Base Game JSON Catalog
 
 - `GameDataMode` / catalog mode 已接入 lobby 和 room service。
-- `SampleCardCatalog` 保留用于 sample flow。
+- `SampleCardCatalog` 保留用于测试 / 显式开发 fixture，不进入正常 Lobby。
 - `BaseGameCardCatalog` 已从本地 JSON 加载 base game card data。
 - base main fish 125 张和 base starter fish 10 张已导入本地资源。
 
@@ -127,7 +127,7 @@
 
 ### 12. Major GameBoard HUD Polish
 
-- 顶部 HUD、玩家头像、当前行动摘要、周目标四格、周目标详情面板已接入。
+- 顶部 HUD、玩家头像、当前行动摘要、右上角四个横向周目标入口和单周详情面板已接入。
 - 右侧行动确认区已从主棋盘 layout 移除。
 - `BottomRewardDock` 已接入底部 overlay：空闲时 hidden / handle-only，有 pending 时 compact，点击可 expanded；承载 reward token list、pending action、GAME END candidate、AllPlayers external reward、`playFish` confirm、`->` 和 `<-`。
 - `BottomDockOverlayRoute` / `BottomDockOverlayState` 已接入，用于由 bottom dock 统一拉起 discard pile selection、hand card picker、playFish staging、reef target picker、debug fallback 和 GAME END candidate helper。
@@ -135,7 +135,7 @@
 - `consumeFishFromHand` 的 dock flow 已稳定为 hand picker first，再继续到 board consumer target；不在 dock 内塞复杂选择。
 - `playFishForFree` / `playFishFromHand` 的 dock flow 已稳定为 hand picker -> staged `playFish`；free play 不要求支付，paid play 继续进入 payment selection，确认 / 取消都由 dock controls 承载。
 - `drawFish` direct commit、GAME END candidate activation / finish、AllPlayers target-player external reward 继续由 dock 表达；提交后没有 committed undo。
-- Compact Resource HUD 已接入顶部 HUD：手牌、鱼卵、幼鱼、鱼群和三色珊瑚使用 live-derived CardAssets token icon 横向紧凑显示。
+- Compact Resource HUD 已瘦身为鱼卵、幼鱼、鱼群；珊瑚使用 live-derived CardAssets icon 显示在 twilight / reef 区域附近。
 - 右侧资源统计大面板已从 right-side fallback 区抽离；right-side pending / reward / action / playFish confirm 面板不再占主布局。
 - 新增 `GameTokenIconResolver` / `GameTokenIconView`，让非卡面 UI 复用 `CardSymbolAssetResolver` / live-derived PNG icon，不使用 SF Symbol、emoji、临时色块或纯文字作为 token 正常路径。
 - Unified staged interaction presentation model 已新增，覆盖 hand card、source fish、dive site / zone、reef / board marker、pending effect node，以及 payment source、reward token、target、confirm、skip、fallback 等 step。
@@ -222,6 +222,9 @@
 ### P6 S&R 成就和周目标
 
 - Weekly Achievement Board MVP 已完成第一步：Base / Sharks & Reefs board set、Side A / Side B、B 面前三周分池 tile、第四周固定 GAME END 说明格已建模。
+- S&R B 面已修正为按周使用 Base + S&R 合并池；random / manual 都复用该池，仍由 setup seed 保证 deterministic 且禁止跨周选择。
+- 主棋盘右上角使用四个横向小方块作为周目标入口；详情只显示所选周，header 中周数位于图标和标题之前。
+- 鱼牌 board-resource token 已移到左侧 size-class 图标区域并去掉 badge 外框；点击命中仍只构造 staged payment selection。
 - Lobby 创建房间已接入 board set / side / selection mode。未启用 S&R 时默认 Base A；启用 S&R 时默认 S&R A，也可选择 Base board。
 - B 面 random selection 由 setup seed deterministic 解析；manual selection 按 week pool 校验，不允许跨周池或跨 board set。
 - 游戏内周目标 HUD / detail 使用 resolved weekly goal tile，并通过 `GameTokenIconResolver` 渲染周目标 token icon。

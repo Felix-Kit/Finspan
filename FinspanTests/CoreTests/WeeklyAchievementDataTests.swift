@@ -45,6 +45,11 @@ final class WeeklyAchievementDataTests: XCTestCase {
 
     func testSharksAndReefsSideBPoolsAreSeparatedByWeek() {
         for week in WeeklyGoalCatalog.supportedWeeks {
+            let baseGoals = WeeklyGoalCatalog.availableGoals(
+                for: week,
+                boardSet: .base,
+                enabledExpansions: [.sharksAndReefs]
+            )
             let goals = WeeklyGoalCatalog.availableGoals(
                 for: week,
                 boardSet: .sharksAndReefs,
@@ -53,7 +58,9 @@ final class WeeklyAchievementDataTests: XCTestCase {
 
             XCTAssertFalse(goals.isEmpty)
             XCTAssertTrue(goals.allSatisfy { $0.week == week })
-            XCTAssertTrue(goals.allSatisfy { $0.boardSet == .sharksAndReefs })
+            XCTAssertTrue(Set(baseGoals.map(\.id)).isSubset(of: Set(goals.map(\.id))))
+            XCTAssertTrue(goals.contains { $0.boardSet == .base })
+            XCTAssertTrue(goals.contains { $0.boardSet == .sharksAndReefs })
         }
     }
 

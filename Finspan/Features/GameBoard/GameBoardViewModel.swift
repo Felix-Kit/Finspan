@@ -229,6 +229,7 @@ struct FishCardFaceViewState: Equatable {
     let sizeClassIcon: FishCardFaceIconViewState
     let abilitySegments: [FishCardAbilitySegment]
     let abilityPresentation: CardAbilityPresentation
+    var resourceTokens: [FishCardResourceTokenViewState] = []
     let expansionBadgeIcon: FishCardFaceIconViewState?
     let hasStarterCornerDecorations: Bool
     let backgroundAssetPrefix: String
@@ -241,6 +242,21 @@ struct FishCardFaceViewState: Equatable {
     var missingAssets: [MissingCardAsset] = []
     let aspectRatio: Double
     let isPlaceholder: Bool
+}
+
+struct FishCardResourceTokenViewState: Identifiable, Equatable {
+    var id: String { "\(kind.rawValue)-\(tokenIndex)" }
+
+    let kind: ResourceKind
+    let tokenIndex: Int
+    let icon: GameTokenIconAsset
+    let isSelectedForPayment: Bool
+    let placement: FishCardResourceTokenPlacement
+    let usesBadgeFrame: Bool
+}
+
+enum FishCardResourceTokenPlacement: String, Equatable {
+    case sizeClassIconArea
 }
 
 struct GameHudControlViewState: Equatable {
@@ -430,6 +446,16 @@ struct WeeklyGoalHudViewState: Equatable {
     let boxes: [WeeklyGoalBoxViewState]
     let selectedDetailWeek: Int?
     let isDetailPresented: Bool
+    let placement: WeeklyGoalHudPlacement
+    let layout: WeeklyGoalHudLayout
+}
+
+enum WeeklyGoalHudPlacement: String, Equatable {
+    case topTrailing
+}
+
+enum WeeklyGoalHudLayout: String, Equatable {
+    case horizontalEntryStrip
 }
 
 struct WeeklyGoalBoxViewState: Identifiable, Equatable {
@@ -437,8 +463,10 @@ struct WeeklyGoalBoxViewState: Identifiable, Equatable {
 
     let index: Int
     let title: String
+    let weekLabel: String
     let icons: [GameTokenIconAsset]
     let shortDescription: String
+    let pointsText: String
     let statusText: String?
     let isCurrent: Bool
     let isCompleted: Bool
@@ -447,8 +475,8 @@ struct WeeklyGoalBoxViewState: Identifiable, Equatable {
 
 struct WeeklyGoalDetailViewState: Equatable {
     let title: String
-    let weeklyScoreItems: [WeeklyGoalDetailItemViewState]
-    let gameEndInfo: GameEndInfoViewState
+    let item: WeeklyGoalDetailItemViewState
+    let gameEndInfo: GameEndInfoViewState?
     let noteText: String
 }
 
@@ -457,6 +485,7 @@ struct WeeklyGoalDetailItemViewState: Identifiable, Equatable {
 
     let index: Int
     let title: String
+    let weekLabel: String
     let icons: [GameTokenIconAsset]
     let description: String
     let scoringText: String
@@ -600,6 +629,11 @@ struct CoralReefViewState: Identifiable, Equatable {
     let title: String
     let progressText: String
     let completionBonusText: String
+    let placement: CoralReefDisplayPlacement
+}
+
+enum CoralReefDisplayPlacement: String, Equatable {
+    case beforeTwilightZone
 }
 
 struct OceanZoneSectionViewData: Identifiable, Equatable {
@@ -1106,15 +1140,7 @@ final class GameBoardViewModel: ObservableObject {
 
     var compactResourceHUDState: CompactResourceHUDState {
         let totals = viewingPlayerResourceTotals
-        let reefs = viewingPlayerState?.ocean.coralReefs ?? []
-        let coralCounts = Dictionary(uniqueKeysWithValues: reefs.map { ($0.diveSite, $0.coralCount) })
         let entries = [
-            CompactResourceHUDEntry(
-                id: "fish",
-                title: AppStrings.GameBoard.handCount,
-                count: activePlayerState?.hand.count ?? 0,
-                icon: tokenIconResolver.icon(for: .fish)
-            ),
             CompactResourceHUDEntry(
                 id: ResourceKind.egg.rawValue,
                 title: AppStrings.GameBoard.eggTotal,
@@ -1132,24 +1158,6 @@ final class GameBoardViewModel: ObservableObject {
                 title: AppStrings.GameBoard.schoolTotal,
                 count: totals.schools,
                 icon: tokenIconResolver.icon(for: .school)
-            ),
-            CompactResourceHUDEntry(
-                id: "coral-blue",
-                title: AppStrings.oceanDiveSiteName(.blue),
-                count: coralCounts[.blue] ?? 0,
-                icon: tokenIconResolver.icon(for: .coral(.blue))
-            ),
-            CompactResourceHUDEntry(
-                id: "coral-purple",
-                title: AppStrings.oceanDiveSiteName(.purple),
-                count: coralCounts[.purple] ?? 0,
-                icon: tokenIconResolver.icon(for: .coral(.purple))
-            ),
-            CompactResourceHUDEntry(
-                id: "coral-green",
-                title: AppStrings.oceanDiveSiteName(.green),
-                count: coralCounts[.green] ?? 0,
-                icon: tokenIconResolver.icon(for: .coral(.green))
             )
         ]
         return CompactResourceHUDState(
@@ -1190,22 +1198,26 @@ final class GameBoardViewModel: ObservableObject {
         WeeklyGoalHudViewState(
             boxes: (1...4).map(weeklyGoalBoxViewState),
             selectedDetailWeek: selectedWeeklyGoalDetailWeek,
-            isDetailPresented: selectedWeeklyGoalDetailWeek != nil
+            isDetailPresented: selectedWeeklyGoalDetailWeek != nil,
+            placement: .topTrailing,
+            layout: .horizontalEntryStrip
         )
     }
 
     var weeklyGoalDetailViewState: WeeklyGoalDetailViewState? {
-        guard selectedWeeklyGoalDetailWeek != nil else {
+        guard let selectedWeeklyGoalDetailWeek else {
             return nil
         }
         return WeeklyGoalDetailViewState(
             title: AppStrings.GameBoard.weeklyGoalDetailTitle,
-            weeklyScoreItems: (1...3).map(weeklyGoalDetailItem),
-            gameEndInfo: GameEndInfoViewState(
-                title: AppStrings.GameBoard.gameEndGoalTitle,
-                description: AppStrings.GameBoard.gameEndGoalDescription,
-                noteText: AppStrings.GameBoard.gameEndGoalNote
-            ),
+            item: weeklyGoalDetailItem(selectedWeeklyGoalDetailWeek),
+            gameEndInfo: selectedWeeklyGoalDetailWeek == 4
+                ? GameEndInfoViewState(
+                    title: AppStrings.GameBoard.gameEndGoalTitle,
+                    description: AppStrings.GameBoard.gameEndGoalDescription,
+                    noteText: AppStrings.GameBoard.gameEndGoalNote
+                )
+                : nil,
             noteText: AppStrings.GameBoard.finalScoreHiddenHint
         )
     }
@@ -1711,8 +1723,10 @@ final class GameBoardViewModel: ObservableObject {
         return WeeklyGoalBoxViewState(
             index: index,
             title: AppStrings.GameBoard.weeklyGoalBoxTitle(index),
+            weekLabel: AppStrings.GameBoard.weeklyGoalBoxTitle(index),
             icons: weeklyGoalIcons(for: goal, week: index),
             shortDescription: weeklyGoalDescription(index),
+            pointsText: weeklyGoalScoringText(index),
             statusText: weeklyGoalStatusText(goal, week: index),
             isCurrent: min(max(state.currentWeek, 1), 4) == index,
             isCompleted: state.weeklyAchievementResults.contains { $0.week == index },
@@ -1724,7 +1738,8 @@ final class GameBoardViewModel: ObservableObject {
         let goal = weeklyGoalDefinition(for: week)
         return WeeklyGoalDetailItemViewState(
             index: week,
-            title: AppStrings.GameBoard.weeklyGoalBoxTitle(week),
+            title: weeklyGoalTitle(week),
+            weekLabel: AppStrings.GameBoard.weeklyGoalBoxTitle(week),
             icons: weeklyGoalIcons(for: goal, week: week),
             description: weeklyGoalDescription(week),
             scoringText: weeklyGoalScoringText(week),
@@ -1756,6 +1771,13 @@ final class GameBoardViewModel: ObservableObject {
             return AppStrings.GameBoard.gameEndGoalShortDescription
         }
         return "?"
+    }
+
+    private func weeklyGoalTitle(_ index: Int) -> String {
+        if index == 4 {
+            return AppStrings.GameBoard.gameEndGoalTitle
+        }
+        return weeklyGoalDefinition(for: index)?.title ?? AppStrings.GameBoard.weeklyGoalBoxTitle(index)
     }
 
     private func weeklyGoalStatusText(
@@ -1929,6 +1951,9 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     private func weeklyGoalScoringText(_ week: Int) -> String {
+        guard week != 4 else {
+            return AppStrings.GameBoard.gameEndGoalTitle
+        }
         if let goal = weeklyGoalDefinition(for: week),
            !goal.isImplementedForScoring {
             return AppStrings.GameBoard.weeklyGoalScoringPending
@@ -7849,18 +7874,30 @@ final class GameBoardViewModel: ObservableObject {
         let isReadOnly = !canInteractWithBoardAddress(slot.address)
         let isDropTarget = draggingHandCardId != nil && !isReadOnly
         let rewardHighlightText = rewardSelectionHighlightText(for: slot)
+        let slotResourceTokens = resourceTokens(for: slot)
+        var cardFace = fishCardFaceViewState(content: slot.content)
+        cardFace.resourceTokens = slotResourceTokens.map { token in
+            FishCardResourceTokenViewState(
+                kind: token.kind,
+                tokenIndex: token.tokenIndex,
+                icon: token.icon,
+                isSelectedForPayment: token.isSelectedForPayment,
+                placement: .sizeClassIconArea,
+                usesBadgeFrame: false
+            )
+        }
         return OceanSlotViewData(
             address: slot.address,
             title: slotTitle(slot.address),
             subtitle: slotContentText(slot.content),
             resourcesText: resourcesText(slot.resources),
-            cardFace: fishCardFaceViewState(content: slot.content),
+            cardFace: cardFace,
             isOccupied: slot.content != .empty,
             isSelected: !isReadOnly && selectedTargetSlot == slot.address,
             isHighlightedByDiveQueue: isHighlighted,
             highlightReasonText: isSourceHighlight ? AppStrings.GameBoard.sourceFishHighlight : (isHighlighted ? slotDiveQueueHighlightText(slot) : nil),
             playFishPreview: preview,
-            resourceTokens: resourceTokens(for: slot),
+            resourceTokens: slotResourceTokens,
             aspectRatio: slotAspectRatio,
             isDropTarget: isDropTarget,
             isValidDropTarget: isDropTarget && preview.isSelectable,
@@ -7892,7 +7929,8 @@ final class GameBoardViewModel: ObservableObject {
             ),
             completionBonusText: AppStrings.coralReefCompletionBonusText(
                 completionBonus: reef.completionBonus
-            )
+            ),
+            placement: .beforeTwilightZone
         )
     }
 

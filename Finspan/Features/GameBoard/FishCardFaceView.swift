@@ -30,6 +30,7 @@ struct FishCardFaceView: View {
                 zoneArea(unit: unit)
                 pointsArea(unit: unit)
                 lengthArea(unit: unit)
+                resourceTokenArea(unit: unit)
                 tagArea(unit: unit)
                 flavorArea(unit: unit)
                 abilityArea(unit: unit)
@@ -160,6 +161,31 @@ struct FishCardFaceView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.leading, unit * CardRenderMetrics.CardFaceLayout.lengthLeft)
         .padding(.top, unit * CardRenderMetrics.CardFaceLayout.lengthTop)
+    }
+
+    @ViewBuilder
+    private func resourceTokenArea(unit: CGFloat) -> some View {
+        if !viewState.resourceTokens.isEmpty {
+            ZStack {
+                ForEach(Array(viewState.resourceTokens.prefix(5).enumerated()), id: \.element.id) { offset, token in
+                    GameTokenIconView(icon: token.icon, size: unit * 7.5)
+                        .scaleEffect(token.isSelectedForPayment ? 1.12 : 1)
+                        .shadow(
+                            color: token.isSelectedForPayment ? Color.red.opacity(0.85) : Color.black.opacity(0.16),
+                            radius: token.isSelectedForPayment ? unit * 1.2 : unit * 0.35
+                        )
+                        .offset(
+                            x: unit * CGFloat(offset % 2) * 4.8,
+                            y: unit * CGFloat(offset / 2) * 5.2
+                        )
+                }
+            }
+            .frame(width: unit * 14, height: unit * 18, alignment: .topLeading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .padding(.leading, unit * 4.5)
+            .padding(.top, unit * 65)
+            .accessibilityHidden(true)
+        }
     }
 
     private func tagArea(unit: CGFloat) -> some View {

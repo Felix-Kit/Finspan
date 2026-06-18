@@ -297,21 +297,25 @@ struct GameBoardView: View {
     }
 
     private func weeklyGoalBoxes(_ viewState: WeeklyGoalHudViewState) -> some View {
-        LazyVGrid(columns: [GridItem(.fixed(58)), GridItem(.fixed(58))], spacing: 6) {
+        HStack(spacing: 6) {
             ForEach(viewState.boxes) { box in
                 Button {
                     viewModel.selectWeeklyGoalBox(box.index)
                 } label: {
-                    VStack(spacing: 3) {
+                    VStack(spacing: 2) {
+                        Text(box.weekLabel)
+                            .font(.system(size: 8, weight: .black))
+                            .lineLimit(1)
                         HStack(spacing: 2) {
-                            ForEach(Array(box.icons.enumerated()), id: \.offset) { _, icon in
-                                GameTokenIconView(icon: icon, size: box.isCurrent ? 16 : 14)
+                            ForEach(Array(box.icons.prefix(2).enumerated()), id: \.offset) { _, icon in
+                                GameTokenIconView(icon: icon, size: box.isCurrent ? 15 : 13)
                             }
                         }
-                        .frame(height: 17)
-                        Text(box.title)
-                            .font(.caption2.weight(.black))
+                        .frame(height: 15)
+                        Text(box.shortDescription)
+                            .font(.system(size: 7, weight: .bold))
                             .lineLimit(1)
+                            .minimumScaleFactor(0.65)
                         if box.isCompleted {
                             Text(AppStrings.GameBoard.weeklyGoalCompleted)
                                 .font(.system(size: 7, weight: .bold))
@@ -322,15 +326,20 @@ struct GameBoardView: View {
                                 .font(.system(size: 7, weight: .bold))
                                 .foregroundStyle(.orange)
                                 .lineLimit(1)
+                        } else {
+                            Text(box.pointsText)
+                                .font(.system(size: 7, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
                         }
                     }
-                    .frame(width: box.isCurrent ? 62 : 56, height: box.isCurrent ? 58 : 52)
+                    .frame(width: box.isCurrent ? 62 : 58, height: box.isCurrent ? 62 : 58)
                     .background(
-                        RoundedRectangle(cornerRadius: 8)
+                        RoundedRectangle(cornerRadius: 6)
                             .fill(box.isGameEndBox ? Color.indigo.opacity(0.18) : Color(.secondarySystemBackground))
                     )
                     .overlay(
-                        RoundedRectangle(cornerRadius: 8)
+                        RoundedRectangle(cornerRadius: 6)
                             .stroke(box.isCurrent ? Color.yellow : Color.secondary.opacity(0.28), lineWidth: box.isCurrent ? 3 : 1)
                     )
                 }
@@ -828,11 +837,10 @@ struct GameBoardView: View {
                                     .font(.headline)
                                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                                if let coralReef = column.coralReef {
-                                    coralReefBadge(coralReef)
-                                }
-
                                 ForEach(column.zoneSections) { section in
+                                    if section.zone == .twilight, let coralReef = column.coralReef {
+                                        coralReefBadge(coralReef)
+                                    }
                                     zoneSectionPanel(section)
                                 }
                             }
@@ -908,64 +916,72 @@ struct GameBoardView: View {
     private func weeklyGoalDetailPanel(_ detail: WeeklyGoalDetailViewState) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                ForEach(detail.weeklyScoreItems) { item in
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            HStack(spacing: 4) {
-                                ForEach(Array(item.icons.enumerated()), id: \.offset) { _, icon in
-                                    GameTokenIconView(icon: icon, size: 22)
-                                }
+                let item = detail.item
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 10) {
+                        Text(item.weekLabel)
+                            .font(.headline.weight(.black))
+                        HStack(spacing: 4) {
+                            ForEach(Array(item.icons.enumerated()), id: \.offset) { _, icon in
+                                GameTokenIconView(icon: icon, size: 24)
                             }
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(item.title)
-                                    .font(.headline)
-                                Text(item.description)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                if let status = item.statusText {
-                                    Text(status)
-                                        .font(.caption2.weight(.bold))
-                                        .foregroundStyle(.orange)
-                                }
-                            }
-                            Spacer()
-                            Text(item.scoringText)
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(item.isCurrent ? .green : .secondary)
                         }
-
-                        ForEach(item.playerScores) { score in
-                            HStack {
-                                Text(score.playerName)
-                                Spacer()
-                                Text(score.scoreText)
-                                    .fontWeight(.semibold)
-                            }
-                            .font(.callout)
-                        }
+                        Text(item.title)
+                            .font(.headline)
+                            .lineLimit(2)
+                        Spacer(minLength: 8)
                     }
-                    .padding(12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(item.isCurrent ? Color.green.opacity(0.12) : Color(.secondarySystemBackground))
-                    )
-                }
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(detail.gameEndInfo.title)
-                        .font(.headline)
-                    Text(detail.gameEndInfo.description)
+                    Text(item.description)
                         .font(.callout)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text(detail.gameEndInfo.noteText)
-                        .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    HStack {
+                        if let status = item.statusText {
+                            Text(status)
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(.orange)
+                        }
+                        Spacer()
+                        Text(item.scoringText)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(item.isCurrent ? .green : .secondary)
+                    }
+
+                    ForEach(item.playerScores) { score in
+                        HStack {
+                            Text(score.playerName)
+                            Spacer()
+                            Text(score.scoreText)
+                                .fontWeight(.semibold)
+                        }
+                        .font(.callout)
+                    }
                 }
                 .padding(12)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.indigo.opacity(0.12))
+                        .fill(item.isCurrent ? Color.green.opacity(0.12) : Color(.secondarySystemBackground))
                 )
+
+                if let gameEndInfo = detail.gameEndInfo {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(gameEndInfo.title)
+                            .font(.headline)
+                        Text(gameEndInfo.description)
+                            .font(.callout)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(gameEndInfo.noteText)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.indigo.opacity(0.12))
+                    )
+                }
 
                 Text(detail.noteText)
                     .font(.callout.weight(.medium))
@@ -1255,6 +1271,7 @@ struct GameBoardView: View {
                 emptySlotPlaceholder(slot)
             } else {
                 FishCardFaceView(viewState: slot.cardFace)
+                cardResourceTokenHitTargets(slot)
             }
 
             VStack(alignment: .leading, spacing: 4) {
@@ -1316,24 +1333,6 @@ struct GameBoardView: View {
                         .fill(Color(.systemBackground).opacity(0.84))
                 )
 
-                if !slot.resourceTokens.isEmpty {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 38), spacing: 4)], alignment: .leading, spacing: 4) {
-                        ForEach(slot.resourceTokens) { token in
-                            Button {
-                                viewModel.toggleResourcePayment(
-                                    address: token.address,
-                                    kind: token.kind,
-                                    tokenIndex: token.tokenIndex
-                                )
-                            } label: {
-                                resourceToken(token)
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(!token.isSelectable)
-                        }
-                    }
-                    .padding(.horizontal, 4)
-                }
             }
             .padding(6)
         }
@@ -1362,69 +1361,33 @@ struct GameBoardView: View {
         }
     }
 
-    private func resourceToken(_ token: SlotResourceTokenViewState) -> some View {
-        VStack(spacing: 2) {
-            ZStack(alignment: .topTrailing) {
-                ZStack {
-                    Circle()
-                        .fill(resourceTokenBackgroundColor(token))
-                    GameTokenIconView(icon: token.icon, size: 16)
-                }
-                .foregroundStyle(resourceTokenForegroundColor(token))
-                .frame(width: 22, height: 22)
-                .overlay(
-                    Circle().stroke(
-                        resourceTokenBorderColor(token),
-                        lineWidth: token.isSelectedForPayment ? 2 : 1
+    private func cardResourceTokenHitTargets(_ slot: OceanSlotViewData) -> some View {
+        GeometryReader { proxy in
+            let iconSize = max(18, proxy.size.width * 0.075)
+            ZStack(alignment: .topLeading) {
+                ForEach(Array(slot.resourceTokens.prefix(5).enumerated()), id: \.element.id) { offset, token in
+                    Button {
+                        viewModel.toggleResourcePayment(
+                            address: token.address,
+                            kind: token.kind,
+                            tokenIndex: token.tokenIndex
+                        )
+                    } label: {
+                        Color.clear
+                            .frame(width: iconSize, height: iconSize)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!token.isSelectable)
+                    .accessibilityLabel(token.title)
+                    .accessibilityHint(token.unavailableReasonText ?? token.warningText ?? "")
+                    .offset(
+                        x: proxy.size.width * (0.045 + CGFloat(offset % 2) * 0.048),
+                        y: proxy.size.width * (0.65 + CGFloat(offset / 2) * 0.052)
                     )
-                )
-
-                if let marker = token.selectionMarkerText {
-                    Text(marker)
-                        .font(.caption2.weight(.black))
-                        .foregroundStyle(.white)
-                        .frame(width: 12, height: 12)
-                        .background(Circle().fill(Color.red))
-                        .offset(x: 3, y: -3)
                 }
-            }
-
-            Text(token.title)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(token.isSelectable || token.isSelectedForPayment ? .primary : .secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-
-            if token.isSelectedForPayment {
-                Text(AppStrings.GameBoard.sourceSelectedCount)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.red)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-            } else if let warning = token.warningText {
-                Text(warning)
-                    .font(.caption2)
-                    .foregroundStyle(.red)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-            } else if let reason = token.unavailableReasonText {
-                Text(reason)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
             }
         }
-        .padding(.horizontal, 4)
-        .padding(.vertical, 4)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(token.isSelectedForPayment ? Color.red.opacity(0.12) : Color(.tertiarySystemBackground))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(token.isSelectedForPayment ? Color.red.opacity(0.65) : Color.secondary.opacity(0.18), lineWidth: 1)
-        )
     }
 
     private func emptySlotPlaceholder(_ slot: OceanSlotViewData) -> some View {
@@ -1597,45 +1560,6 @@ struct GameBoardView: View {
         case .green:
             return .green
         }
-    }
-
-    private func resourceTokenBackgroundColor(_ token: SlotResourceTokenViewState) -> Color {
-        if token.isSelectedForPayment {
-            return .red.opacity(0.2)
-        }
-        if token.isSelectable {
-            return .green.opacity(0.18)
-        }
-        if token.kind == .egg {
-            return .yellow.opacity(0.22)
-        }
-        if token.kind == .young {
-            return .cyan.opacity(0.16)
-        }
-        if token.kind == .school {
-            return .blue.opacity(0.16)
-        }
-        return Color(.secondarySystemBackground)
-    }
-
-    private func resourceTokenBorderColor(_ token: SlotResourceTokenViewState) -> Color {
-        if token.isSelectedForPayment {
-            return .red
-        }
-        if token.isSelectable {
-            return .green
-        }
-        return .secondary.opacity(0.25)
-    }
-
-    private func resourceTokenForegroundColor(_ token: SlotResourceTokenViewState) -> Color {
-        if token.isSelectedForPayment {
-            return .red
-        }
-        if token.isSelectable {
-            return .green
-        }
-        return .primary
     }
 
     private func resourceSourceSection(

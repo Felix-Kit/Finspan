@@ -24,17 +24,14 @@ final class CompactResourceHUDTests: XCTestCase {
         let hud = viewModel.compactResourceHUDState
 
         XCTAssertEqual(hud.entries.map(\.id), [
-            "fish",
             ResourceKind.egg.rawValue,
             ResourceKind.young.rawValue,
-            ResourceKind.school.rawValue,
-            "coral-blue",
-            "coral-purple",
-            "coral-green"
+            ResourceKind.school.rawValue
         ])
-        XCTAssertEqual(hud.entries.map(\.count), [3, 2, 1, 1, 1, 2, 3])
+        XCTAssertEqual(hud.entries.map(\.count), [2, 1, 1])
         XCTAssertTrue(hud.entries.allSatisfy { $0.icon.isResolved })
         XCTAssertTrue(hud.entries.allSatisfy { $0.icon.asset?.fileExtension.lowercased() == "png" })
+        XCTAssertFalse(hud.entries.contains { $0.id.hasPrefix("coral-") })
     }
 
     func testCompactResourceHUDSummaryDoesNotDependOnTextOnlyFallbacks() {

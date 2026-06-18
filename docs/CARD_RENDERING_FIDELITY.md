@@ -79,7 +79,11 @@ Swift resolver 层把 web renderer model 映射到可缓存的 view state：
 
 `GameBoardViewModel` 和 `CardLibraryViewModel` 负责构造静态 `FishCardFaceViewState`。`FishCardFaceView` 只读取 view state 展示，不在 `body` 内解析 ability text，不扫描 bundle。
 
-`GameTokenIconResolver` 是非卡面 UI 的复用层。Compact Resource HUD、棋盘资源 token、珊瑚礁 badge、right-side reward token 和 `IncomingRewardDockToken` 正常路径都通过 live-derived CardAssets icon 渲染，不使用 SF Symbol、emoji、临时色块或纯文字作为 token 图标。布局尺寸由调用方明确 frame 控制，不由 PNG intrinsic size 控制。
+`GameTokenIconResolver` 是游戏 token UI 的复用层。Compact Resource HUD、鱼牌 board-resource overlay、珊瑚礁 badge 和 `BottomRewardDockToken` 正常路径都通过 live-derived CardAssets icon 渲染，不使用 SF Symbol、emoji、临时色块或纯文字作为 token 图标。布局尺寸由调用方明确 frame 控制，不由 PNG intrinsic size 控制。
+
+鱼卵 / 幼鱼 / 鱼群 board-resource token 现在通过 `FishCardFaceViewState.resourceTokens` 进入共享卡面，直接叠放在左侧 size-class 图标区域。token 没有额外 badge 外框，多个 token 轻微错位堆叠；名称、能力文案、flavor text、分数、长度和 zone icon 保持无遮挡。slot 层只提供透明命中区域来发送 staged payment intent，不解析资源图标。
+
+顶部 Compact Resource HUD 只保留鱼卵、幼鱼和鱼群。Blue / Purple / Green coral 继续使用相同 resolver，但展示位置移到对应 dive-site column 的 twilight / reef 区域前。
 
 Weekly Achievement Board MVP 也复用同一路径：`WeeklyGoalIconToken` 在 `GameBoardViewModel` 中映射到 `GameTokenIconKind`，再由 `GameTokenIconResolver` / `GameTokenIconView` 渲染。周目标 HUD / 详情面板不再用 emoji 或文本符号表达鱼卵、幼鱼、鱼群、珊瑚、区域、鱼长度、捕食者、弃牌和 GAME END。
 

@@ -331,7 +331,7 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.weeklyGoalHudViewState.boxes.first { $0.index == 4 }?.isCurrent, true)
     }
 
-    func testSelectingWeeklyGoalBoxOpensDetailWithOnlyFirstThreeWeeklyScores() {
+    func testSelectingWeeklyGoalBoxOpensOnlySelectedWeekDetail() {
         let result = WeeklyAchievementResult(
             week: 1,
             kind: .eggsAndYoung,
@@ -345,15 +345,28 @@ final class GameBoardViewModelTests: XCTestCase {
         )
         let viewModel = GameBoardViewModel(roomService: service)
 
-        viewModel.selectWeeklyGoalBox(4)
+        viewModel.selectWeeklyGoalBox(1)
 
         guard let detail = viewModel.weeklyGoalDetailViewState else {
             return XCTFail("Expected weekly goal detail.")
         }
-        XCTAssertEqual(detail.weeklyScoreItems.map(\.index), [1, 2, 3])
-        XCTAssertEqual(detail.gameEndInfo.title, AppStrings.GameBoard.gameEndGoalTitle)
+        XCTAssertEqual(detail.item.index, 1)
+        XCTAssertEqual(detail.item.weekLabel, AppStrings.GameBoard.weeklyGoalBoxTitle(1))
+        XCTAssertNil(detail.gameEndInfo)
         XCTAssertEqual(detail.noteText, AppStrings.GameBoard.finalScoreHiddenHint)
-        XCTAssertEqual(detail.weeklyScoreItems.first?.playerScores.first?.scoreText, "4 分")
+        XCTAssertEqual(detail.item.playerScores.first?.scoreText, "4 分")
+    }
+
+    func testSelectingFourthWeeklyGoalShowsFixedGameEndDetail() {
+        let viewModel = GameBoardViewModel(roomService: makeService(hand: []))
+
+        viewModel.selectWeeklyGoalBox(4)
+
+        XCTAssertEqual(viewModel.weeklyGoalDetailViewState?.item.index, 4)
+        XCTAssertEqual(
+            viewModel.weeklyGoalDetailViewState?.gameEndInfo?.title,
+            AppStrings.GameBoard.gameEndGoalTitle
+        )
     }
 
     func testEventLogButtonTogglesPresentedState() {
