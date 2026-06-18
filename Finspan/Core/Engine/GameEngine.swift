@@ -494,7 +494,9 @@ struct GameEngine {
             : weeklyAchievementScorer.score(
                 week: state.currentWeek,
                 playerStates: orderedPlayerStates,
-                weeklyGoals: state.weeklyGoals
+                weeklyGoals: state.weeklyGoals,
+                cardCatalog: cardCatalog,
+                abilityResolver: abilityResolver
             )
         return WeekEndedEvent(
             endedWeek: state.currentWeek,

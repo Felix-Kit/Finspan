@@ -350,11 +350,11 @@ final class GameBoardViewModelTests: XCTestCase {
         guard let detail = viewModel.weeklyGoalDetailViewState else {
             return XCTFail("Expected weekly goal detail.")
         }
-        XCTAssertEqual(detail.item.index, 1)
-        XCTAssertEqual(detail.item.weekLabel, AppStrings.GameBoard.weeklyGoalBoxTitle(1))
-        XCTAssertNil(detail.gameEndInfo)
+        XCTAssertEqual(detail.sections.map(\.index), [1, 2, 3, 4])
+        XCTAssertEqual(detail.selectedWeek, 1)
+        XCTAssertEqual(detail.sections.first?.weekLabel, AppStrings.GameBoard.weeklyGoalBoxTitle(1))
         XCTAssertEqual(detail.noteText, AppStrings.GameBoard.finalScoreHiddenHint)
-        XCTAssertEqual(detail.item.playerScores.first?.scoreText, "4 分")
+        XCTAssertEqual(detail.sections.first?.playerScores.first?.scoreText, "4 分")
     }
 
     func testSelectingFourthWeeklyGoalShowsFixedGameEndDetail() {
@@ -362,9 +362,9 @@ final class GameBoardViewModelTests: XCTestCase {
 
         viewModel.selectWeeklyGoalBox(4)
 
-        XCTAssertEqual(viewModel.weeklyGoalDetailViewState?.item.index, 4)
+        XCTAssertEqual(viewModel.weeklyGoalDetailViewState?.selectedWeek, 4)
         XCTAssertEqual(
-            viewModel.weeklyGoalDetailViewState?.gameEndInfo?.title,
+            viewModel.weeklyGoalDetailViewState?.sections.first(where: { $0.index == 4 })?.gameEndInfo?.title,
             AppStrings.GameBoard.gameEndGoalTitle
         )
     }

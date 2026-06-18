@@ -471,16 +471,25 @@ struct WeeklyGoalBoxViewState: Identifiable, Equatable {
     let isCurrent: Bool
     let isCompleted: Bool
     let isGameEndBox: Bool
+    let showsFullTitle: Bool
+    let iconScale: Double
 }
 
-struct WeeklyGoalDetailViewState: Equatable {
+enum WeeklyGoalScoreStatus: String, Equatable {
+    case finalized
+    case currentProjection
+    case futureProjection
+    case notImplemented
+}
+
+struct WeeklyGoalScoreboardState: Equatable {
     let title: String
-    let item: WeeklyGoalDetailItemViewState
-    let gameEndInfo: GameEndInfoViewState?
+    let selectedWeek: Int
+    let sections: [WeeklyGoalScoreboardSectionState]
     let noteText: String
 }
 
-struct WeeklyGoalDetailItemViewState: Identifiable, Equatable {
+struct WeeklyGoalScoreboardSectionState: Identifiable, Equatable {
     var id: Int { index }
 
     let index: Int
@@ -489,16 +498,27 @@ struct WeeklyGoalDetailItemViewState: Identifiable, Equatable {
     let icons: [GameTokenIconAsset]
     let description: String
     let scoringText: String
-    let statusText: String?
-    let playerScores: [WeeklyGoalPlayerScoreViewState]
+    let status: WeeklyGoalScoreStatus
+    let statusText: String
+    let playerScores: [WeeklyGoalPlayerScoreBarState]
+    let gameEndInfo: GameEndInfoViewState?
     let isCurrent: Bool
+    let isSelected: Bool
+    let isCompleted: Bool
 }
 
-struct WeeklyGoalPlayerScoreViewState: Identifiable, Equatable {
+struct WeeklyGoalPlayerScoreBarState: Identifiable, Equatable {
     var id: PlayerID { playerId }
 
     let playerId: PlayerID
     let playerName: String
+    let avatarText: String
+    let playerColor: PlayerColor?
+    let basePoints: Int
+    let highestBonusPoints: Int
+    let totalPoints: Int
+    let widthRatio: Double
+    let isHighest: Bool
     let scoreText: String
 }
 
@@ -1204,20 +1224,16 @@ final class GameBoardViewModel: ObservableObject {
         )
     }
 
-    var weeklyGoalDetailViewState: WeeklyGoalDetailViewState? {
+    var weeklyGoalDetailViewState: WeeklyGoalScoreboardState? {
         guard let selectedWeeklyGoalDetailWeek else {
             return nil
         }
-        return WeeklyGoalDetailViewState(
-            title: AppStrings.GameBoard.weeklyGoalDetailTitle,
-            item: weeklyGoalDetailItem(selectedWeeklyGoalDetailWeek),
-            gameEndInfo: selectedWeeklyGoalDetailWeek == 4
-                ? GameEndInfoViewState(
-                    title: AppStrings.GameBoard.gameEndGoalTitle,
-                    description: AppStrings.GameBoard.gameEndGoalDescription,
-                    noteText: AppStrings.GameBoard.gameEndGoalNote
-                )
-                : nil,
+        return WeeklyGoalScoreboardState(
+            title: AppStrings.GameBoard.weeklyGoalScoreboardTitle,
+            selectedWeek: selectedWeeklyGoalDetailWeek,
+            sections: (1...4).map {
+                weeklyGoalScoreboardSection($0, selectedWeek: selectedWeeklyGoalDetailWeek)
+            },
             noteText: AppStrings.GameBoard.finalScoreHiddenHint
         )
     }
@@ -1726,33 +1742,151 @@ final class GameBoardViewModel: ObservableObject {
             weekLabel: AppStrings.GameBoard.weeklyGoalBoxTitle(index),
             icons: weeklyGoalIcons(for: goal, week: index),
             shortDescription: weeklyGoalDescription(index),
-            pointsText: weeklyGoalScoringText(index),
+            pointsText: index == 4 ? "终" : "\(goal?.pointsPerUnit ?? 0)",
             statusText: weeklyGoalStatusText(goal, week: index),
             isCurrent: min(max(state.currentWeek, 1), 4) == index,
             isCompleted: state.weeklyAchievementResults.contains { $0.week == index },
-            isGameEndBox: index == 4
+            isGameEndBox: index == 4,
+            showsFullTitle: false,
+            iconScale: state.currentWeek == index
+                && !state.weeklyAchievementResults.contains { $0.week == index }
+                ? 1.15
+                : 1
         )
     }
 
-    private func weeklyGoalDetailItem(_ week: Int) -> WeeklyGoalDetailItemViewState {
+    private func weeklyGoalScoreboardSection(
+        _ week: Int,
+        selectedWeek: Int
+    ) -> WeeklyGoalScoreboardSectionState {
         let goal = weeklyGoalDefinition(for: week)
-        return WeeklyGoalDetailItemViewState(
+        let status = weeklyGoalScoreStatus(week: week, goal: goal)
+        let scoreValues = weeklyGoalScoreValues(week: week, goal: goal, status: status)
+        let highestScore = scoreValues.map(\.totalPoints).max() ?? 0
+        return WeeklyGoalScoreboardSectionState(
             index: week,
             title: weeklyGoalTitle(week),
             weekLabel: AppStrings.GameBoard.weeklyGoalBoxTitle(week),
             icons: weeklyGoalIcons(for: goal, week: week),
             description: weeklyGoalDescription(week),
             scoringText: weeklyGoalScoringText(week),
-            statusText: weeklyGoalStatusText(goal, week: week),
-            playerScores: players.map { player in
-                WeeklyGoalPlayerScoreViewState(
-                    playerId: player.playerId,
-                    playerName: player.displayName,
-                    scoreText: weeklyGoalScoreText(week: week, playerId: player.playerId)
+            status: status,
+            statusText: weeklyGoalScoreStatusText(status),
+            playerScores: scoreValues.map { value in
+                let player = players.first { $0.playerId == value.playerId }
+                return WeeklyGoalPlayerScoreBarState(
+                    playerId: value.playerId,
+                    playerName: player?.displayName ?? value.playerId,
+                    avatarText: avatarText(for: value.playerId),
+                    playerColor: player?.color,
+                    basePoints: value.basePoints,
+                    highestBonusPoints: value.highestBonusPoints,
+                    totalPoints: value.totalPoints,
+                    widthRatio: highestScore > 0 ? Double(value.totalPoints) / Double(highestScore) : 0,
+                    isHighest: status != .notImplemented
+                        && value.totalPoints == highestScore,
+                    scoreText: AppStrings.GameBoard.weeklyGoalScoreBreakdownText(
+                        base: value.basePoints,
+                        bonus: value.highestBonusPoints,
+                        total: value.totalPoints
+                    )
                 )
             },
-            isCurrent: state.currentWeek == week
+            gameEndInfo: week == 4
+                ? GameEndInfoViewState(
+                    title: AppStrings.GameBoard.gameEndGoalTitle,
+                    description: AppStrings.GameBoard.gameEndGoalDescription,
+                    noteText: AppStrings.GameBoard.gameEndGoalNote
+                )
+                : nil,
+            isCurrent: state.currentWeek == week,
+            isSelected: selectedWeek == week,
+            isCompleted: status == .finalized
         )
+    }
+
+    private struct WeeklyGoalScoreValue {
+        let playerId: PlayerID
+        let basePoints: Int
+        let highestBonusPoints: Int
+        let totalPoints: Int
+    }
+
+    private func weeklyGoalScoreStatus(
+        week: Int,
+        goal: WeeklyGoalDefinition?
+    ) -> WeeklyGoalScoreStatus {
+        if week == 4 {
+            return state.phase == .gameEnded ? .finalized : (state.currentWeek == 4 ? .currentProjection : .futureProjection)
+        }
+        if state.weeklyAchievementResults.contains(where: { $0.week == week }) {
+            return .finalized
+        }
+        if goal?.isImplementedForScoring == false {
+            return .notImplemented
+        }
+        return state.currentWeek == week ? .currentProjection : .futureProjection
+    }
+
+    private func weeklyGoalScoreStatusText(_ status: WeeklyGoalScoreStatus) -> String {
+        switch status {
+        case .finalized:
+            return AppStrings.GameBoard.weeklyGoalFinalized
+        case .currentProjection:
+            return AppStrings.GameBoard.weeklyGoalCurrentProjection
+        case .futureProjection:
+            return AppStrings.GameBoard.weeklyGoalFutureProjection
+        case .notImplemented:
+            return AppStrings.GameBoard.weeklyGoalScoringPending
+        }
+    }
+
+    private func weeklyGoalScoreValues(
+        week: Int,
+        goal: WeeklyGoalDefinition?,
+        status: WeeklyGoalScoreStatus
+    ) -> [WeeklyGoalScoreValue] {
+        if week == 4 {
+            return players.map { player in
+                let points = state.finalScoreResult?.results.first { $0.playerId == player.playerId }?.totalPoints ?? 0
+                return WeeklyGoalScoreValue(
+                    playerId: player.playerId,
+                    basePoints: points,
+                    highestBonusPoints: 0,
+                    totalPoints: points
+                )
+            }
+        }
+
+        let results: [WeeklyAchievementResult]
+        if status == .finalized {
+            results = state.weeklyAchievementResults.filter { $0.week == week }
+        } else if status == .notImplemented {
+            results = players.map {
+                WeeklyAchievementResult(week: week, kind: goal?.kind ?? .eggsAndYoung, playerId: $0.playerId, quantity: 0, points: 0)
+            }
+        } else {
+            let orderedPlayerStates = players.compactMap { state.playerGameStates[$0.playerId] }
+            results = SideAWeeklyAchievementScorer().score(
+                week: week,
+                playerStates: orderedPlayerStates,
+                weeklyGoals: state.weeklyGoals,
+                cardCatalog: cardCatalog,
+                abilityResolver: abilityResolver
+            )
+        }
+
+        return players.map { player in
+            let result = results.first { $0.playerId == player.playerId }
+            let basePoints = (result?.quantity ?? 0) * (goal?.pointsPerUnit ?? 0)
+            let totalPoints = result?.points ?? 0
+            return WeeklyGoalScoreValue(
+                playerId: player.playerId,
+                basePoints: basePoints,
+                highestBonusPoints: max(0, totalPoints - basePoints),
+                totalPoints: totalPoints
+            )
+        }
     }
 
     private func weeklyGoalIcons(

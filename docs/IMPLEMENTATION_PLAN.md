@@ -127,7 +127,7 @@
 
 ### 12. Major GameBoard HUD Polish
 
-- 顶部 HUD、玩家头像、当前行动摘要、右上角四个横向周目标入口和单周详情面板已接入。
+- 顶部 HUD、玩家头像、当前行动摘要、右上角四个纯图标周目标入口和全 4 周 scoreboard 已接入。
 - 右侧行动确认区已从主棋盘 layout 移除。
 - `BottomRewardDock` 已接入底部 overlay：空闲时 hidden / handle-only，有 pending 时 compact，点击可 expanded；承载 reward token list、pending action、GAME END candidate、AllPlayers external reward、`playFish` confirm、`->` 和 `<-`。
 - `BottomDockOverlayRoute` / `BottomDockOverlayState` 已接入，用于由 bottom dock 统一拉起 discard pile selection、hand card picker、playFish staging、reef target picker、debug fallback 和 GAME END candidate helper。
@@ -223,14 +223,16 @@
 
 - Weekly Achievement Board MVP 已完成第一步：Base / Sharks & Reefs board set、Side A / Side B、B 面前三周分池 tile、第四周固定 GAME END 说明格已建模。
 - S&R B 面已修正为按周使用 Base + S&R 合并池；random / manual 都复用该池，仍由 setup seed 保证 deterministic 且禁止跨周选择。
-- 主棋盘右上角使用四个横向小方块作为周目标入口；详情只显示所选周，header 中周数位于图标和标题之前。
+- 主棋盘右上角使用四个横向小方块作为周目标入口；入口不显示完整标题，当前周 icon 放大并高亮。点击任意入口打开全 4 周 scoreboard，被点击周与当前周分别保留高亮语义。
 - 鱼牌 board-resource token 已移到左侧 size-class 图标区域并去掉 badge 外框；点击命中仍只构造 staged payment selection。
 - Lobby 创建房间已接入 board set / side / selection mode。未启用 S&R 时默认 Base A；启用 S&R 时默认 S&R A，也可选择 Base board。
 - B 面 random selection 由 setup seed deterministic 解析；manual selection 按 week pool 校验，不允许跨周池或跨 board set。
-- 游戏内周目标 HUD / detail 使用 resolved weekly goal tile，并通过 `GameTokenIconResolver` 渲染周目标 token icon。
-- 当前已保持低风险计分：鱼卵 / 幼鱼、整排鱼、鱼群、珊瑚数量、弃牌堆卡牌、透光带鱼、被吞食鱼。
-- 未确认或缺少卡牌目录支持的 tile 已标记“计分待接入”：小/中/大型鱼、捕食者标签、标记鱼、若发动卡牌、每 2 / 3 枚鱼卵、不同标签、printed points 高低区间、完成珊瑚礁奖励作为周目标 tile。
-- 后续继续人工校对 `docs/references/weekly_goals/` 中的实体参考图和中文文案，再补 Side B highest +3 / 复杂 tile scoring。
+- scoreboard 每周一个 section，section 内为所有玩家的归一化横向 score bar；已结算周读取 frozen result，当前 / 未来周只在 presentation 层计算 projection。
+- 游戏内周目标 HUD / scoreboard 使用 resolved weekly goal tile，并通过 `GameTokenIconResolver` 渲染周目标 token icon。
+- 已接入计分：鱼卵 / 幼鱼、整排鱼、鱼群、珊瑚、弃牌堆、透光带鱼、被吞食鱼、小 / 中 / 大型鱼、捕食者、IF ACTIVATED 卡、每 2 / 3 枚鱼卵、五种不同 tag、printed points 高低区间、完成珊瑚礁奖励。
+- B 面第 1-3 周 base score 最高者 +3，并列都加；A 面及第 4 周不加。冻结结果和 projection 都显示 base / +3 / total breakdown。
+- 尚未接入：“上方有标记的鱼 / 上方没有标记的鱼”（无真实 marker state）和文案仍需复核的“幼鱼”tile；`audit_weekly_goal_scoring.py` 非严格模式报告这些剩余项。
+- 后续继续人工校对 `docs/references/weekly_goals/` 中的实体参考图和中文文案。
 
 ### P7 多玩家 / 联机 / 产品化
 

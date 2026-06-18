@@ -330,33 +330,33 @@ enum WeeklyGoalCatalog {
     }
 
     static let baseSideBGoals: [WeeklyGoalDefinition] = [
-        goal("base.sideB.week1.smallFish", .base, 1, "小型鱼", [.smallFish], .smallFish, 2, false, "IMG_4886"),
+        goal("base.sideB.week1.smallFish", .base, 1, "小型鱼", [.smallFish], .smallFish, 2, true, "IMG_4886"),
         goal("base.sideB.week1.eggsAndYoung", .base, 1, "鱼卵和/或幼鱼", [.egg, .young], .eggsAndYoung, 1, true, "IMG_4887"),
         goal("base.sideB.week1.markedFish", .base, 1, "上方有标记的鱼", [.egg, .young, .school], .markedFish, 1, false, "IMG_4887", needsReview: true),
         goal("base.sideB.week1.unmarkedFish", .base, 1, "上方没有标记的鱼", [.fish], .unmarkedFish, 1, false, "IMG_4887", needsReview: true),
-        goal("base.sideB.week1.activatedCards", .base, 1, "若发动卡牌", [.card], .activatedCards, 2, false, "IMG_4886", needsReview: true),
-        goal("base.sideB.week2.mediumFish", .base, 2, "中型鱼", [.mediumFish], .mediumFish, 2, false, "IMG_4887"),
+        goal("base.sideB.week1.activatedCards", .base, 1, "若发动卡牌", [.card], .activatedCards, 2, true, "IMG_4886", needsReview: true),
+        goal("base.sideB.week2.mediumFish", .base, 2, "中型鱼", [.mediumFish], .mediumFish, 2, true, "IMG_4887"),
         goal("base.sideB.week2.rowsOfFish", .base, 2, "整排的鱼", [.fish, .fish, .fish], .rowsOfFish, 2, true, "IMG_4887"),
-        goal("base.sideB.week2.predatorTags", .base, 2, "每个捕食者标签", [.predator], .predatorTags, 2, false, "IMG_4887"),
-        goal("base.sideB.week2.everyTwoEggs", .base, 2, "每 2 枚鱼卵", [.egg, .egg], .everyTwoEggs, 3, false, "IMG_4886"),
+        goal("base.sideB.week2.predatorTags", .base, 2, "每个捕食者标签", [.predator], .predatorTags, 2, true, "IMG_4887"),
+        goal("base.sideB.week2.everyTwoEggs", .base, 2, "每 2 枚鱼卵", [.egg, .egg], .everyTwoEggs, 3, true, "IMG_4886"),
         goal("base.sideB.week2.consumedFish", .base, 2, "被吞食的鱼", [.consumedFish], .consumedFish, 2, true, "IMG_4886"),
         goal("base.sideB.week3.schools", .base, 3, "鱼群", [.school], .schools, 3, true, "IMG_4887"),
         goal("base.sideB.week3.youngFish", .base, 3, "幼鱼", [.young], .eggsAndYoung, 3, false, "IMG_4886", needsReview: true),
-        goal("base.sideB.week3.largeFish", .base, 3, "大型鱼", [.largeFish], .largeFish, 2, false, "IMG_4887"),
-        goal("base.sideB.week3.everyThreeEggs", .base, 3, "每 3 枚鱼卵", [.egg, .egg, .egg], .everyThreeEggs, 2, false, "IMG_4886")
+        goal("base.sideB.week3.largeFish", .base, 3, "大型鱼", [.largeFish], .largeFish, 2, true, "IMG_4887"),
+        goal("base.sideB.week3.everyThreeEggs", .base, 3, "每 3 枚鱼卵", [.egg, .egg, .egg], .everyThreeEggs, 2, true, "IMG_4886")
     ]
 
     static let sharksAndReefsSideBGoals: [WeeklyGoalDefinition] = [
         goal("sr.sideB.week1.coralCount", .sharksAndReefs, 1, "珊瑚", [.anyCoral], .coralCount, 2, true, "IMG_4886"),
         goal("sr.sideB.week1.sunlitFish", .sharksAndReefs, 1, "透光带中的鱼", [.sun, .fish], .sunlitFish, 1, true, "IMG_4886"),
         goal("sr.sideB.week1.discardPileCards", .sharksAndReefs, 1, "弃牌堆中卡牌数量", [.discard], .discardPileCards, 1, true, "IMG_4887"),
-        goal("sr.sideB.week1.printedPointsLow", .sharksAndReefs, 1, "分值 1-3 之间的鱼", [.wave, .fish], .printedPointsLow, 1, false, "IMG_4887"),
-        goal("sr.sideB.week2.predatorTags", .sharksAndReefs, 2, "每个捕食者标签", [.predator], .predatorTags, 2, false, "IMG_4887"),
-        goal("sr.sideB.week2.distinctTags", .sharksAndReefs, 2, "鱼类中的不同标签", [.predator, .wave], .distinctTags, 2, false, "IMG_4887", needsReview: true),
+        goal("sr.sideB.week1.printedPointsLow", .sharksAndReefs, 1, "分值 1-3 之间的鱼", [.wave, .fish], .printedPointsLow, 1, true, "IMG_4887"),
+        goal("sr.sideB.week2.predatorTags", .sharksAndReefs, 2, "每个捕食者标签", [.predator], .predatorTags, 2, true, "IMG_4887"),
+        goal("sr.sideB.week2.distinctTags", .sharksAndReefs, 2, "鱼类中的不同标签", [.predator, .wave], .distinctTags, 2, true, "IMG_4887", needsReview: true),
         goal("sr.sideB.week2.coralCount", .sharksAndReefs, 2, "珊瑚", [.blueCoral, .purpleCoral, .greenCoral], .coralCount, 2, true, "IMG_4886"),
-        goal("sr.sideB.week3.printedPointsHigh", .sharksAndReefs, 3, "分值高于 4 的鱼", [.wave, .fish], .printedPointsHigh, 1, false, "IMG_4886"),
-        goal("sr.sideB.week3.printedPointsLow", .sharksAndReefs, 3, "分值 1-3 之间的鱼", [.wave, .fish], .printedPointsLow, 1, false, "IMG_4887"),
-        goal("sr.sideB.week3.completeReefBonus", .sharksAndReefs, 3, "完成珊瑚礁奖励", [.completeReefBonus], .completeReefBonus, 1, false, "IMG_4888", needsReview: true)
+        goal("sr.sideB.week3.printedPointsHigh", .sharksAndReefs, 3, "分值高于 4 的鱼", [.wave, .fish], .printedPointsHigh, 1, true, "IMG_4886"),
+        goal("sr.sideB.week3.printedPointsLow", .sharksAndReefs, 3, "分值 1-3 之间的鱼", [.wave, .fish], .printedPointsLow, 1, true, "IMG_4887"),
+        goal("sr.sideB.week3.completeReefBonus", .sharksAndReefs, 3, "完成珊瑚礁奖励", [.completeReefBonus], .completeReefBonus, 1, true, "IMG_4888", needsReview: true)
     ]
 
     static func board(

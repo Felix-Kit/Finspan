@@ -158,6 +158,7 @@ enum AppStrings {
         static func viewingPlayerBoard(name: String) -> String { "正在查看：\(name)" }
         static let gameStartedSummary = "游戏开始"
         static let weeklyGoalDetailTitle = "周目标"
+        static let weeklyGoalScoreboardTitle = "四周成就计分"
         static let weekOneGoalDescription = "鱼卵和幼鱼"
         static let weekTwoGoalDescription = "整排的鱼"
         static let weekThreeGoalDescription = "鱼群"
@@ -173,6 +174,11 @@ enum AppStrings {
         static let weeklyGoalCompleted = "已结算"
         static let settledScoreText = "已结算分"
         static let weeklyGoalNotScoredText = "未结算"
+        static let weeklyGoalFinalized = "已结算"
+        static let weeklyGoalCurrentProjection = "当前预计"
+        static let weeklyGoalFutureProjection = "未来预计"
+        static let weeklyGoalSelected = "已选中"
+        static let weeklyGoalHighestBonus = "最高分奖励 +3"
         static let logButton = "日志"
         static let currentWeek = "当前周数"
         static let currentTurn = "当前回合"
@@ -571,6 +577,11 @@ enum AppStrings {
 
         static func weeklyGoalScoreText(points: Int) -> String {
             "\(points) 分"
+        }
+
+        static func weeklyGoalScoreBreakdownText(base: Int, bonus: Int, total: Int) -> String {
+            guard bonus > 0 else { return "\(total) 分" }
+            return "\(base) +\(bonus) = \(total) 分"
         }
 
         static func weeklyGoalProjectedScoreText(quantity: Int) -> String {

@@ -65,15 +65,17 @@ Lobby 创建房间新增 achievement board set 选择：
 
 游戏内主棋盘右上角提供四个横向并排的小方块入口，每格使用实体板语义：
 
-- 第 1 / 2 / 3 / 4 周入口只显示周数、简化图标、短标题、分值和状态，不是完整详情卡。
+- 第 1 / 2 / 3 / 4 周入口只显示 token icon、微型周数 / 分值角标和完成状态，不显示完整中文标题，也不是完整详情卡。
 - A 面显示固定 tile。
 - B 面显示房间 setup resolved 的 tile。
 - 第 4 周显示 GAME END 固定说明。
-- 当前周高亮。
+- 当前周 icon 放大到 1.15 倍，并以黄色描边高亮。
 - 已结算周显示完成状态。
 - 未实现计分的 tile 显示“计分待接入”。
 
-点击入口后只打开所选周的详情，不在详情顶部重复铺四张大卡。详情 header 按“第 X 周 -> 图标 -> 标题”横向对齐，随后显示说明、计分规则、当前投影 / 已结算分和各玩家得分；第 4 周显示固定 GAME END 说明。
+点击任意入口后打开全 4 周 scoreboard，被点击周 section 使用强调描边。scoreboard 每周一个 section，header 按“第 X 周 -> 图标 -> 标题”横向对齐；section 内每个玩家一条横向 score bar，按该周最高总分归一化，0 分仍显示数值，最高分和并列最高都高亮。该布局不把所有玩家压成一行文本。第 4 周显示固定 GAME END 说明，不参与 B 面 +3。
+
+`WeeklyGoalScoreboardState`、`WeeklyGoalScoreboardSectionState`、`WeeklyGoalPlayerScoreBarState` 和 `WeeklyGoalScoreStatus` 都是 presentation model。已结算周从 `GameState.weeklyAchievementResults` 读取周结算时冻结的结果，不根据当前 board 重算，也不受 viewing player 切换影响。当前周和未来周由 `GameBoardViewModel` 使用当前 board 计算 projection；projection 不写回 `GameState`。未实现 tile 显示“计分待接入”。
 
 ## 资源展示调整
 
@@ -94,7 +96,7 @@ Lobby 创建房间新增 achievement board set 选择：
 
 ## 计分状态
 
-本轮保持现有低风险计分：
+当前已接入：
 
 - 鱼卵 / 幼鱼数量。
 - 整排的鱼。
@@ -103,17 +105,22 @@ Lobby 创建房间新增 achievement board set 选择：
 - 弃牌堆卡牌数量。
 - 透光带中的鱼。
 - 被吞食的鱼。
+- 小型 / 中型 / 大型 visible fish，使用卡牌长度和既有 `<50 / 50..<150 / >=150` 分类；consumed fish 不计。
+- visible fish 的 Predator tag 和 IF ACTIVATED trigger。
+- 每 2 / 3 枚鱼卵，使用 `floor(totalEggs / groupSize)`。
+- visible fish 上 Predator / Bioluminescent / Camouflage / Electric / Venomous 五种不同 tag。
+- visible fish 的 printed points `> 4` 和 `1...3` 区间，不混入 GAME END / coral points。
+- 已完成 coral reef 的 `completionBonus`，作为独立 weekly score。
 
-以下 tile 已建模并展示，但暂标记计分待接入，避免在没有卡牌目录或规则校对时猜测：
+仍未接入 / 需复核：
 
-- 小型 / 中型 / 大型鱼。
-- 捕食者标签。
-- 上方有 / 没有标记的鱼。
-- 若发动卡牌。
-- 每 2 / 3 枚鱼卵。
-- 不同标签。
-- printed points 高 / 低区间鱼。
-- 完成珊瑚礁奖励作为周目标 tile 的特殊计分。
+- “上方有标记的鱼 / 上方没有标记的鱼”：当前没有真实 marker state，不能用 egg / young / school 冒充 marker。
+- “幼鱼”tile：现有 icon / 文案与 young resource 的确切计分语义仍需人工校对。
+- “若发动卡牌”、不同标签和完成珊瑚礁已按明确 metadata 接入，但保留 `needsReview` 以继续核对实体 tile 文案。
+
+B 面第 1 / 2 / 3 周按 base score 选最高玩家额外 +3，并列最高都 +3；A 面和第 4 周不加。`WeeklyAchievementResult.points` 冻结 total，scoreboard 通过 `quantity * pointsPerUnit` 展示 base，再计算 +3 breakdown；projection 使用同一 scorer，但只存在于 presentation 层。
+
+`tools/scripts/audit_weekly_goal_scoring.py` 可在无 simulator 环境下报告 tile 总数、已实现 / 未实现 / needsReview 数量及对应 ids；剩余未实现项不会使非严格审计失败。
 
 Final scoring 中既有 coral 每个 1 分、complete reef bonus、GAME END ability scoring 不变。
 
@@ -121,4 +128,4 @@ Final scoring 中既有 coral 每个 1 分、complete reef bonus、GAME END abil
 
 本轮没有改 Ability Engine，没有大改 GameEngine 规则，没有改 fish card JSON，没有恢复右侧常驻面板，没有做 BoardLayout、联机、Nautoma 或 saved-state migration。
 
-当前 ability coverage 仍要求保持 215 mapped / 0 unsupported，GAME END remaining unsupported 保持 0。
+当前 ability coverage 保持 215 mapped / 0 unsupported，GAME END remaining unsupported 保持 0。此次改动未修改 Ability Engine 或 fish card JSON，也未恢复右侧常驻面板。

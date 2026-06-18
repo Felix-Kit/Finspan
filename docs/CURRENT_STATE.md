@@ -11,7 +11,7 @@
 - 已支持 `placeEgg` / `hatchEgg` / `moveYoungOrSchool`。
 - 已支持 school 自动形成：同一槽位 3 个 young 且无 school 时形成 1 个 school。
 - End of Week / Week Flow 已接入。
-- Side A 周目标最小计分已接入。
+- 周目标计分 pass 已接入；A 面保持既有计分，B 面前三周按 base score 最高者额外 +3（并列都加），第 4 周不加。
 - 最终计分与最终结算界面已接入。
 - 已支持 `consumedFish`，鱼可以覆盖更短鱼。
 - 已支持 `coverShorterFish` cost。
@@ -96,11 +96,13 @@
 - 右侧资源统计大面板已压缩掉；右侧 pending / reward / action / playFish confirm 面板已从主 layout 移除。
 - `GameTokenIconResolver` / `GameTokenIconView` 已新增，非卡面 UI 的 egg / young / school / fish / coral / draw / discard / consume / hatch / move / zone token 可复用现有 CardAssets icon resolver，尺寸由 HUD / board layout 控制，不由 PNG intrinsic size 控制。
 - 顶部 HUD 已重做，包含玩家头像、当前行动摘要、设置入口和日志入口。
-- 主棋盘右上角已接入四个横向并排的小方块周目标入口；点击后只打开所选周详情，header 按“第 X 周、图标、标题”排列，不在详情中重复铺四张大卡。
+- 主棋盘右上角已接入四个横向并排的小方块周目标入口；入口只显示 token icon、微型周数 / 分值角标和完成状态，不显示完整标题。当前周 icon 放大并用黄色描边高亮。
+- 点击任意周入口会打开全 4 周 scoreboard，并高亮被点击周；每周一个 section，header 按“第 X 周、图标、标题”排列，section 内按玩家显示归一化横向 score bar，最高分及并列最高高亮，不采用单行平铺所有玩家的布局。
+- `WeeklyGoalScoreboardState` / section / player score bar / status presentation model 已接入。已结算周读取 `weeklyAchievementResults` frozen snapshot，不随当前 board 或 viewing player 改变；当前周和未来周由 ViewModel 基于当前 board 计算只读 projection，不写入 `GameState`。
 - Weekly Achievement Board MVP 已接入：`GameConfig.weeklyGoalSetup` 现在可表达 Base / Sharks & Reefs board set、A 面 / B 面、B 面随机或手动前三周 tile。
 - Base / S&R Side A 固定第 1-3 周目标和第 4 周 GAME END 说明格已建模；Base Side B 按周使用 Base pool，S&R Side B 按周使用 Base + S&R 合并池，第四周不从 pool 选。
 - Lobby 创建房间支持选择 achievement board set 和 A/B 面；启用 S&R 时默认 S&R A 面，也可切回 Base board。B 面 random 使用 setup seed deterministic 选择，manual selection 禁止跨周池，S&R board 可选同周 Base 或 S&R tile。
-- 游戏内周目标 HUD / 详情面板现在使用 resolved weekly goal tile，未实现计分 tile 显示“计分待接入”。周目标 icon 通过 `WeeklyGoalIconToken` -> `GameTokenIconResolver` 使用 live-derived assets，不再用 emoji / SF Symbol / 文本符号作为正常路径。
+- 游戏内周目标 HUD / scoreboard 现在使用 resolved weekly goal tile，未实现计分 tile 显示“计分待接入”。周目标 icon 通过 `WeeklyGoalIconToken` -> `GameTokenIconResolver` 使用 live-derived assets，不再用 emoji / SF Symbol / 文本符号作为正常路径。
 - 已将实体周目标参考图压缩存入 `docs/references/weekly_goals/`，仅作为 UI 和人工录入参考；文案和 tile 归类仍可后续校对。
 - 日志已改为折叠 / 弹出查看。
 - 已支持强制结束当前对局并返回主页。
@@ -197,8 +199,7 @@
 
 - Ability Engine v2 saved-state migration / legacy cleanup 后置：当前不是正式发布阶段，legacy adapter 继续保持行为稳定，直到旧本地房间和旧 pending-choice payload 有明确迁移路径。
 - GameBoardViewModel pending UI stabilization 后续：继续把 no-target prompt、follow-up target / payment / discard-selection choices 的显示逻辑收敛到 metadata fallback helper。
-- Weekly Achievement Board 后续：继续人工校对 Base / S&R Side B tile 文案和图标；把需要卡牌目录或规则确认的小/中/大型鱼、标签、printed points 区间、完成珊瑚礁奖励等 tile 逐步接入计分。
-- Side B weekly bonus +3。
+- Weekly Achievement Board 后续：继续人工校对 Base / S&R Side B tile 文案和图标；marker 状态尚未建模，因此“上方有标记的鱼 / 上方没有标记的鱼”仍未接入；“幼鱼”tile 文案与现有 young resource 语义仍需复核。
 - 真实 board 背景和 slot 对齐系统。
 - BoardLayout / SVG marker / JSON layout pipeline。
 - Nautoma 后置。

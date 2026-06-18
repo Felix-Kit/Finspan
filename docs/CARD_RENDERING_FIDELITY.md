@@ -85,7 +85,7 @@ Swift resolver 层把 web renderer model 映射到可缓存的 view state：
 
 顶部 Compact Resource HUD 只保留鱼卵、幼鱼和鱼群。Blue / Purple / Green coral 继续使用相同 resolver，但展示位置移到对应 dive-site column 的 twilight / reef 区域前。
 
-Weekly Achievement Board MVP 也复用同一路径：`WeeklyGoalIconToken` 在 `GameBoardViewModel` 中映射到 `GameTokenIconKind`，再由 `GameTokenIconResolver` / `GameTokenIconView` 渲染。周目标 HUD / 详情面板不再用 emoji 或文本符号表达鱼卵、幼鱼、鱼群、珊瑚、区域、鱼长度、捕食者、弃牌和 GAME END。
+Weekly Achievement Board 也复用同一路径：`WeeklyGoalIconToken` 在 `GameBoardViewModel` 中映射到 `GameTokenIconKind`，再由 `GameTokenIconResolver` / `GameTokenIconView` 渲染。右上角四个入口只显示 icon 与微型角标，当前周 icon 放大；全 4 周 scoreboard 的 section header 继续按“周数 -> icon -> 标题”使用相同 resolver。周目标 HUD / scoreboard 不用 emoji 或文本符号表达鱼卵、幼鱼、鱼群、珊瑚、区域、鱼长度、捕食者、弃牌和 GAME END。
 
 已接入的 token / icon 包括：
 

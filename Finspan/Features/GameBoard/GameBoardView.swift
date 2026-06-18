@@ -302,38 +302,35 @@ struct GameBoardView: View {
                 Button {
                     viewModel.selectWeeklyGoalBox(box.index)
                 } label: {
-                    VStack(spacing: 2) {
-                        Text(box.weekLabel)
-                            .font(.system(size: 8, weight: .black))
-                            .lineLimit(1)
+                    ZStack(alignment: .topLeading) {
                         HStack(spacing: 2) {
                             ForEach(Array(box.icons.prefix(2).enumerated()), id: \.offset) { _, icon in
-                                GameTokenIconView(icon: icon, size: box.isCurrent ? 15 : 13)
+                                GameTokenIconView(icon: icon, size: 19)
                             }
                         }
-                        .frame(height: 15)
-                        Text(box.shortDescription)
-                            .font(.system(size: 7, weight: .bold))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.65)
-                        if box.isCompleted {
-                            Text(AppStrings.GameBoard.weeklyGoalCompleted)
-                                .font(.system(size: 7, weight: .bold))
-                                .foregroundStyle(.green)
-                                .lineLimit(1)
-                        } else if let status = box.statusText {
-                            Text(status)
-                                .font(.system(size: 7, weight: .bold))
-                                .foregroundStyle(.orange)
-                                .lineLimit(1)
-                        } else {
-                            Text(box.pointsText)
-                                .font(.system(size: 7, weight: .semibold))
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
+                        .scaleEffect(box.iconScale)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                        Text("\(box.index)")
+                            .font(.system(size: 8, weight: .black))
+                            .padding(4)
+
+                        VStack {
+                            Spacer()
+                            HStack {
+                                if box.isCompleted {
+                                    Text("已")
+                                        .foregroundStyle(.green)
+                                }
+                                Spacer()
+                                Text(box.pointsText)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .font(.system(size: 8, weight: .black))
+                            .padding(4)
                         }
                     }
-                    .frame(width: box.isCurrent ? 62 : 58, height: box.isCurrent ? 62 : 58)
+                    .frame(width: 58, height: 58)
                     .background(
                         RoundedRectangle(cornerRadius: 6)
                             .fill(box.isGameEndBox ? Color.indigo.opacity(0.18) : Color(.secondarySystemBackground))
@@ -344,6 +341,7 @@ struct GameBoardView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("\(box.weekLabel)，\(box.shortDescription)")
             }
         }
     }
@@ -913,80 +911,121 @@ struct GameBoardView: View {
             .frame(maxWidth: 280, alignment: .center)
     }
 
-    private func weeklyGoalDetailPanel(_ detail: WeeklyGoalDetailViewState) -> some View {
+    private func weeklyGoalDetailPanel(_ detail: WeeklyGoalScoreboardState) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                let item = detail.item
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 10) {
-                        Text(item.weekLabel)
-                            .font(.headline.weight(.black))
-                        HStack(spacing: 4) {
-                            ForEach(Array(item.icons.enumerated()), id: \.offset) { _, icon in
-                                GameTokenIconView(icon: icon, size: 24)
-                            }
-                        }
-                        Text(item.title)
-                            .font(.headline)
-                            .lineLimit(2)
-                        Spacer(minLength: 8)
-                    }
-
-                    Text(item.description)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    HStack {
-                        if let status = item.statusText {
-                            Text(status)
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(.orange)
-                        }
-                        Spacer()
-                        Text(item.scoringText)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(item.isCurrent ? .green : .secondary)
-                    }
-
-                    ForEach(item.playerScores) { score in
-                        HStack {
-                            Text(score.playerName)
-                            Spacer()
-                            Text(score.scoreText)
-                                .fontWeight(.semibold)
-                        }
-                        .font(.callout)
-                    }
-                }
-                .padding(12)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(item.isCurrent ? Color.green.opacity(0.12) : Color(.secondarySystemBackground))
-                )
-
-                if let gameEndInfo = detail.gameEndInfo {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(gameEndInfo.title)
-                            .font(.headline)
-                        Text(gameEndInfo.description)
-                            .font(.callout)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Text(gameEndInfo.noteText)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.indigo.opacity(0.12))
-                    )
+                ForEach(detail.sections) { section in
+                    weeklyGoalScoreboardSection(section)
                 }
 
                 Text(detail.noteText)
                     .font(.callout.weight(.medium))
                     .foregroundStyle(.secondary)
             }
+        }
+    }
+
+    private func weeklyGoalScoreboardSection(
+        _ section: WeeklyGoalScoreboardSectionState
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Text(section.weekLabel)
+                    .font(.headline.weight(.black))
+                HStack(spacing: 4) {
+                    ForEach(Array(section.icons.enumerated()), id: \.offset) { _, icon in
+                        GameTokenIconView(icon: icon, size: 24)
+                    }
+                }
+                Text(section.title)
+                    .font(.headline)
+                    .lineLimit(2)
+                Spacer(minLength: 8)
+                Text(section.statusText)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(weeklyGoalStatusColor(section.status))
+            }
+
+            Text(section.description)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let gameEndInfo = section.gameEndInfo {
+                Text(gameEndInfo.description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            VStack(spacing: 9) {
+                ForEach(section.playerScores) { score in
+                    weeklyGoalPlayerScoreBar(score, status: section.status)
+                }
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(section.isCurrent ? Color.green.opacity(0.10) : Color(.secondarySystemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(section.isSelected ? Color.accentColor : Color.secondary.opacity(0.18), lineWidth: section.isSelected ? 2 : 1)
+        )
+    }
+
+    private func weeklyGoalPlayerScoreBar(
+        _ score: WeeklyGoalPlayerScoreBarState,
+        status: WeeklyGoalScoreStatus
+    ) -> some View {
+        HStack(spacing: 9) {
+            Text(score.avatarText)
+                .font(.caption.weight(.black))
+                .foregroundStyle(.white)
+                .frame(width: 24, height: 24)
+                .background(Circle().fill(color(for: score.playerColor)))
+
+            Text(score.playerName)
+                .font(.caption.weight(score.isHighest ? .bold : .medium))
+                .lineLimit(1)
+                .frame(width: 74, alignment: .leading)
+
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.secondary.opacity(0.14))
+                    Capsule()
+                        .fill(color(for: score.playerColor).opacity(status == .finalized ? 0.82 : 0.46))
+                        .frame(width: max(score.totalPoints > 0 ? 5 : 0, proxy.size.width * score.widthRatio))
+                }
+            }
+            .frame(height: 12)
+
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(score.scoreText)
+                    .font(.caption.weight(score.isHighest ? .black : .semibold))
+                    .monospacedDigit()
+                if score.highestBonusPoints > 0 {
+                    Text(AppStrings.GameBoard.weeklyGoalHighestBonus)
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.orange)
+                }
+            }
+            .frame(width: 92, alignment: .trailing)
+        }
+    }
+
+    private func weeklyGoalStatusColor(_ status: WeeklyGoalScoreStatus) -> Color {
+        switch status {
+        case .finalized:
+            return .green
+        case .currentProjection:
+            return .blue
+        case .futureProjection:
+            return .secondary
+        case .notImplemented:
+            return .orange
         }
     }
 

@@ -11,6 +11,8 @@ final class WeeklyGoalEntryHUDTests: XCTestCase {
         XCTAssertEqual(hud.layout, .horizontalEntryStrip)
         XCTAssertEqual(hud.placement, .topTrailing)
         XCTAssertTrue(hud.boxes.allSatisfy { !$0.weekLabel.isEmpty && !$0.pointsText.isEmpty })
+        XCTAssertTrue(hud.boxes.allSatisfy { !$0.showsFullTitle })
+        XCTAssertEqual(hud.boxes.first?.iconScale, 1.15)
     }
 
     func testSelectingEntryPresentsThatWeekOnly() {
@@ -19,7 +21,8 @@ final class WeeklyGoalEntryHUDTests: XCTestCase {
         viewModel.selectWeeklyGoalBox(2)
 
         XCTAssertEqual(viewModel.weeklyGoalHudViewState.selectedDetailWeek, 2)
-        XCTAssertEqual(viewModel.weeklyGoalDetailViewState?.item.index, 2)
+        XCTAssertEqual(viewModel.weeklyGoalDetailViewState?.sections.map(\.index), [1, 2, 3, 4])
+        XCTAssertEqual(viewModel.weeklyGoalDetailViewState?.sections.first(where: { $0.isSelected })?.index, 2)
     }
 }
 
@@ -29,7 +32,7 @@ final class WeeklyAchievementDetailPanelTests: XCTestCase {
         let viewModel = WeeklyDisplayTestFactory.makeViewModel()
         viewModel.selectWeeklyGoalBox(1)
 
-        guard let item = viewModel.weeklyGoalDetailViewState?.item else {
+        guard let item = viewModel.weeklyGoalDetailViewState?.sections.first(where: { $0.index == 1 }) else {
             return XCTFail("Expected selected weekly goal detail.")
         }
 
@@ -42,8 +45,8 @@ final class WeeklyAchievementDetailPanelTests: XCTestCase {
         let viewModel = WeeklyDisplayTestFactory.makeViewModel()
         viewModel.selectWeeklyGoalBox(4)
 
-        XCTAssertEqual(viewModel.weeklyGoalDetailViewState?.item.index, 4)
-        XCTAssertNotNil(viewModel.weeklyGoalDetailViewState?.gameEndInfo)
+        XCTAssertEqual(viewModel.weeklyGoalDetailViewState?.sections.count, 4)
+        XCTAssertNotNil(viewModel.weeklyGoalDetailViewState?.sections.first(where: { $0.index == 4 })?.gameEndInfo)
     }
 }
 
@@ -88,7 +91,7 @@ final class RealCardCatalogRuntimeTests: XCTestCase {
 }
 
 @MainActor
-private enum WeeklyDisplayTestFactory {
+enum WeeklyDisplayTestFactory {
     static func makeViewModel() -> GameBoardViewModel {
         GameBoardViewModel(
             roomService: WeeklyDisplayRoomService(),
@@ -98,7 +101,7 @@ private enum WeeklyDisplayTestFactory {
 }
 
 @MainActor
-private final class WeeklyDisplayRoomService: RoomService {
+final class WeeklyDisplayRoomService: RoomService {
     var gameRoom: GameRoom?
     var gameState: GameState
     var snapshot: RoomSnapshot
@@ -108,14 +111,21 @@ private final class WeeklyDisplayRoomService: RoomService {
         AsyncStream { continuation in continuation.finish() }
     }
 
-    init() {
-        let roomPlayer = RoomPlayer(playerId: "player-1", displayName: "玩家 1", role: .host)
+    init(
+        roomPlayers: [RoomPlayer] = [
+            RoomPlayer(playerId: "player-1", displayName: "玩家 1", role: .host)
+        ],
+        currentWeek: Int = 1,
+        weeklyGoals: [WeeklyGoalDefinition]? = nil,
+        weeklyAchievementResults: [WeeklyAchievementResult] = []
+    ) {
+        let roomPlayer = roomPlayers[0]
         let room = GameRoom(
             roomId: "room-1",
             roomCode: "LOCAL",
             hostPlayerId: "player-1",
-            players: [roomPlayer],
-            gameConfig: GameConfig(playerCount: 1, enabledExpansions: [.sharksAndReefs], randomSeed: 1),
+            players: roomPlayers,
+            gameConfig: GameConfig(playerCount: roomPlayers.count, enabledExpansions: [.sharksAndReefs], randomSeed: 1),
             createdAt: Date(timeIntervalSince1970: 1_000),
             updatedAt: Date(timeIntervalSince1970: 1_000)
         )
@@ -133,10 +143,25 @@ private final class WeeklyDisplayRoomService: RoomService {
         ocean.coralReefs = DiveSite.allCases.map {
             CoralReefState(diveSite: $0, coralCount: 1, maxCoral: 4, completionBonus: 6)
         }
+        let playerStates = Dictionary(uniqueKeysWithValues: roomPlayers.map { player in
+            let playerOcean = player.playerId == roomPlayer.playerId
+                ? ocean
+                : OceanState.baseGameInitial(for: player.playerId)
+            return (
+                player.playerId,
+                PlayerGameState(
+                    playerId: player.playerId,
+                    hand: [],
+                    availableDivers: 6,
+                    usedDivers: 0,
+                    ocean: playerOcean
+                )
+            )
+        })
         let state = GameState(
             roomId: room.roomId,
-            players: [Player(id: "player-1", name: "玩家 1")],
-            currentWeek: 1,
+            players: roomPlayers.map { Player(id: $0.playerId, name: $0.displayName) },
+            currentWeek: currentWeek,
             currentTurnIndex: 0,
             activePlayerId: "player-1",
             firstPlayerId: "player-1",
@@ -144,16 +169,10 @@ private final class WeeklyDisplayRoomService: RoomService {
             eventSequence: 1,
             randomSeed: 1,
             turnsCompletedThisWeek: 0,
-            playerGameStates: [
-                "player-1": PlayerGameState(
-                    playerId: "player-1",
-                    hand: [],
-                    availableDivers: 6,
-                    usedDivers: 0,
-                    ocean: ocean
-                )
-            ],
-            deckState: DeckState(starterFishDrawPile: [], fishDrawPile: [], discardPile: [])
+            playerGameStates: playerStates,
+            deckState: DeckState(starterFishDrawPile: [], fishDrawPile: [], discardPile: []),
+            weeklyGoals: weeklyGoals,
+            weeklyAchievementResults: weeklyAchievementResults
         )
 
         gameRoom = room
