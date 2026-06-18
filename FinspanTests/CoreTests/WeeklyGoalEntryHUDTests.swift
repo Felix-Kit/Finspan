@@ -52,14 +52,14 @@ final class WeeklyAchievementDetailPanelTests: XCTestCase {
 
 @MainActor
 final class FishCardResourceOverlayTests: XCTestCase {
-    func testResourceTokensUseUnframedSizeClassIconPlacement() {
+    func testResourceTokensUseUnframedFishArtworkPlacement() {
         let viewModel = WeeklyDisplayTestFactory.makeViewModel()
         guard let cardFace = viewModel.oceanSlots.first(where: { $0.cardFace.cardId == "starter-fish-1" })?.cardFace else {
             return XCTFail("Expected visible sample fish card.")
         }
 
         XCTAssertEqual(cardFace.resourceTokens.count, 4)
-        XCTAssertTrue(cardFace.resourceTokens.allSatisfy { $0.placement == .sizeClassIconArea })
+        XCTAssertTrue(cardFace.resourceTokens.allSatisfy { $0.placement == .fishArtworkRegion })
         XCTAssertTrue(cardFace.resourceTokens.allSatisfy { !$0.usesBadgeFrame })
         XCTAssertTrue(cardFace.resourceTokens.allSatisfy { $0.icon.isResolved })
     }

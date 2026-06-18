@@ -81,7 +81,7 @@ Lobby 创建房间新增 achievement board set 选择：
 
 - 顶部 Compact Resource HUD 只显示鱼卵、幼鱼和鱼群。
 - 三色珊瑚从顶部 HUD 移到各 dive-site column 的 twilight 区域前，继续使用 `GameTokenIconResolver` 的 live-derived icon。
-- ocean slot 上的鱼卵 / 幼鱼 / 鱼群改为直接叠放在鱼牌左侧 size-class 图标区域；不再使用外框 badge，也不覆盖鱼名、能力、分数、长度或 zone icon。
+- ocean slot 上的鱼卵 / 幼鱼 / 鱼群通过共享 normalized layout 直接叠放在鱼牌中央 fish artwork / background region，可覆盖鱼图，但不覆盖鱼名、tag、能力、分数、长度、flavor 或 zone icon，也不越过 card / slot bounds。token 无外框 badge，透明 hit target 跟随相同中心坐标。
 - 资源选择仍是 ViewModel staged selection，最终变更继续通过既有 command/event/reducer 路径。
 
 ## Runtime 数据源

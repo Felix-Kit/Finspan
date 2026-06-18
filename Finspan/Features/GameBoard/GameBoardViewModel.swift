@@ -256,7 +256,7 @@ struct FishCardResourceTokenViewState: Identifiable, Equatable {
 }
 
 enum FishCardResourceTokenPlacement: String, Equatable {
-    case sizeClassIconArea
+    case fishArtworkRegion
 }
 
 struct GameHudControlViewState: Equatable {
@@ -8016,7 +8016,7 @@ final class GameBoardViewModel: ObservableObject {
                 tokenIndex: token.tokenIndex,
                 icon: token.icon,
                 isSelectedForPayment: token.isSelectedForPayment,
-                placement: .sizeClassIconArea,
+                placement: .fishArtworkRegion,
                 usesBadgeFrame: false
             )
         }

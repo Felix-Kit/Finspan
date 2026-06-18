@@ -81,7 +81,7 @@ Swift resolver 层把 web renderer model 映射到可缓存的 view state：
 
 `GameTokenIconResolver` 是游戏 token UI 的复用层。Compact Resource HUD、鱼牌 board-resource overlay、珊瑚礁 badge 和 `BottomRewardDockToken` 正常路径都通过 live-derived CardAssets icon 渲染，不使用 SF Symbol、emoji、临时色块或纯文字作为 token 图标。布局尺寸由调用方明确 frame 控制，不由 PNG intrinsic size 控制。
 
-鱼卵 / 幼鱼 / 鱼群 board-resource token 现在通过 `FishCardFaceViewState.resourceTokens` 进入共享卡面，直接叠放在左侧 size-class 图标区域。token 没有额外 badge 外框，多个 token 轻微错位堆叠；名称、能力文案、flavor text、分数、长度和 zone icon 保持无遮挡。slot 层只提供透明命中区域来发送 staged payment intent，不解析资源图标。
+鱼卵 / 幼鱼 / 鱼群 board-resource token 通过 `FishCardFaceViewState.resourceTokens` 进入共享卡面，但只由 ocean slot 注入；手牌和弃牌复用卡面时保持空数组。token 已从左侧 size-class 区域移到中央 fish artwork / background region，可以覆盖 fish silhouette / image。`CardRenderMetrics.BoardResourceTokenLayout` 以同一套 cqw normalized frames 驱动 9cqw 视觉图标和 11cqw 透明 hit target，最多五枚采用两行轻微错位布局；所有 frame 均在 fish artwork 与 card / slot bounds 内，并避开名称、tag、points / Wave、length / size、flavor text、zone 和右侧 ability panel。token 没有 badge、圆框、方框或大底板；selected 状态只使用轻量 scale / shadow。slot 层透明命中区域继续发送 staged payment intent，不重复绘制图标。
 
 顶部 Compact Resource HUD 只保留鱼卵、幼鱼和鱼群。Blue / Purple / Green coral 继续使用相同 resolver，但展示位置移到对应 dive-site column 的 twilight / reef 区域前。
 

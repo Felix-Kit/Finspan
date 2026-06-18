@@ -1402,9 +1402,13 @@ struct GameBoardView: View {
 
     private func cardResourceTokenHitTargets(_ slot: OceanSlotViewData) -> some View {
         GeometryReader { proxy in
-            let iconSize = max(18, proxy.size.width * 0.075)
+            let unit = proxy.size.width / 100
             ZStack(alignment: .topLeading) {
-                ForEach(Array(slot.resourceTokens.prefix(5).enumerated()), id: \.element.id) { offset, token in
+                ForEach(
+                    Array(slot.resourceTokens.prefix(CardRenderMetrics.BoardResourceTokenLayout.maxVisibleTokens).enumerated()),
+                    id: \.element.id
+                ) { offset, token in
+                    let frame = CardRenderMetrics.BoardResourceTokenLayout.hitTargetFrame(at: offset)
                     Button {
                         viewModel.toggleResourcePayment(
                             address: token.address,
@@ -1413,7 +1417,7 @@ struct GameBoardView: View {
                         )
                     } label: {
                         Color.clear
-                            .frame(width: iconSize, height: iconSize)
+                            .frame(width: unit * frame.width, height: unit * frame.height)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -1421,8 +1425,8 @@ struct GameBoardView: View {
                     .accessibilityLabel(token.title)
                     .accessibilityHint(token.unavailableReasonText ?? token.warningText ?? "")
                     .offset(
-                        x: proxy.size.width * (0.045 + CGFloat(offset % 2) * 0.048),
-                        y: proxy.size.width * (0.65 + CGFloat(offset / 2) * 0.052)
+                        x: unit * frame.x,
+                        y: unit * frame.y
                     )
                 }
             }

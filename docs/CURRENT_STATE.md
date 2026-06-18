@@ -93,6 +93,8 @@
 - 新增 `IncomingRewardDockState` presentation model，用于 AllPlayers 目标玩家、不可见 source card、board / dive-site marker 或 GAME END dock 等外部 pending reward 的来源摘要；实际入口由 `BottomRewardDock` 承载。
 - 已明确区分 cost / requirement token 与 reward / ability token：`playFish` cost icon 是进度展示，玩家直接点击 board / hand / reef 上的合法来源；ability reward icon 才是主动入口。
 - Compact Resource HUD 已接入顶部 HUD，只用真实 live-derived token icon 显示鱼卵、幼鱼和鱼群计数。手牌数量留在手牌区域，三色珊瑚移到各 dive-site column 的 twilight / reef 区域附近。
+- board slot 鱼牌上的 egg / young / school 已从左侧 size-class 区域迁到中央 fish artwork / background region。token 可覆盖鱼图，但共享 normalized layout 保证视觉图标和透明 hit target 都留在 card / slot bounds 内，并避开 points、length、tag、名称、flavor 和右侧 ability 区。
+- board resource token 继续使用 live-derived CardAssets，无 badge / 底板；视觉尺寸从 7.5cqw 提高到 9cqw，最多五枚按紧凑错位布局展开。payment staged selection 仍由 slot 层同中心的透明 hit target 发送，手牌和弃牌卡面不注入 board token。
 - 右侧资源统计大面板已压缩掉；右侧 pending / reward / action / playFish confirm 面板已从主 layout 移除。
 - `GameTokenIconResolver` / `GameTokenIconView` 已新增，非卡面 UI 的 egg / young / school / fish / coral / draw / discard / consume / hatch / move / zone token 可复用现有 CardAssets icon resolver，尺寸由 HUD / board layout 控制，不由 PNG intrinsic size 控制。
 - 顶部 HUD 已重做，包含玩家头像、当前行动摘要、设置入口和日志入口。
