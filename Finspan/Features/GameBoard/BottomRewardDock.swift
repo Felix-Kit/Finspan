@@ -99,20 +99,32 @@ struct BottomRewardDockView: View {
     }
 
     var body: some View {
-        switch mode {
-        case .hidden:
-            EmptyView()
-        case .handleOnly:
-            handleOnly
-        case .compact:
-            dockContent(isExpanded: false)
-        case .expanded:
-            dockContent(isExpanded: true)
+        Group {
+            switch mode {
+            case .hidden:
+                EmptyView()
+            case .handleOnly:
+                handleOnly
+            case .compact:
+                dockContent(isExpanded: false)
+            case .expanded:
+                dockContent(isExpanded: true)
+            }
         }
+        .transition(GameBoardAnimation.dockTransition)
+        .animation(GameBoardAnimation.dock, value: mode)
+        .animation(GameBoardAnimation.dock, value: isExpanded)
+        .animation(GameBoardAnimation.token, value: state.tokens.map(\.id))
+        .animation(GameBoardAnimation.token, value: state.tokens.map(\.isSelected))
+        .animation(GameBoardAnimation.quick, value: state.forwardControl?.isEnabled)
     }
 
     private var handleOnly: some View {
-        Button(action: onToggleExpanded) {
+        Button {
+            withAnimation(GameBoardAnimation.dock) {
+                onToggleExpanded()
+            }
+        } label: {
             Capsule()
                 .fill(Color.secondary.opacity(0.45))
                 .frame(width: 64, height: 6)
@@ -129,7 +141,11 @@ struct BottomRewardDockView: View {
 
     private func dockContent(isExpanded: Bool) -> some View {
         VStack(alignment: .leading, spacing: isExpanded ? 12 : 8) {
-            Button(action: onToggleExpanded) {
+            Button {
+                withAnimation(GameBoardAnimation.dock) {
+                    onToggleExpanded()
+                }
+            } label: {
                 HStack(spacing: 10) {
                     Capsule()
                         .fill(Color.secondary.opacity(0.45))
@@ -142,6 +158,8 @@ struct BottomRewardDockView: View {
                         Text(forwardControl.title)
                             .font(.headline.weight(.black))
                             .foregroundStyle(forwardControl.isEnabled ? Color.accentColor : Color.secondary)
+                            .scaleEffect(forwardControl.isEnabled ? 1.06 : 1)
+                            .animation(GameBoardAnimation.quick, value: forwardControl.isEnabled)
                     }
                 }
             }
@@ -195,6 +213,7 @@ struct BottomRewardDockView: View {
         )
         .padding(.horizontal, 18)
         .padding(.bottom, 12)
+        .transition(GameBoardAnimation.dockTransition)
     }
 
     @ViewBuilder
@@ -223,17 +242,20 @@ struct BottomRewardDockView: View {
     }
 
     private func tokenStrip(isExpanded: Bool) -> some View {
-        let rows = [GridItem(.adaptive(minimum: isExpanded ? 132 : 104), spacing: 8)]
         return ScrollView(.horizontal, showsIndicators: false) {
-            LazyHGrid(rows: rows, spacing: 8) {
+            HStack(spacing: 8) {
                 ForEach(state.tokens) { token in
                     Button {
-                        onAction(token.action)
+                        withAnimation(GameBoardAnimation.token) {
+                            onAction(token.action)
+                        }
                     } label: {
                         tokenCard(token, isExpanded: isExpanded)
                     }
                     .buttonStyle(.plain)
                     .disabled(!token.isSelectable)
+                    .id(token.id)
+                    .transition(GameBoardAnimation.tokenTransition)
                 }
             }
             .padding(.vertical, 1)
@@ -280,20 +302,25 @@ struct BottomRewardDockView: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(tokenBorder(token), lineWidth: token.isSelected ? 2 : 1)
         )
+        .scaleEffect(token.isSelected ? GameBoardAnimation.dockSelectedTokenScale : 1)
         .opacity(token.isSelectable ? 1 : 0.65)
+        .animation(GameBoardAnimation.token, value: token.isSelected)
+        .animation(GameBoardAnimation.quick, value: token.isSelectable)
     }
 
     private var controlRow: some View {
         HStack(spacing: 10) {
             if let backControl = state.backControl {
                 Button {
-                    onAction(backControl.action)
+                    withAnimation(GameBoardAnimation.standard) {
+                        onAction(backControl.action)
+                    }
                 } label: {
                     Text(backControl.title)
                         .font(.headline.weight(.black))
                         .frame(width: 54)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(BottomDockControlButtonStyle(isProminent: false))
                 .disabled(!backControl.isEnabled)
                 .accessibilityLabel(backControl.accessibilityLabel)
             }
@@ -302,13 +329,15 @@ struct BottomRewardDockView: View {
 
             if let forwardControl = state.forwardControl {
                 Button {
-                    onAction(forwardControl.action)
+                    withAnimation(GameBoardAnimation.standard) {
+                        onAction(forwardControl.action)
+                    }
                 } label: {
                     Text(forwardControl.title)
                         .font(.headline.weight(.black))
                         .frame(minWidth: 86)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(BottomDockControlButtonStyle(isProminent: true))
                 .disabled(!forwardControl.isEnabled)
                 .accessibilityLabel(forwardControl.accessibilityLabel)
             }
@@ -337,5 +366,55 @@ struct BottomRewardDockView: View {
 
     private func tokenIconBackground(_ token: BottomRewardDockToken) -> Color {
         token.isUnsupported ? .red.opacity(0.12) : .accentColor.opacity(0.14)
+    }
+}
+
+private struct BottomDockControlButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    let isProminent: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, isProminent ? 14 : 8)
+            .padding(.vertical, 7)
+            .background(
+                Capsule()
+                    .fill(backgroundColor)
+            )
+            .foregroundStyle(foregroundColor)
+            .overlay(
+                Capsule()
+                    .stroke(borderColor, lineWidth: 1)
+            )
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .shadow(
+                color: isEnabled && isProminent ? Color.accentColor.opacity(configuration.isPressed ? 0.10 : 0.24) : .clear,
+                radius: configuration.isPressed ? 2 : 6,
+                y: configuration.isPressed ? 1 : 3
+            )
+            .opacity(isEnabled ? 1 : 0.48)
+            .animation(GameBoardAnimation.quick, value: configuration.isPressed)
+    }
+
+    private var backgroundColor: Color {
+        guard isEnabled else {
+            return Color(.systemBackground).opacity(0.55)
+        }
+        return isProminent ? Color.accentColor.opacity(0.92) : Color(.systemBackground).opacity(0.72)
+    }
+
+    private var foregroundColor: Color {
+        guard isEnabled else {
+            return .secondary
+        }
+        return isProminent ? .white : Color.accentColor
+    }
+
+    private var borderColor: Color {
+        guard isEnabled else {
+            return Color.secondary.opacity(0.18)
+        }
+        return Color.accentColor.opacity(isProminent ? 0 : 0.28)
     }
 }

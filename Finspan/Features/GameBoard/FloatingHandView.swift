@@ -10,6 +10,7 @@ struct FloatingHandView: View {
 
     @State private var activeDragCardId: CardID?
     @State private var activeDragTranslation: CGSize = .zero
+    @State private var invalidFeedbackCardId: CardID?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -59,7 +60,9 @@ struct FloatingHandView: View {
         }
         .padding(.bottom, 8)
         .shadow(color: .black.opacity(0.22), radius: 14, x: 0, y: -2)
-        .animation(.spring(response: 0.28, dampingFraction: 0.86), value: viewState.pulledOutCardId)
+        .animation(GameBoardAnimation.handSelection, value: viewState.pulledOutCardId)
+        .animation(GameBoardAnimation.handReturn, value: activeDragCardId)
+        .animation(GameBoardAnimation.quick, value: invalidFeedbackCardId)
     }
 
     private var handStackWidth: CGFloat {
@@ -72,33 +75,46 @@ struct FloatingHandView: View {
 
     @ViewBuilder
     private func stackedCardButton(_ card: HandCardViewState) -> some View {
-        HandStackCardView(card: card)
+        let isDragging = activeDragCardId == card.cardId
+        let isShowingInvalidFeedback = invalidFeedbackCardId == card.cardId
+        HandStackCardView(
+            card: card,
+            isDragging: isDragging,
+            isShowingInvalidFeedback: isShowingInvalidFeedback
+        )
             .contentShape(RoundedRectangle(cornerRadius: 8))
             .onTapGesture {
                 guard viewState.canSelectCards else {
+                    triggerInvalidFeedback(for: card.cardId)
                     return
                 }
-                onSelectCard(card.cardId)
+                withAnimation(GameBoardAnimation.handSelection) {
+                    onSelectCard(card.cardId)
+                }
             }
             .gesture(dragGesture(for: card))
             .offset(
-                x: CGFloat(card.stackOffsetX) + activeDragOffset(for: card).width,
-                y: CGFloat(card.stackOffsetY) + activeDragOffset(for: card).height
+                x: CGFloat(card.stackOffsetX) + activeDragOffset(for: card).width + invalidFeedbackOffset(for: card),
+                y: CGFloat(card.stackOffsetY) + activeDragOffset(for: card).height + dragLiftOffset(for: card)
             )
-            .zIndex(activeDragCardId == card.cardId ? 2_000 : card.stackZIndex)
+            .zIndex(isDragging ? 2_000 : card.stackZIndex)
     }
 
     private func dragGesture(for card: HandCardViewState) -> some Gesture {
         DragGesture(minimumDistance: 6, coordinateSpace: .global)
             .onChanged { value in
                 guard viewState.canSelectCards else {
+                    triggerInvalidFeedback(for: card.cardId)
                     return
                 }
                 if activeDragCardId == nil {
                     guard onBeginDrag(card.cardId) else {
+                        triggerInvalidFeedback(for: card.cardId)
                         return
                     }
-                    activeDragCardId = card.cardId
+                    withAnimation(GameBoardAnimation.handSelection) {
+                        activeDragCardId = card.cardId
+                    }
                 }
                 guard activeDragCardId == card.cardId else {
                     return
@@ -111,8 +127,13 @@ struct FloatingHandView: View {
                     resetActiveDrag()
                     return
                 }
-                _ = onDropOnBoard(card.cardId, value.location)
-                resetActiveDrag()
+                let didDrop = onDropOnBoard(card.cardId, value.location)
+                withAnimation(GameBoardAnimation.handReturn) {
+                    resetActiveDrag()
+                }
+                if !didDrop {
+                    triggerInvalidFeedback(for: card.cardId)
+                }
             }
     }
 
@@ -120,19 +141,43 @@ struct FloatingHandView: View {
         activeDragCardId == card.cardId ? activeDragTranslation : .zero
     }
 
+    private func dragLiftOffset(for card: HandCardViewState) -> CGFloat {
+        activeDragCardId == card.cardId ? -10 : 0
+    }
+
+    private func invalidFeedbackOffset(for card: HandCardViewState) -> CGFloat {
+        invalidFeedbackCardId == card.cardId ? -GameBoardAnimation.invalidCardNudge : 0
+    }
+
     private func resetActiveDrag() {
         activeDragCardId = nil
         activeDragTranslation = .zero
+    }
+
+    private func triggerInvalidFeedback(for cardId: CardID) {
+        withAnimation(GameBoardAnimation.quick) {
+            invalidFeedbackCardId = cardId
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + GameBoardAnimation.Duration.quick) {
+            guard invalidFeedbackCardId == cardId else {
+                return
+            }
+            withAnimation(GameBoardAnimation.quick) {
+                invalidFeedbackCardId = nil
+            }
+        }
     }
 }
 
 struct HandStackCardView: View {
     let card: HandCardViewState
+    let isDragging: Bool
+    let isShowingInvalidFeedback: Bool
 
     var body: some View {
         FishCardFaceView(viewState: card.cardFace)
         .frame(width: CGFloat(card.cardWidth), height: CGFloat(card.cardHeight), alignment: .topLeading)
-        .scaleEffect(card.scale)
+        .scaleEffect(cardScale)
         .overlay(cardBorder)
         .overlay(discardOverlay)
         .overlay(alignment: .bottomLeading) {
@@ -160,7 +205,10 @@ struct HandStackCardView: View {
             }
         }
         .opacity(card.highlightStyle == .unavailable ? 0.74 : 1)
-        .shadow(color: shadowColor, radius: card.isPulledOutFromStack ? 16 : 8, x: 0, y: card.isPulledOutFromStack ? 8 : 4)
+        .shadow(color: shadowColor, radius: shadowRadius, x: 0, y: shadowYOffset)
+        .animation(GameBoardAnimation.handSelection, value: card.isPulledOutFromStack)
+        .animation(GameBoardAnimation.handSelection, value: isDragging)
+        .animation(GameBoardAnimation.quick, value: isShowingInvalidFeedback)
     }
 
     private var cardBorder: some View {
@@ -219,6 +267,37 @@ struct HandStackCardView: View {
     }
 
     private var shadowColor: Color {
-        card.isPulledOutFromStack ? .black.opacity(0.24) : .black.opacity(0.16)
+        if isDragging {
+            return .black.opacity(0.30)
+        }
+        return card.isPulledOutFromStack ? .black.opacity(0.24) : .black.opacity(0.16)
+    }
+
+    private var shadowRadius: CGFloat {
+        if isDragging {
+            return 20
+        }
+        return card.isPulledOutFromStack ? 16 : 8
+    }
+
+    private var shadowYOffset: CGFloat {
+        if isDragging {
+            return 10
+        }
+        return card.isPulledOutFromStack ? 8 : 4
+    }
+
+    private var cardScale: CGFloat {
+        let baseScale = CGFloat(card.scale)
+        if isDragging {
+            return baseScale * GameBoardAnimation.draggingHandCardScale
+        }
+        if card.isPulledOutFromStack {
+            return baseScale * GameBoardAnimation.selectedHandCardScale
+        }
+        if isShowingInvalidFeedback {
+            return baseScale * 0.985
+        }
+        return baseScale
     }
 }

@@ -138,7 +138,7 @@ Opponent boards are read-only. When `viewingPlayerId != localPlayerId`, slot sel
 
 ## Bottom Dock Fallback Routes
 
-`BottomDockOverlayRoute` is the shared presentation route for complex continuations that used to be explained by the right-side panel. The current routes are:
+`BottomDockOverlayRoute` is the shared presentation route for complex continuations that used to be explained by the right-side panel. Overlay presentation is animated with a dim fade plus a light panel slide/fade. The current routes are:
 
 - `discardPileSelection`: opened by `recoverFromDiscardOrDraw` when recoverable discard cards exist. The existing discard pile sheet enters recover selection mode; choosing a discard submits the existing selected-discard command path, and Draw Instead submits the existing draw fallback.
 - `handCardPicker`: opened by `consumeFishFromHand`, `playFishForFree`, and `playFishFromHand` when the next continuation is a hand card choice. The picker uses real hand card faces and disables illegal cards with a reason.
@@ -147,7 +147,7 @@ Opponent boards are read-only. When `viewingPlayerId != localPlayerId`, slot sel
 - `debugFallback`: a dock-launched helper for metadata gaps or temporary complex explanations. It does not restore a permanent right-side panel.
 - `gameEndCandidate`: reserved for GAME END candidate details when a direct dock token is not enough.
 
-The overlay state is driven by `GameBoardViewModel` and SwiftUI presentation only. Closing an overlay clears staged UI selection or returns to the dock context; it does not mutate `GameState`. Completion still sends existing commands such as `resolveEffectNode`, `skipEffectNode`, `skipEffectExecution`, `activateGameEndAbility`, `finishGameEndAbilities`, or `PlayerCommand.playFish`.
+The overlay state is driven by `GameBoardViewModel` and SwiftUI presentation only. Closing an overlay clears staged UI selection or returns to the dock context; it does not mutate `GameState` and cannot roll back an already submitted `GameEvent`. Completion still sends existing commands such as `resolveEffectNode`, `skipEffectNode`, `skipEffectExecution`, `activateGameEndAbility`, `finishGameEndAbilities`, or `PlayerCommand.playFish`.
 
 ## Ability Staged Flow
 
@@ -228,6 +228,16 @@ These are payment-source selections. The coral reward marker is the entry point;
 - return from target step to reward/source step.
 
 `<-` never means committed undo. It cannot undo draw, hidden information, submitted `GameEvent`, another player's AllPlayers step, or GAME END scoring.
+
+## UI Polish Pass 1A
+
+`GameBoardAnimation` centralizes quick / standard / slow animation parameters for hand selection, drag return, dock transitions, token selection, overlays, and board perspective changes. This helper is presentation-only and does not alter rules, `GameEngine`, `AbilityEngine`, card JSON, command payloads, or `GameState` reducers.
+
+- Hand cards keep stable `cardId` identity. Selection lifts, lightly scales, increases shadow, and raises zIndex without rebuilding the full hand row. Re-selecting the same card cancels staged selection and returns smoothly.
+- Drag-to-play keeps the dragged card floating. Legal drop targets receive a light scale / glow / border highlight. Cancelling or dropping on an illegal target returns the hand card smoothly; `PlayerCommand.playFish` is still submitted only by the existing confirm path.
+- `BottomRewardDock` mode changes use a bottom slide + fade transition. Dock tokens use stable `token.id`, scale + opacity insertion/removal, and light selected-state scaling. `->` / `<-` controls have press feedback.
+- Hand picker and discard picker content use stable card identity where possible and avoid offset-driven rebuilds for core card selection.
+- Switching `viewingPlayerId` animates the board area only; `BottomRewardDock`, pending, staged `playFish`, AllPlayers, and GAME END context remain outside that local transition and are preserved.
 
 ## Fallback Policy
 

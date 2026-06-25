@@ -80,10 +80,15 @@
 
 - 已支持拖拽出牌。
 - 已支持统一支付 UI，弃牌支付和资源支付都在同一出牌确认流程中汇总。
+- UI Polish Pass 1A 已接入 `GameBoardAnimation` 统一 quick / standard / slow、hand selection、dock、token、overlay 和 board perspective 动画参数；当前仅影响 SwiftUI presentation，不修改规则状态或 command 提交时机。
+- 手牌选中现在以稳定 `cardId` 身份轻微上浮、放大、加强阴影并提高 zIndex；再次点击会平滑取消回位。不可交互点击 / 非法拖放给短促 nudge 反馈，不让整排手牌重排。
+- 拖动手牌时保留浮起感；合法 drop target 使用轻量 scale / glow / border 高亮。取消拖动或非法 drop 会平滑回到手牌区；`PlayerCommand.playFish` 仍只在确认时提交。
 - `BottomRewardDock` 已成为主行动中心，用于 pending reward、ability reward、dive / zone reward、GAME END candidate、AllPlayers 外部收益、出牌确认、`->` forward / confirm / skip 和 `<-` staged undo / cancel。
+- `BottomRewardDock` hidden / handleOnly / compact / expanded 切换使用统一底部滑入 + fade transition；dock token 出现 / 消失使用 scale + opacity，选中 token 使用轻量 scale / highlight；`->` / `<-` 有轻量 press feedback，且 token identity 继续由稳定 `token.id` 驱动。
 - 右侧 reward / pending / playFish confirm 面板已从主棋盘 layout 移除，不再常驻占用右侧空间。
 - 复杂 fallback 不再通过右侧常驻栏承载；由 bottom dock 拉起 overlay / sheet / picker / debug helper。
 - `BottomDockOverlayRoute` / `BottomDockOverlayState` 已接入，用于统一 dock fallback continuation：弃牌堆选择、手牌选择、playFish staging、reef target、debug fallback 和 GAME END candidate。
+- discard pile overlay、recover selection、hand picker、consumeFishFromHand picker、playFishForFree / playFishFromHand picker 现在使用 dim fade + panel slide/fade；关闭 overlay 只撤回未提交 staged selection，不影响已经提交的 `GameEvent`。
 - `recoverFromDiscardOrDraw` 的 dock token 现在会在有可恢复弃牌时打开现有弃牌堆 recover selection overlay；弃牌为空时仍由 dock 走 draw fallback，draw 后不支持 committed undo。
 - `consumeFishFromHand` 的 dock token 现在打开 hand picker，再继续到 board target 选择吞噬者；非法手牌由 hand picker 显示 disabled / reason。
 - `playFishForFree` / `playFishFromHand` 的 dock token 现在打开 hand picker，再进入 staged `playFish` flow；免费出牌不要求支付，paid play 继续使用现有直接资源 / 手牌支付选择，`->` / `<-` 仍由 bottom dock 表达。
@@ -111,7 +116,8 @@
 - 已支持弃牌堆 normal 只读查看，以及 `recoverFromDiscardOrDraw` pending effect 下的弃牌选择模式。
 - `recoverFromDiscardOrDraw` 弃牌选择模式已接入 `PendingEffectSet` / `PendingEffectIntent`：可选择具体弃牌恢复，也可主动选择改为抽牌；弃牌为空时仍 fallback draw deck。
 - 手牌点击性能审计已完成一轮低风险优化：`GameBoardViewModel` 缓存按 cardId 生成的静态 `FishCardFaceViewState`，减少选牌时重复 catalog lookup / ability token parse；选牌仍只改变 UI selection，不修改 `GameState`。
-- 底部手牌 / 弃牌堆 dock 已在优化中。
+- 查看对手 board 时 ocean / bottom area 使用局部淡入 / 平移过渡；`BottomRewardDock`、pending、staged `playFish` 和 AllPlayers / GAME END 上下文不因 `viewingPlayerId` 切换而丢失。
+- 本轮没有恢复右侧常驻面板，没有修改 `AbilityEngine` / `GameEngine` / card JSON。
 
 ### 数据与卡牌
 
@@ -194,7 +200,7 @@
 - 让手牌真正居中。
 - 弃牌堆空时完全隐藏。
 - empty slot 不显示 unknown fish card。
-- bottom dock 的 picker / sheet fallback 仍需继续做交互细节打磨，但主路径已经不回到常驻右侧栏。
+- bottom dock 的 picker / sheet fallback 已完成第一轮动画 polish；后续仍可继续优化尺寸、手牌遮挡和错误提示，但主路径已经不回到常驻右侧栏。
 - 顶部行动摘要应改成自动消失的 toast。
 
 ### 规则与功能
@@ -210,7 +216,7 @@
 ## 当前建议下一步
 
 1. 继续做 Player Board Perspective 细节打磨，重点是 source highlight 的可见性、返回自己快捷入口位置和 GAME END 多玩家浏览体验。
-2. 继续做 bottom dock fallback 的交互细节打磨，重点是 overlay 尺寸、手牌遮挡、取消恢复上下文和错误提示。
+2. 继续做 bottom dock fallback 的交互细节打磨，重点是 overlay 尺寸、手牌遮挡和更明确的错误提示。
 3. 继续做 GameBoardViewModel pending UI 小步稳定，重点是 target / payment / discard-selection prompt fallback。
 4. 后续再考虑 card icon shortcut；在 bottom dock 体验稳定、BoardLayout 完成前不要推进完整 card inline ability tap。
 5. 再修 UI bug：手牌居中、弃牌堆隐藏、empty slot 占位。

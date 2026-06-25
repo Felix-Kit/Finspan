@@ -51,15 +51,20 @@ struct GameBoardView: View {
                             state: viewModel.bottomRewardDockState,
                             isExpanded: isBottomRewardDockExpanded,
                             onToggleExpanded: {
-                                withAnimation(.snappy(duration: 0.2)) {
+                                withAnimation(GameBoardAnimation.dock) {
                                     isBottomRewardDockExpanded.toggle()
                                 }
                             },
                             onAction: { action in
-                                viewModel.performBottomRewardDockAction(action)
+                                withAnimation(GameBoardAnimation.standard) {
+                                    viewModel.performBottomRewardDockAction(action)
+                                }
                             }
                         )
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                        .transition(GameBoardAnimation.dockTransition)
+                        .animation(GameBoardAnimation.dock, value: viewModel.bottomRewardDockState.displayMode)
+                        .animation(GameBoardAnimation.dock, value: isBottomRewardDockExpanded)
                         .zIndex(10)
 
                         if let toast = viewModel.hudToastViewState {
@@ -68,19 +73,26 @@ struct GameBoardView: View {
                                 .padding(.top, 10)
                                 .padding(.horizontal, 18)
                                 .allowsHitTesting(false)
+                                .transition(.move(edge: .top).combined(with: .opacity))
                         }
 
                         if let detail = viewModel.discardPileDetailViewState {
                             discardPileDetailOverlay(detail)
+                                .transition(GameBoardAnimation.overlayDimTransition)
                                 .zIndex(20)
                         }
 
                         if let overlay = viewModel.bottomDockOverlayState,
                            overlay.route != .discardPileSelection {
                             bottomDockOverlay(overlay)
+                                .id(overlay.route.rawValue)
+                                .transition(GameBoardAnimation.overlayDimTransition)
                                 .zIndex(21)
                         }
                     }
+                    .animation(GameBoardAnimation.quick, value: viewModel.hudToastViewState?.id)
+                    .animation(GameBoardAnimation.overlay, value: viewModel.discardPileDetailViewState != nil)
+                    .animation(GameBoardAnimation.overlay, value: viewModel.bottomDockOverlayState?.route.rawValue)
                     .toolbar(.hidden, for: .navigationBar)
                     .ignoresSafeArea(.container, edges: [.top, .bottom])
                 }
@@ -214,7 +226,9 @@ struct GameBoardView: View {
             HStack(spacing: 8) {
                 ForEach(viewState.players) { player in
                     Button {
-                        viewModel.selectPlayerAvatar(player.playerId)
+                        withAnimation(GameBoardAnimation.boardPerspective) {
+                            viewModel.selectPlayerAvatar(player.playerId)
+                        }
                     } label: {
                         VStack(spacing: 2) {
                             ZStack(alignment: .bottomTrailing) {
@@ -255,7 +269,9 @@ struct GameBoardView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                     Button(viewState.returnToLocalPlayerText) {
-                        viewModel.returnToLocalPlayerBoard()
+                        withAnimation(GameBoardAnimation.boardPerspective) {
+                            viewModel.returnToLocalPlayerBoard()
+                        }
                     }
                     .font(.caption2.weight(.bold))
                     .buttonStyle(.bordered)
@@ -539,8 +555,11 @@ struct GameBoardView: View {
             Color.black.opacity(0.72)
                 .ignoresSafeArea()
                 .onTapGesture {
-                    viewModel.hideDiscardPile()
+                    withAnimation(GameBoardAnimation.overlay) {
+                        viewModel.hideDiscardPile()
+                    }
                 }
+                .transition(GameBoardAnimation.overlayDimTransition)
 
             discardPileDetailPanel(detail)
                 .padding(.horizontal, 32)
@@ -548,6 +567,7 @@ struct GameBoardView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .contentShape(Rectangle())
                 .onTapGesture {}
+                .transition(GameBoardAnimation.overlayPanelTransition)
         }
     }
 
@@ -562,7 +582,9 @@ struct GameBoardView: View {
                     .foregroundStyle(.white.opacity(0.8))
                 Spacer()
                 Button(AppStrings.GameBoard.close) {
-                    viewModel.hideDiscardPile()
+                    withAnimation(GameBoardAnimation.overlay) {
+                        viewModel.hideDiscardPile()
+                    }
                 }
                 .buttonStyle(.bordered)
                 .tint(.white)
@@ -589,9 +611,10 @@ struct GameBoardView: View {
                         ),
                         spacing: 12
                     ) {
-                        ForEach(Array(detail.cards.enumerated()), id: \.offset) { _, card in
+                        ForEach(Array(detail.cards.enumerated()), id: \.element.cardId) { _, card in
                             FishCardFaceView(viewState: card)
                                 .frame(maxWidth: .infinity)
+                                .scaleEffect(detail.selectedCardId == card.cardId ? 1.025 : 1)
                                 .overlay {
                                     let isSelected = detail.selectedCardId == card.cardId
                                     RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -607,32 +630,42 @@ struct GameBoardView: View {
                                     else {
                                         return
                                     }
-                                    viewModel.selectDiscardPileCard(cardId)
+                                    withAnimation(GameBoardAnimation.token) {
+                                        viewModel.selectDiscardPileCard(cardId)
+                                    }
                                 }
                                 .allowsHitTesting(detail.mode == .recoverSelection)
+                                .transition(GameBoardAnimation.tokenTransition)
                         }
                     }
                     .padding(.vertical, 4)
+                    .animation(GameBoardAnimation.token, value: detail.selectedCardId)
                 }
             }
 
             if detail.mode == .recoverSelection {
                 HStack(spacing: 12) {
                     Button(AppStrings.GameBoard.recoverSelectedDiscardCard) {
-                        viewModel.confirmRecoverSelectedDiscardCard()
+                        withAnimation(GameBoardAnimation.standard) {
+                            viewModel.confirmRecoverSelectedDiscardCard()
+                        }
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(!detail.canRecoverSelectedCard)
 
                     Button(AppStrings.GameBoard.drawInstead) {
-                        viewModel.drawInsteadFromDiscardSelection()
+                        withAnimation(GameBoardAnimation.standard) {
+                            viewModel.drawInsteadFromDiscardSelection()
+                        }
                     }
                     .buttonStyle(.bordered)
                     .tint(.white)
                     .disabled(!detail.showsDrawInsteadAction)
 
                     Button(AppStrings.GameBoard.cancel) {
-                        viewModel.cancelDiscardPileSelection()
+                        withAnimation(GameBoardAnimation.overlay) {
+                            viewModel.cancelDiscardPileSelection()
+                        }
                     }
                     .buttonStyle(.bordered)
                     .tint(.white)
@@ -646,8 +679,11 @@ struct GameBoardView: View {
             Color.black.opacity(0.62)
                 .ignoresSafeArea()
                 .onTapGesture {
-                    viewModel.dismissBottomDockOverlay()
+                    withAnimation(GameBoardAnimation.overlay) {
+                        viewModel.dismissBottomDockOverlay()
+                    }
                 }
+                .transition(GameBoardAnimation.overlayDimTransition)
 
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
@@ -661,7 +697,9 @@ struct GameBoardView: View {
                     }
                     Spacer()
                     Button(AppStrings.GameBoard.cancel) {
-                        viewModel.dismissBottomDockOverlay()
+                        withAnimation(GameBoardAnimation.overlay) {
+                            viewModel.dismissBottomDockOverlay()
+                        }
                     }
                     .buttonStyle(.bordered)
                     .tint(.white)
@@ -694,6 +732,7 @@ struct GameBoardView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             .contentShape(Rectangle())
             .onTapGesture {}
+            .transition(GameBoardAnimation.overlayPanelTransition)
         }
     }
 
@@ -702,11 +741,14 @@ struct GameBoardView: View {
             HStack(alignment: .top, spacing: 14) {
                 ForEach(overlay.handCards) { card in
                     Button {
-                        viewModel.selectHandCard(card.cardId)
+                        withAnimation(GameBoardAnimation.handSelection) {
+                            viewModel.selectHandCard(card.cardId)
+                        }
                     } label: {
                         VStack(alignment: .leading, spacing: 8) {
                             FishCardFaceView(viewState: card.cardFace)
                                 .frame(width: 132, height: 132 / CardRenderMetrics.cardAspectRatio)
+                                .scaleEffect(card.isPlayable ? 1 : 0.985)
                                 .overlay {
                                     RoundedRectangle(cornerRadius: 10)
                                         .stroke(card.isPlayable ? Color.green : Color.red.opacity(0.65), lineWidth: card.isPlayable ? 2 : 1)
@@ -724,9 +766,11 @@ struct GameBoardView: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(!card.isPlayable)
+                    .transition(GameBoardAnimation.tokenTransition)
                 }
             }
             .padding(.vertical, 4)
+            .animation(GameBoardAnimation.token, value: overlay.handCards.map(\.id))
         }
     }
 
@@ -845,6 +889,9 @@ struct GameBoardView: View {
                             .frame(maxWidth: .infinity, minHeight: 0, alignment: .topLeading)
                         }
                     }
+                    .id(viewModel.viewingPlayerId ?? viewModel.activePlayerId ?? "no-viewing-player")
+                    .transition(GameBoardAnimation.boardPerspectiveTransition)
+                    .animation(GameBoardAnimation.boardPerspective, value: viewModel.viewingPlayerId)
 
                     Text(AppStrings.GameBoard.bottomBonus)
                         .font(.headline)
@@ -855,6 +902,9 @@ struct GameBoardView: View {
                                 .frame(maxWidth: .infinity, alignment: .topLeading)
                         }
                     }
+                    .id("bottom-\(viewModel.viewingPlayerId ?? viewModel.activePlayerId ?? "no-viewing-player")")
+                    .transition(GameBoardAnimation.boardPerspectiveTransition)
+                    .animation(GameBoardAnimation.boardPerspective, value: viewModel.viewingPlayerId)
                 }
             }
         }
@@ -1386,6 +1436,15 @@ struct GameBoardView: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(slotBorderColor(slot), lineWidth: slot.isHighlightedByDiveQueue || slot.isDropTarget ? 2 : 1.5)
         )
+        .scaleEffect(slot.isValidDropTarget ? 1.018 : 1)
+        .shadow(
+            color: slot.isValidDropTarget ? Color.green.opacity(0.18) : .clear,
+            radius: slot.isValidDropTarget ? 7 : 0,
+            y: slot.isValidDropTarget ? 3 : 0
+        )
+        .animation(GameBoardAnimation.quick, value: slot.isDropTarget)
+        .animation(GameBoardAnimation.quick, value: slot.isValidDropTarget)
+        .animation(GameBoardAnimation.quick, value: slot.isSelected)
         .background(
             GeometryReader { proxy in
                 Color.clear.preference(
@@ -1396,8 +1455,8 @@ struct GameBoardView: View {
         )
         .contentShape(RoundedRectangle(cornerRadius: 8))
         .onTapGesture {
-            viewModel.selectTargetSlot(slot.address)
-        }
+                viewModel.selectTargetSlot(slot.address)
+            }
     }
 
     private func cardResourceTokenHitTargets(_ slot: OceanSlotViewData) -> some View {

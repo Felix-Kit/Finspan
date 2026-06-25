@@ -130,7 +130,12 @@
 - 顶部 HUD、玩家头像、当前行动摘要、右上角四个纯图标周目标入口和全 4 周 scoreboard 已接入。
 - 右侧行动确认区已从主棋盘 layout 移除。
 - `BottomRewardDock` 已接入底部 overlay：空闲时 hidden / handle-only，有 pending 时 compact，点击可 expanded；承载 reward token list、pending action、GAME END candidate、AllPlayers external reward、`playFish` confirm、`->` 和 `<-`。
+- UI Polish Pass 1A 已接入 `GameBoardAnimation`，统一 hand selection、drag return、dock、token、overlay 和 opponent board perspective 的 quick / standard / slow 动画参数。
+- 手牌选中 / 取消现在只基于稳定 `cardId` 做轻量上浮、放大、阴影和 zIndex 变化；非法点击或非法 drop 使用短促 nudge，不触发整排手牌重排。
+- 拖拽出牌保持浮起感；合法 drop target 使用轻量 scale / glow / border 高亮；拖拽取消平滑回到手牌区，`PlayerCommand.playFish` 提交时机不变。
+- `BottomRewardDock` hidden / handleOnly / compact / expanded 切换使用底部滑入 + 淡入；dock token 出现 / 消失使用 scale + opacity，选中 token 轻量放大，高亮仍由稳定 token id 驱动；`->` / `<-` controls 有 press feedback。
 - `BottomDockOverlayRoute` / `BottomDockOverlayState` 已接入，用于由 bottom dock 统一拉起 discard pile selection、hand card picker、playFish staging、reef target picker、debug fallback 和 GAME END candidate helper。
+- discard pile overlay、recover selection、hand picker、consumeFishFromHand picker、playFishForFree / playFishFromHand picker 已接入 dim fade + panel slide/fade；关闭 overlay 只清理未提交 staged selection，不影响已提交 `GameEvent`。
 - `recoverFromDiscardOrDraw` 的 dock flow 已稳定：recover token 打开弃牌堆 recover selection overlay；Draw Instead 走现有 draw fallback；弃牌为空时 dock 直接显示 draw fallback。
 - `consumeFishFromHand` 的 dock flow 已稳定为 hand picker first，再继续到 board consumer target；不在 dock 内塞复杂选择。
 - `playFishForFree` / `playFishFromHand` 的 dock flow 已稳定为 hand picker -> staged `playFish`；free play 不要求支付，paid play 继续进入 payment selection，确认 / 取消都由 dock controls 承载。
@@ -147,6 +152,8 @@
 - 已支持强制结束当前对局返回主页。
 - 已支持弃牌堆 normal 只读查看和 `recoverFromDiscardOrDraw` 选择模式。
 - 手牌点击卡顿已完成一轮低风险定位和优化：卡面静态 view state 按 cardId 缓存，避免选牌时重复构造完整 `FishCardFaceViewState`。
+- 查看对手 board 增加局部淡入 / 平移过渡；`BottomRewardDock`、pending、staged `playFish` 和 AllPlayers / GAME END 上下文保留。
+- 本轮仍不恢复右侧常驻面板，不修改 `AbilityEngine` / `GameEngine` / card JSON。
 
 ### 13. Ability Registry
 
@@ -207,7 +214,7 @@
 - 手牌居中。
 - 弃牌堆空时完全隐藏，有牌时悬浮在手牌右侧。
 - empty slot 不显示 unknown fish。
-- 右侧行动玩家摘要已由 Compact Resource HUD 和 BottomRewardDock 替代；后续继续细化 bottom dock fallback 的 overlay / sheet / picker，而不是恢复右侧常驻栏。
+- 右侧行动玩家摘要已由 Compact Resource HUD 和 BottomRewardDock 替代；bottom dock fallback 的 overlay / sheet / picker 已完成第一轮动画 polish，后续继续细化尺寸和错误提示，而不是恢复右侧常驻栏。
 - 右侧 reward / pending / playFish confirm 面板没有恢复；fallback 通过 dock-launched overlay / sheet / picker / debug helper 承载。
 - 顶部行动摘要 toast 化。
 
@@ -264,7 +271,7 @@
 
 ## 当前建议下一步
 
-1. 继续 polish BottomRewardDock 的 overlay / sheet / picker 体验，重点是尺寸、取消恢复、手牌遮挡和错误提示。
+1. 继续 polish BottomRewardDock 的 overlay / sheet / picker 体验，重点是尺寸、手牌遮挡和错误提示。
 2. 再稳定 GameBoardViewModel pending UI，继续减少 target / payment / discard-selection prompt fallback 分散逻辑。
 3. 如需推进 inline ability interaction，先把 card icon 当作 shortcut / highlight，不作为主交互路径。
 4. 之后修 UI bug：手牌居中、弃牌堆隐藏、empty slot 占位。
