@@ -23,6 +23,10 @@
 
 正常路径不使用硬边框高光。高光应保持轻量、半透明，并与背景 slot 美术融合。
 
+GameBoard UI Cleanup Pass 1 后，placeholder board canvas 下的 empty slot 也遵循这个原则：正常空槽位只保留透明 hit target / 柔和 tint，不显示 unknown fish card 或卡牌式占位。Forage fish slot 继续显示 forage fish，真实鱼槽继续显示真实鱼牌。unknown card 只代表数据错误或 debug fallback，不是普通空槽位 UI。
+
+底部 hand area 不属于 board normalized layout；它现在使用与棋盘融合的海洋 glass backdrop，手牌独立居中，弃牌堆作为 trailing overlay 显示。FloatingActionPair 也不写入 BoardLayout，它通过 `FloatingActionPairLayoutMetrics` 避开 hand area、弃牌堆和 system home indicator。
+
 ## Layout 字段语义
 
 每个 slot 使用 normalized 坐标：
@@ -55,3 +59,5 @@
 - layout JSON decode；
 - DEBUG overlay 不修改 `GameState`，不发送 `PlayerCommand`；
 - BoardLayout 不影响 staged `playFish` 和 resource payment staging。
+- empty slot 不渲染 unknown fish card；
+- FloatingActionPair / bottom hand cleanup 只影响 presentation，不修改 `GameState` 或发送 `PlayerCommand`。

@@ -11,6 +11,21 @@ enum FloatingActionContext: String, Equatable {
     case gameEnd
 }
 
+struct FloatingActionPairLayoutMetrics: Equatable {
+    let bottomClearance: CGFloat
+    let trailingClearance: CGFloat
+    let handAvoidanceHeight: CGFloat
+
+    static let boardLowerTrailing = FloatingActionPairLayoutMetrics(
+        bottomClearance: 312,
+        trailingClearance: 48,
+        handAvoidanceHeight: 284
+    )
+
+    var avoidsHomeIndicator: Bool { bottomClearance >= 180 }
+    var avoidsHandArea: Bool { bottomClearance >= handAvoidanceHeight }
+}
+
 struct FloatingActionButtonState: Identifiable, Equatable {
     let id: String
     let title: String
@@ -26,12 +41,11 @@ struct FloatingActionPairState: Equatable {
     let context: FloatingActionContext
     let buttonSize: CGFloat
     let spacing: CGFloat
-    let minimumBottomClearance: CGFloat
-    let minimumTrailingInset: CGFloat
+    let layoutMetrics: FloatingActionPairLayoutMetrics
 
     var usesMainBoardRightPanel: Bool { false }
-    var avoidsHomeIndicator: Bool { minimumBottomClearance >= 160 }
-    var avoidsHandArea: Bool { minimumBottomClearance >= 240 }
+    var avoidsHomeIndicator: Bool { layoutMetrics.avoidsHomeIndicator }
+    var avoidsHandArea: Bool { layoutMetrics.avoidsHandArea }
     var hasVisibleButton: Bool { leading != nil || trailing != nil }
 
     init(
@@ -41,8 +55,7 @@ struct FloatingActionPairState: Equatable {
         context: FloatingActionContext,
         buttonSize: CGFloat = 52,
         spacing: CGFloat = 14,
-        minimumBottomClearance: CGFloat = 276,
-        minimumTrailingInset: CGFloat = 36
+        layoutMetrics: FloatingActionPairLayoutMetrics = .boardLowerTrailing
     ) {
         self.leading = leading
         self.trailing = trailing
@@ -50,8 +63,7 @@ struct FloatingActionPairState: Equatable {
         self.context = context
         self.buttonSize = buttonSize
         self.spacing = spacing
-        self.minimumBottomClearance = minimumBottomClearance
-        self.minimumTrailingInset = minimumTrailingInset
+        self.layoutMetrics = layoutMetrics
     }
 }
 
@@ -72,8 +84,8 @@ struct FloatingActionPairView: View {
                         floatingButton(trailing, isProminent: true)
                     }
                 }
-                .padding(.trailing, max(state.minimumTrailingInset, proxy.safeAreaInsets.trailing + 28))
-                .padding(.bottom, max(state.minimumBottomClearance, proxy.safeAreaInsets.bottom + 244))
+                .padding(.trailing, max(state.layoutMetrics.trailingClearance, proxy.safeAreaInsets.trailing + 36))
+                .padding(.bottom, max(state.layoutMetrics.bottomClearance, proxy.safeAreaInsets.bottom + state.layoutMetrics.handAvoidanceHeight))
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }

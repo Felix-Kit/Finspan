@@ -104,6 +104,12 @@
 - board resource token 继续使用 live-derived CardAssets，无 badge / 底板；视觉尺寸从 7.5cqw 提高到 9cqw，最多五枚按紧凑错位布局展开。payment staged selection 仍由 slot 层同中心的透明 hit target 发送，手牌和弃牌卡面不注入 board token。
 - Board UI Foundation Pass 1 已接入：新增 manual `BoardLayout` normalized 数据结构、`BoardLayoutMapper` aspectFit / normalized rect / point helper、placeholder `placeholder_board_layout.json` 和 DEBUG calibration overlay。board overlay 统一使用同一套 board image rect mapping，避免鱼牌、高光、hit target、debug overlay 各自写转换逻辑。
 - 主棋盘现在按 future background-image 模型渲染：背景负责棋盘 / slot 美术；SwiftUI 叠加透明 hit target、鱼牌、资源 token、coral reef badge 和柔和 tint / glow highlight，不重复画实体 slot 外观，也不使用硬边框作为正常高光。
+- GameBoard UI Cleanup Pass 1 已完成第一轮明显 UI bug 修复：根视图使用海洋渐变背景，底部手牌区使用融入棋盘的 glass backdrop，不再出现突兀白色底条。
+- 手牌区继续以稳定 `cardId` 为 identity 居中渲染；选中 / 拖动只改变同一张卡的 offset / scale / zIndex，不让整排手牌因弃牌堆或 selection 重排。
+- 弃牌堆为空时完全不显示、不占位；有弃牌时作为右侧 trailing overlay 悬浮在手牌区域旁，不把手牌主体推偏，点击仍进入弃牌堆查看 / recover selection overlay。
+- board canvas 空 ocean slot 只显示轻量透明 hit target / tint，不再显示 unknown fish card 或正常运行时的卡牌占位；forage fish slot 仍显示 forage fish，真实鱼槽仍显示真实鱼牌。unknown card 仅保留为数据错误 / debug fallback 语义。
+- `FloatingActionPairView` layout metrics 已继续校准：两个 52pt 方块按钮保持在 board 右下 / 中下安全区，使用 `bottomClearance` / `trailingClearance` / `handAvoidanceHeight` 避开 hand area、弃牌堆和 system home indicator；overlay / picker 打开时全局按钮隐藏。
+- 顶部行动摘要已走 `hudToastViewState` toast：重要事件短暂顶部显示并自动淡出，完整事件日志仍由日志按钮 / sheet 查看；pending / error 提示保留为轻量状态条，不恢复右侧常驻面板。
 - 右侧资源统计大面板已压缩掉；右侧 pending / reward / action / playFish confirm 面板已从主 layout 移除。
 - `GameTokenIconResolver` / `GameTokenIconView` 已新增，非卡面 UI 的 egg / young / school / fish / coral / draw / discard / consume / hatch / move / zone token 可复用现有 CardAssets icon resolver，尺寸由 HUD / board layout 控制，不由 PNG intrinsic size 控制。
 - 顶部 HUD 已重做，包含玩家头像、当前行动摘要、设置入口和日志入口。
@@ -198,14 +204,10 @@
 
 ## 当前仍需修复 / 待做
 
-### UI bug 修复
+### UI polish 后续
 
-- 去掉底部白色背景条。
-- 让手牌真正居中。
-- 弃牌堆空时完全隐藏。
-- empty slot 不显示 unknown fish card。
-- bottom dock 的 picker / sheet fallback 已完成第一轮动画 polish；后续仍可继续优化尺寸、手牌遮挡和错误提示，但主路径已经不回到常驻右侧栏。
-- 顶部行动摘要应改成自动消失的 toast。
+- bottom dock 的 picker / sheet fallback 已完成第一轮动画 polish；后续仍可继续优化尺寸、手牌遮挡和更明确的错误提示，但主路径已经不回到常驻右侧栏。
+- 真实设备上仍可继续微调 FloatingActionPair 与不同手牌数量、弃牌堆和 overlay 的相对位置；当前已通过 presentation metrics 避开 hand area 和 home indicator。
 
 ### 规则与功能
 
@@ -220,7 +222,7 @@
 ## 当前建议下一步
 
 1. 继续做 Player Board Perspective 细节打磨，重点是 source highlight 的可见性、返回自己快捷入口位置和 GAME END 多玩家浏览体验。
-2. 继续做 FloatingActionPair / bottom dock fallback 的交互细节打磨，重点是按钮位置实机校准、overlay 尺寸、手牌遮挡和更明确的错误提示。
+2. 继续做 FloatingActionPair / bottom dock fallback 的交互细节打磨，重点是实机位置微调、overlay 尺寸、手牌遮挡和更明确的错误提示。
 3. 继续做 GameBoardViewModel pending UI 小步稳定，重点是 target / payment / discard-selection prompt fallback。
 4. 后续再考虑 card icon shortcut；在 FloatingActionPair / bottom dock 体验稳定、BoardLayout 校准完成前不要推进完整 card inline ability tap。
-5. 再修 UI bug：手牌居中、弃牌堆隐藏、empty slot 占位。
+5. 继续真实 board background / BoardLayout 校准前的视觉 QA；本轮没有做 PDF extraction 或真实 board asset 导入。

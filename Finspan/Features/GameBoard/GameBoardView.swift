@@ -38,6 +38,8 @@ struct GameBoardView: View {
             } else {
                 NavigationStack {
                     ZStack(alignment: .bottom) {
+                        boardScreenBackground
+
                         VStack(alignment: .leading, spacing: 12) {
                             gameHud
                             boardStatusStrip
@@ -202,6 +204,30 @@ struct GameBoardView: View {
         .onAppear {
             viewModel.refresh()
         }
+    }
+
+    private var boardScreenBackground: some View {
+        LinearGradient(
+            colors: [
+                Color(red: 0.035, green: 0.12, blue: 0.18),
+                Color(red: 0.04, green: 0.22, blue: 0.30),
+                Color(red: 0.06, green: 0.09, blue: 0.20)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .overlay(
+            LinearGradient(
+                colors: [
+                    Color.cyan.opacity(0.18),
+                    Color.clear,
+                    Color.indigo.opacity(0.20)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+        .ignoresSafeArea()
     }
 
     private var gameHud: some View {
@@ -487,6 +513,9 @@ struct GameBoardView: View {
 
     private var bottomCardDock: some View {
         ZStack(alignment: .bottom) {
+            bottomHandBackdrop
+                .allowsHitTesting(false)
+
             FloatingHandView(
                 viewState: viewModel.handViewState,
                 onSelectCard: { cardId in
@@ -511,17 +540,32 @@ struct GameBoardView: View {
             )
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.horizontal, 18)
-            .padding(.bottom, 4)
+            .padding(.bottom, 18)
 
             if !viewModel.discardPileViewState.isEmpty {
-                HStack {
-                    Spacer(minLength: 0)
-                    discardPileEntry(viewModel.discardPileViewState)
-                }
+                discardPileEntry(viewModel.discardPileViewState)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-                .padding(.trailing, 24)
-                .padding(.bottom, 16)
+                .padding(.trailing, 28)
+                .padding(.bottom, 34)
+                .transition(.scale(scale: 0.96).combined(with: .opacity))
             }
+        }
+        .animation(GameBoardAnimation.standard, value: viewModel.discardPileViewState.isEmpty)
+    }
+
+    private var bottomHandBackdrop: some View {
+        VStack(spacing: 0) {
+            Spacer(minLength: 0)
+            LinearGradient(
+                colors: [
+                    Color.clear,
+                    Color(red: 0.03, green: 0.18, blue: 0.25).opacity(0.46),
+                    Color(red: 0.025, green: 0.10, blue: 0.17).opacity(0.72)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: 246)
         }
     }
 
@@ -846,28 +890,32 @@ struct GameBoardView: View {
         )
     }
 
+    @ViewBuilder
     private var boardStatusStrip: some View {
-        HStack(spacing: 10) {
-            if let prompt = viewModel.mainActionPrompt {
-                Label(prompt, systemImage: viewModel.hasBlockingPendingChoices ? "exclamationmark.circle" : "cursorarrow.click")
-                    .foregroundStyle(viewModel.hasBlockingPendingChoices ? .red : .secondary)
-            }
+        if viewModel.mainActionPrompt != nil || viewModel.errorMessage != nil {
+            HStack(spacing: 10) {
+                if let prompt = viewModel.mainActionPrompt {
+                    Label(prompt, systemImage: viewModel.hasBlockingPendingChoices ? "exclamationmark.circle" : "cursorarrow.click")
+                        .foregroundStyle(viewModel.hasBlockingPendingChoices ? .red : .secondary)
+                }
 
-            if let errorMessage = viewModel.errorMessage {
-                Label(errorMessage, systemImage: "exclamationmark.triangle")
-                    .foregroundStyle(.red)
+                if let errorMessage = viewModel.errorMessage {
+                    Label(errorMessage, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.red)
+                }
             }
+            .font(.callout.weight(.medium))
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color(.systemBackground).opacity(0.78))
+            )
+            .transition(.move(edge: .top).combined(with: .opacity))
         }
-        .font(.callout.weight(.medium))
-        .lineLimit(1)
-        .minimumScaleFactor(0.8)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.tertiarySystemBackground))
-        )
     }
 
     private var playerStrip: some View {
@@ -1513,67 +1561,74 @@ struct GameBoardView: View {
                 cardResourceTokenHitTargets(slot)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 5) {
-                    Text(slot.title)
-                        .font(.caption2.weight(.black))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                    if slot.isSelected {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(.green)
+            if shouldShowSlotChrome(for: slot, presentation: presentation) {
+                VStack(alignment: .leading, spacing: 4) {
+                    if presentation == .legacyGrid || shouldShowSlotTitle(for: slot) {
+                        HStack(spacing: 5) {
+                            Text(slot.title)
+                                .font(.caption2.weight(.black))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                            if slot.isSelected {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(.green)
+                            }
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(Color(.systemBackground).opacity(0.82)))
+                    }
+
+                    Spacer(minLength: 0)
+
+                    if shouldShowSlotMessagePanel(for: slot, presentation: presentation) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            if presentation == .legacyGrid || slot.isDropTarget || slot.isSelected {
+                                Text(slot.playFishPreview.message)
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(slot.playFishPreview.isSelectable ? .green : .secondary)
+                                    .lineLimit(1)
+                            }
+
+                            if let highlightReasonText = slot.highlightReasonText {
+                                Text(highlightReasonText)
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(.orange)
+                                    .lineLimit(1)
+                            }
+
+                            if let dropTargetReasonText = slot.dropTargetReasonText {
+                                Text(dropTargetReasonText)
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(slot.isValidDropTarget ? .green : .red)
+                                    .lineLimit(1)
+                            }
+
+                            if let rewardSelectionReasonText = slot.rewardSelectionReasonText {
+                                Text(rewardSelectionReasonText)
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(.blue)
+                                    .lineLimit(1)
+                            }
+
+                            if let readOnlyReasonText = slot.readOnlyReasonText {
+                                Text(readOnlyReasonText)
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 4)
+                        .background(
+                            RoundedRectangle(cornerRadius: 7)
+                                .fill(Color(.systemBackground).opacity(0.84))
+                        )
                     }
                 }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .background(Capsule().fill(Color(.systemBackground).opacity(0.82)))
-
-                Spacer(minLength: 0)
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(slot.playFishPreview.message)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(slot.playFishPreview.isSelectable ? .green : .secondary)
-                        .lineLimit(1)
-
-                    if let highlightReasonText = slot.highlightReasonText {
-                        Text(highlightReasonText)
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.orange)
-                            .lineLimit(1)
-                    }
-
-                    if let dropTargetReasonText = slot.dropTargetReasonText {
-                        Text(dropTargetReasonText)
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(slot.isValidDropTarget ? .green : .red)
-                            .lineLimit(1)
-                    }
-
-                    if let rewardSelectionReasonText = slot.rewardSelectionReasonText {
-                        Text(rewardSelectionReasonText)
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.blue)
-                            .lineLimit(1)
-                    }
-
-                    if let readOnlyReasonText = slot.readOnlyReasonText {
-                        Text(readOnlyReasonText)
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 4)
-                .background(
-                    RoundedRectangle(cornerRadius: 7)
-                        .fill(Color(.systemBackground).opacity(0.84))
-                )
-
+                .padding(presentation == .legacyGrid ? 6 : 4)
             }
-            .padding(presentation == .legacyGrid ? 6 : 4)
         }
         .padding(presentation == .legacyGrid ? 10 : 0)
         .aspectRatio(slot.aspectRatio, contentMode: .fit)
@@ -1624,6 +1679,38 @@ struct GameBoardView: View {
         }
     }
 
+    private func shouldShowSlotChrome(
+        for slot: OceanSlotViewData,
+        presentation: BoardSlotPresentation
+    ) -> Bool {
+        presentation == .legacyGrid
+            || slot.isSelected
+            || slot.isDropTarget
+            || slot.isHighlightedByDiveQueue
+            || slot.isHighlightedByRewardSelection
+            || slot.readOnlyReasonText != nil
+    }
+
+    private func shouldShowSlotTitle(for slot: OceanSlotViewData) -> Bool {
+        slot.isSelected
+            || slot.isDropTarget
+            || slot.isHighlightedByDiveQueue
+            || slot.isHighlightedByRewardSelection
+    }
+
+    private func shouldShowSlotMessagePanel(
+        for slot: OceanSlotViewData,
+        presentation: BoardSlotPresentation
+    ) -> Bool {
+        presentation == .legacyGrid
+            || slot.isSelected
+            || slot.isDropTarget
+            || slot.highlightReasonText != nil
+            || slot.dropTargetReasonText != nil
+            || slot.rewardSelectionReasonText != nil
+            || slot.readOnlyReasonText != nil
+    }
+
     private func cardResourceTokenHitTargets(_ slot: OceanSlotViewData) -> some View {
         GeometryReader { proxy in
             let unit = proxy.size.width / 100
@@ -1661,31 +1748,34 @@ struct GameBoardView: View {
         _ slot: OceanSlotViewData,
         presentation: BoardSlotPresentation = .legacyGrid
     ) -> some View {
-        RoundedRectangle(cornerRadius: 8)
-            .fill(
-                presentation == .legacyGrid
-                    ? slotBackgroundColor(slot).opacity(0.72)
-                    : Color(.systemBackground).opacity(0.16)
-            )
-            .overlay(
-                Group {
-                    if presentation == .legacyGrid {
+        Group {
+            if presentation == .legacyGrid {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(slotBackgroundColor(slot).opacity(0.72))
+                    .overlay(
                         RoundedRectangle(cornerRadius: 8)
                             .stroke(slotBorderColor(slot).opacity(0.8), style: StrokeStyle(lineWidth: 1.2, dash: [5, 4]))
-                    }
-                }
-            )
-            .overlay(
-                VStack(spacing: 6) {
-                    Image(systemName: "square.dashed")
-                        .font(.headline.weight(.semibold))
-                    Text(AppStrings.GameBoard.empty)
-                        .font(.caption.weight(.semibold))
-                }
-                .foregroundStyle(.secondary)
-                .opacity(presentation == .legacyGrid ? 1 : 0.42)
-            )
-            .aspectRatio(slot.cardFace.aspectRatio, contentMode: .fit)
+                    )
+                    .overlay(
+                        VStack(spacing: 6) {
+                            Image(systemName: "square.dashed")
+                                .font(.headline.weight(.semibold))
+                            Text(AppStrings.GameBoard.empty)
+                                .font(.caption.weight(.semibold))
+                        }
+                        .foregroundStyle(.secondary)
+                    )
+            } else {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.white.opacity(slot.isDropTarget ? 0.12 : 0.045))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(slot.isValidDropTarget ? Color.green.opacity(0.12) : Color.clear)
+                            .blur(radius: 2)
+                    )
+            }
+        }
+        .aspectRatio(slot.cardFace.aspectRatio, contentMode: .fit)
     }
 
     private func bottomAreaPanel(_ bottomArea: DiveSiteBottomAreaViewState) -> some View {

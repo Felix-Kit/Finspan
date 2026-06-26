@@ -210,15 +210,16 @@
 
 ### P4 当前 UI 修复
 
-- 去掉底部白色背景条。
-- 手牌居中。
-- 弃牌堆空时完全隐藏，有牌时悬浮在手牌右侧。
-- empty slot 不显示 unknown fish。
+- 已完成第一轮 cleanup：去掉底部白色背景条，改用与棋盘融合的海洋渐变 / glass backdrop。
+- 已完成第一轮 cleanup：手牌主体保持视觉居中；弃牌堆不再参与同一个 HStack 挤压手牌。
+- 已完成第一轮 cleanup：弃牌堆空时完全隐藏且不占位；有牌时作为 trailing overlay 悬浮在手牌右侧，点击仍打开弃牌堆查看 / recover selection overlay。
+- 已完成第一轮 cleanup：normal empty ocean slot 不显示 unknown fish card，只保留透明 / 柔和 tint hit target；forage fish 和真实鱼牌仍按各自 card face 渲染。
 - 右侧行动玩家摘要已由 Compact Resource HUD 和 BottomRewardDock 替代；bottom dock fallback 的 overlay / sheet / picker 已完成第一轮动画 polish，后续继续细化尺寸和错误提示，而不是恢复右侧常驻栏。
 - 右侧 reward / pending / playFish confirm 面板没有恢复；fallback 通过 dock-launched overlay / sheet / picker / debug helper 承载。
 - 纯 `→` confirm / continue / skip 和 `←` staged cancel / undo 已从 BottomRewardDock 拆出到 `FloatingActionPairView`。两个方块按钮只在 staged / pending context 需要时出现，避开 home indicator 和手牌；没有 token / source / summary / warning / fallback 内容时不显示 dock。
 - `BottomRewardDock` 后续只承载 reward token、pending/source summary、GAME END candidate、AllPlayers external reward 和 overlay / picker 入口；不要再把普通 `playFish` 确认做成底部悬浮 dock。
-- 顶部行动摘要 toast 化。
+- 顶部行动摘要已 toast 化：重要事件短暂显示后自动淡出；完整日志仍通过日志 sheet 查看。
+- FloatingActionPair 已新增 layout metrics，用 `bottomClearance`、`trailingClearance` 和 `handAvoidanceHeight` 避开 hand area、弃牌堆和 system home indicator；overlay / picker 打开时全局按钮隐藏，避免重复控制。
 
 ### P5 BoardLayout 和真实背景板
 

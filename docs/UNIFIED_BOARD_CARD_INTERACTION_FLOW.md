@@ -61,7 +61,7 @@ Cost / requirement token:
 - Player clicks legal sources directly on board / hand / reef.
 - The system auto-matches the source to an unmet cost when unambiguous.
 - The token changes to completed / dim after the source is selected.
-- Board egg / young / school tokens are rendered directly over the fish card's left size-class icon area without badge frames; their transparent hit targets still produce staged UI selection only.
+- Board egg / young / school tokens are rendered directly over the fish card's central fish artwork / background region without badge frames. They may cover the fish image, but avoid points, length / size-class, tag row, right-side ability panel, names, zone icons, and flavor text. Their transparent hit targets follow the same central placement and still produce staged UI selection only.
 - Clicking the same selected source again unstages it.
 - If one source can satisfy multiple costs and cannot be inferred safely, use fallback.
 
@@ -265,5 +265,9 @@ Pure `→` / `←` controls are no longer bottom-dock content. `FloatingActionPa
 - `→` continues to use UI → `PlayerCommand` → RoomService → GameEngine → GameEvent → GameState, without changing command timing.
 
 `BottomRewardDock` is now information-first: reward token list, source summary, pending / ability / dive reward context, GAME END candidates, AllPlayers external reward context, and overlay / picker entry points. If a state only has forward/back controls and no meaningful token / source / summary / warning / fallback content, the dock stays hidden and FloatingActionPair handles the controls.
+
+GameBoard UI Cleanup Pass 1 keeps these controls visually separate from the hand: `FloatingActionPairLayoutMetrics` defines bottom clearance, trailing clearance, and hand avoidance height so the pair does not sit on the system home indicator, cover the hand stack, or duplicate overlay / picker controls. When an overlay or picker is open, the global pair is hidden unless that overlay explicitly owns a local control.
+
+The bottom hand area no longer uses a white filler strip. The hand is centered in its own container; an empty discard pile is not rendered and reserves no layout width, while a non-empty discard pile appears as a trailing overlay. Normal empty board slots render as transparent hit targets / tint over the board background, not unknown fish cards.
 
 The current implementation removes the permanent right-side reward / pending / play-fish confirmation panel from the main board layout, adds `BottomRewardDock` plus `FloatingActionPairView`, keeps card inline as source / group highlight only, and keeps all command submission on existing paths. Full card ability tapping, full inline `playFish`, full inline dive reward, engine undo, Ability Engine changes, rule changes, card JSON changes, online rooms, Nautoma, and saved-state migration remain out of scope.

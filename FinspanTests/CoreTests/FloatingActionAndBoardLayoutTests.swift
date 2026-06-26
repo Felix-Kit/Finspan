@@ -22,6 +22,8 @@ final class FloatingActionPairViewModelTests: XCTestCase {
         XCTAssertTrue(floating.trailing?.isEnabled == true)
         XCTAssertTrue(floating.avoidsHomeIndicator)
         XCTAssertTrue(floating.avoidsHandArea)
+        XCTAssertGreaterThanOrEqual(floating.layoutMetrics.bottomClearance, floating.layoutMetrics.handAvoidanceHeight)
+        XCTAssertGreaterThanOrEqual(floating.layoutMetrics.trailingClearance, 44)
         XCTAssertEqual(viewModel.bottomRewardDockState.displayMode, .hidden)
         XCTAssertNil(viewModel.bottomRewardDockState.forwardControl)
         XCTAssertNil(viewModel.bottomRewardDockState.backControl)

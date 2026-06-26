@@ -121,7 +121,7 @@ final class GameBoardViewModelTests: XCTestCase {
             )
         )
         let service = makeService(hand: [], eventLog: [event])
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
 
         XCTAssertEqual(viewModel.lastActionSummaryText, "玩家 1 打出：Starter Fish 1")
     }
@@ -139,7 +139,7 @@ final class GameBoardViewModelTests: XCTestCase {
             )
         )
         let service = makeService(hand: [], eventLog: [event])
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
 
         XCTAssertEqual(viewModel.lastActionSummaryText, "玩家 1 潜水：绿色潜水点")
     }
@@ -156,7 +156,7 @@ final class GameBoardViewModelTests: XCTestCase {
             )
         )
         let service = makeService(hand: [], eventLog: [event])
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
 
         XCTAssertEqual(viewModel.lastActionSummaryText, "玩家 1 放置鱼卵")
     }
@@ -175,7 +175,7 @@ final class GameBoardViewModelTests: XCTestCase {
             )
         )
         let service = makeService(hand: [], eventLog: [event])
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
 
         XCTAssertEqual(viewModel.lastActionSummaryText, "第 2 周结束")
     }
@@ -185,20 +185,80 @@ final class GameBoardViewModelTests: XCTestCase {
             .gameEnded(GameEndedEvent(finalScoreResult: emptyFinalScoreResult()))
         )
         let service = makeService(hand: [], eventLog: [event])
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
 
         XCTAssertEqual(viewModel.lastActionSummaryText, "游戏结束，进入结算")
     }
 
     func testHudToastShowsGameStartedSummaryAndAutoDismisses() async throws {
         let service = makeService(hand: [])
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
 
         XCTAssertEqual(viewModel.hudToastViewState?.text, AppStrings.GameBoard.gameStartedSummary)
 
         try await Task.sleep(nanoseconds: 2_000_000_000)
 
         XCTAssertNil(viewModel.hudToastViewState)
+    }
+
+    func testHudToastShowsLatestImportantActionWithoutChangingEventLog() {
+        let event = gameEvent(
+            .fishPlayed(
+                FishPlayedEvent(
+                    playerId: "player-1",
+                    cardId: "starter-fish-1",
+                    targetSlot: Self.slotAddress,
+                    payment: .empty,
+                    nextActivePlayerId: "player-1"
+                )
+            )
+        )
+        let service = makeService(hand: [], eventLog: [event])
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+
+        XCTAssertEqual(viewModel.hudToastViewState?.text, "玩家 1 打出：Starter Fish 1")
+        XCTAssertEqual(viewModel.eventLog.map(\.sequenceNumber), [event.sequenceNumber])
+        XCTAssertEqual(service.gameState, viewModel.state)
+    }
+
+    func testBottomLayoutKeepsHandCenteredAndDoesNotReserveEmptyDiscardPileSpace() {
+        let service = makeService(hand: ["starter-fish-1"], discardPile: [])
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+        let layout = viewModel.bottomLayoutState
+
+        XCTAssertTrue(layout.keepsHandCentered)
+        XCTAssertFalse(layout.reservesSpaceForEmptyDiscardPile)
+        XCTAssertNil(layout.discardPilePlacement)
+        XCTAssertEqual(layout.backgroundStyle, .oceanGlass)
+        XCTAssertTrue(layout.avoidsHomeIndicator)
+        XCTAssertTrue(viewModel.discardPileViewState.isEmpty)
+    }
+
+    func testDiscardPileUsesTrailingOverlayWithoutShiftingHandCenter() {
+        let service = makeService(
+            hand: ["starter-fish-1", "fish-1"],
+            discardPile: ["fish-1", "fish-2"]
+        )
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+        let layout = viewModel.bottomLayoutState
+
+        XCTAssertTrue(layout.keepsHandCentered)
+        XCTAssertFalse(layout.reservesSpaceForEmptyDiscardPile)
+        XCTAssertEqual(layout.discardPilePlacement, .trailingOverlay)
+        XCTAssertFalse(viewModel.discardPileViewState.isEmpty)
+        XCTAssertEqual(viewModel.discardPileViewState.count, 2)
+    }
+
+    func testSelectedHandCardKeepsStableIdentityInCenteredHand() {
+        let service = makeService(hand: ["starter-fish-1", "fish-2", "fish-3"])
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
+        let originalIds = viewModel.handViewState.cards.map(\.id)
+
+        viewModel.selectHandCard("starter-fish-1")
+
+        XCTAssertEqual(viewModel.handViewState.cards.map(\.id), originalIds)
+        XCTAssertEqual(viewModel.handViewState.pulledOutCardId, "starter-fish-1")
+        XCTAssertEqual(viewModel.handViewState.cards.first { $0.cardId == "starter-fish-1" }?.isPulledOutFromStack, true)
     }
 
     func testSelectingOpponentAvatarOnlyRecordsPreviewState() {
@@ -822,19 +882,17 @@ final class GameBoardViewModelTests: XCTestCase {
         XCTAssertEqual(slot.aspectRatio, CardRenderMetrics.cardAspectRatio)
     }
 
-    func testOceanSlotCardFaceShowsEmptyForageAndUnknownPlaceholders() {
+    func testOceanSlotCardFaceShowsEmptyAndForageWithoutUnknownPlaceholder() {
         let service = makeService(hand: ["starter-fish-1"])
-        setContent(.fishCard("missing-card"), at: Self.resourceSourceAddress, in: service)
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
 
         let emptySlot = oceanSlot(in: viewModel, address: Self.slotAddress)
         let forageSlot = oceanSlot(in: viewModel, address: Self.forageTargetAddress)
-        let unknownSlot = oceanSlot(in: viewModel, address: Self.resourceSourceAddress)
 
         XCTAssertEqual(emptySlot.cardFace.kind, .empty)
+        XCTAssertNil(emptySlot.cardFace.cardId)
+        XCTAssertNotEqual(emptySlot.cardFace.kind, .placeholder)
         XCTAssertEqual(forageSlot.cardFace.kind, .forageFish)
-        XCTAssertEqual(unknownSlot.cardFace.kind, .placeholder)
-        XCTAssertEqual(unknownSlot.cardFace.cardId, "missing-card")
     }
 
     func testOceanSlotCardFaceDoesNotRemoveResourceTokens() {

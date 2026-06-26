@@ -561,6 +561,22 @@ struct DiscardPileViewState: Equatable {
     let emptyText: String
 }
 
+enum GameBoardBottomBackgroundStyle: String, Equatable {
+    case oceanGlass
+}
+
+enum GameBoardDiscardPilePlacement: String, Equatable {
+    case trailingOverlay
+}
+
+struct GameBoardBottomLayoutState: Equatable {
+    let backgroundStyle: GameBoardBottomBackgroundStyle
+    let keepsHandCentered: Bool
+    let reservesSpaceForEmptyDiscardPile: Bool
+    let discardPilePlacement: GameBoardDiscardPilePlacement?
+    let avoidsHomeIndicator: Bool
+}
+
 struct DiscardPileDetailViewState: Equatable {
     let title: String
     let countText: String
@@ -2732,6 +2748,17 @@ final class GameBoardViewModel: ObservableObject {
             isEmpty: cardFaces.isEmpty,
             isDetailPresented: isDiscardPileDetailPresented,
             emptyText: AppStrings.GameBoard.discardPileEmpty
+        )
+    }
+
+    var bottomLayoutState: GameBoardBottomLayoutState {
+        let discardPile = discardPileViewState
+        return GameBoardBottomLayoutState(
+            backgroundStyle: .oceanGlass,
+            keepsHandCentered: true,
+            reservesSpaceForEmptyDiscardPile: false,
+            discardPilePlacement: discardPile.isEmpty ? nil : .trailingOverlay,
+            avoidsHomeIndicator: true
         )
     }
 
