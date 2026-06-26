@@ -110,6 +110,7 @@
 - board canvas 空 ocean slot 只显示轻量透明 hit target / tint，不再显示 unknown fish card 或正常运行时的卡牌占位；forage fish slot 仍显示 forage fish，真实鱼槽仍显示真实鱼牌。unknown card 仅保留为数据错误 / debug fallback 语义。
 - `FloatingActionPairView` layout metrics 已继续校准：两个 52pt 方块按钮保持在 board 右下 / 中下安全区，使用 `bottomClearance` / `trailingClearance` / `handAvoidanceHeight` 避开 hand area、弃牌堆和 system home indicator；overlay / picker 打开时全局按钮隐藏。
 - 顶部行动摘要已走 `hudToastViewState` toast：重要事件短暂顶部显示并自动淡出，完整事件日志仍由日志按钮 / sheet 查看；pending / error 提示保留为轻量状态条，不恢复右侧常驻面板。
+- Board Interaction Regression Pass 已补强 presentation 验收：手牌居中 / 弃牌堆 trailing overlay、不占位隐藏、discard overlay 关闭不提交命令、empty / forage / real slot 三态渲染、hand picker overlay 隐藏全局 FloatingActionPair、toast 与完整事件日志互不影响、对手面板切换不发送 `PlayerCommand` / 不修改 `GameState`。
 - 右侧资源统计大面板已压缩掉；右侧 pending / reward / action / playFish confirm 面板已从主 layout 移除。
 - `GameTokenIconResolver` / `GameTokenIconView` 已新增，非卡面 UI 的 egg / young / school / fish / coral / draw / discard / consume / hatch / move / zone token 可复用现有 CardAssets icon resolver，尺寸由 HUD / board layout 控制，不由 PNG intrinsic size 控制。
 - 顶部 HUD 已重做，包含玩家头像、当前行动摘要、设置入口和日志入口。
@@ -192,7 +193,7 @@
 - Player Board Perspective 已完成：`activePlayerId` / `localPlayerId` / `viewingPlayerId` 在 presentation 层分离，顶部玩家头像可切换正在查看的 board，`activePlayerId` 仍只由规则状态决定。
 - 查看对手 board 时显示该玩家 ocean / resources / reef / source highlight，但 board 为只读：不能向对手 board 出牌，不能选择对手资源作为自己的 payment source，也不能在对手 board 上解决自己的 pending target。
 - 查看对手时手牌仍显示本地/当前行动玩家自己的手牌，并显示“正在查看对手，手牌仍为你自己的手牌”，避免误认为看到了对手手牌。
-- `BottomRewardDock` 和 `FloatingActionPair` 不因 `viewingPlayerId` 切换而丢失 pending / playFish / GAME END / AllPlayers 上下文；当 pending 必须回到自己 board 选目标或支付来源时，dock 显示返回自己面板提示。dock source summary 可跳到 AllPlayers 或 GAME END 来源玩家 board，并在可定位时高亮来源鱼。
+- `BottomRewardDock` 和 `FloatingActionPair` 不因 `viewingPlayerId` 切换而丢失 pending / playFish / GAME END / AllPlayers 上下文；当 pending 必须回到自己 board 选目标或支付来源时，dock / error prompt 显示返回自己面板提示。dock source summary 可跳到 AllPlayers 或 GAME END 来源玩家 board，并在可定位时高亮来源鱼。
 - DEBUG 牌库卡面状态面板继续扩展：现在可显示 brush asset、brush orientation、brush content mode、background position/repeat、ability panel frame、live measured frame、Swift delta、arrow-flow metrics 和 also-if gap，便于在模拟器中核对 pixel alignment。
 - Great White Shark 是 QA 样例，不是 special case：`base.main.057` 映射到 `57.*.webp`，`FishEgg` / `ArrowDown` / `Predator` / `AllPlayers` 均解析到 live-derived PNG render asset，cost 显示 `YoungFish` / `ConsumeFish`，length 600 cm 映射到 `FishLengthLarge`，ability presentation 使用 arrow-flow 而非 flat row。
 - Great Northern Tilefish、Banggai Cardinalfish、Bearded Seadevil、Great Barracuda 和 Atlantic Barracudina 也纳入代表卡审计，覆盖 If Activated brush block、arrow-flow overlap、S&R coral requirement / coral token、also-if split block、S&R badge、starter corner、不同 zone 和 flavor text。

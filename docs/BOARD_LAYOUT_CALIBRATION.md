@@ -61,3 +61,5 @@ GameBoard UI Cleanup Pass 1 后，placeholder board canvas 下的 empty slot 也
 - BoardLayout 不影响 staged `playFish` 和 resource payment staging。
 - empty slot 不渲染 unknown fish card；
 - FloatingActionPair / bottom hand cleanup 只影响 presentation，不修改 `GameState` 或发送 `PlayerCommand`。
+
+Board Interaction Regression Pass 继续固定 BoardLayout foundation 的边界：normal empty / forage / real fish slot 三态在 presentation 中保持区分；overlay / picker / toast / player perspective 的回归测试不扩大 BoardLayout 范围；当前仍不做 PDF extraction、不导入真实 board background asset、不做完整坐标校准。

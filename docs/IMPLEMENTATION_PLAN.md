@@ -220,6 +220,7 @@
 - `BottomRewardDock` 后续只承载 reward token、pending/source summary、GAME END candidate、AllPlayers external reward 和 overlay / picker 入口；不要再把普通 `playFish` 确认做成底部悬浮 dock。
 - 顶部行动摘要已 toast 化：重要事件短暂显示后自动淡出；完整日志仍通过日志 sheet 查看。
 - FloatingActionPair 已新增 layout metrics，用 `bottomClearance`、`trailingClearance` 和 `handAvoidanceHeight` 避开 hand area、弃牌堆和 system home indicator；overlay / picker 打开时全局按钮隐藏，避免重复控制。
+- Board Interaction Regression Pass 已补测试固定这些 presentation 边界：discard overlay 关闭只撤回未提交选择且不提交命令；hand picker / discard overlay 打开时不重复显示全局 FloatingActionPair；toast 展示 / 自动隐藏不改变完整日志或 `GameState`；viewing opponent 只改变 presentation，不发送 `PlayerCommand`，且不能在对手 board 上选择目标或支付来源。
 
 ### P5 BoardLayout 和真实背景板
 

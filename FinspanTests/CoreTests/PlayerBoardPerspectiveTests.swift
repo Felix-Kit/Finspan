@@ -57,6 +57,21 @@ final class PlayerAvatarSelectionTests: XCTestCase {
         XCTAssertFalse(viewModel.isViewingOpponentBoard)
         XCTAssertNil(viewModel.gameHudViewState.playerHud.perspectiveMessage)
     }
+
+    func testViewingPlayerChangesNeverSubmitCommandsOrMutateGameState() {
+        let service = PerspectiveFixture.makeService()
+        let originalState = service.gameState
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: PerspectiveFixture.catalog)
+
+        viewModel.selectPlayerAvatar(PerspectiveFixture.opponentPlayerId)
+        viewModel.returnToLocalPlayerBoard()
+
+        XCTAssertEqual(service.gameState, originalState)
+        XCTAssertTrue(service.submittedCommands.isEmpty)
+        XCTAssertEqual(viewModel.activePlayerId, PerspectiveFixture.localPlayerId)
+        XCTAssertEqual(viewModel.localPlayerId, PerspectiveFixture.localPlayerId)
+        XCTAssertEqual(viewModel.viewingPlayerId, PerspectiveFixture.localPlayerId)
+    }
 }
 
 @MainActor
@@ -99,6 +114,21 @@ final class OpponentBoardViewTests: XCTestCase {
         XCTAssertFalse(eggToken.isSelectable)
         XCTAssertFalse(eggToken.isSelectedForPayment)
         XCTAssertEqual(viewModel.errorMessage, AppStrings.GameBoard.returnToOwnBoardToChoosePayment)
+    }
+
+    func testOpponentBoardCannotStagePendingRewardTarget() {
+        let choice = PerspectiveFixture.placeEggPendingChoice()
+        let service = PerspectiveFixture.makeService(pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: PerspectiveFixture.catalog)
+        let token = viewModel.rewardPoolViewState.rewards[0]
+
+        viewModel.selectRewardToken(token.id)
+        viewModel.selectPlayerAvatar(PerspectiveFixture.opponentPlayerId)
+        viewModel.selectTargetSlot(PerspectiveFixture.opponentResourceAddress)
+
+        XCTAssertTrue(service.submittedCommands.isEmpty)
+        XCTAssertEqual(viewModel.errorMessage, AppStrings.GameBoard.returnToOwnBoardToChooseTarget)
+        XCTAssertEqual(viewModel.bottomRewardDockState.warningText, AppStrings.GameBoard.returnToOwnBoardToChooseTarget)
     }
 
     func testViewingOpponentDoesNotExposeOpponentHand() {
