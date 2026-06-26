@@ -2,61 +2,52 @@ import XCTest
 @testable import Finspan
 
 final class PlayFishBottomDockConfirmTests: XCTestCase {
-    func testPlayFishStagedConfirmUsesBottomDockForwardControl() {
+    func testPlayFishStagedConfirmIsNotModeledAsDockOnlyContent() {
         let state = BottomRewardDockState(
-            displayMode: .compact,
+            displayMode: .hidden,
             title: AppStrings.GameBoard.playFishPayment,
-            sourceText: "蓝鳍金枪鱼",
-            instructionText: AppStrings.GameBoard.playFishFromHandPayment,
-            summaryLines: [
-                "鱼牌：蓝鳍金枪鱼",
-                "目标：蓝色潜水点第 1 格"
-            ],
-            tokens: [],
-            warningText: nil,
-            fallbackReason: nil,
-            forwardControl: BottomRewardDockControl(
-                title: "→ \(AppStrings.GameBoard.confirmPlayFish)",
-                action: .primary,
-                isEnabled: true,
-                accessibilityLabel: AppStrings.GameBoard.confirmPlayFish
-            ),
-            backControl: BottomRewardDockControl(
-                title: "←",
-                action: .back,
-                isEnabled: true,
-                accessibilityLabel: AppStrings.GameBoard.cancelPlayFish
-            )
-        )
-
-        XCTAssertEqual(state.title, AppStrings.GameBoard.playFishPayment)
-        XCTAssertEqual(state.forwardControl?.action, .primary)
-        XCTAssertTrue(state.forwardControl?.isEnabled == true)
-        XCTAssertEqual(state.forwardControl?.accessibilityLabel, AppStrings.GameBoard.confirmPlayFish)
-        XCTAssertFalse(state.usesMainBoardRightPanel)
-    }
-
-    func testPlayFishStagedCancelUsesBottomDockBackControl() {
-        let state = BottomRewardDockState(
-            displayMode: .compact,
-            title: AppStrings.GameBoard.playFishPayment,
-            sourceText: "蓝鳍金枪鱼",
+            sourceText: nil,
             instructionText: AppStrings.GameBoard.playFishFromHandPayment,
             summaryLines: [],
             tokens: [],
             warningText: nil,
             fallbackReason: nil,
             forwardControl: nil,
-            backControl: BottomRewardDockControl(
+            backControl: nil
+        )
+
+        XCTAssertEqual(state.title, AppStrings.GameBoard.playFishPayment)
+        XCTAssertEqual(state.displayMode, .hidden)
+        XCTAssertNil(state.forwardControl)
+        XCTAssertNil(state.backControl)
+        XCTAssertFalse(state.hasInformationalContent)
+        XCTAssertFalse(state.usesMainBoardRightPanel)
+    }
+
+    func testPlayFishStagedCancelUsesFloatingActionBackControl() {
+        let state = FloatingActionPairState(
+            leading: FloatingActionButtonState(
+                id: "playFish-back",
                 title: "←",
                 action: .back,
                 isEnabled: true,
                 accessibilityLabel: AppStrings.GameBoard.cancelPlayFish
-            )
+            ),
+            trailing: FloatingActionButtonState(
+                id: "playFish-forward",
+                title: "→",
+                action: .primary,
+                isEnabled: true,
+                accessibilityLabel: AppStrings.GameBoard.confirmPlayFish
+            ),
+            context: .playFish
         )
 
-        XCTAssertEqual(state.backControl?.action, .back)
-        XCTAssertTrue(state.backControl?.isEnabled == true)
-        XCTAssertNotEqual(state.backControl?.action, .finishGameEndAbilities)
+        XCTAssertEqual(state.leading?.action, .back)
+        XCTAssertEqual(state.trailing?.action, .primary)
+        XCTAssertTrue(state.leading?.isEnabled == true)
+        XCTAssertTrue(state.avoidsHomeIndicator)
+        XCTAssertTrue(state.avoidsHandArea)
+        XCTAssertFalse(state.usesMainBoardRightPanel)
     }
 }

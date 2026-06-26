@@ -115,7 +115,7 @@
 - Inline Ability Interaction audit 已更新为多维分类：`tools/scripts/audit_inline_ability_interaction.py` 对 215 张真实卡输出 entry surface、continuation surface、commit reversibility、source visibility、overlay/fallback 和 can-start-inline 字段，并生成 `docs/INLINE_ABILITY_INTERACTION_AUDIT.md` 与 `tools/generated/card_rendering/inline_ability_interaction_audit.json`。
 - Legacy A/B/C/D 统计仍保留：A inline candidates 73、B needs picker/overlay 51、C irreversible/no undo 91、D not enough metadata 0；但 B 不再表示不能 inline，C 也不再表示不能 inline。
 - 新口径确认：`recoverFromDiscardOrDraw` 可从 card icon 进入并继续到 discard overlay / direct draw；`consumeFishFromHand` 可从 card icon 进入并继续到 hand picker + board target；`playFishForFree` / `playFishFromHand` 可从 card icon 进入 hand picker + staged playFish flow；`drawFish` 可 direct commit 但 no committed undo；GAME END 可通过 gameEnd dock / card icon；AllPlayers source player 用 card icon，target players 用 incoming reward dock。
-- 当前暂停 card inline 作为主交互；底部 `BottomRewardDock` 是 pending reward、ability reward、dive / zone reward、GAME END candidate、AllPlayers 外部收益和 `playFish` staged confirm 的主行动中心。
+- 当前暂停 card inline 作为主交互；`BottomRewardDock` 是 pending reward、ability reward、dive / zone reward、GAME END candidate、AllPlayers 外部收益和复杂 overlay / picker continuation 的信息入口。普通 staged `playFish` 的纯 confirm / cancel 由 `FloatingActionPairView` 承载。
 - 右侧 reward / pending / playFish confirm 面板已从主棋盘 layout 移除；复杂 fallback 由 bottom dock 拉起 overlay / sheet / picker / debug helper，不再通过右侧常驻栏占位。
 - S&R expansion badge 已接入：`sr.*` 牌显示右下角 `SRLogo`，base 牌不显示。
 - Starter corner 已接入：`.starter.` 牌显示左上 / 右下 clipped gray corner overlay；这是 live CSS `.corner-overlay` 的 SwiftUI vector 还原，不使用 `StarterIcon` 作为牌面角标。
@@ -129,11 +129,11 @@
 
 - 顶部 HUD、玩家头像、当前行动摘要、右上角四个纯图标周目标入口和全 4 周 scoreboard 已接入。
 - 右侧行动确认区已从主棋盘 layout 移除。
-- `BottomRewardDock` 已接入底部 overlay：空闲时 hidden / handle-only，有 pending 时 compact，点击可 expanded；承载 reward token list、pending action、GAME END candidate、AllPlayers external reward、`playFish` confirm、`->` 和 `<-`。
+- `BottomRewardDock` 已接入底部 overlay：空闲时 hidden，有 reward / source / summary / warning / fallback 内容时 compact，点击可 expanded；承载 reward token list、pending source summary、GAME END candidate、AllPlayers external reward 和 overlay / picker 入口。纯 `playFish` confirm、`→` 和 `←` 不再作为 control-only dock 出现。
 - UI Polish Pass 1A 已接入 `GameBoardAnimation`，统一 hand selection、drag return、dock、token、overlay 和 opponent board perspective 的 quick / standard / slow 动画参数。
 - 手牌选中 / 取消现在只基于稳定 `cardId` 做轻量上浮、放大、阴影和 zIndex 变化；非法点击或非法 drop 使用短促 nudge，不触发整排手牌重排。
 - 拖拽出牌保持浮起感；合法 drop target 使用轻量 scale / glow / border 高亮；拖拽取消平滑回到手牌区，`PlayerCommand.playFish` 提交时机不变。
-- `BottomRewardDock` hidden / handleOnly / compact / expanded 切换使用底部滑入 + 淡入；dock token 出现 / 消失使用 scale + opacity，选中 token 轻量放大，高亮仍由稳定 token id 驱动；`->` / `<-` controls 有 press feedback。
+- `BottomRewardDock` hidden / handleOnly / compact / expanded 切换使用底部滑入 + 淡入；dock token 出现 / 消失使用 scale + opacity，选中 token 轻量放大，高亮仍由稳定 token id 驱动。`FloatingActionPairView` 的 `→` / `←` controls 有独立 press feedback。
 - `BottomDockOverlayRoute` / `BottomDockOverlayState` 已接入，用于由 bottom dock 统一拉起 discard pile selection、hand card picker、playFish staging、reef target picker、debug fallback 和 GAME END candidate helper。
 - discard pile overlay、recover selection、hand picker、consumeFishFromHand picker、playFishForFree / playFishFromHand picker 已接入 dim fade + panel slide/fade；关闭 overlay 只清理未提交 staged selection，不影响已提交 `GameEvent`。
 - `recoverFromDiscardOrDraw` 的 dock flow 已稳定：recover token 打开弃牌堆 recover selection overlay；Draw Instead 走现有 draw fallback；弃牌为空时 dock 直接显示 draw fallback。
@@ -200,7 +200,7 @@
 - Icon renderability pipeline fix 已完成：不再把 resolver success 当作可见性证明，新增 PNG 像素审计和 runtime bundle decode 测试。
 - Ability layout / brush / badge / starter corner pass 已完成：live JS/CSS 的 icon-run、ability-row、also-if split block、AllPlayers drop-shadow、S&R logo 和 starter corner overlay 已进入 Swift presentation model。
 - Live DOM measured ability brush correctness pass 已完成：right-side panel frame、brush cover/top-left background mode、also-if gap、ArrowDown overlap 和 AllPlayers bottom placement 已从真实 DOM / computed style 映射。
-- Inline ability interaction 当前完成 refined taxonomy 和 dock presentation model，但本阶段暂停 card inline 作为主交互。`BottomRewardDock` 先承载 reward / pending / playFish confirm；card source / ability icon group 只做辅助高亮。包含 `ArrowDown` 的能力按组合语义整体高亮，不把 `ArrowDown` 单独作为可点入口。
+- Inline ability interaction 当前完成 refined taxonomy、dock presentation model 和 floating control surface，但本阶段暂停 card inline 作为主交互。`BottomRewardDock` 先承载 reward / pending 信息和复杂 continuation；纯 `playFish` confirm / cancel 由 `FloatingActionPairView` 承载。card source / ability icon group 只做辅助高亮。包含 `ArrowDown` 的能力按组合语义整体高亮，不把 `ArrowDown` 单独作为可点入口。
 - Unified Board/Card Interaction Flow Design 已完成第一步：新增 `docs/UNIFIED_BOARD_CARD_INTERACTION_FLOW.md`、pure presentation model、四维 taxonomy、`IncomingRewardDockState` 和 `BottomRewardDockState`；当前不实现完整 card inline ability tap、完整 inline `playFish`、完整 inline dive reward 或 engine-level undo。
 - 后续用 live renderer screenshot 对 Great White Shark、If Activated、Game End 三类卡做截图级对照。
 - 收敛 title、scientific name、points、length、ability text 的 font size / line-height / wrapping，以及 icon sub-pixel offset 的微调。
@@ -216,15 +216,18 @@
 - empty slot 不显示 unknown fish。
 - 右侧行动玩家摘要已由 Compact Resource HUD 和 BottomRewardDock 替代；bottom dock fallback 的 overlay / sheet / picker 已完成第一轮动画 polish，后续继续细化尺寸和错误提示，而不是恢复右侧常驻栏。
 - 右侧 reward / pending / playFish confirm 面板没有恢复；fallback 通过 dock-launched overlay / sheet / picker / debug helper 承载。
+- 纯 `→` confirm / continue / skip 和 `←` staged cancel / undo 已从 BottomRewardDock 拆出到 `FloatingActionPairView`。两个方块按钮只在 staged / pending context 需要时出现，避开 home indicator 和手牌；没有 token / source / summary / warning / fallback 内容时不显示 dock。
+- `BottomRewardDock` 后续只承载 reward token、pending/source summary、GAME END candidate、AllPlayers external reward 和 overlay / picker 入口；不要再把普通 `playFish` 确认做成底部悬浮 dock。
 - 顶部行动摘要 toast 化。
 
 ### P5 BoardLayout 和真实背景板
 
-- 从 AI / Figma 标注 SVG rect。
-- 生成 `BoardLayout.json`。
-- 背景图 aspectFit mapping。
-- debug overlay。
-- 后续逐步迁移 slot / coral reef / diver area。
+- Pass 1 已完成：新增 `BoardLayout` / `BoardLayoutSlot` / `BoardNormalizedRect` / `BoardNormalizedPoint`，并提供 manual placeholder `Finspan/Resources/BoardLayout/placeholder_board_layout.json`。
+- Pass 1 已完成：新增 `BoardLayoutMapper.boardImageRect(in:imageAspectRatio:)`、normalized rect / point mapping helper；board overlay 坐标统一从同一套 aspectFit transform 派生。
+- Pass 1 已完成：DEBUG calibration overlay 可显示 slotRect / cardRect / hitRect / highlightRect 和 slot id，且不发送 `PlayerCommand`、不修改 `GameState`。
+- 当前仍使用 placeholder board background；后续从 AI / Figma / SVG 标注真实 rect，校准 `BoardLayout.json`，再接入真实 board background image。
+- 背景图带 slot 美术后，SwiftUI 只叠加透明 hit target、鱼牌、资源 token、coral、diver 和柔和 glow / tint highlight，不重复画实体 slot 外观，不使用硬边框高光。
+- 本阶段不做 PDF board extraction、不做完整 BoardLayout、不做服务器 / Nautoma / S&R 新规则。
 
 ### P6 S&R 成就和周目标
 

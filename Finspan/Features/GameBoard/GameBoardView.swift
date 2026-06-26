@@ -11,7 +11,14 @@ private struct SlotFramePreferenceKey: PreferenceKey {
     }
 }
 
+private enum BoardSlotPresentation {
+    case legacyGrid
+    case boardCanvas
+}
+
 struct GameBoardView: View {
+    private static let boardLayout = BoardLayoutStore.load() ?? BoardLayout.placeholderBaseGame
+
     @StateObject var viewModel: GameBoardViewModel
     @State private var slotFrames: [OceanSlotAddress: CGRect] = [:]
     @State private var isShowingSettings = false
@@ -67,6 +74,20 @@ struct GameBoardView: View {
                         .animation(GameBoardAnimation.dock, value: isBottomRewardDockExpanded)
                         .zIndex(10)
 
+                        if let floatingActionPairState = viewModel.floatingActionPairState {
+                            FloatingActionPairView(
+                                state: floatingActionPairState,
+                                onAction: { action in
+                                    withAnimation(GameBoardAnimation.standard) {
+                                        viewModel.performBottomRewardDockAction(action)
+                                    }
+                                }
+                            )
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .transition(.scale(scale: 0.92).combined(with: .opacity))
+                            .zIndex(11)
+                        }
+
                         if let toast = viewModel.hudToastViewState {
                             hudToastBanner(toast)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -93,6 +114,7 @@ struct GameBoardView: View {
                     .animation(GameBoardAnimation.quick, value: viewModel.hudToastViewState?.id)
                     .animation(GameBoardAnimation.overlay, value: viewModel.discardPileDetailViewState != nil)
                     .animation(GameBoardAnimation.overlay, value: viewModel.bottomDockOverlayState?.route.rawValue)
+                    .animation(GameBoardAnimation.standard, value: viewModel.floatingActionPairState)
                     .toolbar(.hidden, for: .navigationBar)
                     .ignoresSafeArea(.container, edges: [.top, .bottom])
                 }
@@ -872,23 +894,7 @@ struct GameBoardView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     diveActionBar
 
-                    HStack(alignment: .top, spacing: 14) {
-                        ForEach(viewModel.oceanColumns) { column in
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text(column.title)
-                                    .font(.headline)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                                ForEach(column.zoneSections) { section in
-                                    if section.zone == .twilight, let coralReef = column.coralReef {
-                                        coralReefBadge(coralReef)
-                                    }
-                                    zoneSectionPanel(section)
-                                }
-                            }
-                            .frame(maxWidth: .infinity, minHeight: 0, alignment: .topLeading)
-                        }
-                    }
+                    boardLayoutCanvas
                     .id(viewModel.viewingPlayerId ?? viewModel.activePlayerId ?? "no-viewing-player")
                     .transition(GameBoardAnimation.boardPerspectiveTransition)
                     .animation(GameBoardAnimation.boardPerspective, value: viewModel.viewingPlayerId)
@@ -908,6 +914,147 @@ struct GameBoardView: View {
                 }
             }
         }
+    }
+
+    private var boardLayoutCanvas: some View {
+        let layout = Self.boardLayout
+        return GeometryReader { proxy in
+            let boardRect = BoardLayoutMapper.boardImageRect(
+                in: proxy.size,
+                imageAspectRatio: CGFloat(layout.imageAspectRatio)
+            )
+            ZStack(alignment: .topLeading) {
+                boardBackground(in: boardRect)
+
+                ForEach(viewModel.oceanSlots) { slot in
+                    if let layoutSlot = layout.slot(id: BoardLayout.slotId(for: slot.address)) {
+                        let hitRect = BoardLayoutMapper.mapBoardNormalizedRect(
+                            layoutSlot.hitRect,
+                            into: boardRect
+                        )
+                        let cardRect = BoardLayoutMapper.mapBoardNormalizedRect(
+                            layoutSlot.cardRect,
+                            into: boardRect
+                        )
+                        let highlightRect = BoardLayoutMapper.mapBoardNormalizedRect(
+                            layoutSlot.highlightRect,
+                            into: boardRect
+                        )
+
+                        slotCanvasHitTarget(slot, frame: hitRect)
+                        slotCanvasHighlight(slot, frame: highlightRect)
+                        slotPanel(slot, presentation: .boardCanvas)
+                            .frame(width: cardRect.width, height: cardRect.height)
+                            .position(x: cardRect.midX, y: cardRect.midY)
+                    }
+                }
+
+                ForEach(viewModel.oceanColumns) { column in
+                    if let coralReef = column.coralReef {
+                        coralReefBadge(coralReef)
+                            .frame(width: max(128, boardRect.width * 0.18))
+                            .position(coralReefPosition(for: column, in: boardRect))
+                    }
+                }
+
+                #if DEBUG
+                BoardLayoutCalibrationOverlay(layout: layout, showsLabels: true)
+                #endif
+            }
+        }
+        .aspectRatio(CGFloat(layout.imageAspectRatio), contentMode: .fit)
+        .frame(maxWidth: .infinity)
+    }
+
+    private func boardBackground(in boardRect: CGRect) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.cyan.opacity(0.20),
+                            Color.blue.opacity(0.12),
+                            Color.indigo.opacity(0.18)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+            VStack(spacing: 0) {
+                Color.yellow.opacity(0.08)
+                Color.cyan.opacity(0.06)
+                Color.indigo.opacity(0.09)
+            }
+        }
+        .frame(width: boardRect.width, height: boardRect.height)
+        .offset(x: boardRect.minX, y: boardRect.minY)
+    }
+
+    private func slotCanvasHitTarget(
+        _ slot: OceanSlotViewData,
+        frame: CGRect
+    ) -> some View {
+        Color.clear
+            .frame(width: frame.width, height: frame.height)
+            .contentShape(Rectangle())
+            .offset(x: frame.minX, y: frame.minY)
+            .onTapGesture {
+                viewModel.selectTargetSlot(slot.address)
+            }
+            .background(
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: SlotFramePreferenceKey.self,
+                        value: [slot.address: proxy.frame(in: .global)]
+                    )
+                }
+            )
+    }
+
+    @ViewBuilder
+    private func slotCanvasHighlight(
+        _ slot: OceanSlotViewData,
+        frame: CGRect
+    ) -> some View {
+        if slot.isHighlightedByDiveQueue
+            || slot.isHighlightedByRewardSelection
+            || slot.isDropTarget
+            || slot.isSelected {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(slotCanvasHighlightColor(slot))
+                .blur(radius: 8)
+                .frame(width: frame.width, height: frame.height)
+                .offset(x: frame.minX, y: frame.minY)
+                .allowsHitTesting(false)
+        }
+    }
+
+    private func slotCanvasHighlightColor(_ slot: OceanSlotViewData) -> Color {
+        if slot.isHighlightedByDiveQueue {
+            return Color.orange.opacity(0.30)
+        }
+        if slot.isHighlightedByRewardSelection {
+            return Color.blue.opacity(0.24)
+        }
+        if slot.isDropTarget {
+            return slot.isValidDropTarget ? Color.green.opacity(0.28) : Color.red.opacity(0.22)
+        }
+        if slot.isSelected {
+            return Color.accentColor.opacity(0.24)
+        }
+        return .clear
+    }
+
+    private func coralReefPosition(
+        for column: OceanDiveSiteColumnViewData,
+        in boardRect: CGRect
+    ) -> CGPoint {
+        let columnIndex = Double(DiveSite.allCases.firstIndex(of: column.diveSite) ?? 0)
+        let point = BoardNormalizedPoint(
+            x: 0.12 + columnIndex * 0.315,
+            y: 0.475
+        )
+        return BoardLayoutMapper.mapBoardNormalizedPoint(point, into: boardRect)
     }
 
     private var diveActionBar: some View {
@@ -1354,10 +1501,13 @@ struct GameBoardView: View {
         )
     }
 
-    private func slotPanel(_ slot: OceanSlotViewData) -> some View {
+    private func slotPanel(
+        _ slot: OceanSlotViewData,
+        presentation: BoardSlotPresentation = .legacyGrid
+    ) -> some View {
         ZStack(alignment: .topLeading) {
             if slot.cardFace.kind == .empty {
-                emptySlotPlaceholder(slot)
+                emptySlotPlaceholder(slot, presentation: presentation)
             } else {
                 FishCardFaceView(viewState: slot.cardFace)
                 cardResourceTokenHitTargets(slot)
@@ -1423,18 +1573,29 @@ struct GameBoardView: View {
                 )
 
             }
-            .padding(6)
+            .padding(presentation == .legacyGrid ? 6 : 4)
         }
-        .padding(10)
+        .padding(presentation == .legacyGrid ? 10 : 0)
         .aspectRatio(slot.aspectRatio, contentMode: .fit)
         .frame(maxWidth: .infinity)
         .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(slotBackgroundColor(slot))
+            Group {
+                if presentation == .legacyGrid {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(slotBackgroundColor(slot))
+                } else {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.clear)
+                }
+            }
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(slotBorderColor(slot), lineWidth: slot.isHighlightedByDiveQueue || slot.isDropTarget ? 2 : 1.5)
+            Group {
+                if presentation == .legacyGrid {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(slotBorderColor(slot), lineWidth: slot.isHighlightedByDiveQueue || slot.isDropTarget ? 2 : 1.5)
+                }
+            }
         )
         .scaleEffect(slot.isValidDropTarget ? 1.018 : 1)
         .shadow(
@@ -1445,18 +1606,22 @@ struct GameBoardView: View {
         .animation(GameBoardAnimation.quick, value: slot.isDropTarget)
         .animation(GameBoardAnimation.quick, value: slot.isValidDropTarget)
         .animation(GameBoardAnimation.quick, value: slot.isSelected)
-        .background(
-            GeometryReader { proxy in
-                Color.clear.preference(
-                    key: SlotFramePreferenceKey.self,
-                    value: [slot.address: proxy.frame(in: .global)]
-                )
+        .background {
+            if presentation == .legacyGrid {
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: SlotFramePreferenceKey.self,
+                        value: [slot.address: proxy.frame(in: .global)]
+                    )
+                }
             }
-        )
+        }
         .contentShape(RoundedRectangle(cornerRadius: 8))
         .onTapGesture {
+            if presentation == .legacyGrid {
                 viewModel.selectTargetSlot(slot.address)
             }
+        }
     }
 
     private func cardResourceTokenHitTargets(_ slot: OceanSlotViewData) -> some View {
@@ -1492,12 +1657,23 @@ struct GameBoardView: View {
         }
     }
 
-    private func emptySlotPlaceholder(_ slot: OceanSlotViewData) -> some View {
+    private func emptySlotPlaceholder(
+        _ slot: OceanSlotViewData,
+        presentation: BoardSlotPresentation = .legacyGrid
+    ) -> some View {
         RoundedRectangle(cornerRadius: 8)
-            .fill(slotBackgroundColor(slot).opacity(0.72))
+            .fill(
+                presentation == .legacyGrid
+                    ? slotBackgroundColor(slot).opacity(0.72)
+                    : Color(.systemBackground).opacity(0.16)
+            )
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(slotBorderColor(slot).opacity(0.8), style: StrokeStyle(lineWidth: 1.2, dash: [5, 4]))
+                Group {
+                    if presentation == .legacyGrid {
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(slotBorderColor(slot).opacity(0.8), style: StrokeStyle(lineWidth: 1.2, dash: [5, 4]))
+                    }
+                }
             )
             .overlay(
                 VStack(spacing: 6) {
@@ -1507,6 +1683,7 @@ struct GameBoardView: View {
                         .font(.caption.weight(.semibold))
                 }
                 .foregroundStyle(.secondary)
+                .opacity(presentation == .legacyGrid ? 1 : 0.42)
             )
             .aspectRatio(slot.cardFace.aspectRatio, contentMode: .fit)
     }

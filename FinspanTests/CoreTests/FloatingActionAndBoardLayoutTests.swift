@@ -1,0 +1,422 @@
+import CoreGraphics
+import XCTest
+@testable import Finspan
+
+@MainActor
+final class FloatingActionPairViewModelTests: XCTestCase {
+    func testStagedPlayFishShowsFloatingActionPairAndHidesControlOnlyDock() throws {
+        let service = FloatingActionRoomService(hand: ["floating-fish"])
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalog: FloatingActionCatalog()
+        )
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 1)
+
+        viewModel.selectCard("floating-fish")
+        viewModel.selectTargetSlot(target)
+
+        let floating = try XCTUnwrap(viewModel.floatingActionPairState)
+        XCTAssertEqual(floating.context, .playFish)
+        XCTAssertEqual(floating.leading?.action, .back)
+        XCTAssertEqual(floating.trailing?.action, .primary)
+        XCTAssertTrue(floating.trailing?.isEnabled == true)
+        XCTAssertTrue(floating.avoidsHomeIndicator)
+        XCTAssertTrue(floating.avoidsHandArea)
+        XCTAssertEqual(viewModel.bottomRewardDockState.displayMode, .hidden)
+        XCTAssertNil(viewModel.bottomRewardDockState.forwardControl)
+        XCTAssertNil(viewModel.bottomRewardDockState.backControl)
+    }
+
+    func testFloatingActionPairDisappearsWithoutActiveStagedOrPendingContext() {
+        let service = FloatingActionRoomService(hand: ["floating-fish"])
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalog: FloatingActionCatalog()
+        )
+
+        XCTAssertNil(viewModel.floatingActionPairState)
+        XCTAssertEqual(viewModel.bottomRewardDockState.displayMode, .hidden)
+    }
+
+    func testFloatingBackClearsOnlyUnsubmittedStagedSelection() {
+        let service = FloatingActionRoomService(hand: ["floating-fish"])
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalog: FloatingActionCatalog()
+        )
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 1)
+        viewModel.selectCard("floating-fish")
+        viewModel.selectTargetSlot(target)
+
+        viewModel.performBottomRewardDockAction(.back)
+
+        XCTAssertNil(viewModel.selectedCardId)
+        XCTAssertNil(viewModel.selectedTargetSlot)
+        XCTAssertTrue(service.submittedCommands.isEmpty)
+    }
+
+    func testFloatingForwardUsesExistingPlayFishCommandPath() throws {
+        let service = FloatingActionRoomService(hand: ["floating-fish"])
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalog: FloatingActionCatalog()
+        )
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 1)
+        viewModel.selectCard("floating-fish")
+        viewModel.selectTargetSlot(target)
+
+        viewModel.performBottomRewardDockAction(.primary)
+
+        guard case let .playFish(payload) = service.submittedCommands.last?.payload else {
+            return XCTFail("Expected playFish command.")
+        }
+        XCTAssertEqual(payload.cardId, "floating-fish")
+        XCTAssertEqual(payload.targetSlot, target)
+        XCTAssertEqual(payload.payment, .empty)
+    }
+
+    func testFloatingBackAfterCommitDoesNotCreateEngineUndo() {
+        let service = FloatingActionRoomService(hand: ["floating-fish"])
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalog: FloatingActionCatalog()
+        )
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 1)
+        viewModel.selectCard("floating-fish")
+        viewModel.selectTargetSlot(target)
+        viewModel.performBottomRewardDockAction(.primary)
+
+        viewModel.performBottomRewardDockAction(.back)
+
+        XCTAssertEqual(service.submittedCommands.count, 1)
+        guard case .playFish = service.submittedCommands.first?.payload else {
+            return XCTFail("Expected the committed command to remain playFish.")
+        }
+    }
+
+    func testOverlayPresentationHidesGlobalFloatingActionPair() throws {
+        let service = FloatingActionRoomService(
+            hand: ["floating-fish"],
+            discardPile: ["floating-fish"]
+        )
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalog: FloatingActionCatalog()
+        )
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 1)
+        viewModel.selectCard("floating-fish")
+        viewModel.selectTargetSlot(target)
+        XCTAssertNotNil(viewModel.floatingActionPairState)
+
+        viewModel.showDiscardPile()
+
+        XCTAssertNotNil(viewModel.discardPileDetailViewState)
+        XCTAssertNil(viewModel.floatingActionPairState)
+    }
+
+    func testViewingOpponentBoardPreservesFloatingControlContext() throws {
+        let service = FloatingActionRoomService(
+            hand: ["floating-fish"],
+            additionalPlayers: [
+                RoomPlayer(playerId: "player-2", displayName: "玩家 2", color: .green)
+            ]
+        )
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalog: FloatingActionCatalog()
+        )
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 1)
+        viewModel.selectCard("floating-fish")
+        viewModel.selectTargetSlot(target)
+
+        viewModel.selectPlayerAvatar("player-2")
+
+        let floating = try XCTUnwrap(viewModel.floatingActionPairState)
+        XCTAssertEqual(floating.context, .playFish)
+        XCTAssertEqual(viewModel.selectedViewedPlayerId, "player-2")
+        XCTAssertEqual(viewModel.selectedCardId, "floating-fish")
+        XCTAssertEqual(viewModel.selectedTargetSlot, target)
+    }
+
+    func testRewardTokenDockRemainsInformationalDockContent() {
+        let token = BottomRewardDockToken(
+            id: "reward-egg",
+            title: "放置鱼卵",
+            subtitle: "选择目标",
+            icon: GameTokenIconResolver.shared.icon(for: .egg),
+            countText: nil,
+            isSelectable: true,
+            isSelected: false,
+            isCompleted: false,
+            isUnsupported: false,
+            fallbackReason: nil,
+            continuationSurfaces: [.boardTarget],
+            action: .selectRewardToken("reward-egg")
+        )
+        let state = BottomRewardDockState(
+            displayMode: .compact,
+            title: "奖励",
+            sourceText: nil,
+            instructionText: "选择奖励",
+            summaryLines: [],
+            tokens: [token],
+            warningText: nil,
+            fallbackReason: nil,
+            forwardControl: nil,
+            backControl: nil
+        )
+
+        XCTAssertTrue(state.hasInformationalContent)
+        XCTAssertEqual(state.displayMode, .compact)
+        XCTAssertFalse(state.usesMainBoardRightPanel)
+    }
+}
+
+@MainActor
+final class BoardLayoutMappingTests: XCTestCase {
+    func testBoardImageRectAspectFitCentersNarrowImage() {
+        let rect = BoardLayoutMapper.boardImageRect(
+            in: CGSize(width: 1_000, height: 500),
+            imageAspectRatio: 1
+        )
+
+        XCTAssertEqual(rect.origin.x, 250, accuracy: 0.001)
+        XCTAssertEqual(rect.origin.y, 0, accuracy: 0.001)
+        XCTAssertEqual(rect.width, 500, accuracy: 0.001)
+        XCTAssertEqual(rect.height, 500, accuracy: 0.001)
+    }
+
+    func testBoardImageRectAspectFitFillsMatchingContainer() {
+        let rect = BoardLayoutMapper.boardImageRect(
+            in: CGSize(width: 1_000, height: 500),
+            imageAspectRatio: 2
+        )
+
+        XCTAssertEqual(rect.origin.x, 0, accuracy: 0.001)
+        XCTAssertEqual(rect.origin.y, 0, accuracy: 0.001)
+        XCTAssertEqual(rect.width, 1_000, accuracy: 0.001)
+        XCTAssertEqual(rect.height, 500, accuracy: 0.001)
+    }
+
+    func testNormalizedRectAndPointMappingStayInsideBoardImageRect() {
+        let boardRect = CGRect(x: 100, y: 50, width: 800, height: 450)
+        let normalizedRect = BoardNormalizedRect(x: 0.25, y: 0.2, width: 0.5, height: 0.4)
+        let mappedRect = BoardLayoutMapper.mapBoardNormalizedRect(normalizedRect, into: boardRect)
+        let mappedPoint = BoardLayoutMapper.mapBoardNormalizedPoint(
+            BoardNormalizedPoint(x: 0.5, y: 0.5),
+            into: boardRect
+        )
+
+        XCTAssertTrue(boardRect.contains(mappedRect))
+        XCTAssertTrue(boardRect.contains(mappedPoint))
+        XCTAssertEqual(mappedRect.origin.x, 300, accuracy: 0.001)
+        XCTAssertEqual(mappedRect.origin.y, 140, accuracy: 0.001)
+        XCTAssertEqual(mappedPoint.x, 500, accuracy: 0.001)
+        XCTAssertEqual(mappedPoint.y, 275, accuracy: 0.001)
+    }
+
+    func testPlaceholderLayoutContainsBaseGameSlotsAndSharedRects() {
+        let layout = BoardLayout.placeholderBaseGame
+        let boardRect = CGRect(x: 0, y: 0, width: 1_600, height: 900)
+
+        XCTAssertEqual(layout.slots.count, 18)
+        XCTAssertNotNil(layout.slot(id: "blue.sunlit.0"))
+        XCTAssertNotNil(layout.slot(id: "purple.twilight.0"))
+        XCTAssertNotNil(layout.slot(id: "green.midnight.1"))
+
+        for slot in layout.slots {
+            let slotRect = BoardLayoutMapper.mapBoardNormalizedRect(slot.slotRect, into: boardRect)
+            let cardRect = BoardLayoutMapper.mapBoardNormalizedRect(slot.cardRect, into: boardRect)
+            let hitRect = BoardLayoutMapper.mapBoardNormalizedRect(slot.hitRect, into: boardRect)
+            let highlightRect = BoardLayoutMapper.mapBoardNormalizedRect(slot.highlightRect, into: boardRect)
+
+            XCTAssertTrue(boardRect.contains(slotRect), slot.slotId)
+            XCTAssertTrue(boardRect.contains(cardRect), slot.slotId)
+            XCTAssertTrue(boardRect.contains(hitRect), slot.slotId)
+            XCTAssertTrue(boardRect.contains(highlightRect), slot.slotId)
+        }
+    }
+
+    func testBoardLayoutJsonDecodes() throws {
+        let url = try boardLayoutJsonURL()
+        let data = try Data(contentsOf: url)
+        let layout = try JSONDecoder().decode(BoardLayout.self, from: data)
+
+        XCTAssertEqual(layout.id, "base.placeholder.manual.v1")
+        XCTAssertEqual(layout.slots.count, 18)
+        XCTAssertNotNil(layout.slot(id: "blue.sunlit.0"))
+    }
+
+    @MainActor
+    func testDebugCalibrationOverlayDoesNotSubmitCommandOrMutateState() {
+        let service = FloatingActionRoomService(hand: ["floating-fish"])
+        let before = service.gameState
+
+        _ = BoardLayoutCalibrationOverlay(
+            layout: .placeholderBaseGame,
+            showsLabels: true
+        )
+
+        XCTAssertEqual(service.gameState, before)
+        XCTAssertTrue(service.submittedCommands.isEmpty)
+    }
+
+    @MainActor
+    func testBoardLayoutDoesNotAffectResourceTokenPaymentStaging() {
+        let service = FloatingActionRoomService(
+            hand: ["egg-cost"],
+            sourceResources: [ResourceQuantity(kind: .egg, amount: 1)]
+        )
+        let viewModel = GameBoardViewModel(
+            roomService: service,
+            cardCatalog: FloatingActionCatalog()
+        )
+        let sourceAddress = OceanSlotAddress(playerId: "player-1", diveSite: .blue, rowIndex: 0)
+
+        viewModel.selectCard("egg-cost")
+        viewModel.toggleResourcePayment(address: sourceAddress, kind: .egg, tokenIndex: 0)
+
+        XCTAssertEqual(viewModel.selectedEggSources, [sourceAddress])
+        XCTAssertNotNil(BoardLayout.placeholderBaseGame.slot(id: BoardLayout.slotId(for: sourceAddress)))
+    }
+
+    private func boardLayoutJsonURL() throws -> URL {
+        let testFile = URL(fileURLWithPath: #filePath)
+        let projectRoot = testFile
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let url = projectRoot
+            .appendingPathComponent("Finspan")
+            .appendingPathComponent("Resources")
+            .appendingPathComponent("BoardLayout")
+            .appendingPathComponent("placeholder_board_layout.json")
+        if !FileManager.default.fileExists(atPath: url.path) {
+            throw NSError(
+                domain: "BoardLayoutMappingTests",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Missing \(url.path)"]
+            )
+        }
+        return url
+    }
+}
+
+@MainActor
+private final class FloatingActionRoomService: RoomService {
+    var gameRoom: GameRoom?
+    var gameState: GameState
+    var snapshot: RoomSnapshot
+    var eventLog: [GameEvent] = []
+    var submittedCommands: [PlayerCommand] = []
+
+    var eventStream: AsyncStream<GameEvent> {
+        AsyncStream { continuation in continuation.finish() }
+    }
+
+    init(
+        hand: [CardID],
+        discardPile: [CardID] = [],
+        sourceResources: [ResourceQuantity] = [],
+        additionalPlayers: [RoomPlayer] = []
+    ) {
+        let roomPlayers = [
+            RoomPlayer(playerId: "player-1", displayName: "玩家 1", role: .host)
+        ] + additionalPlayers
+        let room = GameRoom(
+            roomId: "room-1",
+            roomCode: "LOCAL",
+            hostPlayerId: "player-1",
+            players: roomPlayers,
+            gameConfig: GameConfig(
+                playerCount: roomPlayers.count,
+                enabledExpansions: [],
+                randomSeed: 1
+            ),
+            createdAt: Date(timeIntervalSince1970: 1_000),
+            updatedAt: Date(timeIntervalSince1970: 1_000)
+        )
+
+        let playerStates = Dictionary(uniqueKeysWithValues: roomPlayers.map { player -> (PlayerID, PlayerGameState) in
+            var ocean = OceanState.baseGameInitial(for: player.playerId)
+            for slotIndex in ocean.slots.indices {
+                ocean.slots[slotIndex].content = .empty
+                ocean.slots[slotIndex].resources = []
+            }
+            if player.playerId == "player-1",
+               let sourceIndex = ocean.slots.firstIndex(where: {
+                   $0.address.diveSite == .blue && $0.address.rowIndex == 0
+               }) {
+                ocean.slots[sourceIndex].content = .fishCard("source-fish")
+                ocean.slots[sourceIndex].resources = sourceResources
+            }
+            return (
+                player.playerId,
+                PlayerGameState(
+                    playerId: player.playerId,
+                    hand: player.playerId == "player-1" ? hand : [],
+                    discardPile: player.playerId == "player-1" ? discardPile : [],
+                    availableDivers: 6,
+                    usedDivers: 0,
+                    ocean: ocean
+                )
+            )
+        })
+
+        let state = GameState(
+            roomId: room.roomId,
+            players: roomPlayers.map { Player(id: $0.playerId, name: $0.displayName) },
+            currentWeek: 1,
+            currentTurnIndex: 0,
+            activePlayerId: "player-1",
+            firstPlayerId: "player-1",
+            phase: .playing,
+            eventSequence: 1,
+            randomSeed: 1,
+            turnsCompletedThisWeek: 0,
+            playerGameStates: playerStates,
+            deckState: DeckState(starterFishDrawPile: [], fishDrawPile: [], discardPile: []),
+            pendingChoices: [:]
+        )
+        gameRoom = room
+        gameState = state
+        snapshot = RoomSnapshot(id: room.roomId, players: room.players, state: state, events: [])
+    }
+
+    func submit(_ command: PlayerCommand) throws -> [GameEvent] {
+        submittedCommands.append(command)
+        return []
+    }
+
+    func resetLocalRoomSession() {}
+}
+
+private struct FloatingActionCatalog: CardCatalog {
+    let starterFishCards: [Card] = []
+    let fishCards: [Card] = [
+        Card(
+            id: "floating-fish",
+            name: "Floating Fish",
+            costs: [],
+            allowedZones: [.sunlit],
+            printedPoints: 1,
+            lengthCm: 20
+        ),
+        Card(
+            id: "source-fish",
+            name: "Source Fish",
+            costs: [],
+            allowedZones: [.sunlit],
+            printedPoints: 1,
+            lengthCm: 10
+        ),
+        Card(
+            id: "egg-cost",
+            name: "Egg Cost Fish",
+            costs: [.resource(kind: .egg, count: 1)],
+            allowedZones: [.sunlit],
+            printedPoints: 1,
+            lengthCm: 30
+        )
+    ]
+}

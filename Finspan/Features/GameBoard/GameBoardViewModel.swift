@@ -1335,29 +1335,19 @@ final class GameBoardViewModel: ObservableObject {
     }
 
     var bottomRewardDockState: BottomRewardDockState {
-        if let payment = paymentProgressViewState {
+        if paymentProgressViewState != nil {
             return BottomRewardDockState(
-                displayMode: .compact,
+                displayMode: .hidden,
                 title: AppStrings.GameBoard.playFishPayment,
-                sourceText: payment.cardTitle,
+                sourceText: nil,
                 sourcePlayerId: localPlayerId,
-                instructionText: payment.blockingMessage ?? AppStrings.GameBoard.playFishFromHandPayment,
-                summaryLines: playFishActionSummaryLines(payment),
+                instructionText: AppStrings.GameBoard.playFishFromHandPayment,
+                summaryLines: [],
                 tokens: [],
-                warningText: bottomDockPerspectiveWarning ?? payment.blockingMessage,
+                warningText: nil,
                 fallbackReason: nil,
-                forwardControl: BottomRewardDockControl(
-                    title: "→ \(AppStrings.GameBoard.confirmPlayFish)",
-                    action: .primary,
-                    isEnabled: payment.canConfirm,
-                    accessibilityLabel: AppStrings.GameBoard.confirmPlayFish
-                ),
-                backControl: BottomRewardDockControl(
-                    title: "←",
-                    action: .back,
-                    isEnabled: true,
-                    accessibilityLabel: AppStrings.GameBoard.cancelPlayFish
-                )
+                forwardControl: nil,
+                backControl: nil
             )
         }
 
@@ -1368,12 +1358,15 @@ final class GameBoardViewModel: ObservableObject {
             if let gameEndAbilityPhaseViewState {
                 tokens.append(contentsOf: gameEndAbilityPhaseViewState.abilityRows.map(bottomRewardDockToken))
             }
-            let forwardControl = bottomForwardControl(for: action)
-            let backControl = bottomBackControl()
             let fallbackReason = tokens.first(where: { $0.fallbackReason != nil })?.fallbackReason
+            let hasDockInformation = !tokens.isEmpty
+                || rewardPool.sourceText != nil
+                || rewardPool.blockingMessage != nil
+                || action.warningText != nil
+                || fallbackReason != nil
 
             return BottomRewardDockState(
-                displayMode: .compact,
+                displayMode: hasDockInformation ? .compact : .hidden,
                 title: rewardPool.isActive ? rewardPool.titleText : action.title,
                 sourceText: rewardPool.sourceText,
                 sourcePlayerId: rewardPool.isActive
@@ -1384,13 +1377,13 @@ final class GameBoardViewModel: ObservableObject {
                 tokens: tokens,
                 warningText: bottomDockPerspectiveWarning ?? rewardPool.blockingMessage ?? action.warningText,
                 fallbackReason: fallbackReason,
-                forwardControl: forwardControl,
-                backControl: backControl
+                forwardControl: nil,
+                backControl: nil
             )
         }
 
         return BottomRewardDockState(
-            displayMode: .handleOnly,
+            displayMode: .hidden,
             title: AppStrings.GameBoard.currentAction,
             sourceText: nil,
             instructionText: AppStrings.GameBoard.chooseMainAction,
@@ -1400,6 +1393,66 @@ final class GameBoardViewModel: ObservableObject {
             fallbackReason: nil,
             forwardControl: nil,
             backControl: nil
+        )
+    }
+
+    var floatingActionPairState: FloatingActionPairState? {
+        guard !shouldHideFloatingActionPairForOverlay else {
+            return nil
+        }
+
+        if let payment = paymentProgressViewState {
+            return FloatingActionPairState(
+                leading: FloatingActionButtonState(
+                    id: "playFish-back",
+                    title: "←",
+                    action: .back,
+                    isEnabled: true,
+                    accessibilityLabel: AppStrings.GameBoard.cancelPlayFish
+                ),
+                trailing: FloatingActionButtonState(
+                    id: "playFish-forward",
+                    title: "→",
+                    action: .primary,
+                    isEnabled: payment.canConfirm,
+                    accessibilityLabel: AppStrings.GameBoard.confirmPlayFish
+                ),
+                context: .playFish
+            )
+        }
+
+        let action = rightActionPanelViewState
+        var leading: FloatingActionButtonState?
+        var trailing: FloatingActionButtonState?
+
+        if let backControl = floatingBackControl() {
+            leading = FloatingActionButtonState(
+                id: "staged-back",
+                title: "←",
+                action: backControl.action,
+                isEnabled: backControl.isEnabled,
+                accessibilityLabel: backControl.accessibilityLabel
+            )
+        }
+
+        if let forwardControl = bottomForwardControl(for: action),
+           action.actionKind != .none {
+            trailing = FloatingActionButtonState(
+                id: "action-forward-\(action.actionKind.rawValue)",
+                title: "→",
+                action: forwardControl.action,
+                isEnabled: forwardControl.isEnabled,
+                accessibilityLabel: forwardControl.accessibilityLabel
+            )
+        }
+
+        guard leading != nil || trailing != nil else {
+            return nil
+        }
+        return FloatingActionPairState(
+            leading: leading,
+            trailing: trailing,
+            context: floatingActionContext(for: action)
         )
     }
 
@@ -1585,6 +1638,31 @@ final class GameBoardViewModel: ObservableObject {
             isEnabled: true,
             accessibilityLabel: AppStrings.GameBoard.cancel
         )
+    }
+
+    private var shouldHideFloatingActionPairForOverlay: Bool {
+        isBottomDockDebugFallbackPresented
+            || discardPileDetailViewState != nil
+            || bottomDockOverlayState != nil
+    }
+
+    private func floatingBackControl() -> BottomRewardDockControl? {
+        bottomBackControl()
+    }
+
+    private func floatingActionContext(
+        for action: RightActionPanelViewState
+    ) -> FloatingActionContext {
+        if state.phase == .endGamePending {
+            return .gameEnd
+        }
+        if selectedRewardTokenId != nil || rewardSelectionMode != nil || selectedRecoverDiscardCardId != nil {
+            return .rewardSelection
+        }
+        if action.actionKind == .playFishPayment {
+            return .playFish
+        }
+        return .pendingChoice
     }
 
     private func bottomRewardFallbackReason(for kind: RewardTokenKind) -> String? {

@@ -1,6 +1,6 @@
 # Unified Board/Card Interaction Flow
 
-This document defines the staged presentation model for board, card, and dock-driven interaction. The current primary action center is `BottomRewardDock`: reward entry, pending action, `playFish` confirmation, skip, staged undo, GAME END candidates, and external AllPlayers rewards should appear in the bottom dock first. The permanent right-side reward / pending / play-fish confirmation panel is no longer part of the main board layout. This does not change `GameEngine`, Ability Engine, rules, card JSON, randomness, scoring, online rooms, Nautoma, or saved-state migration.
+This document defines the staged presentation model for board, card, dock, and floating-control driven interaction. `BottomRewardDock` is the information and complex-continuation surface for reward entry, pending reward summaries, GAME END candidates, and external AllPlayers rewards. Pure confirm / continue / skip and staged undo controls now appear through `FloatingActionPairView`, not as a control-only bottom dock. The permanent right-side reward / pending / play-fish confirmation panel is no longer part of the main board layout. This does not change `GameEngine`, Ability Engine, rules, card JSON, randomness, scoring, online rooms, Nautoma, or saved-state migration.
 
 ## Why Unify
 
@@ -256,4 +256,14 @@ Do not use the right-side panel as a permanent fallback. Complex cases should re
 - insufficient metadata;
 - temporary debug / complex helper popovers.
 
-The current implementation removes the permanent right-side reward / pending / play-fish confirmation panel from the main board layout, adds `BottomRewardDock`, keeps card inline as source / group highlight only, and keeps all command submission on existing paths. Full card ability tapping, full inline `playFish`, full inline dive reward, engine undo, Ability Engine changes, rule changes, card JSON changes, BoardLayout, online rooms, Nautoma, and saved-state migration remain out of scope.
+Pure `→` / `←` controls are no longer bottom-dock content. `FloatingActionPairView` owns the lightweight confirm / continue / skip and staged cancel / undo controls:
+
+- staged `playFish` with a selected card / target shows `←` when the staged selection can be cancelled and `→` when the existing confirm path can run;
+- optional pending choices may expose `→` through the same existing ViewModel forward / skip path;
+- overlays and pickers hide the global pair when they already provide their own close / selection affordance;
+- `←` only clears uncommitted ViewModel staged state and never performs engine-level undo;
+- `→` continues to use UI → `PlayerCommand` → RoomService → GameEngine → GameEvent → GameState, without changing command timing.
+
+`BottomRewardDock` is now information-first: reward token list, source summary, pending / ability / dive reward context, GAME END candidates, AllPlayers external reward context, and overlay / picker entry points. If a state only has forward/back controls and no meaningful token / source / summary / warning / fallback content, the dock stays hidden and FloatingActionPair handles the controls.
+
+The current implementation removes the permanent right-side reward / pending / play-fish confirmation panel from the main board layout, adds `BottomRewardDock` plus `FloatingActionPairView`, keeps card inline as source / group highlight only, and keeps all command submission on existing paths. Full card ability tapping, full inline `playFish`, full inline dive reward, engine undo, Ability Engine changes, rule changes, card JSON changes, online rooms, Nautoma, and saved-state migration remain out of scope.

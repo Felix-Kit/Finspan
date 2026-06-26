@@ -66,33 +66,23 @@ final class BottomRewardDockPolishTests: XCTestCase {
         XCTAssertTrue(selected.isSelected)
     }
 
-    func testDockControlsRemainBottomDockOnly() {
+    func testDockControlsAreNotInformationalDockContent() {
         let state = BottomRewardDockState(
-            displayMode: .compact,
+            displayMode: .hidden,
             title: AppStrings.GameBoard.playFishPayment,
-            sourceText: "Polish Fish",
+            sourceText: nil,
             instructionText: AppStrings.GameBoard.playFishFromHandPayment,
             summaryLines: [],
             tokens: [],
             warningText: nil,
             fallbackReason: nil,
-            forwardControl: BottomRewardDockControl(
-                title: "→",
-                action: .primary,
-                isEnabled: true,
-                accessibilityLabel: AppStrings.GameBoard.confirmPlayFish
-            ),
-            backControl: BottomRewardDockControl(
-                title: "←",
-                action: .back,
-                isEnabled: true,
-                accessibilityLabel: AppStrings.GameBoard.cancelPlayFish
-            )
+            forwardControl: nil,
+            backControl: nil
         )
 
         XCTAssertFalse(state.usesMainBoardRightPanel)
-        XCTAssertEqual(state.forwardControl?.action, .primary)
-        XCTAssertEqual(state.backControl?.action, .back)
+        XCTAssertFalse(state.hasInformationalContent)
+        XCTAssertEqual(state.displayMode, .hidden)
     }
 }
 

@@ -53,14 +53,14 @@ struct BottomRewardDockState: Equatable {
     let backControl: BottomRewardDockControl?
 
     var usesMainBoardRightPanel: Bool { false }
-    var hasPrimaryContent: Bool {
+    var hasInformationalContent: Bool {
         !tokens.isEmpty
             || !summaryLines.isEmpty
-            || forwardControl != nil
-            || backControl != nil
+            || sourceText != nil
             || warningText != nil
             || fallbackReason != nil
     }
+    var hasPrimaryContent: Bool { hasInformationalContent }
 }
 
 enum BottomDockOverlayRoute: String, Equatable {
@@ -196,7 +196,9 @@ struct BottomRewardDockView: View {
                 }
             }
 
-            controlRow
+            if state.forwardControl != nil || state.backControl != nil {
+                controlRow
+            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)

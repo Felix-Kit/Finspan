@@ -83,15 +83,17 @@
 - UI Polish Pass 1A 已接入 `GameBoardAnimation` 统一 quick / standard / slow、hand selection、dock、token、overlay 和 board perspective 动画参数；当前仅影响 SwiftUI presentation，不修改规则状态或 command 提交时机。
 - 手牌选中现在以稳定 `cardId` 身份轻微上浮、放大、加强阴影并提高 zIndex；再次点击会平滑取消回位。不可交互点击 / 非法拖放给短促 nudge 反馈，不让整排手牌重排。
 - 拖动手牌时保留浮起感；合法 drop target 使用轻量 scale / glow / border 高亮。取消拖动或非法 drop 会平滑回到手牌区；`PlayerCommand.playFish` 仍只在确认时提交。
-- `BottomRewardDock` 已成为主行动中心，用于 pending reward、ability reward、dive / zone reward、GAME END candidate、AllPlayers 外部收益、出牌确认、`->` forward / confirm / skip 和 `<-` staged undo / cancel。
-- `BottomRewardDock` hidden / handleOnly / compact / expanded 切换使用统一底部滑入 + fade transition；dock token 出现 / 消失使用 scale + opacity，选中 token 使用轻量 scale / highlight；`->` / `<-` 有轻量 press feedback，且 token identity 继续由稳定 `token.id` 驱动。
+- `FloatingActionPairView` 已接入：纯 `←` staged undo / cancel 与 `→` confirm / continue / skip 改为两个 52pt 圆角方块按钮，需要时浮在 board 右下 / 中下安全区，不贴系统 home indicator，不遮挡手牌，不恢复右侧常驻面板。
+- 纯确认 / 取消不再触发底部 dock。普通 staged `playFish`、支付完成后的确认、简单 pending forward / skip 使用 FloatingActionPair；按钮仍调用既有 ViewModel confirm / cancel path，`PlayerCommand.playFish` 的提交时机不变，`←` 只撤回未提交 staged selection，不做 engine-level undo。
+- `BottomRewardDock` 职责已收窄为 pending reward token list、ability reward source summary、dive / zone reward、GAME END candidate、AllPlayers 外部收益、overlay / picker 入口和复杂选择摘要；只有 controls、没有 token / source / summary / warning / fallback 内容时 dock 隐藏。
+- `BottomRewardDock` hidden / handleOnly / compact / expanded 切换使用统一底部滑入 + fade transition；dock token 出现 / 消失使用 scale + opacity，选中 token 使用轻量 scale / highlight，且 token identity 继续由稳定 `token.id` 驱动。
 - 右侧 reward / pending / playFish confirm 面板已从主棋盘 layout 移除，不再常驻占用右侧空间。
 - 复杂 fallback 不再通过右侧常驻栏承载；由 bottom dock 拉起 overlay / sheet / picker / debug helper。
 - `BottomDockOverlayRoute` / `BottomDockOverlayState` 已接入，用于统一 dock fallback continuation：弃牌堆选择、手牌选择、playFish staging、reef target、debug fallback 和 GAME END candidate。
 - discard pile overlay、recover selection、hand picker、consumeFishFromHand picker、playFishForFree / playFishFromHand picker 现在使用 dim fade + panel slide/fade；关闭 overlay 只撤回未提交 staged selection，不影响已经提交的 `GameEvent`。
 - `recoverFromDiscardOrDraw` 的 dock token 现在会在有可恢复弃牌时打开现有弃牌堆 recover selection overlay；弃牌为空时仍由 dock 走 draw fallback，draw 后不支持 committed undo。
 - `consumeFishFromHand` 的 dock token 现在打开 hand picker，再继续到 board target 选择吞噬者；非法手牌由 hand picker 显示 disabled / reason。
-- `playFishForFree` / `playFishFromHand` 的 dock token 现在打开 hand picker，再进入 staged `playFish` flow；免费出牌不要求支付，paid play 继续使用现有直接资源 / 手牌支付选择，`->` / `<-` 仍由 bottom dock 表达。
+- `playFishForFree` / `playFishFromHand` 的 dock token 现在打开 hand picker，再进入 staged `playFish` flow；免费出牌不要求支付，paid play 继续使用现有直接资源 / 手牌支付选择，纯 `→` / `←` 由 FloatingActionPair 表达。
 - `drawFish` 可由 dock token direct commit；GAME END candidate 和 AllPlayers target-player external reward 继续由 bottom dock 承载 source summary、reward token 和 skip / staged undo。
 - Unified Board/Card Interaction Flow Design 已落地为 presentation model：新增 `BoardCardInteractionTask` / `Step` / `Token` / `SourceOption` / `Target` / `ControlState`，用于表达未来 board/card inline staged selection。该模型不接规则引擎、不修改 `GameState`，最终合法性仍在 `GameEngine`。
 - Inline 交互分类已从单轴 A/B/C/D 调整为四维模型：`InlineEntrySurface`、`ContinuationSurface`、`CommitReversibility`、`SourceVisibility`。`needs picker / overlay` 不再等于不能 inline；`irreversible / no undo` 也不再等于不能 inline，只表示提交后不能用 `<-` 撤回。
@@ -100,6 +102,8 @@
 - Compact Resource HUD 已接入顶部 HUD，只用真实 live-derived token icon 显示鱼卵、幼鱼和鱼群计数。手牌数量留在手牌区域，三色珊瑚移到各 dive-site column 的 twilight / reef 区域附近。
 - board slot 鱼牌上的 egg / young / school 已从左侧 size-class 区域迁到中央 fish artwork / background region。token 可覆盖鱼图，但共享 normalized layout 保证视觉图标和透明 hit target 都留在 card / slot bounds 内，并避开 points、length、tag、名称、flavor 和右侧 ability 区。
 - board resource token 继续使用 live-derived CardAssets，无 badge / 底板；视觉尺寸从 7.5cqw 提高到 9cqw，最多五枚按紧凑错位布局展开。payment staged selection 仍由 slot 层同中心的透明 hit target 发送，手牌和弃牌卡面不注入 board token。
+- Board UI Foundation Pass 1 已接入：新增 manual `BoardLayout` normalized 数据结构、`BoardLayoutMapper` aspectFit / normalized rect / point helper、placeholder `placeholder_board_layout.json` 和 DEBUG calibration overlay。board overlay 统一使用同一套 board image rect mapping，避免鱼牌、高光、hit target、debug overlay 各自写转换逻辑。
+- 主棋盘现在按 future background-image 模型渲染：背景负责棋盘 / slot 美术；SwiftUI 叠加透明 hit target、鱼牌、资源 token、coral reef badge 和柔和 tint / glow highlight，不重复画实体 slot 外观，也不使用硬边框作为正常高光。
 - 右侧资源统计大面板已压缩掉；右侧 pending / reward / action / playFish confirm 面板已从主 layout 移除。
 - `GameTokenIconResolver` / `GameTokenIconView` 已新增，非卡面 UI 的 egg / young / school / fish / coral / draw / discard / consume / hatch / move / zone token 可复用现有 CardAssets icon resolver，尺寸由 HUD / board layout 控制，不由 PNG intrinsic size 控制。
 - 顶部 HUD 已重做，包含玩家头像、当前行动摘要、设置入口和日志入口。
@@ -176,13 +180,13 @@
 - `CardAbilityBrushBackgroundView` 已改为 unrotated top-leading cover/crop，匹配 live background semantics，不用纯色正常 fallback。
 - Inline Ability Interaction audit 已更新为四维分类：`tools/scripts/audit_inline_ability_interaction.py` 输出每张卡的 `inlineEntrySurface`、`continuationSurface`、`commitReversibility`、`sourceVisibility`、`requiresFallback`、`requiresOverlay` 和 `canStartInline`。
 - 215 张卡 legacy 分类仍为 A inline candidates 73、B needs picker/overlay 51、C irreversible/no undo 91、D not enough metadata 0；新口径下 card ability icon entry 215、incoming reward dock entry 34、GAME END dock entry 39、D not enough metadata 0。
-- 当前暂停 card inline 作为主交互。`BottomRewardDock` 是 reward / pending / playFish confirm 的主入口；card inline 只保留 source/highlight/group hint，`ArrowDown` 前后 token 作为组合语义整体高亮，不单独可点。
+- 当前暂停 card inline 作为主交互。`BottomRewardDock` 是 reward / pending 信息和复杂 continuation 的主入口；纯 playFish confirm / cancel 由 `FloatingActionPairView` 承载。card inline 只保留 source/highlight/group hint，`ArrowDown` 前后 token 作为组合语义整体高亮，不单独可点。
 - 外部收益优先由 `IncomingRewardDockState` 提供 source 摘要，并通过 bottom dock 展示。`recoverFromDiscardOrDraw`、`consumeFishFromHand`、`playFishForFree` / `playFishFromHand`、`drawFish`、GAME END 和 AllPlayers 都已在 audit / model 中按新口径表达。
 - `→` 可映射到 `PendingEffectIntent.skipRemaining` / `skipEffectExecution` 或单节点 `skipEffectNode`；`←` 当前只适合撤回未提交的 ViewModel staged selection，不能撤回已提交 `GameEvent`。
 - Player Board Perspective 已完成：`activePlayerId` / `localPlayerId` / `viewingPlayerId` 在 presentation 层分离，顶部玩家头像可切换正在查看的 board，`activePlayerId` 仍只由规则状态决定。
 - 查看对手 board 时显示该玩家 ocean / resources / reef / source highlight，但 board 为只读：不能向对手 board 出牌，不能选择对手资源作为自己的 payment source，也不能在对手 board 上解决自己的 pending target。
 - 查看对手时手牌仍显示本地/当前行动玩家自己的手牌，并显示“正在查看对手，手牌仍为你自己的手牌”，避免误认为看到了对手手牌。
-- `BottomRewardDock` 不因 `viewingPlayerId` 切换而丢失 pending / playFish / GAME END / AllPlayers 上下文；当 pending 必须回到自己 board 选目标或支付来源时，dock 显示返回自己面板提示。dock source summary 可跳到 AllPlayers 或 GAME END 来源玩家 board，并在可定位时高亮来源鱼。
+- `BottomRewardDock` 和 `FloatingActionPair` 不因 `viewingPlayerId` 切换而丢失 pending / playFish / GAME END / AllPlayers 上下文；当 pending 必须回到自己 board 选目标或支付来源时，dock 显示返回自己面板提示。dock source summary 可跳到 AllPlayers 或 GAME END 来源玩家 board，并在可定位时高亮来源鱼。
 - DEBUG 牌库卡面状态面板继续扩展：现在可显示 brush asset、brush orientation、brush content mode、background position/repeat、ability panel frame、live measured frame、Swift delta、arrow-flow metrics 和 also-if gap，便于在模拟器中核对 pixel alignment。
 - Great White Shark 是 QA 样例，不是 special case：`base.main.057` 映射到 `57.*.webp`，`FishEgg` / `ArrowDown` / `Predator` / `AllPlayers` 均解析到 live-derived PNG render asset，cost 显示 `YoungFish` / `ConsumeFish`，length 600 cm 映射到 `FishLengthLarge`，ability presentation 使用 arrow-flow 而非 flat row。
 - Great Northern Tilefish、Banggai Cardinalfish、Bearded Seadevil、Great Barracuda 和 Atlantic Barracudina 也纳入代表卡审计，覆盖 If Activated brush block、arrow-flow overlap、S&R coral requirement / coral token、also-if split block、S&R badge、starter corner、不同 zone 和 flavor text。
@@ -208,15 +212,15 @@
 - Ability Engine v2 saved-state migration / legacy cleanup 后置：当前不是正式发布阶段，legacy adapter 继续保持行为稳定，直到旧本地房间和旧 pending-choice payload 有明确迁移路径。
 - GameBoardViewModel pending UI stabilization 后续：继续把 no-target prompt、follow-up target / payment / discard-selection choices 的显示逻辑收敛到 metadata fallback helper。
 - Weekly Achievement Board 后续：继续人工校对 Base / S&R Side B tile 文案和图标；marker 状态尚未建模，因此“上方有标记的鱼 / 上方没有标记的鱼”仍未接入；“幼鱼”tile 文案与现有 young resource 语义仍需复核。
-- 真实 board 背景和 slot 对齐系统。
-- BoardLayout / SVG marker / JSON layout pipeline。
+- 真实 board 背景 asset 和人工校准后的 slot 坐标仍待接入；当前已有 placeholder `BoardLayout`、统一 normalized mapping 和 DEBUG calibration overlay。
+- BoardLayout / SVG marker / JSON layout pipeline 的自动化导入仍待做；本轮未做 PDF extraction 或完整 BoardLayout。
 - Nautoma 后置。
 - 联机 / reconnect / 房间恢复后置。
 
 ## 当前建议下一步
 
 1. 继续做 Player Board Perspective 细节打磨，重点是 source highlight 的可见性、返回自己快捷入口位置和 GAME END 多玩家浏览体验。
-2. 继续做 bottom dock fallback 的交互细节打磨，重点是 overlay 尺寸、手牌遮挡和更明确的错误提示。
+2. 继续做 FloatingActionPair / bottom dock fallback 的交互细节打磨，重点是按钮位置实机校准、overlay 尺寸、手牌遮挡和更明确的错误提示。
 3. 继续做 GameBoardViewModel pending UI 小步稳定，重点是 target / payment / discard-selection prompt fallback。
-4. 后续再考虑 card icon shortcut；在 bottom dock 体验稳定、BoardLayout 完成前不要推进完整 card inline ability tap。
+4. 后续再考虑 card icon shortcut；在 FloatingActionPair / bottom dock 体验稳定、BoardLayout 校准完成前不要推进完整 card inline ability tap。
 5. 再修 UI bug：手牌居中、弃牌堆隐藏、empty slot 占位。

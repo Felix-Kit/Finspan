@@ -55,10 +55,10 @@ final class WeeklyGoalScoreboardTests: XCTestCase {
         viewModel.selectWeeklyGoalBox(1)
 
         let row = viewModel.weeklyGoalDetailViewState?.sections.first?.playerScores.first
-        XCTAssertEqual(row?.basePoints, 3)
+        XCTAssertEqual(row?.basePoints, 6)
         XCTAssertEqual(row?.highestBonusPoints, 3)
-        XCTAssertEqual(row?.totalPoints, 6)
-        XCTAssertEqual(row?.scoreText, "3 +3 = 6 分")
+        XCTAssertEqual(row?.totalPoints, 9)
+        XCTAssertEqual(row?.scoreText, "6 +3 = 9 分")
     }
 }
 
