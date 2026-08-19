@@ -103,8 +103,10 @@
 - Compact Resource HUD 已接入顶部 HUD，只用真实 live-derived token icon 显示鱼卵、幼鱼和鱼群计数。手牌数量留在手牌区域，三色珊瑚移到各 dive-site column 的 twilight / reef 区域附近。
 - board slot 鱼牌上的 egg / young / school 已从左侧 size-class 区域迁到中央 fish artwork / background region。token 可覆盖鱼图，但共享 normalized layout 保证视觉图标和透明 hit target 都留在 card / slot bounds 内，并避开 points、length、tag、名称、flavor 和右侧 ability 区。
 - board resource token 继续使用 live-derived CardAssets，无 badge / 底板；视觉尺寸从 7.5cqw 提高到 9cqw，最多五枚按紧凑错位布局展开。payment staged selection 仍由 slot 层同中心的透明 hit target 发送，手牌和弃牌卡面不注入 board token。
-- Board UI Foundation Pass 1 已接入：新增 manual `BoardLayout` normalized 数据结构、`BoardLayoutMapper` aspectFit / normalized rect / point helper、placeholder `placeholder_board_layout.json` 和 DEBUG calibration overlay。board overlay 统一使用同一套 board image rect mapping，避免鱼牌、高光、hit target、debug overlay 各自写转换逻辑。
-- 主棋盘现在按 future background-image 模型渲染：背景负责棋盘 / slot 美术；SwiftUI 叠加透明 hit target、鱼牌、资源 token、coral reef badge 和柔和 tint / glow highlight，不重复画实体 slot 外观，也不使用硬边框作为正常高光。
+- Player Mat Background Pass 已接入：Base 玩家面板由规则书干净样例手工分离为本地离线 `base_player_mat.png`，使用实体纵向面板比例；`player_mat_layout.json` 按面板像素校准 18 个 slot / card / hit / highlight rect，所有 overlay 继续复用 `BoardLayoutMapper` 的同一套 aspectFit 映射。
+- 每张出牌卡现在以完整鱼牌比例覆盖印刷 slot：`cardRect` 不再在 16:9 placeholder slot 内二次缩小。空槽只保留透明 hit target / 柔和 tint；面板印刷的 Catalina Goby、Showy Bristlemouth、Glasshead Grenadier 直接由背景显示，真实出牌继续叠加 `FishCardFaceView`。
+- S&R 继续使用与 Base 完全相同的面板尺寸和 18-slot 布局，只在 Twilight 上方按 normalized rect 叠加本地 `sharks_reefs_coral_overlay.png`；动态珊瑚进度使用轻量 overlay，不另造一张尺寸不同的棋盘。
+- DEBUG calibration overlay 仍可显示 slotRect / cardRect / hitRect / highlightRect 与 slot id，但只在启动参数 `-showBoardCalibration` 或环境变量 `FINSPAN_SHOW_BOARD_CALIBRATION=1` 时开启，不污染普通 Debug 试玩界面。
 - GameBoard UI Cleanup Pass 1 已完成第一轮明显 UI bug 修复：根视图使用海洋渐变背景，底部手牌区使用融入棋盘的 glass backdrop，不再出现突兀白色底条。
 - 手牌区继续以稳定 `cardId` 为 identity 居中渲染；选中 / 拖动只改变同一张卡的 offset / scale / zIndex，不让整排手牌因弃牌堆或 selection 重排。
 - 弃牌堆为空时完全不显示、不占位；有弃牌时作为右侧 trailing overlay 悬浮在手牌区域旁，不把手牌主体推偏，点击仍进入弃牌堆查看 / recover selection overlay。
@@ -223,8 +225,8 @@
 - Ability Engine v2 saved-state migration / legacy cleanup 后置：当前不是正式发布阶段，legacy adapter 继续保持行为稳定，直到旧本地房间和旧 pending-choice payload 有明确迁移路径。
 - GameBoardViewModel pending UI stabilization 后续：单一 board-target ability 已完成直接进入目标阶段；下一步只继续收敛 move / consume / play-from-hand 等多阶段 source / target / payment / discard-selection 的 metadata fallback，不把规则判断搬进 SwiftUI。
 - Weekly Achievement Board 后续：继续人工校对 Base / S&R Side B tile 文案和图标；marker 状态尚未建模，因此“上方有标记的鱼 / 上方没有标记的鱼”仍未接入；“幼鱼”tile 文案与现有 young resource 语义仍需复核。
-- 真实 board 背景 asset 和人工校准后的 slot 坐标仍待接入；当前已有 placeholder `BoardLayout`、统一 normalized mapping 和 DEBUG calibration overlay。
-- BoardLayout / SVG marker / JSON layout pipeline 的自动化导入仍待做；本轮未做 PDF extraction 或完整 BoardLayout。
+- Base 真实 board 背景和第一轮人工 slot 校准已接入；后续仍需在不同 iPad 尺寸上做像素级视觉 QA，并按实机截图微调少量 rect，而不是重建另一套转换逻辑。
+- 自动 PDF layer extraction / slot recognition pipeline 仍未实现；当前资产是一次性、可追溯的手工分离结果，运行时不读取 PDF 或远程素材。
 - Nautoma 后置。
 - 联机 / reconnect / 房间恢复后置。
 
@@ -234,4 +236,4 @@
 2. 继续做 FloatingActionPair / bottom dock fallback 的交互细节打磨，重点是实机位置微调、overlay 尺寸、手牌遮挡和更明确的错误提示。
 3. 继续按真实设备试玩打磨多阶段 ability flow，重点是 move / consume / play-from-hand 的 source → target → payment 节奏；单一产卵 / 幼鱼 / 孵化目标流已不再需要冗余 token 点击。
 4. 后续再考虑 card icon shortcut；在 FloatingActionPair / bottom dock 体验稳定、BoardLayout 校准完成前不要推进完整 card inline ability tap。
-5. 继续真实 board background / BoardLayout 校准前的视觉 QA；本轮没有做 PDF extraction 或真实 board asset 导入。
+5. 继续 Base / S&R 玩家面板的实机视觉 QA，重点微调 card edge、S&R coral strip 和 bottom bonus overlay；保持同一 `BoardLayoutMapper`。

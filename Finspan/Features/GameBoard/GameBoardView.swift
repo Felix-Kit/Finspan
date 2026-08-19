@@ -971,13 +971,18 @@ struct GameBoardView: View {
 
     private var boardLayoutCanvas: some View {
         let layout = Self.boardLayout
+        let showsCoralOverlay = viewModel.oceanColumns.contains { $0.coralReef != nil }
         return GeometryReader { proxy in
             let boardRect = BoardLayoutMapper.boardImageRect(
                 in: proxy.size,
                 imageAspectRatio: CGFloat(layout.imageAspectRatio)
             )
             ZStack(alignment: .topLeading) {
-                boardBackground(in: boardRect)
+                boardBackground(
+                    in: boardRect,
+                    layout: layout,
+                    showsCoralOverlay: showsCoralOverlay
+                )
 
                 ForEach(viewModel.oceanSlots) { slot in
                     if let layoutSlot = layout.slot(id: BoardLayout.slotId(for: slot.address)) {
@@ -998,7 +1003,8 @@ struct GameBoardView: View {
                         slotPanel(
                             slot,
                             presentation: .boardCanvas,
-                            includesResourceTokenHitTargets: false
+                            includesResourceTokenHitTargets: false,
+                            usesPrintedForageFish: layout.includesPrintedForageFish == true
                         )
                             .frame(width: cardRect.width, height: cardRect.height)
                             .position(x: cardRect.midX, y: cardRect.midY)
@@ -1015,13 +1021,15 @@ struct GameBoardView: View {
                 ForEach(viewModel.oceanColumns) { column in
                     if let coralReef = column.coralReef {
                         coralReefBadge(coralReef)
-                            .frame(width: max(128, boardRect.width * 0.18))
-                            .position(coralReefPosition(for: column, in: boardRect))
+                            .frame(width: max(82, boardRect.width * 0.13))
+                            .position(coralReefPosition(for: column, layout: layout, in: boardRect))
                     }
                 }
 
                 #if DEBUG
-                BoardLayoutCalibrationOverlay(layout: layout, showsLabels: true)
+                if BoardLayoutCalibrationMode.isEnabled {
+                    BoardLayoutCalibrationOverlay(layout: layout, showsLabels: true)
+                }
                 #endif
             }
         }
@@ -1029,27 +1037,51 @@ struct GameBoardView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func boardBackground(in boardRect: CGRect) -> some View {
+    private func boardBackground(
+        in boardRect: CGRect,
+        layout: BoardLayout,
+        showsCoralOverlay: Bool
+    ) -> some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.cyan.opacity(0.20),
-                            Color.blue.opacity(0.12),
-                            Color.indigo.opacity(0.18)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
+            if let assetName = layout.backgroundAssetName {
+                Image(assetName)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFill()
+            } else {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.cyan.opacity(0.20),
+                                Color.blue.opacity(0.12),
+                                Color.indigo.opacity(0.18)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
                     )
+            }
+
+            if showsCoralOverlay,
+               let overlayAssetName = layout.coralOverlayAssetName,
+               let normalizedRect = layout.coralOverlayRect {
+                let overlayRect = BoardLayoutMapper.mapBoardNormalizedRect(
+                    normalizedRect,
+                    into: CGRect(origin: .zero, size: boardRect.size)
                 )
-            VStack(spacing: 0) {
-                Color.yellow.opacity(0.08)
-                Color.cyan.opacity(0.06)
-                Color.indigo.opacity(0.09)
+                Image(overlayAssetName)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFill()
+                    .frame(width: overlayRect.width, height: overlayRect.height)
+                    .clipped()
+                    .position(x: overlayRect.midX, y: overlayRect.midY)
+                    .allowsHitTesting(false)
             }
         }
         .frame(width: boardRect.width, height: boardRect.height)
+        .clipShape(RoundedRectangle(cornerRadius: max(12, boardRect.width * 0.014), style: .continuous))
         .offset(x: boardRect.minX, y: boardRect.minY)
     }
 
@@ -1110,13 +1142,16 @@ struct GameBoardView: View {
 
     private func coralReefPosition(
         for column: OceanDiveSiteColumnViewData,
+        layout: BoardLayout,
         in boardRect: CGRect
     ) -> CGPoint {
-        let columnIndex = Double(DiveSite.allCases.firstIndex(of: column.diveSite) ?? 0)
-        let point = BoardNormalizedPoint(
-            x: 0.12 + columnIndex * 0.315,
-            y: 0.475
+        let address = OceanSlotAddress(
+            playerId: "layout",
+            diveSite: column.diveSite,
+            rowIndex: 3
         )
+        let point = layout.slot(id: BoardLayout.slotId(for: address))?.coralAnchor
+            ?? BoardNormalizedPoint(x: 0.5, y: 0.525)
         return BoardLayoutMapper.mapBoardNormalizedPoint(point, into: boardRect)
     }
 
@@ -1567,11 +1602,19 @@ struct GameBoardView: View {
     private func slotPanel(
         _ slot: OceanSlotViewData,
         presentation: BoardSlotPresentation = .legacyGrid,
-        includesResourceTokenHitTargets: Bool = true
+        includesResourceTokenHitTargets: Bool = true,
+        usesPrintedForageFish: Bool = false
     ) -> some View {
         ZStack(alignment: .topLeading) {
             if slot.cardFace.kind == .empty {
                 emptySlotPlaceholder(slot, presentation: presentation)
+            } else if presentation == .boardCanvas,
+                      !BoardSlotArtworkPolicy.shouldRenderCardFace(
+                        kind: slot.cardFace.kind,
+                        includesPrintedForageFish: usesPrintedForageFish
+                      ) {
+                Color.clear
+                    .accessibilityLabel(slot.cardFace.displayName)
             } else {
                 FishCardFaceView(viewState: slot.cardFace)
                 if includesResourceTokenHitTargets {
@@ -1784,7 +1827,7 @@ struct GameBoardView: View {
                     )
             } else {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.white.opacity(slot.isDropTarget ? 0.12 : 0.045))
+                    .fill(Color.clear)
                     .overlay(
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .fill(slot.isValidDropTarget ? Color.green.opacity(0.12) : Color.clear)
@@ -1848,31 +1891,21 @@ struct GameBoardView: View {
     }
 
     private func coralReefBadge(_ reef: CoralReefViewState) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 4) {
             coralReefIcon(reef)
-                .frame(width: 16, height: 16)
+                .frame(width: 14, height: 14)
 
             Text(reef.progressText)
-                .font(.caption.weight(.black))
-                .lineLimit(1)
-
-            Spacer(minLength: 4)
-
-            Text(reef.completionBonusText)
-                .font(.caption.weight(.black))
-                .foregroundStyle(coralReefColor(reef.diveSite))
+                .font(.caption2.weight(.black))
                 .lineLimit(1)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
         .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(coralReefColor(reef.diveSite).opacity(0.12))
+            Capsule()
+                .fill(Color(.systemBackground).opacity(0.78))
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(coralReefColor(reef.diveSite).opacity(0.32), lineWidth: 1)
-        )
+        .shadow(color: coralReefColor(reef.diveSite).opacity(0.18), radius: 3, y: 1)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(reef.title) \(reef.progressText) \(reef.completionBonusText)")
     }

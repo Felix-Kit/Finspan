@@ -39,19 +39,27 @@ struct BoardLayoutSlot: Identifiable, Codable, Equatable {
 struct BoardLayout: Codable, Equatable {
     let id: String
     let imageAspectRatio: Double
+    let backgroundAssetName: String?
+    let includesPrintedForageFish: Bool?
+    let coralOverlayAssetName: String?
+    let coralOverlayRect: BoardNormalizedRect?
     let slots: [BoardLayoutSlot]
 
     func slot(id: String) -> BoardLayoutSlot? {
         slots.first { $0.slotId == id }
     }
 
-    static let baseGamePlaceholderImageAspectRatio = 16.0 / 9.0
+    static let baseGamePlayerMatImageAspectRatio = 1850.0 / 3454.0
 
     static var placeholderBaseGame: BoardLayout {
         BoardLayout(
-            id: "base.placeholder.manual.v1",
-            imageAspectRatio: baseGamePlaceholderImageAspectRatio,
-            slots: placeholderSlots()
+            id: "base.player-mat.fallback.v1",
+            imageAspectRatio: baseGamePlayerMatImageAspectRatio,
+            backgroundAssetName: nil,
+            includesPrintedForageFish: false,
+            coralOverlayAssetName: nil,
+            coralOverlayRect: nil,
+            slots: playerMatSlots()
         )
     }
 
@@ -72,25 +80,50 @@ struct BoardLayout: Codable, Equatable {
         return "\(address.diveSite.rawValue).\(zoneId).\(zoneIndex)"
     }
 
-    private static func placeholderSlots() -> [BoardLayoutSlot] {
+    private static func playerMatSlots() -> [BoardLayoutSlot] {
         DiveSite.allCases.flatMap { diveSite in
             (0..<6).map { rowIndex in
-                placeholderSlot(diveSite: diveSite, rowIndex: rowIndex)
+                playerMatSlot(diveSite: diveSite, rowIndex: rowIndex)
             }
         }
     }
 
-    private static func placeholderSlot(
+    private static func playerMatSlot(
         diveSite: DiveSite,
         rowIndex: Int
     ) -> BoardLayoutSlot {
-        let columnIndex = Double(DiveSite.allCases.firstIndex(of: diveSite) ?? 0)
-        let x = 0.055 + columnIndex * 0.315
-        let y = 0.095 + Double(rowIndex) * 0.123
-        let slotRect = BoardNormalizedRect(x: x, y: y, width: 0.255, height: 0.104)
-        let cardRect = BoardNormalizedRect(x: x + 0.014, y: y + 0.008, width: 0.227, height: 0.088)
-        let hitRect = BoardNormalizedRect(x: x - 0.008, y: y - 0.006, width: 0.271, height: 0.116)
-        let highlightRect = BoardNormalizedRect(x: x + 0.004, y: y + 0.004, width: 0.247, height: 0.096)
+        let boardWidth = 1850.0
+        let boardHeight = 3454.0
+        let columnIndex = DiveSite.allCases.firstIndex(of: diveSite) ?? 0
+        let xPixels = [77.0, 663.0, 1249.0][columnIndex]
+        let yPixels = [561.0, 965.0, 1365.0, 1909.0, 2459.0, 2859.0][rowIndex]
+        let slotHeightPixels = rowIndex == 0 ? 388.0 : 387.0
+        let slotRect = BoardNormalizedRect(
+            x: xPixels / boardWidth,
+            y: yPixels / boardHeight,
+            width: 583.0 / boardWidth,
+            height: slotHeightPixels / boardHeight
+        )
+        // The physical slot outline is slightly taller than the printed fish-card ratio.
+        // Preserve the full slot for hit testing while centering a card-sized render inside it.
+        let cardRect = BoardNormalizedRect(
+            x: xPixels / boardWidth,
+            y: (yPixels + 3.0) / boardHeight,
+            width: 583.0 / boardWidth,
+            height: 382.0 / boardHeight
+        )
+        let hitRect = BoardNormalizedRect(
+            x: (xPixels - 6.0) / boardWidth,
+            y: (yPixels - 5.0) / boardHeight,
+            width: 595.0 / boardWidth,
+            height: (slotHeightPixels + 10.0) / boardHeight
+        )
+        let highlightRect = BoardNormalizedRect(
+            x: (xPixels + 2.0) / boardWidth,
+            y: (yPixels + 2.0) / boardHeight,
+            width: 579.0 / boardWidth,
+            height: (slotHeightPixels - 4.0) / boardHeight
+        )
         return BoardLayoutSlot(
             slotId: slotId(for: OceanSlotAddress(playerId: "layout", diveSite: diveSite, rowIndex: rowIndex)),
             slotRect: slotRect,
@@ -98,9 +131,25 @@ struct BoardLayout: Codable, Equatable {
             hitRect: hitRect,
             highlightRect: highlightRect,
             resourceAnchor: BoardNormalizedPoint(x: cardRect.x + cardRect.width * 0.46, y: cardRect.y + cardRect.height * 0.42),
-            coralAnchor: BoardNormalizedPoint(x: slotRect.x + slotRect.width * 0.85, y: slotRect.y + slotRect.height * 0.55),
+            coralAnchor: BoardNormalizedPoint(x: slotRect.x + slotRect.width * 0.50, y: 1812.0 / boardHeight),
             diverAnchor: BoardNormalizedPoint(x: slotRect.x + slotRect.width * 0.12, y: slotRect.y + slotRect.height * 0.50)
         )
+    }
+}
+
+enum BoardSlotArtworkPolicy {
+    static func shouldRenderCardFace(
+        kind: FishCardFaceKind,
+        includesPrintedForageFish: Bool
+    ) -> Bool {
+        switch kind {
+        case .empty:
+            return false
+        case .forageFish:
+            return !includesPrintedForageFish
+        case .fishCard, .placeholder:
+            return true
+        }
     }
 }
 
@@ -163,7 +212,7 @@ enum BoardLayoutMapper {
 
 enum BoardLayoutStore {
     static func load(
-        named resourceName: String = "placeholder_board_layout",
+        named resourceName: String = "player_mat_layout",
         bundle: Bundle = .main
     ) -> BoardLayout? {
         guard let url = bundle.url(forResource: resourceName, withExtension: "json") else {

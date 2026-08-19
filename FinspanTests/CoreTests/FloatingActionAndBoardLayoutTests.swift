@@ -217,9 +217,9 @@ final class BoardLayoutMappingTests: XCTestCase {
         XCTAssertEqual(mappedPoint.y, 275, accuracy: 0.001)
     }
 
-    func testPlaceholderLayoutContainsBaseGameSlotsAndSharedRects() {
+    func testFallbackPlayerMatLayoutContainsBaseGameSlotsAndSharedRects() {
         let layout = BoardLayout.placeholderBaseGame
-        let boardRect = CGRect(x: 0, y: 0, width: 1_600, height: 900)
+        let boardRect = CGRect(x: 0, y: 0, width: 1_850, height: 3_454)
 
         XCTAssertEqual(layout.slots.count, 18)
         XCTAssertNotNil(layout.slot(id: "blue.sunlit.0"))
@@ -244,9 +244,70 @@ final class BoardLayoutMappingTests: XCTestCase {
         let data = try Data(contentsOf: url)
         let layout = try JSONDecoder().decode(BoardLayout.self, from: data)
 
-        XCTAssertEqual(layout.id, "base.placeholder.manual.v1")
+        XCTAssertEqual(layout.id, "base.player-mat.rulebook.v1")
+        XCTAssertEqual(layout.imageAspectRatio, 1_850.0 / 3_454.0, accuracy: 0.000_001)
+        XCTAssertEqual(layout.backgroundAssetName, "base_player_mat")
+        XCTAssertEqual(layout.includesPrintedForageFish, true)
         XCTAssertEqual(layout.slots.count, 18)
         XCTAssertNotNil(layout.slot(id: "blue.sunlit.0"))
+    }
+
+    func testPlayerMatCardRectsMatchFishCardRatioAndCoverPrintedSlots() throws {
+        let data = try Data(contentsOf: boardLayoutJsonURL())
+        let layout = try JSONDecoder().decode(BoardLayout.self, from: data)
+        let boardRect = CGRect(x: 0, y: 0, width: 1_850, height: 3_454)
+
+        for slot in layout.slots {
+            let slotRect = BoardLayoutMapper.mapBoardNormalizedRect(slot.slotRect, into: boardRect)
+            let cardRect = BoardLayoutMapper.mapBoardNormalizedRect(slot.cardRect, into: boardRect)
+            XCTAssertEqual(
+                cardRect.width / cardRect.height,
+                CardRenderMetrics.cardAspectRatio,
+                accuracy: 0.01,
+                slot.slotId
+            )
+            XCTAssertGreaterThan(cardRect.width / slotRect.width, 0.99, slot.slotId)
+            XCTAssertGreaterThan(cardRect.height / slotRect.height, 0.98, slot.slotId)
+        }
+    }
+
+    func testPlayerMatAssetsAndSharksAndReefsOverlayAreBundledInputs() throws {
+        let data = try Data(contentsOf: boardLayoutJsonURL())
+        let layout = try JSONDecoder().decode(BoardLayout.self, from: data)
+        let overlayRect = try XCTUnwrap(layout.coralOverlayRect)
+
+        XCTAssertEqual(layout.coralOverlayAssetName, "sharks_reefs_coral_overlay")
+        XCTAssertGreaterThan(overlayRect.y, 0.49)
+        XCTAssertLessThan(overlayRect.maxY, 0.57)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: try resourceURL("BoardAssets/base_player_mat.png").path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: try resourceURL("BoardAssets/sharks_reefs_coral_overlay.png").path))
+    }
+
+    func testPlayerMatUsesPrintedForageFishButStillRendersPlayedFishCards() {
+        XCTAssertFalse(
+            BoardSlotArtworkPolicy.shouldRenderCardFace(
+                kind: .empty,
+                includesPrintedForageFish: true
+            )
+        )
+        XCTAssertFalse(
+            BoardSlotArtworkPolicy.shouldRenderCardFace(
+                kind: .forageFish,
+                includesPrintedForageFish: true
+            )
+        )
+        XCTAssertTrue(
+            BoardSlotArtworkPolicy.shouldRenderCardFace(
+                kind: .fishCard,
+                includesPrintedForageFish: true
+            )
+        )
+        XCTAssertTrue(
+            BoardSlotArtworkPolicy.shouldRenderCardFace(
+                kind: .forageFish,
+                includesPrintedForageFish: false
+            )
+        )
     }
 
     @MainActor
@@ -292,11 +353,31 @@ final class BoardLayoutMappingTests: XCTestCase {
             .appendingPathComponent("Finspan")
             .appendingPathComponent("Resources")
             .appendingPathComponent("BoardLayout")
-            .appendingPathComponent("placeholder_board_layout.json")
+            .appendingPathComponent("player_mat_layout.json")
         if !FileManager.default.fileExists(atPath: url.path) {
             throw NSError(
                 domain: "BoardLayoutMappingTests",
                 code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Missing \(url.path)"]
+            )
+        }
+        return url
+    }
+
+    private func resourceURL(_ relativePath: String) throws -> URL {
+        let testFile = URL(fileURLWithPath: #filePath)
+        let projectRoot = testFile
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let url = projectRoot
+            .appendingPathComponent("Finspan")
+            .appendingPathComponent("Resources")
+            .appendingPathComponent(relativePath)
+        if !FileManager.default.fileExists(atPath: url.path) {
+            throw NSError(
+                domain: "BoardLayoutMappingTests",
+                code: 2,
                 userInfo: [NSLocalizedDescriptionKey: "Missing \(url.path)"]
             )
         }

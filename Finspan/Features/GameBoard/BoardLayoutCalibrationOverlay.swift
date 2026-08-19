@@ -1,4 +1,12 @@
+import Foundation
 import SwiftUI
+
+enum BoardLayoutCalibrationMode {
+    static var isEnabled: Bool {
+        ProcessInfo.processInfo.arguments.contains("-showBoardCalibration")
+            || ProcessInfo.processInfo.environment["FINSPAN_SHOW_BOARD_CALIBRATION"] == "1"
+    }
+}
 
 struct BoardLayoutCalibrationOverlay: View {
     let layout: BoardLayout

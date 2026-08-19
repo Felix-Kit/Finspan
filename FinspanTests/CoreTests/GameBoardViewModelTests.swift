@@ -879,7 +879,7 @@ final class GameBoardViewModelTests: XCTestCase {
 
     func testGameBoardViewModelHidesCoralReefsWhenNotInitialized() {
         let service = makeService(hand: ["starter-fish-1"])
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
 
         XCTAssertTrue(viewModel.oceanColumns.allSatisfy { $0.coralReef == nil })
     }
@@ -890,7 +890,7 @@ final class GameBoardViewModelTests: XCTestCase {
             enabledExpansions: [.sharksAndReefs],
             coralReefs: CoralReefState.sharksAndReefsInitial
         )
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
         let reefs = viewModel.oceanColumns.compactMap(\.coralReef)
 
         XCTAssertEqual(reefs.count, 3)
@@ -905,7 +905,7 @@ final class GameBoardViewModelTests: XCTestCase {
     func testOceanSlotCardFaceShowsFishCardAndUsesSharedAspectRatio() {
         let service = makeService(hand: ["starter-fish-1"])
         setContent(.fishCard("starter-fish-1"), at: Self.slotAddress, in: service)
-        let viewModel = GameBoardViewModel(roomService: service)
+        let viewModel = GameBoardViewModel(roomService: service, cardCatalog: SampleCardCatalog())
         let slot = oceanSlot(in: viewModel, address: Self.slotAddress)
 
         XCTAssertEqual(slot.cardFace.kind, .fishCard)

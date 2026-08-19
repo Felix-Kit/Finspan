@@ -229,12 +229,13 @@
 
 ### P5 BoardLayout 和真实背景板
 
-- Pass 1 已完成：新增 `BoardLayout` / `BoardLayoutSlot` / `BoardNormalizedRect` / `BoardNormalizedPoint`，并提供 manual placeholder `Finspan/Resources/BoardLayout/placeholder_board_layout.json`。
+- Pass 1 已完成：新增 `BoardLayout` / `BoardLayoutSlot` / `BoardNormalizedRect` / `BoardNormalizedPoint`。
 - Pass 1 已完成：新增 `BoardLayoutMapper.boardImageRect(in:imageAspectRatio:)`、normalized rect / point mapping helper；board overlay 坐标统一从同一套 aspectFit transform 派生。
-- Pass 1 已完成：DEBUG calibration overlay 可显示 slotRect / cardRect / hitRect / highlightRect 和 slot id，且不发送 `PlayerCommand`、不修改 `GameState`。
-- 当前仍使用 placeholder board background；后续从 AI / Figma / SVG 标注真实 rect，校准 `BoardLayout.json`，再接入真实 board background image。
-- 背景图带 slot 美术后，SwiftUI 只叠加透明 hit target、鱼牌、资源 token、coral、diver 和柔和 glow / tint highlight，不重复画实体 slot 外观，不使用硬边框高光。
-- 本阶段不做 PDF board extraction、不做完整 BoardLayout、不做服务器 / Nautoma / S&R 新规则。
+- Player Mat Background Pass 已完成：从用户提供的 Base 规则书干净面板参考手工分离本地背景，`player_mat_layout.json` 使用实体纵向比例并按像素校准 18 个等鱼牌尺寸的 card rect。
+- S&R 使用同一面板和同一 slot mapping，只叠加手工分离的 coral reef strip；不复制或分叉 18-slot 坐标。
+- 背景图负责实体 slot / forage fish / bottom strip 美术；SwiftUI 只叠加透明 hit target、真实出牌、资源 token、coral progress、后续 diver 和柔和 glow / tint highlight。
+- DEBUG calibration overlay 只在显式启动参数 / 环境变量打开，且不发送 `PlayerCommand`、不修改 `GameState`。
+- 下一步只做实机像素 QA 与少量 rect 微调；自动 PDF layer extraction、自动 slot 识别、服务器 / Nautoma / S&R 新规则仍不在本阶段。
 
 ### P6 S&R 成就和周目标
 
