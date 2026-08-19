@@ -25,6 +25,8 @@
 
 GameBoard UI Cleanup Pass 1 后，placeholder board canvas 下的 empty slot 也遵循这个原则：正常空槽位只保留透明 hit target / 柔和 tint，不显示 unknown fish card 或卡牌式占位。Forage fish slot 继续显示 forage fish，真实鱼槽继续显示真实鱼牌。unknown card 只代表数据错误或 debug fallback，不是普通空槽位 UI。
 
+Ability Target Interaction Polish 保持同一套 mapper，同时固定 board canvas 的命中顺序：`highlightRect` 柔和高光在底层，`cardRect` 鱼牌只负责视觉，`hitRect` 透明 slot target 位于其上；若牌上资源可作为支付来源，则同一 `cardRect` 内的 resource-token hit target 再置于最上层。这样目标点击不会被卡面截获，资源 token 仍可直接选择，也没有新增另一套坐标转换。
+
 底部 hand area 不属于 board normalized layout；它现在使用与棋盘融合的海洋 glass backdrop，手牌独立居中，弃牌堆作为 trailing overlay 显示。FloatingActionPair 也不写入 BoardLayout，它通过 `FloatingActionPairLayoutMetrics` 避开 hand area、弃牌堆和 system home indicator。
 
 ## Layout 字段语义
@@ -61,5 +63,6 @@ GameBoard UI Cleanup Pass 1 后，placeholder board canvas 下的 empty slot 也
 - BoardLayout 不影响 staged `playFish` 和 resource payment staging。
 - empty slot 不渲染 unknown fish card；
 - FloatingActionPair / bottom hand cleanup 只影响 presentation，不修改 `GameState` 或发送 `PlayerCommand`。
+- board-target ability 与 resource payment 共用 mapper 后仍保持独立、稳定的 hit-test 层级。
 
 Board Interaction Regression Pass 继续固定 BoardLayout foundation 的边界：normal empty / forage / real fish slot 三态在 presentation 中保持区分；overlay / picker / toast / player perspective 的回归测试不扩大 BoardLayout 范围；当前仍不做 PDF extraction、不导入真实 board background asset、不做完整坐标校准。

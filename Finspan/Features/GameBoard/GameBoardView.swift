@@ -892,9 +892,14 @@ struct GameBoardView: View {
 
     @ViewBuilder
     private var boardStatusStrip: some View {
-        if viewModel.mainActionPrompt != nil || viewModel.errorMessage != nil {
+        if viewModel.boardInteractionPromptViewState != nil
+            || viewModel.mainActionPrompt != nil
+            || viewModel.errorMessage != nil {
             HStack(spacing: 10) {
-                if let prompt = viewModel.mainActionPrompt {
+                if let interactionPrompt = viewModel.boardInteractionPromptViewState {
+                    Label(interactionPrompt.text, systemImage: "cursorarrow.click")
+                        .foregroundStyle(Color.accentColor)
+                } else if let prompt = viewModel.mainActionPrompt {
                     Label(prompt, systemImage: viewModel.hasBlockingPendingChoices ? "exclamationmark.circle" : "cursorarrow.click")
                         .foregroundStyle(viewModel.hasBlockingPendingChoices ? .red : .secondary)
                 }
@@ -989,11 +994,21 @@ struct GameBoardView: View {
                             into: boardRect
                         )
 
-                        slotCanvasHitTarget(slot, frame: hitRect)
                         slotCanvasHighlight(slot, frame: highlightRect)
-                        slotPanel(slot, presentation: .boardCanvas)
+                        slotPanel(
+                            slot,
+                            presentation: .boardCanvas,
+                            includesResourceTokenHitTargets: false
+                        )
                             .frame(width: cardRect.width, height: cardRect.height)
                             .position(x: cardRect.midX, y: cardRect.midY)
+                            .allowsHitTesting(false)
+                        slotCanvasHitTarget(slot, frame: hitRect)
+                        if slot.resourceTokens.contains(where: \.isSelectable) {
+                            cardResourceTokenHitTargets(slot)
+                                .frame(width: cardRect.width, height: cardRect.height)
+                                .position(x: cardRect.midX, y: cardRect.midY)
+                        }
                     }
                 }
 
@@ -1551,14 +1566,17 @@ struct GameBoardView: View {
 
     private func slotPanel(
         _ slot: OceanSlotViewData,
-        presentation: BoardSlotPresentation = .legacyGrid
+        presentation: BoardSlotPresentation = .legacyGrid,
+        includesResourceTokenHitTargets: Bool = true
     ) -> some View {
         ZStack(alignment: .topLeading) {
             if slot.cardFace.kind == .empty {
                 emptySlotPlaceholder(slot, presentation: presentation)
             } else {
                 FishCardFaceView(viewState: slot.cardFace)
-                cardResourceTokenHitTargets(slot)
+                if includesResourceTokenHitTargets {
+                    cardResourceTokenHitTargets(slot)
+                }
             }
 
             if shouldShowSlotChrome(for: slot, presentation: presentation) {
@@ -1605,7 +1623,8 @@ struct GameBoardView: View {
                                     .lineLimit(1)
                             }
 
-                            if let rewardSelectionReasonText = slot.rewardSelectionReasonText {
+                            if presentation == .legacyGrid,
+                               let rewardSelectionReasonText = slot.rewardSelectionReasonText {
                                 Text(rewardSelectionReasonText)
                                     .font(.caption2.weight(.semibold))
                                     .foregroundStyle(.blue)
@@ -1687,7 +1706,6 @@ struct GameBoardView: View {
             || slot.isSelected
             || slot.isDropTarget
             || slot.isHighlightedByDiveQueue
-            || slot.isHighlightedByRewardSelection
             || slot.readOnlyReasonText != nil
     }
 
@@ -1695,7 +1713,6 @@ struct GameBoardView: View {
         slot.isSelected
             || slot.isDropTarget
             || slot.isHighlightedByDiveQueue
-            || slot.isHighlightedByRewardSelection
     }
 
     private func shouldShowSlotMessagePanel(
@@ -1707,7 +1724,7 @@ struct GameBoardView: View {
             || slot.isDropTarget
             || slot.highlightReasonText != nil
             || slot.dropTargetReasonText != nil
-            || slot.rewardSelectionReasonText != nil
+            || (presentation == .legacyGrid && slot.rewardSelectionReasonText != nil)
             || slot.readOnlyReasonText != nil
     }
 

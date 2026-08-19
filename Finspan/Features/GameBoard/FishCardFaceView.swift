@@ -185,10 +185,13 @@ struct FishCardFaceView: View {
                             x: unit * frame.x,
                             y: unit * frame.y
                         )
+                        .transition(GameBoardAnimation.tokenTransition)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .accessibilityHidden(true)
+            .animation(GameBoardAnimation.token, value: viewState.resourceTokens.map(\.id))
+            .animation(GameBoardAnimation.quick, value: viewState.resourceTokens.map(\.isSelectedForPayment))
         }
     }
 

@@ -111,6 +111,10 @@
 - `FloatingActionPairView` layout metrics 已继续校准：两个 52pt 方块按钮保持在 board 右下 / 中下安全区，使用 `bottomClearance` / `trailingClearance` / `handAvoidanceHeight` 避开 hand area、弃牌堆和 system home indicator；overlay / picker 打开时全局按钮隐藏。
 - 顶部行动摘要已走 `hudToastViewState` toast：重要事件短暂顶部显示并自动淡出，完整事件日志仍由日志按钮 / sheet 查看；pending / error 提示保留为轻量状态条，不恢复右侧常驻面板。
 - Board Interaction Regression Pass 已补强 presentation 验收：手牌居中 / 弃牌堆 trailing overlay、不占位隐藏、discard overlay 关闭不提交命令、empty / forage / real slot 三态渲染、hand picker overlay 隐藏全局 FloatingActionPair、toast 与完整事件日志互不影响、对手面板切换不发送 `PlayerCommand` / 不修改 `GameState`。
+- Ability Target Interaction Polish 已把普通 `placeEgg` / `placeYoung` / `hatchEgg` / matching-fish egg pending 自动推进到棋盘选目标阶段：单一明确收益不再要求先点一次 dock token，合法 slot 直接高亮；复合能力仍先选择 effect，避免 UI 替玩家决定顺序。
+- 新增 `BoardInteractionPromptViewState`，把“请选择高亮目标 / 来源 / 手牌”等中性步骤提示与真正的非法点击错误分开；无效目标只短暂显示明确错误，不再把正常操作指引染成红色。
+- board canvas 的透明 slot hit target 现在位于非交互卡面之上，资源 token payment hit target 再独立置顶；能力目标点击与资源支付不再被卡面层截获。完成 pending 后，ViewModel 会按最新 authoritative pending state 清理旧 token / target staging；不会撤回已提交事件。
+- egg / young / school token 的插入 / 选择继续使用稳定 token id，并增加轻量 scale + opacity 动画；产卵成功后的棋子反馈不再硬切。
 - 右侧资源统计大面板已压缩掉；右侧 pending / reward / action / playFish confirm 面板已从主 layout 移除。
 - `GameTokenIconResolver` / `GameTokenIconView` 已新增，非卡面 UI 的 egg / young / school / fish / coral / draw / discard / consume / hatch / move / zone token 可复用现有 CardAssets icon resolver，尺寸由 HUD / board layout 控制，不由 PNG intrinsic size 控制。
 - 顶部 HUD 已重做，包含玩家头像、当前行动摘要、设置入口和日志入口。
@@ -213,7 +217,7 @@
 ### 规则与功能
 
 - Ability Engine v2 saved-state migration / legacy cleanup 后置：当前不是正式发布阶段，legacy adapter 继续保持行为稳定，直到旧本地房间和旧 pending-choice payload 有明确迁移路径。
-- GameBoardViewModel pending UI stabilization 后续：继续把 no-target prompt、follow-up target / payment / discard-selection choices 的显示逻辑收敛到 metadata fallback helper。
+- GameBoardViewModel pending UI stabilization 后续：单一 board-target ability 已完成直接进入目标阶段；下一步只继续收敛 move / consume / play-from-hand 等多阶段 source / target / payment / discard-selection 的 metadata fallback，不把规则判断搬进 SwiftUI。
 - Weekly Achievement Board 后续：继续人工校对 Base / S&R Side B tile 文案和图标；marker 状态尚未建模，因此“上方有标记的鱼 / 上方没有标记的鱼”仍未接入；“幼鱼”tile 文案与现有 young resource 语义仍需复核。
 - 真实 board 背景 asset 和人工校准后的 slot 坐标仍待接入；当前已有 placeholder `BoardLayout`、统一 normalized mapping 和 DEBUG calibration overlay。
 - BoardLayout / SVG marker / JSON layout pipeline 的自动化导入仍待做；本轮未做 PDF extraction 或完整 BoardLayout。
@@ -224,6 +228,6 @@
 
 1. 继续做 Player Board Perspective 细节打磨，重点是 source highlight 的可见性、返回自己快捷入口位置和 GAME END 多玩家浏览体验。
 2. 继续做 FloatingActionPair / bottom dock fallback 的交互细节打磨，重点是实机位置微调、overlay 尺寸、手牌遮挡和更明确的错误提示。
-3. 继续做 GameBoardViewModel pending UI 小步稳定，重点是 target / payment / discard-selection prompt fallback。
+3. 继续按真实设备试玩打磨多阶段 ability flow，重点是 move / consume / play-from-hand 的 source → target → payment 节奏；单一产卵 / 幼鱼 / 孵化目标流已不再需要冗余 token 点击。
 4. 后续再考虑 card icon shortcut；在 FloatingActionPair / bottom dock 体验稳定、BoardLayout 校准完成前不要推进完整 card inline ability tap。
 5. 继续真实 board background / BoardLayout 校准前的视觉 QA；本轮没有做 PDF extraction 或真实 board asset 导入。

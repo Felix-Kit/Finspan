@@ -4449,6 +4449,95 @@ final class GameBoardViewModelTests: XCTestCase {
         )
     }
 
+    func testSinglePlaceEggAutomaticallyEntersBoardTargetGuidance() throws {
+        let choice = pendingChoice(kind: .placeEgg)
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let token = try XCTUnwrap(viewModel.rewardPoolViewState.rewards.first)
+
+        XCTAssertEqual(viewModel.selectedRewardTokenId, token.id)
+        XCTAssertEqual(viewModel.boardInteractionPromptViewState?.phase, .chooseBoardTarget)
+        XCTAssertEqual(viewModel.boardInteractionPromptViewState?.text, AppStrings.GameBoard.chooseLeftTarget)
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertTrue(viewModel.oceanSlots.contains { $0.isHighlightedByRewardSelection })
+        XCTAssertTrue(service.submittedCommands.isEmpty)
+    }
+
+    func testSingleTargetGuidanceUsesExplicitSkipInsteadOfAmbiguousForwardArrow() throws {
+        let choice = pendingChoice(kind: .placeEgg)
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+        let floating = try XCTUnwrap(viewModel.floatingActionPairState)
+
+        XCTAssertEqual(floating.context, .rewardSelection)
+        XCTAssertEqual(floating.leading?.title, "←")
+        XCTAssertEqual(floating.trailing?.title, AppStrings.GameBoard.skipChoice)
+        XCTAssertEqual(floating.trailing?.action, .primary)
+    }
+
+    func testInvalidAutomaticPlaceEggTargetKeepsGuidanceAndReportsActualError() {
+        let choice = pendingChoice(kind: .placeEgg)
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.selectTargetSlot(Self.slotAddress)
+
+        XCTAssertEqual(viewModel.boardInteractionPromptViewState?.text, AppStrings.GameBoard.chooseLeftTarget)
+        XCTAssertEqual(viewModel.errorMessage, AppStrings.GameBoard.invalidRewardTarget)
+        XCTAssertTrue(service.submittedCommands.isEmpty)
+    }
+
+    func testCancellingAutomaticPlaceEggTargetReturnsToRewardChoiceWithoutCommand() {
+        let choice = pendingChoice(kind: .placeEgg)
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        viewModel.cancelBottomDockStagedSelection()
+
+        XCTAssertNil(viewModel.selectedRewardTokenId)
+        XCTAssertEqual(viewModel.boardInteractionPromptViewState?.phase, .chooseReward)
+        XCTAssertNil(viewModel.floatingActionPairState?.leading)
+        XCTAssertTrue(service.submittedCommands.isEmpty)
+    }
+
+    func testSingleHatchEggAutomaticallyHighlightsEggSourceAsTarget() {
+        let choice = pendingChoice(kind: .hatchEgg)
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertEqual(viewModel.boardInteractionPromptViewState?.phase, .chooseBoardTarget)
+        XCTAssertTrue(
+            viewModel.oceanSlots.contains {
+                $0.address == Self.forageEggAddress && $0.isHighlightedByRewardSelection
+            }
+        )
+        XCTAssertTrue(service.submittedCommands.isEmpty)
+    }
+
+    func testResolvedPendingChoiceReconciliationClearsStagedRewardPresentation() {
+        let choice = pendingChoice(kind: .placeEgg)
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+        XCTAssertNotNil(viewModel.selectedRewardTokenId)
+
+        service.gameState.pendingChoices = [:]
+        viewModel.refresh()
+
+        XCTAssertNil(viewModel.selectedRewardTokenId)
+        XCTAssertNil(viewModel.boardInteractionPromptViewState)
+        XCTAssertNil(viewModel.floatingActionPairState)
+    }
+
+    func testCompoundAbilityStillRequiresEffectChoiceBeforeBoardTarget() {
+        let choice = compoundAbilityPendingChoice()
+        let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])
+        let viewModel = GameBoardViewModel(roomService: service)
+
+        XCTAssertNil(viewModel.selectedRewardTokenId)
+        XCTAssertEqual(viewModel.boardInteractionPromptViewState?.phase, .chooseReward)
+        XCTAssertEqual(viewModel.boardInteractionPromptViewState?.text, AppStrings.GameBoard.chooseRewardToken)
+    }
+
     func testSelectingEggRewardTokenEntersPlaceEggTargetSelectionMode() {
         let choice = pendingChoice(kind: .placeEgg)
         let service = makeService(hand: ["fish-2"], pendingChoices: [choice.choiceId: choice])

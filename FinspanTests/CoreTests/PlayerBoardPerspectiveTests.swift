@@ -124,6 +124,12 @@ final class OpponentBoardViewTests: XCTestCase {
 
         viewModel.selectRewardToken(token.id)
         viewModel.selectPlayerAvatar(PerspectiveFixture.opponentPlayerId)
+
+        XCTAssertEqual(
+            viewModel.boardInteractionPromptViewState?.text,
+            AppStrings.GameBoard.returnToOwnBoardToChooseTarget
+        )
+
         viewModel.selectTargetSlot(PerspectiveFixture.opponentResourceAddress)
 
         XCTAssertTrue(service.submittedCommands.isEmpty)

@@ -138,7 +138,7 @@
 - discard pile overlay、recover selection、hand picker、consumeFishFromHand picker、playFishForFree / playFishFromHand picker 已接入 dim fade + panel slide/fade；关闭 overlay 只清理未提交 staged selection，不影响已提交 `GameEvent`。
 - `recoverFromDiscardOrDraw` 的 dock flow 已稳定：recover token 打开弃牌堆 recover selection overlay；Draw Instead 走现有 draw fallback；弃牌为空时 dock 直接显示 draw fallback。
 - `consumeFishFromHand` 的 dock flow 已稳定为 hand picker first，再继续到 board consumer target；不在 dock 内塞复杂选择。
-- `playFishForFree` / `playFishFromHand` 的 dock flow 已稳定为 hand picker -> staged `playFish`；free play 不要求支付，paid play 继续进入 payment selection，确认 / 取消都由 dock controls 承载。
+- `playFishForFree` / `playFishFromHand` 的 dock flow 已稳定为 hand picker -> staged `playFish`；free play 不要求支付，paid play 继续进入 payment selection，纯确认 / 取消由 `FloatingActionPairView` 承载。
 - `drawFish` direct commit、GAME END candidate activation / finish、AllPlayers target-player external reward 继续由 dock 表达；提交后没有 committed undo。
 - Compact Resource HUD 已瘦身为鱼卵、幼鱼、鱼群；珊瑚使用 live-derived CardAssets icon 显示在 twilight / reef 区域附近。
 - 右侧资源统计大面板已从 right-side fallback 区抽离；right-side pending / reward / action / playFish confirm 面板不再占主布局。
@@ -221,6 +221,9 @@
 - 顶部行动摘要已 toast 化：重要事件短暂显示后自动淡出；完整日志仍通过日志 sheet 查看。
 - FloatingActionPair 已新增 layout metrics，用 `bottomClearance`、`trailingClearance` 和 `handAvoidanceHeight` 避开 hand area、弃牌堆和 system home indicator；overlay / picker 打开时全局按钮隐藏，避免重复控制。
 - Board Interaction Regression Pass 已补测试固定这些 presentation 边界：discard overlay 关闭只撤回未提交选择且不提交命令；hand picker / discard overlay 打开时不重复显示全局 FloatingActionPair；toast 展示 / 自动隐藏不改变完整日志或 `GameState`；viewing opponent 只改变 presentation，不发送 `PlayerCommand`，且不能在对手 board 上选择目标或支付来源。
+- Ability Target Interaction Polish 已完成单一空间目标流的减步：`placeEgg` / `placeYoung` / `hatchEgg` / matching-fish egg 在只有一个明确 reward entry 时自动进入 board-target staging，直接高亮合法 slot；compound ability 仍停留在 effect choice。
+- `BoardInteractionPromptViewState` 统一表达 choose reward / board target / source / hand / discard / payment 阶段，中性指引与 `errorMessage` 分离；skip / finish 的 FloatingActionPair 按钮显示明确文字，不再统一显示含糊的 `→`。
+- board canvas 以同一 BoardLayout mapping 分层呈现 highlight、非交互 card face、slot hit target 和最上层 resource-token hit target；pending authoritative state 更新后清理过期 reward staging，资源 token 插入使用轻量动画。
 
 ### P5 BoardLayout 和真实背景板
 
