@@ -45,9 +45,10 @@ Base B 面只使用 Base 前三周 pool。启用 Sharks & Reefs 并选择 S&R bo
 
 Lobby 创建房间新增 achievement board set 选择：
 
+- 多人房间人数只提供 2–5 人；Nautoma 不在多人创建表单中显示，由主界面的独立单人模式入口承载。
 - 未启用 S&R：默认 Base A 面，只能使用 Base board。
 - 启用 S&R：默认 S&R A 面，可以切换 Base board 或 S&R board。
-- Side A：固定四格，不需要选择 tile。
+- Side A：固定四格，不需要选择 tile；创建房间页会展示前三周固定计分目标和第 4 周 GAME END 说明。
 - Side B：支持 seeded random 或房主手动选择前三周 tile。
 
 随机选择由 `WeeklyGoalCatalog.resolveGoals(... randomSeed:)` 使用 deterministic `SeededRandom` 完成，不在 SwiftUI `body` 中 random。

@@ -12,6 +12,8 @@ enum LobbyScreen: Equatable {
 
 @MainActor
 final class LobbyViewModel: ObservableObject {
+    nonisolated static let supportedMultiplayerPlayerCounts = Array(2...5)
+
     @Published private(set) var roomCode = "-"
     @Published private(set) var hostName = "-"
     @Published private(set) var status = AppStrings.Lobby.noRoom
@@ -33,7 +35,6 @@ final class LobbyViewModel: ObservableObject {
             selectedWeeklyGoalIdsByWeek = [:]
         }
     }
-    @Published private(set) var isNautomaExpansionEnabled = false
     @Published var weeklyGoalBoardSet: AchievementBoardSet = .base
     @Published var weeklyGoalBoardSide: AchievementBoardSide = .sideA
     @Published var weeklyGoalSelectionMode: WeeklyGoalSelectionMode = .random
@@ -43,7 +44,16 @@ final class LobbyViewModel: ObservableObject {
     @Published var profileNicknameDraft = ""
     @Published var profileAvatarDraft = PlayerProfile.defaultAvatarSymbol
     @Published var roomNameDraft = ""
-    @Published var playerCount = 4
+    @Published var playerCount = 4 {
+        didSet {
+            guard !Self.supportedMultiplayerPlayerCounts.contains(playerCount) else {
+                return
+            }
+            let minimum = Self.supportedMultiplayerPlayerCounts.first ?? 2
+            let maximum = Self.supportedMultiplayerPlayerCounts.last ?? 5
+            playerCount = min(max(playerCount, minimum), maximum)
+        }
+    }
     @Published private(set) var errorMessage: String?
     @Published private(set) var localPlayerProfile: PlayerProfile?
 
@@ -78,8 +88,35 @@ final class LobbyViewModel: ObservableObject {
         roomService.gameRoom == nil
     }
 
-    var canSelectNautomaExpansion: Bool {
-        false
+    var availableCreateRoomExpansions: [Expansion] { [.sharksAndReefs] }
+
+    var availablePlayerCounts: [Int] { Self.supportedMultiplayerPlayerCounts }
+
+    var sideAWeeklyGoalPreview: [WeeklyGoalPreviewViewData] {
+        guard weeklyGoalBoardSide == .sideA else {
+            return []
+        }
+
+        let weeklyGoals = WeeklyGoalCatalog.sideAGoals(for: weeklyGoalBoardSet).map { goal in
+            WeeklyGoalPreviewViewData(
+                id: goal.id,
+                week: goal.week,
+                title: goal.title,
+                description: goal.description,
+                scoringText: AppStrings.Lobby.weeklyGoalPointsPerUnit(goal.pointsPerUnit),
+                isGameEnd: false
+            )
+        }
+        return weeklyGoals + [
+            WeeklyGoalPreviewViewData(
+                id: "\(weeklyGoalBoardSet.rawValue).sideA.week4.gameEnd",
+                week: 4,
+                title: AppStrings.GameBoard.gameEndGoalTitle,
+                description: AppStrings.GameBoard.gameEndGoalShortDescription,
+                scoringText: AppStrings.GameBoard.gameEndGoalNote,
+                isGameEnd: true
+            )
+        ]
     }
 
     var weeklyGoalSetupValidationError: String? {
@@ -393,10 +430,6 @@ final class LobbyViewModel: ObservableObject {
         }
     }
 
-    func setNautomaExpansionEnabled(_ isEnabled: Bool) {
-        isNautomaExpansionEnabled = false
-    }
-
     var availableWeeklyGoalBoardSets: [AchievementBoardSet] {
         isSharksAndReefsExpansionEnabled ? AchievementBoardSet.allCases : [.base]
     }
@@ -458,9 +491,6 @@ final class LobbyViewModel: ObservableObject {
         var expansions: [Expansion] = []
         if isSharksAndReefsExpansionEnabled {
             expansions.append(.sharksAndReefs)
-        }
-        if isNautomaExpansionEnabled {
-            expansions.append(.nautoma)
         }
         return expansions
     }
@@ -580,6 +610,15 @@ struct WeeklyGoalOptionViewData: Identifiable, Equatable {
     let sourceExpansion: Expansion?
     let pointsPerUnit: Int
     let isImplementedForScoring: Bool
+}
+
+struct WeeklyGoalPreviewViewData: Identifiable, Equatable {
+    let id: String
+    let week: Int
+    let title: String
+    let description: String
+    let scoringText: String
+    let isGameEnd: Bool
 }
 
 struct RoomLobbyViewData: Equatable {

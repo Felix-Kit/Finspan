@@ -14,6 +14,54 @@ final class LobbyViewModelTests: XCTestCase {
         XCTAssertEqual(service.gameDataMode, .baseGame)
     }
 
+    func testCreateRoomOffersTwoThroughFivePlayers() {
+        let viewModel = makeProfiledViewModel()
+
+        XCTAssertEqual(viewModel.availablePlayerCounts, [2, 3, 4, 5])
+        XCTAssertFalse(viewModel.availablePlayerCounts.contains(1))
+    }
+
+    func testCreateRoomClampsPlayerCountToMultiplayerRange() {
+        let viewModel = makeProfiledViewModel()
+
+        viewModel.playerCount = 1
+        XCTAssertEqual(viewModel.playerCount, 2)
+
+        viewModel.playerCount = 6
+        XCTAssertEqual(viewModel.playerCount, 5)
+    }
+
+    func testCreateRoomOnlyOffersMultiplayerExpansion() {
+        let viewModel = makeProfiledViewModel()
+
+        XCTAssertEqual(viewModel.availableCreateRoomExpansions, [.sharksAndReefs])
+        XCTAssertFalse(viewModel.availableCreateRoomExpansions.contains(.nautoma))
+    }
+
+    func testSideAPreviewShowsThreeFixedGoalsAndGameEnd() {
+        let viewModel = makeProfiledViewModel()
+
+        viewModel.weeklyGoalBoardSide = .sideA
+
+        XCTAssertEqual(viewModel.sideAWeeklyGoalPreview.map(\.week), [1, 2, 3, 4])
+        XCTAssertEqual(viewModel.sideAWeeklyGoalPreview.map(\.title), [
+            "鱼卵和/或幼鱼",
+            "整排的鱼",
+            "鱼群",
+            AppStrings.GameBoard.gameEndGoalTitle
+        ])
+        XCTAssertFalse(viewModel.sideAWeeklyGoalPreview[0].description.isEmpty)
+        XCTAssertTrue(viewModel.sideAWeeklyGoalPreview[3].isGameEnd)
+    }
+
+    func testSideAPreviewIsHiddenForSideB() {
+        let viewModel = makeProfiledViewModel()
+
+        viewModel.weeklyGoalBoardSide = .sideB
+
+        XCTAssertTrue(viewModel.sideAWeeklyGoalPreview.isEmpty)
+    }
+
     func testSelectedGameDataModeIsRecordedBeforeCreatingRoom() {
         let service = LocalAuthoritativeRoomService()
         let controller = GameDataController()
@@ -475,27 +523,23 @@ final class LobbyViewModelTests: XCTestCase {
         XCTAssertEqual(service.gameState.weeklyGoals?.map(\.week), [1, 2, 3])
     }
 
-    func testAutomaEntryIsPlaceholderAndDoesNotEnableNautoma() {
+    func testAutomaEntryRemainsSeparateFromCreateRoom() {
         let service = LocalAuthoritativeRoomService()
         let viewModel = makeProfiledViewModel(roomService: service)
 
         viewModel.showAutoma()
-        viewModel.setNautomaExpansionEnabled(true)
 
         XCTAssertEqual(viewModel.screen, .automa)
-        XCTAssertFalse(viewModel.isNautomaExpansionEnabled)
+        XCTAssertFalse(viewModel.availableCreateRoomExpansions.contains(.nautoma))
         XCTAssertNil(service.gameRoom)
     }
 
-    func testNautomaExpansionCannotBeEnabledFromLobby() {
+    func testCreateRoomDoesNotEnableNautoma() {
         let service = LocalAuthoritativeRoomService()
         let viewModel = makeProfiledViewModel(roomService: service)
 
-        viewModel.setNautomaExpansionEnabled(true)
         viewModel.createLocalRoom()
 
-        XCTAssertFalse(viewModel.isNautomaExpansionEnabled)
-        XCTAssertFalse(viewModel.canSelectNautomaExpansion)
         XCTAssertEqual(service.gameRoom?.gameConfig.enabledExpansions, [])
     }
 

@@ -20,6 +20,7 @@
 ### Sharks & Reefs 基础接入
 
 - Lobby 已可勾选 Sharks & Reefs。
+- 多人房间创建人数已限定为 2–5 人；1 人配置不再出现在多人房间表单，Nautoma 仍保留为主界面的独立单人模式入口。
 - `GameConfig.enabledExpansions` 已接入。
 - base + S&R 合并牌库已接入。
 - S&R main / starter JSON 已进入 runtime `Finspan/Resources/Cards/`。
@@ -123,7 +124,7 @@
 - `WeeklyGoalScoreboardState` / section / player score bar / status presentation model 已接入。已结算周读取 `weeklyAchievementResults` frozen snapshot，不随当前 board 或 viewing player 改变；当前周和未来周由 ViewModel 基于当前 board 计算只读 projection，不写入 `GameState`。
 - Weekly Achievement Board MVP 已接入：`GameConfig.weeklyGoalSetup` 现在可表达 Base / Sharks & Reefs board set、A 面 / B 面、B 面随机或手动前三周 tile。
 - Base / S&R Side A 固定第 1-3 周目标和第 4 周 GAME END 说明格已建模；Base Side B 按周使用 Base pool，S&R Side B 按周使用 Base + S&R 合并池，第四周不从 pool 选。
-- Lobby 创建房间支持选择 achievement board set 和 A/B 面；启用 S&R 时默认 S&R A 面，也可切回 Base board。B 面 random 使用 setup seed deterministic 选择，manual selection 禁止跨周池，S&R board 可选同周 Base 或 S&R tile。
+- Lobby 创建房间支持选择 achievement board set 和 A/B 面；A 面会直接预览第 1–3 周固定目标及第 4 周终局说明。启用 S&R 时默认 S&R A 面，也可切回 Base board。B 面 random 使用 setup seed deterministic 选择，manual selection 禁止跨周池，S&R board 可选同周 Base 或 S&R tile。
 - 游戏内周目标 HUD / scoreboard 现在使用 resolved weekly goal tile，未实现计分 tile 显示“计分待接入”。周目标 icon 通过 `WeeklyGoalIconToken` -> `GameTokenIconResolver` 使用 live-derived assets，不再用 emoji / SF Symbol / 文本符号作为正常路径。
 - 已将实体周目标参考图压缩存入 `docs/references/weekly_goals/`，仅作为 UI 和人工录入参考；文案和 tile 归类仍可后续校对。
 - 日志已改为折叠 / 弹出查看。

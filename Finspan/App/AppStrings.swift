@@ -73,10 +73,12 @@ enum AppStrings {
         static let weeklyGoalSharksAndReefsSet = "S&R"
         static let weeklyGoalSideA = "A 面"
         static let weeklyGoalSideB = "B 面"
+        static let weeklyGoalSideAFixedPreview = "A 面固定目标"
         static let weeklyGoalSelectionMode = "B 面目标"
         static let weeklyGoalRandom = "随机三周目标"
         static let weeklyGoalCustom = "房主自选周目标"
         static func weeklyGoalWeekTitle(_ week: Int) -> String { "第 \(week) 周" }
+        static func weeklyGoalPointsPerUnit(_ points: Int) -> String { "每项 \(points) 分" }
         static let weeklyGoalMissingSelection = "请为 B 面自选目标选择第 1、2、3 周目标。"
         static let createLocalRoom = "创建本地房间"
         static let joinSimulatedPlayer = "加入模拟玩家"

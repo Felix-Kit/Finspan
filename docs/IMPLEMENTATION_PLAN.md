@@ -242,7 +242,8 @@
 - S&R B 面已修正为按周使用 Base + S&R 合并池；random / manual 都复用该池，仍由 setup seed 保证 deterministic 且禁止跨周选择。
 - 主棋盘右上角使用四个横向小方块作为周目标入口；入口不显示完整标题，当前周 icon 放大并高亮。点击任意入口打开全 4 周 scoreboard，被点击周与当前周分别保留高亮语义。
 - 鱼牌 board-resource token 已从左侧 size-class 区域移到中央 fish artwork / background region，可覆盖鱼图但避开 points、length、tag、名称、flavor 和右侧 ability 区。共享 normalized metrics 同时约束 9cqw 图标和 11cqw 透明 hit target，不越过 card / slot bounds；点击仍只构造 staged payment selection。
-- Lobby 创建房间已接入 board set / side / selection mode。未启用 S&R 时默认 Base A；启用 S&R 时默认 S&R A，也可选择 Base board。
+- Lobby 创建房间已接入 2–5 人多人配置、board set / side / selection mode。Nautoma 不作为多人房间扩展选项，仍留在主界面的独立单人模式入口。未启用 S&R 时默认 Base A；启用 S&R 时默认 S&R A，也可选择 Base board。
+- A 面选择下方直接展示四周固定内容：前三周复用 `WeeklyGoalCatalog.sideAGoals` 的标题、说明和每项分值，第 4 周显示终局能力固定说明；B 面随机 / 自选流程保持不变。
 - B 面 random selection 由 setup seed deterministic 解析；manual selection 按 week pool 校验，不允许跨周池或跨 board set。
 - scoreboard 每周一个 section，section 内为所有玩家的归一化横向 score bar；已结算周读取 frozen result，当前 / 未来周只在 presentation 层计算 projection。
 - 游戏内周目标 HUD / scoreboard 使用 resolved weekly goal tile，并通过 `GameTokenIconResolver` 渲染周目标 token icon。

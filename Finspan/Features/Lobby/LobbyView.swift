@@ -378,7 +378,7 @@ private struct CreateRoomSetupView: View {
             Text(AppStrings.Lobby.playerCount)
                 .font(.headline)
             Picker(AppStrings.Lobby.playerCount, selection: $viewModel.playerCount) {
-                ForEach(1...4, id: \.self) { count in
+                ForEach(viewModel.availablePlayerCounts, id: \.self) { count in
                     Text("\(count)").tag(count)
                 }
             }
@@ -400,16 +400,9 @@ private struct CreateRoomSetupView: View {
             }
             .pickerStyle(.segmented)
 
-            Toggle(AppStrings.Lobby.sharksAndReefsExpansion, isOn: $viewModel.isSharksAndReefsExpansionEnabled)
-
-            Toggle(
-                AppStrings.Lobby.nautomaExpansion,
-                isOn: Binding(
-                    get: { viewModel.isNautomaExpansionEnabled },
-                    set: { viewModel.setNautomaExpansionEnabled($0) }
-                )
-            )
-            .disabled(true)
+            if viewModel.availableCreateRoomExpansions.contains(.sharksAndReefs) {
+                Toggle(AppStrings.Lobby.sharksAndReefsExpansion, isOn: $viewModel.isSharksAndReefsExpansionEnabled)
+            }
         }
     }
 }
@@ -437,7 +430,9 @@ private struct WeeklyGoalSetupSection: View {
             }
             .pickerStyle(.segmented)
 
-            if viewModel.weeklyGoalBoardSide == .sideB {
+            if viewModel.weeklyGoalBoardSide == .sideA {
+                SideAWeeklyGoalPreviewView(goals: viewModel.sideAWeeklyGoalPreview)
+            } else {
                 Picker(AppStrings.Lobby.weeklyGoalSelectionMode, selection: $viewModel.weeklyGoalSelectionMode) {
                     Text(AppStrings.Lobby.weeklyGoalRandom).tag(WeeklyGoalSelectionMode.random)
                     Text(AppStrings.Lobby.weeklyGoalCustom).tag(WeeklyGoalSelectionMode.custom)
@@ -469,6 +464,55 @@ private struct WeeklyGoalSetupSection: View {
             return nil
         }
         return viewModel.availableWeeklyGoalOptions(for: week).first { $0.id == goalId }
+    }
+}
+
+private struct SideAWeeklyGoalPreviewView: View {
+    let goals: [WeeklyGoalPreviewViewData]
+
+    private let columns = [
+        GridItem(.adaptive(minimum: 150), spacing: 12)
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(AppStrings.Lobby.weeklyGoalSideAFixedPreview)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
+                ForEach(goals) { goal in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(AppStrings.Lobby.weeklyGoalWeekTitle(goal.week))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(goal.isGameEnd ? Color.orange : Color.accentColor)
+                        Text(goal.title)
+                            .font(.headline)
+                        Text(goal.description)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                        Text(goal.scoringText)
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(goal.isGameEnd ? Color.orange : Color.secondary)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 142, alignment: .topLeading)
+                    .padding(14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(goal.isGameEnd ? Color.orange.opacity(0.08) : Color(.secondarySystemBackground))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(
+                                goal.isGameEnd ? Color.orange.opacity(0.3) : Color.primary.opacity(0.08),
+                                lineWidth: 1
+                            )
+                    )
+                }
+            }
+        }
     }
 }
 
