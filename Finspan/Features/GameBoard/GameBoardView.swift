@@ -1,5 +1,9 @@
 import SwiftUI
 
+#if canImport(UIKit)
+import UIKit
+#endif
+
 private struct SlotFramePreferenceKey: PreferenceKey {
     static var defaultValue: [OceanSlotAddress: CGRect] = [:]
 
@@ -972,6 +976,13 @@ struct GameBoardView: View {
     private var boardLayoutCanvas: some View {
         let layout = Self.boardLayout
         let showsCoralOverlay = viewModel.oceanColumns.contains { $0.coralReef != nil }
+        let backgroundImage = layout.backgroundAssetName.flatMap {
+            BoardImageAssetResolver.image(named: $0)
+        }
+        let coralOverlayImage = showsCoralOverlay
+            ? layout.coralOverlayAssetName.flatMap { BoardImageAssetResolver.image(named: $0) }
+            : nil
+        let hasBoardArtwork = backgroundImage != nil
         return GeometryReader { proxy in
             let boardRect = BoardLayoutMapper.boardImageRect(
                 in: proxy.size,
@@ -981,7 +992,8 @@ struct GameBoardView: View {
                 boardBackground(
                     in: boardRect,
                     layout: layout,
-                    showsCoralOverlay: showsCoralOverlay
+                    backgroundImage: backgroundImage,
+                    coralOverlayImage: coralOverlayImage
                 )
 
                 ForEach(viewModel.oceanSlots) { slot in
@@ -1004,7 +1016,8 @@ struct GameBoardView: View {
                             slot,
                             presentation: .boardCanvas,
                             includesResourceTokenHitTargets: false,
-                            usesPrintedForageFish: layout.includesPrintedForageFish == true
+                            usesPrintedForageFish: hasBoardArtwork && layout.includesPrintedForageFish == true,
+                            showsFallbackSlotOutline: !hasBoardArtwork
                         )
                             .frame(width: cardRect.width, height: cardRect.height)
                             .position(x: cardRect.midX, y: cardRect.midY)
@@ -1040,11 +1053,12 @@ struct GameBoardView: View {
     private func boardBackground(
         in boardRect: CGRect,
         layout: BoardLayout,
-        showsCoralOverlay: Bool
+        backgroundImage: UIImage?,
+        coralOverlayImage: UIImage?
     ) -> some View {
         ZStack {
-            if let assetName = layout.backgroundAssetName {
-                Image(assetName)
+            if let backgroundImage {
+                Image(uiImage: backgroundImage)
                     .resizable()
                     .interpolation(.high)
                     .scaledToFill()
@@ -1063,14 +1077,13 @@ struct GameBoardView: View {
                     )
             }
 
-            if showsCoralOverlay,
-               let overlayAssetName = layout.coralOverlayAssetName,
+            if let coralOverlayImage,
                let normalizedRect = layout.coralOverlayRect {
                 let overlayRect = BoardLayoutMapper.mapBoardNormalizedRect(
                     normalizedRect,
                     into: CGRect(origin: .zero, size: boardRect.size)
                 )
-                Image(overlayAssetName)
+                Image(uiImage: coralOverlayImage)
                     .resizable()
                     .interpolation(.high)
                     .scaledToFill()
@@ -1603,11 +1616,16 @@ struct GameBoardView: View {
         _ slot: OceanSlotViewData,
         presentation: BoardSlotPresentation = .legacyGrid,
         includesResourceTokenHitTargets: Bool = true,
-        usesPrintedForageFish: Bool = false
+        usesPrintedForageFish: Bool = false,
+        showsFallbackSlotOutline: Bool = false
     ) -> some View {
         ZStack(alignment: .topLeading) {
             if slot.cardFace.kind == .empty {
-                emptySlotPlaceholder(slot, presentation: presentation)
+                emptySlotPlaceholder(
+                    slot,
+                    presentation: presentation,
+                    showsFallbackOutline: showsFallbackSlotOutline
+                )
             } else if presentation == .boardCanvas,
                       !BoardSlotArtworkPolicy.shouldRenderCardFace(
                         kind: slot.cardFace.kind,
@@ -1806,7 +1824,8 @@ struct GameBoardView: View {
 
     private func emptySlotPlaceholder(
         _ slot: OceanSlotViewData,
-        presentation: BoardSlotPresentation = .legacyGrid
+        presentation: BoardSlotPresentation = .legacyGrid,
+        showsFallbackOutline: Bool = false
     ) -> some View {
         Group {
             if presentation == .legacyGrid {
@@ -1827,12 +1846,25 @@ struct GameBoardView: View {
                     )
             } else {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.clear)
+                    .fill(
+                        showsFallbackOutline
+                            ? Color.white.opacity(0.035)
+                            : Color.clear
+                    )
                     .overlay(
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .fill(slot.isValidDropTarget ? Color.green.opacity(0.12) : Color.clear)
                             .blur(radius: 2)
                     )
+                    .overlay {
+                        if showsFallbackOutline {
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .stroke(
+                                    Color.white.opacity(0.20),
+                                    style: StrokeStyle(lineWidth: 1, dash: [5, 4])
+                                )
+                        }
+                    }
             }
         }
         .aspectRatio(slot.cardFace.aspectRatio, contentMode: .fit)

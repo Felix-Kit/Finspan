@@ -232,6 +232,7 @@
 - Pass 1 已完成：新增 `BoardLayout` / `BoardLayoutSlot` / `BoardNormalizedRect` / `BoardNormalizedPoint`。
 - Pass 1 已完成：新增 `BoardLayoutMapper.boardImageRect(in:imageAspectRatio:)`、normalized rect / point mapping helper；board overlay 坐标统一从同一套 aspectFit transform 派生。
 - Player Mat Background Pass 已完成：从用户提供的 Base 规则书干净面板参考手工分离本地背景，`player_mat_layout.json` 使用实体纵向比例并按像素校准 18 个等鱼牌尺寸的 card rect。
+- Player Mat 独立 PNG 已改为通过 bundle 文件 URL 加载并缓存，不再按 Asset Catalog 名称查找；背景缺失时使用可见 slot / forage fish 安全降级，避免整个 board canvas 空白。
 - S&R 使用同一面板和同一 slot mapping，只叠加手工分离的 coral reef strip；不复制或分叉 18-slot 坐标。
 - 背景图负责实体 slot / forage fish / bottom strip 美术；SwiftUI 只叠加透明 hit target、真实出牌、资源 token、coral progress、后续 diver 和柔和 glow / tint highlight。
 - DEBUG calibration overlay 只在显式启动参数 / 环境变量打开，且不发送 `PlayerCommand`、不修改 `GameState`。

@@ -283,6 +283,20 @@ final class BoardLayoutMappingTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: try resourceURL("BoardAssets/sharks_reefs_coral_overlay.png").path))
     }
 
+    func testStandaloneBoardRasterAssetsResolveFromHostedAppBundle() throws {
+        let backgroundURL = try XCTUnwrap(
+            BoardImageAssetResolver.resourceURL(named: "base_player_mat", bundle: .main)
+        )
+        let overlayURL = try XCTUnwrap(
+            BoardImageAssetResolver.resourceURL(named: "sharks_reefs_coral_overlay", bundle: .main)
+        )
+
+        XCTAssertEqual(backgroundURL.lastPathComponent, "base_player_mat.png")
+        XCTAssertEqual(overlayURL.lastPathComponent, "sharks_reefs_coral_overlay.png")
+        XCTAssertNotNil(BoardImageAssetResolver.image(named: "base_player_mat", bundle: .main))
+        XCTAssertNotNil(BoardImageAssetResolver.image(named: "sharks_reefs_coral_overlay", bundle: .main))
+    }
+
     func testPlayerMatUsesPrintedForageFishButStillRendersPlayedFishCards() {
         XCTAssertFalse(
             BoardSlotArtworkPolicy.shouldRenderCardFace(

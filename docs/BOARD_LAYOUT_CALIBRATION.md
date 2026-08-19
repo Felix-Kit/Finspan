@@ -8,6 +8,7 @@ The player board now uses the physical mat artwork and one normalized interactio
 - `Finspan/Resources/BoardAssets/sharks_reefs_coral_overlay.png` is the physical S&R coral strip isolated from the user-provided S&R page 3/4 references.
 - Base and S&R use the same overall mat size and the same 18 slot rectangles. S&R conditionally layers the coral strip above Twilight.
 - Runtime uses only these bundled local resources. It does not load a rulebook or Finsearch URL.
+- These PNG files are standalone bundle resources rather than Asset Catalog image sets. `BoardImageAssetResolver` resolves their bundle URLs and caches decoded images; `Image(name)` must not be used for this artwork.
 
 The current import is manual and traceable. Automatic PDF layer extraction, automatic slot recognition, perspective correction tooling, and a visual drag editor remain future work.
 
@@ -49,6 +50,8 @@ The background owns printed slot outlines, zone art, three forage fish, and bott
 
 Normal empty slots render no card-like placeholder. When a physical background is present, Catalina Goby, Showy Bristlemouth, and Glasshead Grenadier use the printed mat artwork; their underlying `forageFish` state remains unchanged. Real played fish still render through `FishCardFaceView` and cover the slot.
 
+If the physical background cannot be found or decoded, the canvas deliberately falls back to the ocean gradient, dashed empty-slot outlines, and rendered forage-fish card faces. Hit targets and normalized mapping remain active, so a packaging mistake cannot make the entire interactive board invisible.
+
 ## S&R overlay
 
 S&R does not use a wider, shorter, or otherwise separate slot map. The coral strip uses `coralOverlayRect` in the same normalized image space and sits between the third Sunlight row and Twilight row. Dynamic coral counts are lightweight presentation overlays; rules and `CoralReefState` remain authoritative elsewhere.
@@ -71,6 +74,7 @@ Focused tests cover:
 - decoding all 18 physical slots;
 - physical card rect ratio and near-full slot coverage;
 - bundled Base and S&R artwork inputs;
+- resolving and decoding standalone board PNG files from the hosted app bundle;
 - printed-forage versus real-card render policy;
 - DEBUG overlay purity;
 - staged playFish and resource-payment behavior remaining independent of layout.
