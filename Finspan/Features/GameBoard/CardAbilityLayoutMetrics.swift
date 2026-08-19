@@ -131,6 +131,57 @@ struct CardAbilityArrowFlowMetrics: Equatable {
     }
 }
 
+/// Absolute overlay placement measured from the live `.ability-container`.
+/// In particular, `AllPlayers` sits below the brush-backed ability content.
+struct CardAbilityContainerOverlayMetrics: Equatable {
+    let allPlayersHeightCqw: Double
+    let allPlayersBottomCqw: Double
+
+    static let live = CardAbilityContainerOverlayMetrics(
+        allPlayersHeightCqw: 9,
+        allPlayersBottomCqw: 4
+    )
+
+    func allPlayersTopCqw(in panel: CardAbilityPanelMetrics = .live) -> Double {
+        panel.heightCqw - allPlayersBottomCqw - allPlayersHeightCqw
+    }
+}
+
+/// Mirrors the live finsearch ability-icon CSS. Values are heights in card
+/// container-query width units; horizontal ability rows additionally cap
+/// their icon width so mixed icon runs stay inside the right panel.
+struct CardAbilityIconLayoutMetrics: Equatable {
+    let heightCqw: Double
+    let maxWidthCqw: Double?
+
+    static func live(for assetName: String, isHorizontalRow: Bool = false) -> CardAbilityIconLayoutMetrics {
+        let height: Double
+        switch assetName {
+        case "ArrowDown":
+            height = 15
+        case "SchoolFeederMove":
+            height = 12.5
+        case "FishLengthSmall", "FishLengthMedium", "FishLengthLarge":
+            height = 12
+        case "UnSchoolFish":
+            height = 16
+        case "AnyCoral":
+            height = 12
+        case "YoungFish":
+            height = 6.5
+        case "ConsumeFish", "ConsumeFish1", "ConsumeFish2", "ConsumeFish3", "Discard", "DrawCard", "FishFromHand":
+            height = 8
+        default:
+            height = 9
+        }
+
+        guard isHorizontalRow, assetName != "SchoolFish" else {
+            return CardAbilityIconLayoutMetrics(heightCqw: height, maxWidthCqw: nil)
+        }
+        return CardAbilityIconLayoutMetrics(heightCqw: min(height, 7), maxWidthCqw: 8)
+    }
+}
+
 private extension Double {
     func rounded(toPlaces places: Int) -> Double {
         let factor = pow(10.0, Double(places))

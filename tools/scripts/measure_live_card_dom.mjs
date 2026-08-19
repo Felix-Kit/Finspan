@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(__filename), "../..");
 const liveRoot = path.join(repoRoot, "references/webpage_live");
+const runtimeIconRoot = path.join(repoRoot, "Finspan/Resources/CardAssets/icons");
 const outputDir = path.join(repoRoot, "tools/generated/card_rendering");
 const screenshotsDir = path.join(outputDir, "screenshots");
 const jsonPath = path.join(outputDir, "live_measurements.json");
@@ -21,7 +22,8 @@ const targetCards = [
   { cardId: "sr.starter.212", sourceId: 212, name: "Atlantic Barracudina" },
   { cardId: "sr.main.161", sourceId: 161, name: "Great Barracuda" },
   { cardId: "base.main.001", sourceId: 1, name: "Abyssal Anglerfish" },
-  { cardId: "base.main.056", sourceId: 56, name: "Great Northern Tilefish" }
+  { cardId: "base.main.056", sourceId: 56, name: "Great Northern Tilefish" },
+  { cardId: "base.main.087", sourceId: 87, name: "Paraliparis" }
 ];
 
 const mimeTypes = new Map([
@@ -62,14 +64,19 @@ function createStaticServer(preferredPort = 4173) {
       return;
     }
 
-    fs.readFile(filePath, (error, contents) => {
+    const runtimePng = path.extname(filePath) === ".svg"
+      ? path.join(runtimeIconRoot, `${path.basename(filePath)}.png`)
+      : null;
+    const servedPath = runtimePng && fs.existsSync(runtimePng) ? runtimePng : filePath;
+
+    fs.readFile(servedPath, (error, contents) => {
       if (error) {
         response.writeHead(404);
         response.end(`not found: ${urlPath}`);
         return;
       }
       response.writeHead(200, {
-        "content-type": mimeTypes.get(path.extname(filePath)) ?? "application/octet-stream"
+        "content-type": mimeTypes.get(path.extname(servedPath)) ?? "application/octet-stream"
       });
       response.end(contents);
     });
@@ -177,6 +184,7 @@ function generateMarkdown(report) {
   lines.push(`Generated: ${report.generatedAt}`);
   lines.push("");
   lines.push("Source of truth: local render of `references/webpage_live/index.html` through Chromium/Playwright. The local server maps `/finsearch/*` to the mirrored live assets so computed CSS matches the published finsearch paths.");
+  lines.push("The mirror's namespace-incomplete SVG files are served through their audited same-name runtime PNG derivatives so Chromium measures the intended icon geometry instead of broken-image fallback text.");
   lines.push("");
   lines.push("## Summary");
   lines.push("");
@@ -204,6 +212,7 @@ function generateMarkdown(report) {
   lines.push("- Computed `background-repeat` is `repeat` because CSS does not override the default, but `background-size: cover` makes the single brush image cover each block frame.");
   lines.push("- Computed `background-origin` is `padding-box`; computed `background-clip` is `border-box`.");
   lines.push("- No representative block reports a transform or rotation on the brush element.");
+  lines.push("- `.AllPlayers` is `position: absolute` relative to `.ability-container`; it sits at `bottom: 4cqw` outside the brush block and must not contribute to brush height.");
   lines.push("- The correct Swift mapping is therefore an unrotated, top-leading cover/crop of the same brush raster, with the block frame measured from live layout.");
   lines.push("");
   lines.push("## Card Details");
@@ -250,6 +259,8 @@ function generateMarkdown(report) {
   lines.push("- `CardAbilityBrushMetrics.live` now records `assetContentMode = coverTopLeading`, `backgroundPosition = 0% 0%`, `backgroundRepeat = repeat`, `capInsetCqw = 0`, and `cornerRadiusCqw = 0`.");
   lines.push("- `CardAbilityBrushBackgroundView` maps CSS background cover with top-leading alignment by calculating the cover-scaled image size from the measured block frame and clipping to that frame.");
   lines.push("- Swift applies the brush as a block `.background`, not a `ZStack` content child, because live CSS background images do not participate in ability block layout.");
+  lines.push("- Swift renders `AllPlayers` as a container-level bottom overlay. The brush-backed block filters it from content layout, matching the Paraliparis reference card and every other AllPlayers card.");
+  lines.push("- Ability icon heights now follow the live per-class overrides and preserve source aspect ratio; `.ability-row` icons also apply the live 7cqw height / 8cqw width caps.");
   lines.push("- `CardAbilityBlockMetrics` uses measured minimum heights: standard `27.842cqw`, squished `17.993cqw`, also-if `35.286cqw`.");
   lines.push("- DEBUG card face status can show the live measured frame, current Swift frame, and delta when `tools/generated/card_rendering/live_measurements.json` is present.");
   lines.push("");
@@ -264,6 +275,23 @@ async function measureCard(page, baseUrl, target) {
   const cards = await page.locator(".card").count();
   if (cards < 1) {
     throw new Error(`No rendered card found for ${target.name}`);
+  }
+
+  const undecodedImages = await page.locator(".card").first().locator("img").evaluateAll(async images => {
+    await Promise.all(images.map(async image => {
+      if (image.complete && image.naturalWidth > 0) return;
+      try {
+        await image.decode();
+      } catch {
+        // Report the unresolved image below with its rendered card.
+      }
+    }));
+    return images
+      .filter(image => image.naturalWidth <= 0)
+      .map(image => `${image.alt || "image"}: ${image.currentSrc || image.src}`);
+  });
+  if (undecodedImages.length > 0) {
+    throw new Error(`Card media did not decode for ${target.cardId}:\n${undecodedImages.join("\n")}`);
   }
 
   const screenshotPath = path.join(screenshotsDir, `${target.cardId.replaceAll(".", "_")}.png`);
@@ -598,8 +626,18 @@ async function main() {
   const server = await createStaticServer();
   const port = server.address().port;
   const baseUrl = `http://127.0.0.1:${port}/finsearch/`;
-  const browser = await chromium.launch({ headless: true });
+  const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
+  const browser = await chromium.launch({
+    headless: true,
+    ...(executablePath ? { executablePath } : {})
+  });
   const page = await browser.newPage({ viewport: { width: 1400, height: 1000 }, deviceScaleFactor: 1 });
+  const failedMediaRequests = new Set();
+  page.on("response", response => {
+    if (response.status() >= 400 && response.url().includes("/static/media/")) {
+      failedMediaRequests.add(`${response.status()} ${response.url()}`);
+    }
+  });
 
   const report = {
     generatedAt: new Date().toISOString(),
@@ -608,7 +646,8 @@ async function main() {
       url: baseUrl,
       liveRoot: path.relative(repoRoot, liveRoot),
       viewport: { width: 1400, height: 1000, deviceScaleFactor: 1 },
-      playwright: "chromium"
+      playwright: "chromium",
+      iconRendering: "runtime PNG mirrors of live SVG geometry"
     },
     cards: []
   };
@@ -622,6 +661,10 @@ async function main() {
   } finally {
     await browser.close();
     await new Promise(resolve => server.close(resolve));
+  }
+
+  if (failedMediaRequests.size > 0) {
+    throw new Error(`Live card measurement had missing media:\n${[...failedMediaRequests].join("\n")}`);
   }
 
   attachDerivedData(report);

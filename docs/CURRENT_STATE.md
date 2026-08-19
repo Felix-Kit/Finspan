@@ -189,6 +189,9 @@
 - `CardAbilityLayoutMetrics` 现在使用 live DOM measured frame，而不是仅凭 CSS 整数估算：Banggai Cardinalfish ability container 为 left 71.883cqw、top 0.266cqw、width 27.851cqw、height 65.218cqw、right gap 0.266cqw。
 - IF ACTIVATED / GAME END / also-if brush 根因已确认：live 是 `.ability` 的 CSS `background-image`，computed `background-size: cover`、`background-position: 0% 0%`、默认 `background-repeat: repeat`，无 rotation；Swift 之前的 cap-inset stretch 与 live 不一致。
 - `CardAbilityBrushBackgroundView` 已改为 unrotated top-leading cover/crop，匹配 live background semantics，不用纯色正常 fallback。
+- AllPlayers Ability Overlay 修复已完成：live CSS 的 `.AllPlayers` 实际相对整个 `.ability-container` 绝对定位，并不属于橙色 / 黄色 brush block。Swift 现在由 `CardAbilityPresentation.bottomOverlayIcons` 在 ability container 底部独立叠放，brush content 会过滤该图标，因此 Paraliparis 以及全部 34 张 AllPlayers 卡不会再被底部图标撑高背景。
+- `CardAbilityIconLayoutMetrics` 已按 live CSS 收口能力图标高度：DrawCard / Discard / Consume / FishFromHand 为 8cqw、SchoolFeederMove 12.5cqw、UnSchoolFish 16cqw、AnyCoral 12cqw、YoungFish 6.5cqw、AllPlayers 9cqw；能力图标保持原始宽高比，plus-row 使用 7cqw 高 / 8cqw 宽上限。
+- live DOM 代表卡新增 `base.main.087` Paraliparis；测量确认 brush bottom 为 47.292cqw、AllPlayers top 为 52.558cqw，两者明确分离。测量脚本会等待全部图片 decode，并用已审计的同名 runtime PNG 代理本地 mirror 中 namespace 不完整的 SVG，避免把 broken-image alt text 误当成图标尺寸。
 - Inline Ability Interaction audit 已更新为四维分类：`tools/scripts/audit_inline_ability_interaction.py` 输出每张卡的 `inlineEntrySurface`、`continuationSurface`、`commitReversibility`、`sourceVisibility`、`requiresFallback`、`requiresOverlay` 和 `canStartInline`。
 - 215 张卡 legacy 分类仍为 A inline candidates 73、B needs picker/overlay 51、C irreversible/no undo 91、D not enough metadata 0；新口径下 card ability icon entry 215、incoming reward dock entry 34、GAME END dock entry 39、D not enough metadata 0。
 - 当前暂停 card inline 作为主交互。`BottomRewardDock` 是 reward / pending 信息和复杂 continuation 的主入口；纯 playFish confirm / cancel 由 `FloatingActionPairView` 承载。card inline 只保留 source/highlight/group hint，`ArrowDown` 前后 token 作为组合语义整体高亮，不单独可点。
@@ -200,12 +203,12 @@
 - `BottomRewardDock` 和 `FloatingActionPair` 不因 `viewingPlayerId` 切换而丢失 pending / playFish / GAME END / AllPlayers 上下文；当 pending 必须回到自己 board 选目标或支付来源时，dock / error prompt 显示返回自己面板提示。dock source summary 可跳到 AllPlayers 或 GAME END 来源玩家 board，并在可定位时高亮来源鱼。
 - DEBUG 牌库卡面状态面板继续扩展：现在可显示 brush asset、brush orientation、brush content mode、background position/repeat、ability panel frame、live measured frame、Swift delta、arrow-flow metrics 和 also-if gap，便于在模拟器中核对 pixel alignment。
 - Great White Shark 是 QA 样例，不是 special case：`base.main.057` 映射到 `57.*.webp`，`FishEgg` / `ArrowDown` / `Predator` / `AllPlayers` 均解析到 live-derived PNG render asset，cost 显示 `YoungFish` / `ConsumeFish`，length 600 cm 映射到 `FishLengthLarge`，ability presentation 使用 arrow-flow 而非 flat row。
-- Great Northern Tilefish、Banggai Cardinalfish、Bearded Seadevil、Great Barracuda 和 Atlantic Barracudina 也纳入代表卡审计，覆盖 If Activated brush block、arrow-flow overlap、S&R coral requirement / coral token、also-if split block、S&R badge、starter corner、不同 zone 和 flavor text。
+- Great Northern Tilefish、Banggai Cardinalfish、Bearded Seadevil、Great Barracuda、Atlantic Barracudina 和 Paraliparis 也纳入代表卡审计，覆盖 If Activated brush block、arrow-flow overlap、AllPlayers container overlay、S&R coral requirement / coral token、also-if split block、S&R badge、starter corner、不同 zone 和 flavor text。
 - DEBUG 牌库 QA 搜索已接入：Lobby → 牌库 → 所有牌，可按 English name、canonical card id、sourceId、trigger 或 token 稳定预览代表卡，不依赖随机发牌。
 - Pass 2 全量 215 张真实卡 ability / cost / zone / tag / points / length token 审计结果：missing asset / fallback count 0。
 - Icon renderability focused tests 覆盖 Great White Shark、Great Northern Tilefish、Great Barracuda 和全量 215 张真实卡；代表卡 renderability failures 为 0。
 - 手牌、弃牌堆和 ocean slot 当前仍共用同一完整卡牌牌面。
-- 当前牌面已完成 Pass 2 结构补齐、icon renderability pipeline fix、ability layout / badge / starter corner pass，以及 live DOM measured ability brush correctness pass；仍不是完整 finsearch 像素级复刻。详见 `docs/CARD_RENDERING_FIDELITY.md` 和 `docs/CARD_RENDERING_LIVE_MEASUREMENTS.md`。
+- 当前牌面已完成 Pass 2 结构补齐、icon renderability pipeline fix、ability layout / badge / starter corner pass、live DOM measured brush correctness，以及 AllPlayers container overlay / icon sizing regression pass；仍不是完整 finsearch 像素级复刻。详见 `docs/CARD_RENDERING_FIDELITY.md` 和 `docs/CARD_RENDERING_LIVE_MEASUREMENTS.md`。
 
 ## 当前仍需修复 / 待做
 

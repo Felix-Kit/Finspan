@@ -176,7 +176,7 @@ Live renderer 中的 ability model 来自 `references/webpage_live/static/js/mai
 - `A(text)` 按 raw ability text token 化。普通 token 渲染为 icon；连续 icon 会形成 `.icon-group`；只有 `[A] + [B]` 这类 plus group 才进入 `.ability-row` 横排。
 - `F(card)` 为 ability panel 生成 block。普通 IF ACTIVATED / GAME END 是一个 `.ability` brush block；`IF ACTIVATED` 中包含 `also, if` 时拆成主 `.ability.squished` 和条件 `.ability.also-if` 两个 brush blocks，中间由 `.ability-container` gap 分隔。
 - `.ability .ArrowDown` 使用更高 icon height 和负 margin 形成 vertical flow。
-- `.ability .AllPlayers` 使用 `filter: drop-shadow(0 0 4px #404040)`，并在 block 底部绝对定位。
+- `.ability .AllPlayers` 使用 `filter: drop-shadow(0 0 4px #404040)`。由于 `.ability` 本身不是 positioned ancestor，它实际相对 `.ability-container` 在底部绝对定位，不属于 brush block 的内容高度。
 - S&R 牌在右下角显示 `.expansion-logo`，asset 为 `SRLogo`。
 - Starter 牌的角标不是 `StarterIcon` 图片，而是 `.corner-overlay` CSS clipped gray triangles，左上和右下各一个。
 
@@ -186,7 +186,8 @@ Swift 当前映射：
 - Great White Shark 的 `(all players) [FishEgg][ArrowDown][Predator] on each [AllPlayers]` 通过通用 icon-run 规则生成 `arrowFlow` group：`FishEgg`、`ArrowDown`、`Predator` 竖向连接；`on each` 保持文本元素；`AllPlayers` 使用 bottom placement 和 live drop-shadow style。没有按 `base.main.057` 写 special case。
 - `sr.starter.212` Atlantic Barracudina 的 `also, if [GreenCoral][GreenCoral][GreenCoral] in this dive site: [SchoolFeederMove]` 被拆成两个 brush blocks；第二个 block 是 `alsoIf` layout，三枚 `GreenCoral` 形成 horizontal coral group。
 - IF ACTIVATED / GAME END / also-if block 的 background 都使用 live trigger strip asset，不再用纯色 `Rectangle` 作为正常路径。DEBUG 下只有 asset 缺失时才显示红色 outline fallback。
-- `CardFaceIconAssetView` 增加 `CardAbilityIconStyle.allPlayersShadow`，只影响 `AllPlayers`，不改变普通 icon。
+- `CardFaceIconAssetView` 增加 `CardAbilityIconStyle.allPlayersShadow`，只影响 `AllPlayers`；`CardAbilityPresentation.bottomOverlayIcons` 把它从 brush content 中分离并在整个 ability container 的 bottom 4cqw 处叠放。
+- `CardAbilityIconLayoutMetrics` 映射 live per-class 高度，并让 ability icon 使用固定高度 + 原始宽高比；DrawCard / Discard / Consume / FishFromHand、SchoolFeederMove、UnSchoolFish、AnyCoral、YoungFish、AllPlayers 以及 plus-row 都不再落入错误的统一正方形尺寸。
 - `FishCardFaceViewState.expansionBadgeIcon` 对 `sr.*` 牌返回 `SRLogo`；base 牌不显示 S&R badge。
 - `FishCardFaceViewState.hasStarterCornerDecorations` 对 `.starter.` card id 为 true；SwiftUI 用 clipped gray vector triangles 还原 live CSS corner overlay。`StarterIcon` 仍作为搜索 / filter live asset 保留并通过 renderability audit，但不用于牌面 corner。
 - DEBUG card face status 面板扩展 ability layout / badge 信息：ability block count、block type、background asset、token placement、S&R logo、starter corner、AllPlayers shadow、trigger brush mode 和 also-if block count。
@@ -222,6 +223,7 @@ Live DOM 测量结论：
 - `IfActivated` / `GameEnd` brush 是 `.ability` 的 CSS `background-image`，不是 foreground image。
 - computed `background-size` 为 `cover`，`background-position` 为 `0% 0%`，`background-repeat` 为默认 `repeat`，没有 transform / rotation。
 - ArrowDown measured overlap 在 Great White Shark / Bearded Seadevil 上均为约 3.98cqw，来自 live `.ArrowDown { height: 15cqw; margin: -5cqw 0; }`。
+- Paraliparis 的 IF ACTIVATED brush bottom 为 47.292cqw，AllPlayers top 为 52.558cqw；这证明 AllPlayers 位于 brush 外并以 ability container 为定位上下文。
 
 Swift 修复点：
 
@@ -230,6 +232,8 @@ Swift 修复点：
 - IF ACTIVATED / GAME END / also-if brush 不再使用 cap-inset stretch；`CardAbilityBrushBackgroundView` 现在按 live CSS 实现 unrotated top-leading cover/crop，保留左侧笔触边缘，不用纯色正常 fallback。
 - block padding / min height / content gap 收拢到 `CardAbilityBlockMetrics`，standard、squished、also-if 分别对应 live CSS。
 - arrow-flow 使用 `CardAbilityArrowFlowMetrics`：默认 icon 9cqw、ArrowDown 15cqw、icon-group gap 1cqw、ArrowDown negative margin -5cqw，等效 Swift stack spacing 为 -4cqw，移除旧的额外 ArrowDown vertical offset。
+- AllPlayers 由 ability container overlay 渲染，不再放在每个 `abilityBlock` 的 `ZStack` 中；这同时修复 34 张 AllPlayers 卡牌，不按 card id 特判。
+- 普通 ability icon 使用 live class height 并保持 source aspect ratio；`.ability-row` 使用 7cqw max-height / 8cqw max-width，避免宽图标被正方形 frame 额外缩小。
 - DEBUG card face status 面板新增 brush asset、brush orientation、brush content mode、background position/repeat、ability panel frame、live measured frame、Swift delta、arrow-flow metrics、also-if gap 和 card id / source id。
 
 本轮代表卡：
@@ -239,6 +243,7 @@ Swift 修复点：
 - `base.main.014` Banggai Cardinalfish：IF ACTIVATED brush 方向保持 horizontal strip，panel x/width/top/height 改为 live measured frame。
 - `sr.starter.212` Atlantic Barracudina：also-if gap 保持 2cqw，main / also-if brush 使用同一方向。
 - `sr.main.161` Great Barracuda：S&R badge / coral / AllPlayers 回归未破坏。
+- `base.main.087` Paraliparis：IF ACTIVATED brush 与底部 AllPlayers 图标分离，匹配用户提供的正确样例。
 
 Focused tests 新增 / 更新 `FishCardLiveMeasurementTests`、`FishCardAbilityPanelMeasurementTests`、`FishCardBrushBackgroundTests` 和 `FishCardAbilityPixelAlignmentTests`，覆盖 measurement JSON、brush computed style、panel frame、ArrowDown overlap、also-if gap、S&R badge、starter corner 和 debug summary metrics。
 

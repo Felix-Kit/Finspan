@@ -12,6 +12,7 @@ final class FishCardLiveMeasurementTests: XCTestCase {
         XCTAssertTrue(cardIds.contains("base.main.016"))
         XCTAssertTrue(cardIds.contains("sr.starter.212"))
         XCTAssertTrue(cardIds.contains("sr.main.161"))
+        XCTAssertTrue(cardIds.contains("base.main.087"))
     }
 
     func testBanggaiCardinalfishLivePanelFrameIsMeasuredFromDom() throws {
@@ -72,6 +73,29 @@ final class FishCardLiveMeasurementTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(beardedSeadevil.arrowTopOverlapCqw), 3.98, accuracy: 0.001)
         XCTAssertEqual(try XCTUnwrap(beardedSeadevil.arrowBottomOverlapCqw), 3.98, accuracy: 0.001)
         XCTAssertEqual(CardAbilityArrowFlowMetrics.live.arrowNegativeMarginCqw, -5)
+    }
+
+    func testParaliparisAllPlayersIconIsBelowBrushInLiveDom() throws {
+        let report = try liveMeasurementReport()
+        let cards = try XCTUnwrap(report["cards"] as? [[String: Any]])
+        let paraliparis = try XCTUnwrap(cards.first { $0["cardId"] as? String == "base.main.087" })
+        let blocks = try XCTUnwrap(paraliparis["abilityBlocks"] as? [[String: Any]])
+        let blockCqw = try XCTUnwrap(blocks.first?["cqw"] as? [String: Any])
+        let icons = try XCTUnwrap(paraliparis["abilityIcons"] as? [[String: Any]])
+        let allPlayers = try XCTUnwrap(icons.first { $0["className"] as? String == "AllPlayers" })
+        let iconCqw = try XCTUnwrap(allPlayers["cqw"] as? [String: Any])
+        let iconStyle = try XCTUnwrap(allPlayers["style"] as? [String: Any])
+        let brushTop = try XCTUnwrap(blockCqw["top"] as? Double)
+        let brushHeight = try XCTUnwrap(blockCqw["height"] as? Double)
+        let allPlayersTop = try XCTUnwrap(iconCqw["top"] as? Double)
+
+        XCTAssertLessThan(brushTop + brushHeight, allPlayersTop)
+        XCTAssertEqual(iconStyle["position"] as? String, "absolute")
+        XCTAssertEqual(
+            CardAbilityContainerOverlayMetrics.live.allPlayersTopCqw(),
+            allPlayersTop,
+            accuracy: 0.5
+        )
     }
 
     private func liveMeasurementReport() throws -> [String: Any] {

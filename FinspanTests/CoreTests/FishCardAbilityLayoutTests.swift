@@ -19,6 +19,60 @@ final class FishCardAbilityLayoutTests: XCTestCase {
     }
 
     @MainActor
+    func testParaliparisAllPlayersIconIsAContainerOverlayNotBrushContent() throws {
+        let cardFace = try cardFace(for: "base.main.087")
+        let presentation = cardFace.abilityPresentation
+        let overlay = try XCTUnwrap(presentation.bottomOverlayIcons.first)
+
+        XCTAssertEqual(cardFace.displayName, "Paraliparis")
+        XCTAssertEqual(cardFace.abilityTriggerText, CardFaceTriggerCopy.ifActivated)
+        XCTAssertEqual(presentation.bottomOverlayIcons.count, 1)
+        XCTAssertEqual(overlay.icon.assetName, "AllPlayers")
+        XCTAssertEqual(overlay.placement, .allPlayersBottom)
+        XCTAssertEqual(overlay.style, .allPlayersShadow)
+        XCTAssertTrue(presentation.blocks.allSatisfy { $0.brushContentElements.allPlayersBottomIcons.isEmpty })
+    }
+
+    @MainActor
+    func testAllAllPlayersCardsUseContainerBottomOverlay() {
+        let cards = allCardFaces()
+        let allPlayersCards = cards.filter { $0.abilityText.contains("[AllPlayers]") }
+
+        XCTAssertEqual(cards.count, 215)
+        XCTAssertEqual(allPlayersCards.count, 34)
+        for cardFace in allPlayersCards {
+            XCTAssertFalse(
+                cardFace.abilityPresentation.bottomOverlayIcons.isEmpty,
+                "Expected container overlay for \(cardFace.cardId ?? "unknown")."
+            )
+            XCTAssertTrue(
+                cardFace.abilityPresentation.blocks.allSatisfy { $0.brushContentElements.allPlayersBottomIcons.isEmpty },
+                "AllPlayers must not expand the brush for \(cardFace.cardId ?? "unknown")."
+            )
+        }
+    }
+
+    @MainActor
+    func testAllCardAbilityPresentationsResolveWithoutFlatFallbacksOrMissingBrushes() {
+        let cards = allCardFaces()
+        var failures: [String] = []
+
+        for cardFace in cards {
+            let presentation = cardFace.abilityPresentation
+            if presentation.isFlatFallback || presentation.blocks.isEmpty {
+                failures.append("\(cardFace.cardId ?? "unknown"):missing structured presentation")
+            }
+            if cardFace.abilityPanelStyle != .none,
+               presentation.blocks.contains(where: { !$0.hasBrushBackground }) {
+                failures.append("\(cardFace.cardId ?? "unknown"):missing trigger brush")
+            }
+        }
+
+        XCTAssertEqual(cards.count, 215)
+        XCTAssertTrue(failures.isEmpty, failures.joined(separator: ", "))
+    }
+
+    @MainActor
     func testGreatWhiteSharkLayoutIsGeneratedFromRawAbilityTextNotCardId() throws {
         let cardFace = try cardFace(for: "base.main.057")
         let builder = CardAbilityPresentationBuilder()
@@ -79,6 +133,13 @@ final class FishCardAbilityLayoutTests: XCTestCase {
             viewModel.viewState.cards.map(\.cardFace).first { $0.cardId == cardId },
             "Expected \(cardId) in card QA library."
         )
+    }
+
+    @MainActor
+    private func allCardFaces() -> [FishCardFaceViewState] {
+        let viewModel = CardLibraryViewModel()
+        viewModel.displayMode = .all
+        return viewModel.viewState.cards.map(\.cardFace)
     }
 }
 

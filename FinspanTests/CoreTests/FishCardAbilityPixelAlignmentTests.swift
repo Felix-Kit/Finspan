@@ -68,6 +68,42 @@ final class FishCardAbilityPixelAlignmentTests: XCTestCase {
     }
 
     @MainActor
+    func testAllPlayersOverlayUsesAbilityContainerBottomEdge() {
+        let overlay = CardAbilityContainerOverlayMetrics.live
+
+        XCTAssertEqual(overlay.allPlayersHeightCqw, 9)
+        XCTAssertEqual(overlay.allPlayersBottomCqw, 4)
+        XCTAssertEqual(
+            overlay.allPlayersTopCqw(),
+            CardAbilityPanelMetrics.live.heightCqw - overlay.allPlayersBottomCqw - overlay.allPlayersHeightCqw,
+            accuracy: 0.001
+        )
+    }
+
+    @MainActor
+    func testAbilityIconMetricsMatchLiveCssOverrides() {
+        XCTAssertEqual(CardAbilityIconLayoutMetrics.live(for: "DrawCard").heightCqw, 8)
+        XCTAssertEqual(CardAbilityIconLayoutMetrics.live(for: "Discard").heightCqw, 8)
+        XCTAssertEqual(CardAbilityIconLayoutMetrics.live(for: "ConsumeFish1").heightCqw, 8)
+        XCTAssertEqual(CardAbilityIconLayoutMetrics.live(for: "SchoolFeederMove").heightCqw, 12.5)
+        XCTAssertEqual(CardAbilityIconLayoutMetrics.live(for: "UnSchoolFish").heightCqw, 16)
+        XCTAssertEqual(CardAbilityIconLayoutMetrics.live(for: "AnyCoral").heightCqw, 12)
+        XCTAssertEqual(CardAbilityIconLayoutMetrics.live(for: "YoungFish").heightCqw, 6.5)
+        XCTAssertEqual(CardAbilityIconLayoutMetrics.live(for: "AllPlayers").heightCqw, 9)
+    }
+
+    @MainActor
+    func testHorizontalAbilityRowsUseLiveHeightAndWidthCaps() {
+        let draw = CardAbilityIconLayoutMetrics.live(for: "DrawCard", isHorizontalRow: true)
+        let school = CardAbilityIconLayoutMetrics.live(for: "SchoolFish", isHorizontalRow: true)
+
+        XCTAssertEqual(draw.heightCqw, 7)
+        XCTAssertEqual(draw.maxWidthCqw, 8)
+        XCTAssertEqual(school.heightCqw, 9)
+        XCTAssertNil(school.maxWidthCqw)
+    }
+
+    @MainActor
     func testBeardedSeadevilUsesSameArrowFlowMetrics() throws {
         let cardFace = try cardFace(for: "base.main.016")
         let arrowFlowGroup = try XCTUnwrap(cardFace.abilityPresentation.firstIconGroup(layout: .arrowFlow))

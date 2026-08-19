@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-16T03:55:25.968Z",
+  "generatedAt": "2026-08-19T03:50:50.600Z",
   "measurementSource": {
     "kind": "local-playwright-dom",
     "url": "http://127.0.0.1:4173/finsearch/",
@@ -9,7 +9,8 @@
       "height": 1000,
       "deviceScaleFactor": 1
     },
-    "playwright": "chromium"
+    "playwright": "chromium",
+    "iconRendering": "runtime PNG mirrors of live SVG geometry"
   },
   "cards": [
     {
@@ -222,26 +223,26 @@
           "alt": "FishHatch",
           "src": "http://127.0.0.1:4173/finsearch/static/media/FishHatch.58ff38c722190a38c540.svg",
           "frame": {
-            "x": 390.046875,
+            "x": 405.9375,
             "y": 393.375,
-            "width": 62.015625,
+            "width": 30.234375,
             "height": 33.59375,
             "top": 393.375,
-            "right": 452.0625,
+            "right": 436.171875,
             "bottom": 426.96875,
-            "left": 390.046875
+            "left": 405.9375
           },
           "cqw": {
-            "left": 77.545,
+            "left": 81.778,
             "top": 31.901,
-            "width": 16.523,
+            "width": 8.055,
             "height": 8.951,
-            "rightGap": 5.932,
+            "rightGap": 10.166,
             "bottomGap": 24.903
           },
           "style": {
             "height": "33.5938px",
-            "width": "62.0156px",
+            "width": "30.2344px",
             "maxHeight": "none",
             "maxWidth": "none",
             "marginTop": "0px",
@@ -553,26 +554,26 @@
           "alt": "FishEgg",
           "src": "http://127.0.0.1:4173/finsearch/static/media/FishEgg.47c0854a65b931607a5f.svg",
           "frame": {
-            "x": 391.421875,
+            "x": 404.265625,
             "y": 358.015625,
-            "width": 59.265625,
+            "width": 33.59375,
             "height": 33.59375,
             "top": 358.015625,
-            "right": 450.6875,
+            "right": 437.859375,
             "bottom": 391.609375,
-            "left": 391.421875
+            "left": 404.265625
           },
           "cqw": {
-            "left": 77.911,
+            "left": 81.333,
             "top": 22.48,
-            "width": 15.79,
+            "width": 8.951,
             "height": 8.951,
-            "rightGap": 6.299,
+            "rightGap": 9.716,
             "bottomGap": 34.324
           },
           "style": {
             "height": "33.5938px",
-            "width": "59.2656px",
+            "width": "33.5938px",
             "maxHeight": "none",
             "maxWidth": "none",
             "marginTop": "0px",
@@ -599,26 +600,26 @@
           "alt": "ArrowDown",
           "src": "http://127.0.0.1:4173/finsearch/static/media/ArrowDown.6d19faad0ef0c8eedd9b.svg",
           "frame": {
-            "x": 391.421875,
+            "x": 404.265625,
             "y": 376.671875,
-            "width": 59.265625,
+            "width": 33.59375,
             "height": 55.984375,
             "top": 376.671875,
-            "right": 450.6875,
+            "right": 437.859375,
             "bottom": 432.65625,
-            "left": 391.421875
+            "left": 404.265625
           },
           "cqw": {
-            "left": 77.911,
+            "left": 81.333,
             "top": 27.451,
-            "width": 15.79,
+            "width": 8.951,
             "height": 14.916,
-            "rightGap": 6.299,
+            "rightGap": 9.716,
             "bottomGap": 23.388
           },
           "style": {
             "height": "55.9844px",
-            "width": "59.2656px",
+            "width": "33.5938px",
             "maxHeight": "none",
             "maxWidth": "none",
             "marginTop": "-18.6664px",
@@ -645,26 +646,26 @@
           "alt": "Predator",
           "src": "http://127.0.0.1:4173/finsearch/static/media/Predator.a0c36e62cbb3e0d8c25e.svg",
           "frame": {
-            "x": 391.421875,
+            "x": 404.265625,
             "y": 417.71875,
-            "width": 59.265625,
+            "width": 33.59375,
             "height": 33.59375,
             "top": 417.71875,
-            "right": 450.6875,
+            "right": 437.859375,
             "bottom": 451.3125,
-            "left": 391.421875
+            "left": 404.265625
           },
           "cqw": {
-            "left": 77.911,
+            "left": 81.333,
             "top": 38.387,
-            "width": 15.79,
+            "width": 8.951,
             "height": 8.951,
-            "rightGap": 6.299,
+            "rightGap": 9.716,
             "bottomGap": 18.417
           },
           "style": {
             "height": "33.5938px",
-            "width": "59.2656px",
+            "width": "33.5938px",
             "maxHeight": "none",
             "maxWidth": "none",
             "marginTop": "0px",
@@ -691,26 +692,26 @@
           "alt": "AllPlayers",
           "src": "http://127.0.0.1:4173/finsearch/static/media/AllPlayers.2cedb023b25c27b4298e.svg",
           "frame": {
-            "x": 389.59375,
+            "x": 403.3125,
             "y": 470.90625,
-            "width": 62.921875,
+            "width": 35.484375,
             "height": 33.59375,
             "top": 470.90625,
-            "right": 452.515625,
+            "right": 438.796875,
             "bottom": 504.5,
-            "left": 389.59375
+            "left": 403.3125
           },
           "cqw": {
-            "left": 77.424,
+            "left": 81.079,
             "top": 52.558,
-            "width": 16.764,
+            "width": 9.454,
             "height": 8.951,
-            "rightGap": 5.812,
+            "rightGap": 9.467,
             "bottomGap": 4.246
           },
           "style": {
             "height": "33.5938px",
-            "width": "62.9219px",
+            "width": "35.4844px",
             "maxHeight": "none",
             "maxWidth": "none",
             "marginTop": "0px",
@@ -739,26 +740,26 @@
           "alt": "ArrowDown",
           "src": "http://127.0.0.1:4173/finsearch/static/media/ArrowDown.6d19faad0ef0c8eedd9b.svg",
           "frame": {
-            "x": 391.421875,
+            "x": 404.265625,
             "y": 376.671875,
-            "width": 59.265625,
+            "width": 33.59375,
             "height": 55.984375,
             "top": 376.671875,
-            "right": 450.6875,
+            "right": 437.859375,
             "bottom": 432.65625,
-            "left": 391.421875
+            "left": 404.265625
           },
           "cqw": {
-            "left": 77.911,
+            "left": 81.333,
             "top": 27.451,
-            "width": 15.79,
+            "width": 8.951,
             "height": 14.916,
-            "rightGap": 6.299,
+            "rightGap": 9.716,
             "bottomGap": 23.388
           },
           "style": {
             "height": "55.9844px",
-            "width": "59.2656px",
+            "width": "33.5938px",
             "maxHeight": "none",
             "maxWidth": "none",
             "marginTop": "-18.6664px",
@@ -785,26 +786,26 @@
           "alt": "FishEgg",
           "src": "http://127.0.0.1:4173/finsearch/static/media/FishEgg.47c0854a65b931607a5f.svg",
           "frame": {
-            "x": 391.421875,
+            "x": 404.265625,
             "y": 358.015625,
-            "width": 59.265625,
+            "width": 33.59375,
             "height": 33.59375,
             "top": 358.015625,
-            "right": 450.6875,
+            "right": 437.859375,
             "bottom": 391.609375,
-            "left": 391.421875
+            "left": 404.265625
           },
           "cqw": {
-            "left": 77.911,
+            "left": 81.333,
             "top": 22.48,
-            "width": 15.79,
+            "width": 8.951,
             "height": 8.951,
-            "rightGap": 6.299,
+            "rightGap": 9.716,
             "bottomGap": 34.324
           },
           "style": {
             "height": "33.5938px",
-            "width": "59.2656px",
+            "width": "33.5938px",
             "maxHeight": "none",
             "maxWidth": "none",
             "marginTop": "0px",
@@ -831,26 +832,26 @@
           "alt": "Predator",
           "src": "http://127.0.0.1:4173/finsearch/static/media/Predator.a0c36e62cbb3e0d8c25e.svg",
           "frame": {
-            "x": 391.421875,
+            "x": 404.265625,
             "y": 417.71875,
-            "width": 59.265625,
+            "width": 33.59375,
             "height": 33.59375,
             "top": 417.71875,
-            "right": 450.6875,
+            "right": 437.859375,
             "bottom": 451.3125,
-            "left": 391.421875
+            "left": 404.265625
           },
           "cqw": {
-            "left": 77.911,
+            "left": 81.333,
             "top": 38.387,
-            "width": 15.79,
+            "width": 8.951,
             "height": 8.951,
-            "rightGap": 6.299,
+            "rightGap": 9.716,
             "bottomGap": 18.417
           },
           "style": {
             "height": "33.5938px",
-            "width": "59.2656px",
+            "width": "33.5938px",
             "maxHeight": "none",
             "maxWidth": "none",
             "marginTop": "0px",
@@ -1046,34 +1047,34 @@
             "bottomGap": 7.627
           },
           "contentFrame": {
-            "x": 374.6875,
+            "x": 375.140625,
             "y": 317.15625,
-            "width": 92.734375,
+            "width": 91.84375,
             "height": 187.34375,
             "top": 317.15625,
-            "right": 467.421875,
+            "right": 466.984375,
             "bottom": 504.5,
-            "left": 374.6875
+            "left": 375.140625
           },
           "contentCqw": {
-            "left": 73.452,
+            "left": 73.573,
             "top": 11.594,
-            "width": 24.708,
+            "width": 24.47,
             "height": 49.915,
-            "rightGap": 1.84,
+            "rightGap": 1.957,
             "bottomGap": 4.246
           },
           "contentInsets": {
             "top": 11.1875,
-            "right": 5.90625,
+            "right": 6.34375,
             "bottom": -12.6875,
-            "left": 5.890625
+            "left": 6.34375
           },
           "contentInsetsCqw": {
             "top": 2.981,
-            "right": 1.574,
+            "right": 1.69,
             "bottom": -3.38,
-            "left": 1.569
+            "left": 1.69
           },
           "background": {
             "image": "none",
@@ -1160,26 +1161,26 @@
           "alt": "FishEgg",
           "src": "http://127.0.0.1:4173/finsearch/static/media/FishEgg.47c0854a65b931607a5f.svg",
           "frame": {
-            "x": 374.6875,
+            "x": 403.671875,
             "y": 355.21875,
-            "width": 92.734375,
+            "width": 34.78125,
             "height": 33.59375,
             "top": 355.21875,
-            "right": 467.421875,
+            "right": 438.453125,
             "bottom": 388.8125,
-            "left": 374.6875
+            "left": 403.671875
           },
           "cqw": {
-            "left": 73.452,
+            "left": 81.175,
             "top": 21.735,
-            "width": 24.708,
+            "width": 9.267,
             "height": 8.951,
-            "rightGap": 1.84,
+            "rightGap": 9.558,
             "bottomGap": 35.069
           },
           "style": {
             "height": "33.5938px",
-            "width": "92.7344px",
+            "width": "34.7812px",
             "maxHeight": "none",
             "maxWidth": "none",
             "marginTop": "0px",
@@ -1206,26 +1207,26 @@
           "alt": "ArrowDown",
           "src": "http://127.0.0.1:4173/finsearch/static/media/ArrowDown.6d19faad0ef0c8eedd9b.svg",
           "frame": {
-            "x": 374.6875,
+            "x": 403.671875,
             "y": 373.875,
-            "width": 92.734375,
+            "width": 34.78125,
             "height": 55.984375,
             "top": 373.875,
-            "right": 467.421875,
+            "right": 438.453125,
             "bottom": 429.859375,
-            "left": 374.6875
+            "left": 403.671875
           },
           "cqw": {
-            "left": 73.452,
+            "left": 81.175,
             "top": 26.706,
-            "width": 24.708,
+            "width": 9.267,
             "height": 14.916,
-            "rightGap": 1.84,
+            "rightGap": 9.558,
             "bottomGap": 24.133
           },
           "style": {
             "height": "55.9844px",
-            "width": "92.7344px",
+            "width": "34.7812px",
             "maxHeight": "none",
             "maxWidth": "none",
             "marginTop": "-18.6664px",
@@ -1252,26 +1253,26 @@
           "alt": "FishLengthSmall",
           "src": "http://127.0.0.1:4173/finsearch/static/media/FishLengthSmall.3e492f67da0ac3eaf601.svg",
           "frame": {
-            "x": 374.6875,
+            "x": 403.671875,
             "y": 414.921875,
-            "width": 92.734375,
+            "width": 34.78125,
             "height": 44.796875,
             "top": 414.921875,
-            "right": 467.421875,
+            "right": 438.453125,
             "bottom": 459.71875,
-            "left": 374.6875
+            "left": 403.671875
           },
           "cqw": {
-            "left": 73.452,
+            "left": 81.175,
             "top": 37.642,
-            "width": 24.708,
+            "width": 9.267,
             "height": 11.935,
-            "rightGap": 1.84,
+            "rightGap": 9.558,
             "bottomGap": 16.178
           },
           "style": {
             "height": "44.7969px",
-            "width": "92.7344px",
+            "width": "34.7812px",
             "maxHeight": "none",
             "maxWidth": "none",
             "marginTop": "0px",
@@ -1298,26 +1299,26 @@
           "alt": "AllPlayers",
           "src": "http://127.0.0.1:4173/finsearch/static/media/AllPlayers.2cedb023b25c27b4298e.svg",
           "frame": {
-            "x": 389.59375,
+            "x": 403.3125,
             "y": 470.90625,
-            "width": 62.921875,
+            "width": 35.484375,
             "height": 33.59375,
             "top": 470.90625,
-            "right": 452.515625,
+            "right": 438.796875,
             "bottom": 504.5,
-            "left": 389.59375
+            "left": 403.3125
           },
           "cqw": {
-            "left": 77.424,
+            "left": 81.079,
             "top": 52.558,
-            "width": 16.764,
+            "width": 9.454,
             "height": 8.951,
-            "rightGap": 5.812,
+            "rightGap": 9.467,
             "bottomGap": 4.246
           },
           "style": {
             "height": "33.5938px",
-            "width": "62.9219px",
+            "width": "35.4844px",
             "maxHeight": "none",
             "maxWidth": "none",
             "marginTop": "0px",
@@ -1346,26 +1347,26 @@
           "alt": "ArrowDown",
           "src": "http://127.0.0.1:4173/finsearch/static/media/ArrowDown.6d19faad0ef0c8eedd9b.svg",
           "frame": {
-            "x": 374.6875,
+            "x": 403.671875,
             "y": 373.875,
-            "width": 92.734375,
+            "width": 34.78125,
             "height": 55.984375,
             "top": 373.875,
-            "right": 467.421875,
+            "right": 438.453125,
             "bottom": 429.859375,
-            "left": 374.6875
+            "left": 403.671875
           },
           "cqw": {
-            "left": 73.452,
+            "left": 81.175,
             "top": 26.706,
-            "width": 24.708,
+            "width": 9.267,
             "height": 14.916,
-            "rightGap": 1.84,
+            "rightGap": 9.558,
             "bottomGap": 24.133
           },
           "style": {
             "height": "55.9844px",
-            "width": "92.7344px",
+            "width": "34.7812px",
             "maxHeight": "none",
             "maxWidth": "none",
             "marginTop": "-18.6664px",
@@ -1392,26 +1393,26 @@
           "alt": "FishEgg",
           "src": "http://127.0.0.1:4173/finsearch/static/media/FishEgg.47c0854a65b931607a5f.svg",
           "frame": {
-            "x": 374.6875,
+            "x": 403.671875,
             "y": 355.21875,
-            "width": 92.734375,
+            "width": 34.78125,
             "height": 33.59375,
             "top": 355.21875,
-            "right": 467.421875,
+            "right": 438.453125,
             "bottom": 388.8125,
-            "left": 374.6875
+            "left": 403.671875
           },
           "cqw": {
-            "left": 73.452,
+            "left": 81.175,
             "top": 21.735,
-            "width": 24.708,
+            "width": 9.267,
             "height": 8.951,
-            "rightGap": 1.84,
+            "rightGap": 9.558,
             "bottomGap": 35.069
           },
           "style": {
             "height": "33.5938px",
-            "width": "92.7344px",
+            "width": "34.7812px",
             "maxHeight": "none",
             "maxWidth": "none",
             "marginTop": "0px",
@@ -1438,26 +1439,26 @@
           "alt": "FishLengthSmall",
           "src": "http://127.0.0.1:4173/finsearch/static/media/FishLengthSmall.3e492f67da0ac3eaf601.svg",
           "frame": {
-            "x": 374.6875,
+            "x": 403.671875,
             "y": 414.921875,
-            "width": 92.734375,
+            "width": 34.78125,
             "height": 44.796875,
             "top": 414.921875,
-            "right": 467.421875,
+            "right": 438.453125,
             "bottom": 459.71875,
-            "left": 374.6875
+            "left": 403.671875
           },
           "cqw": {
-            "left": 73.452,
+            "left": 81.175,
             "top": 37.642,
-            "width": 24.708,
+            "width": 9.267,
             "height": 11.935,
-            "rightGap": 1.84,
+            "rightGap": 9.558,
             "bottomGap": 16.178
           },
           "style": {
             "height": "44.7969px",
-            "width": "92.7344px",
+            "width": "34.7812px",
             "maxHeight": "none",
             "maxWidth": "none",
             "marginTop": "0px",
@@ -1636,39 +1637,39 @@
           "className": "ability squished",
           "frame": {
             "x": 368.796875,
-            "y": 302.640625,
+            "y": 310.921875,
             "width": 104.53125,
             "height": 67.53125,
-            "top": 302.640625,
+            "top": 310.921875,
             "right": 473.328125,
-            "bottom": 370.171875,
+            "bottom": 378.453125,
             "left": 368.796875
           },
           "cqw": {
             "left": 71.883,
-            "top": 7.727,
+            "top": 9.933,
             "width": 27.851,
             "height": 17.993,
             "rightGap": 0.266,
-            "bottomGap": 40.036
+            "bottomGap": 37.829
           },
           "contentFrame": {
             "x": 379.765625,
-            "y": 310.09375,
+            "y": 318.375,
             "width": 82.59375,
             "height": 52.625,
-            "top": 310.09375,
+            "top": 318.375,
             "right": 462.359375,
-            "bottom": 362.71875,
+            "bottom": 371,
             "left": 379.765625
           },
           "contentCqw": {
             "left": 74.805,
-            "top": 9.712,
+            "top": 11.919,
             "width": 22.006,
             "height": 14.021,
             "rightGap": 3.189,
-            "bottomGap": 42.022
+            "bottomGap": 39.815
           },
           "contentInsets": {
             "top": 7.453125,
@@ -1746,39 +1747,39 @@
           "className": "ability also-if",
           "frame": {
             "x": 368.796875,
-            "y": 377.625,
+            "y": 385.90625,
             "width": 104.53125,
-            "height": 132.4375,
-            "top": 377.625,
+            "height": 115.875,
+            "top": 385.90625,
             "right": 473.328125,
-            "bottom": 510.0625,
+            "bottom": 501.78125,
             "left": 368.796875
           },
           "cqw": {
             "left": 71.883,
-            "top": 27.705,
+            "top": 29.911,
             "width": 27.851,
-            "height": 35.286,
+            "height": 30.873,
             "rightGap": 0.266,
-            "bottomGap": 2.764
+            "bottomGap": 4.971
           },
           "contentFrame": {
             "x": 372.515625,
-            "y": 388.8125,
+            "y": 397.09375,
             "width": 97.09375,
-            "height": 104.75,
-            "top": 388.8125,
+            "height": 88.1875,
+            "top": 397.09375,
             "right": 469.609375,
-            "bottom": 493.5625,
+            "bottom": 485.28125,
             "left": 372.515625
           },
           "contentCqw": {
             "left": 72.874,
-            "top": 30.686,
+            "top": 32.892,
             "width": 25.869,
-            "height": 27.909,
+            "height": 23.496,
             "rightGap": 1.257,
-            "bottomGap": 7.16
+            "bottomGap": 9.367
           },
           "contentInsets": {
             "top": 11.1875,
@@ -1812,16 +1813,16 @@
               "intrinsicWidth": 472,
               "intrinsicHeight": 295,
               "intrinsicAspectRatio": 1.6,
-              "frameAspectRatio": 0.789,
-              "coverScale": 0.448941,
-              "renderedWidth": 211.9,
-              "renderedHeight": 132.438,
-              "cropRight": 107.369,
+              "frameAspectRatio": 0.902,
+              "coverScale": 0.392797,
+              "renderedWidth": 185.4,
+              "renderedHeight": 115.875,
+              "cropRight": 80.869,
               "cropBottom": 0,
               "cqw": {
-                "renderedWidth": 56.457,
-                "renderedHeight": 35.286,
-                "cropRight": 28.607,
+                "renderedWidth": 49.397,
+                "renderedHeight": 30.873,
+                "cropRight": 21.546,
                 "cropBottom": 0
               }
             }
@@ -1833,7 +1834,7 @@
             "alignItems": "center",
             "gap": "2.6133px",
             "width": "97.0938px",
-            "height": "110.062px",
+            "height": "93.5px",
             "minHeight": "74.6656px",
             "fontSize": "15.3065px",
             "lineHeight": "15.3065px",
@@ -1859,21 +1860,21 @@
           "className": "ability-text bold",
           "frame": {
             "x": 379.765625,
-            "y": 310.09375,
+            "y": 318.375,
             "width": 82.59375,
             "height": 15.3125,
-            "top": 310.09375,
+            "top": 318.375,
             "right": 462.359375,
-            "bottom": 325.40625,
+            "bottom": 333.6875,
             "left": 379.765625
           },
           "cqw": {
             "left": 74.805,
-            "top": 9.712,
+            "top": 11.919,
             "width": 22.006,
             "height": 4.08,
             "rightGap": 3.189,
-            "bottomGap": 51.963
+            "bottomGap": 49.756
           },
           "style": {
             "fontSize": "15.3065px",
@@ -1893,26 +1894,26 @@
           "alt": "FishHatch",
           "src": "http://127.0.0.1:4173/finsearch/static/media/FishHatch.58ff38c722190a38c540.svg",
           "frame": {
-            "x": 390.046875,
-            "y": 329.125,
-            "width": 62.015625,
+            "x": 405.9375,
+            "y": 337.40625,
+            "width": 30.234375,
             "height": 33.59375,
-            "top": 329.125,
-            "right": 452.0625,
-            "bottom": 362.71875,
-            "left": 390.046875
+            "top": 337.40625,
+            "right": 436.171875,
+            "bottom": 371,
+            "left": 405.9375
           },
           "cqw": {
-            "left": 77.545,
-            "top": 14.783,
-            "width": 16.523,
+            "left": 81.778,
+            "top": 16.989,
+            "width": 8.055,
             "height": 8.951,
-            "rightGap": 5.932,
-            "bottomGap": 42.022
+            "rightGap": 10.166,
+            "bottomGap": 39.815
           },
           "style": {
             "height": "33.5938px",
-            "width": "62.0156px",
+            "width": "30.2344px",
             "maxHeight": "none",
             "maxWidth": "none",
             "marginTop": "0px",
@@ -1939,26 +1940,26 @@
           "alt": "GreenCoral",
           "src": "http://127.0.0.1:4173/finsearch/static/media/GreenCoral.0d730a55e70e13e95725.svg",
           "frame": {
-            "x": 386.484375,
-            "y": 404.125,
-            "width": 69.140625,
-            "height": 16,
-            "top": 404.125,
-            "right": 455.625,
-            "bottom": 420.125,
-            "left": 386.484375
+            "x": 381.875,
+            "y": 412.40625,
+            "width": 26.125,
+            "height": 26.125,
+            "top": 412.40625,
+            "right": 408,
+            "bottom": 438.53125,
+            "left": 381.875
           },
           "cqw": {
-            "left": 76.595,
-            "top": 34.765,
-            "width": 18.421,
-            "height": 4.263,
-            "rightGap": 4.983,
-            "bottomGap": 26.727
+            "left": 75.367,
+            "top": 36.972,
+            "width": 6.961,
+            "height": 6.961,
+            "rightGap": 17.672,
+            "bottomGap": 21.823
           },
           "style": {
-            "height": "16px",
-            "width": "69.1406px",
+            "height": "26.125px",
+            "width": "26.125px",
             "maxHeight": "26.133px",
             "maxWidth": "none",
             "marginTop": "0px",
@@ -1985,26 +1986,26 @@
           "alt": "GreenCoral",
           "src": "http://127.0.0.1:4173/finsearch/static/media/GreenCoral.0d730a55e70e13e95725.svg",
           "frame": {
-            "x": 386.484375,
-            "y": 420.125,
-            "width": 69.140625,
-            "height": 16,
-            "top": 420.125,
-            "right": 455.625,
-            "bottom": 436.125,
-            "left": 386.484375
+            "x": 408,
+            "y": 412.40625,
+            "width": 26.125,
+            "height": 26.125,
+            "top": 412.40625,
+            "right": 434.125,
+            "bottom": 438.53125,
+            "left": 408
           },
           "cqw": {
-            "left": 76.595,
-            "top": 39.028,
-            "width": 18.421,
-            "height": 4.263,
-            "rightGap": 4.983,
-            "bottomGap": 22.464
+            "left": 82.328,
+            "top": 36.972,
+            "width": 6.961,
+            "height": 6.961,
+            "rightGap": 10.711,
+            "bottomGap": 21.823
           },
           "style": {
-            "height": "16px",
-            "width": "69.1406px",
+            "height": "26.125px",
+            "width": "26.125px",
             "maxHeight": "26.133px",
             "maxWidth": "none",
             "marginTop": "0px",
@@ -2031,26 +2032,26 @@
           "alt": "GreenCoral",
           "src": "http://127.0.0.1:4173/finsearch/static/media/GreenCoral.0d730a55e70e13e95725.svg",
           "frame": {
-            "x": 386.484375,
-            "y": 436.125,
-            "width": 69.140625,
-            "height": 16,
-            "top": 436.125,
-            "right": 455.625,
-            "bottom": 452.125,
-            "left": 386.484375
+            "x": 434.125,
+            "y": 412.40625,
+            "width": 26.125,
+            "height": 26.125,
+            "top": 412.40625,
+            "right": 460.25,
+            "bottom": 438.53125,
+            "left": 434.125
           },
           "cqw": {
-            "left": 76.595,
-            "top": 43.291,
-            "width": 18.421,
-            "height": 4.263,
-            "rightGap": 4.983,
-            "bottomGap": 18.201
+            "left": 89.289,
+            "top": 36.972,
+            "width": 6.961,
+            "height": 6.961,
+            "rightGap": 3.751,
+            "bottomGap": 21.823
           },
           "style": {
-            "height": "16px",
-            "width": "69.1406px",
+            "height": "26.125px",
+            "width": "26.125px",
             "maxHeight": "26.133px",
             "maxWidth": "none",
             "marginTop": "0px",
@@ -2078,21 +2079,21 @@
           "src": "http://127.0.0.1:4173/finsearch/static/media/SchoolFeederMove.be97b1352a4dcaf90302.svg",
           "frame": {
             "x": 408,
-            "y": 467.4375,
+            "y": 459.15625,
             "width": 26.125,
             "height": 26.125,
-            "top": 467.4375,
+            "top": 459.15625,
             "right": 434.125,
-            "bottom": 493.5625,
+            "bottom": 485.28125,
             "left": 408
           },
           "cqw": {
             "left": 82.328,
-            "top": 51.634,
+            "top": 49.428,
             "width": 6.961,
             "height": 6.961,
             "rightGap": 10.711,
-            "bottomGap": 7.16
+            "bottomGap": 9.367
           },
           "style": {
             "height": "26.125px",
@@ -2299,30 +2300,30 @@
           "contentFrame": {
             "x": 375.140625,
             "y": 340.671875,
-            "width": 92.046875,
+            "width": 91.84375,
             "height": 163.828125,
             "top": 340.671875,
-            "right": 467.1875,
+            "right": 466.984375,
             "bottom": 504.5,
             "left": 375.140625
           },
           "contentCqw": {
             "left": 73.573,
             "top": 17.859,
-            "width": 24.524,
+            "width": 24.47,
             "height": 43.649,
-            "rightGap": 1.903,
+            "rightGap": 1.957,
             "bottomGap": 4.246
           },
           "contentInsets": {
             "top": 11.1875,
-            "right": 6.140625,
+            "right": 6.34375,
             "bottom": -36.203125,
             "left": 6.34375
           },
           "contentInsetsCqw": {
             "top": 2.981,
-            "right": 1.636,
+            "right": 1.69,
             "bottom": -9.646,
             "left": 1.69
           },
@@ -2505,24 +2506,24 @@
           "frame": {
             "x": 404.265625,
             "y": 470.90625,
-            "width": 62.921875,
+            "width": 35.484375,
             "height": 33.59375,
             "top": 470.90625,
-            "right": 467.1875,
+            "right": 439.75,
             "bottom": 504.5,
             "left": 404.265625
           },
           "cqw": {
             "left": 81.333,
             "top": 52.558,
-            "width": 16.764,
+            "width": 9.454,
             "height": 8.951,
-            "rightGap": 1.903,
+            "rightGap": 9.213,
             "bottomGap": 4.246
           },
           "style": {
             "height": "33.5938px",
-            "width": "62.9219px",
+            "width": "35.4844px",
             "maxHeight": "none",
             "maxWidth": "none",
             "marginTop": "0px",
@@ -2847,24 +2848,24 @@
           "frame": {
             "x": 400.5,
             "y": 366.96875,
-            "width": 39.015625,
+            "width": 39,
             "height": 33.59375,
             "top": 366.96875,
-            "right": 439.515625,
+            "right": 439.5,
             "bottom": 400.5625,
             "left": 400.5
           },
           "cqw": {
             "left": 80.33,
             "top": 24.866,
-            "width": 10.395,
+            "width": 10.391,
             "height": 8.951,
-            "rightGap": 9.275,
+            "rightGap": 9.279,
             "bottomGap": 31.939
           },
           "style": {
             "height": "33.5938px",
-            "width": "39.0156px",
+            "width": "39px",
             "maxHeight": "none",
             "maxWidth": "none",
             "marginTop": "0px",
@@ -3192,26 +3193,26 @@
           "alt": "FishHatch",
           "src": "http://127.0.0.1:4173/finsearch/static/media/FishHatch.58ff38c722190a38c540.svg",
           "frame": {
-            "x": 390.046875,
+            "x": 405.9375,
             "y": 369.21875,
-            "width": 62.015625,
+            "width": 30.234375,
             "height": 33.59375,
             "top": 369.21875,
-            "right": 452.0625,
+            "right": 436.171875,
             "bottom": 402.8125,
-            "left": 390.046875
+            "left": 405.9375
           },
           "cqw": {
-            "left": 77.545,
+            "left": 81.778,
             "top": 25.465,
-            "width": 16.523,
+            "width": 8.055,
             "height": 8.951,
-            "rightGap": 5.932,
+            "rightGap": 10.166,
             "bottomGap": 31.339
           },
           "style": {
             "height": "33.5938px",
-            "width": "62.0156px",
+            "width": "30.2344px",
             "maxHeight": "none",
             "maxWidth": "none",
             "marginTop": "0px",
@@ -3238,26 +3239,26 @@
           "alt": "FishHatch",
           "src": "http://127.0.0.1:4173/finsearch/static/media/FishHatch.58ff38c722190a38c540.svg",
           "frame": {
-            "x": 390.046875,
+            "x": 405.9375,
             "y": 406.53125,
-            "width": 62.015625,
+            "width": 30.234375,
             "height": 33.59375,
             "top": 406.53125,
-            "right": 452.0625,
+            "right": 436.171875,
             "bottom": 440.125,
-            "left": 390.046875
+            "left": 405.9375
           },
           "cqw": {
-            "left": 77.545,
+            "left": 81.778,
             "top": 35.407,
-            "width": 16.523,
+            "width": 8.055,
             "height": 8.951,
-            "rightGap": 5.932,
+            "rightGap": 10.166,
             "bottomGap": 21.398
           },
           "style": {
             "height": "33.5938px",
-            "width": "62.0156px",
+            "width": "30.2344px",
             "maxHeight": "none",
             "maxWidth": "none",
             "marginTop": "0px",
@@ -3314,6 +3315,399 @@
       },
       "description": {
         "text": "This colorful fish is known as the clown of the sea. It burrows into the sediment at the bottom of the ocean.",
+        "frame": {
+          "x": 182.125,
+          "y": 461.296875,
+          "width": 186.65625,
+          "height": 36,
+          "top": 461.296875,
+          "right": 368.78125,
+          "bottom": 497.296875,
+          "left": 182.125
+        },
+        "cqw": {
+          "left": 22.147,
+          "top": 49.998,
+          "width": 49.731,
+          "height": 9.592,
+          "rightGap": 28.121,
+          "bottomGap": 6.165
+        },
+        "style": {
+          "fontSize": "9.3332px",
+          "lineHeight": "normal",
+          "top": "186.664px",
+          "left": "82.1322px",
+          "width": "186.656px",
+          "fontFamily": "\"Lexus Roman Optical\"",
+          "fontStyle": "normal"
+        }
+      },
+      "swiftBefore": {
+        "notes": "Swift state before this pass used CardAbilityPanelMetrics.live width=28cqw, top=1cqw, trailing=0cqw, height=(100/aspect)-1cqw and CardAbilityBrushMetrics.assetContentMode=stretch.",
+        "abilityPanelFrame": {
+          "left": 369.236,
+          "top": 277.394,
+          "width": 105.092,
+          "height": 242.364,
+          "rightGap": 0,
+          "cqw": {
+            "left": 72,
+            "top": 1,
+            "width": 28,
+            "height": 64.574,
+            "rightGap": 0
+          }
+        },
+        "brushContentMode": "stretch",
+        "brushUsesCapInsets": true,
+        "brushAlignment": "center"
+      },
+      "assets": {
+        "brushAssets": [
+          {
+            "assetName": "IfActivated",
+            "webpagePath": "references/webpage_live/static/media/IfActivated.f4ec95e03e7c3189135e.png"
+          }
+        ]
+      },
+      "roundedCardFrame": {
+        "width": 375.328,
+        "height": 246.797
+      }
+    },
+    {
+      "cardId": "base.main.087",
+      "sourceId": 87,
+      "name": "Paraliparis",
+      "renderedTitle": "Paraliparis",
+      "cardText": "PARALIPARIS\nParaliparis antarcticus\n7\n17 cm\nIF ACTIVATED:\n(all players)\nThis species does not have a common name of its own. It’s a snailfish—scaleless with a thin, loose, gelatinous skin.",
+      "cardFrame": {
+        "x": 99,
+        "y": 273.640625,
+        "width": 375.328125,
+        "height": 246.796875,
+        "top": 273.640625,
+        "right": 474.328125,
+        "bottom": 520.4375,
+        "left": 99
+      },
+      "cardAspectRatio": 1.5207977207977208,
+      "abilityContainer": {
+        "frame": {
+          "x": 368.796875,
+          "y": 274.640625,
+          "width": 104.53125,
+          "height": 244.78125,
+          "top": 274.640625,
+          "right": 473.328125,
+          "bottom": 519.421875,
+          "left": 368.796875
+        },
+        "x": 368.796875,
+        "y": 274.640625,
+        "width": 104.53125,
+        "height": 244.78125,
+        "top": 274.640625,
+        "right": 473.328125,
+        "bottom": 519.421875,
+        "left": 368.796875,
+        "cqw": {
+          "left": 71.883,
+          "top": 0.266,
+          "width": 27.851,
+          "height": 65.218,
+          "rightGap": 0.266,
+          "bottomGap": 0.271
+        },
+        "style": {
+          "display": "flex",
+          "flexDirection": "column",
+          "gap": "7.46656px",
+          "height": "241.062px",
+          "justifyContent": "center",
+          "minWidth": "104.532px",
+          "paddingTop": "3.73328px",
+          "position": "relative",
+          "right": "104.532px",
+          "transform": "none",
+          "zIndex": "auto"
+        }
+      },
+      "abilityBlocks": [
+        {
+          "className": "ability",
+          "frame": {
+            "x": 368.796875,
+            "y": 346.640625,
+            "width": 104.53125,
+            "height": 104.5,
+            "top": 346.640625,
+            "right": 473.328125,
+            "bottom": 451.140625,
+            "left": 368.796875
+          },
+          "cqw": {
+            "left": 71.883,
+            "top": 19.45,
+            "width": 27.851,
+            "height": 27.842,
+            "rightGap": 0.266,
+            "bottomGap": 18.463
+          },
+          "contentFrame": {
+            "x": 379.765625,
+            "y": 358.9375,
+            "width": 82.59375,
+            "height": 145.5625,
+            "top": 358.9375,
+            "right": 462.359375,
+            "bottom": 504.5,
+            "left": 379.765625
+          },
+          "contentCqw": {
+            "left": 74.805,
+            "top": 22.726,
+            "width": 22.006,
+            "height": 38.783,
+            "rightGap": 3.189,
+            "bottomGap": 4.246
+          },
+          "contentInsets": {
+            "top": 12.296875,
+            "right": 10.96875,
+            "bottom": -53.359375,
+            "left": 10.96875
+          },
+          "contentInsetsCqw": {
+            "top": 3.276,
+            "right": 2.922,
+            "bottom": -14.217,
+            "left": 2.922
+          },
+          "background": {
+            "image": "url(\"http://127.0.0.1:4173/finsearch/static/media/IfActivated.f4ec95e03e7c3189135e.png\")",
+            "assetName": "IfActivated",
+            "size": "cover",
+            "position": "0% 0%",
+            "repeat": "repeat",
+            "origin": "padding-box",
+            "clip": "border-box",
+            "attachment": "scroll",
+            "color": "rgba(0, 0, 0, 0)",
+            "transform": "none",
+            "borderRadius": "0px",
+            "overflow": "visible",
+            "clipPath": "none",
+            "zIndex": "auto",
+            "webpagePath": "references/webpage_live/static/media/IfActivated.f4ec95e03e7c3189135e.png",
+            "rendered": {
+              "intrinsicWidth": 472,
+              "intrinsicHeight": 295,
+              "intrinsicAspectRatio": 1.6,
+              "frameAspectRatio": 1,
+              "coverScale": 0.354237,
+              "renderedWidth": 167.2,
+              "renderedHeight": 104.5,
+              "cropRight": 62.669,
+              "cropBottom": 0,
+              "cqw": {
+                "renderedWidth": 44.548,
+                "renderedHeight": 27.842,
+                "cropRight": 16.697,
+                "cropBottom": 0
+              }
+            }
+          },
+          "layout": {
+            "display": "flex",
+            "position": "static",
+            "justifyContent": "space-around",
+            "alignItems": "center",
+            "gap": "3.73328px",
+            "width": "104.531px",
+            "height": "74.6562px",
+            "minHeight": "74.6656px",
+            "fontSize": "15.3065px",
+            "lineHeight": "15.3065px",
+            "boxSizing": "content-box"
+          },
+          "padding": {
+            "top": 11.1998,
+            "right": 0,
+            "bottom": 18.6664,
+            "left": 0,
+            "cqw": {
+              "top": 2.984,
+              "right": 0,
+              "bottom": 4.973,
+              "left": 0
+            }
+          }
+        }
+      ],
+      "triggerTitles": [
+        {
+          "text": "IF ACTIVATED:",
+          "className": "ability-text bold",
+          "frame": {
+            "x": 379.765625,
+            "y": 358.9375,
+            "width": 82.59375,
+            "height": 15.3125,
+            "top": 358.9375,
+            "right": 462.359375,
+            "bottom": 374.25,
+            "left": 379.765625
+          },
+          "cqw": {
+            "left": 74.805,
+            "top": 22.726,
+            "width": 22.006,
+            "height": 4.08,
+            "rightGap": 3.189,
+            "bottomGap": 38.949
+          },
+          "style": {
+            "fontSize": "15.3065px",
+            "fontWeight": "700",
+            "lineHeight": "15.3065px",
+            "paddingLeft": "14.9331px",
+            "textAlign": "start",
+            "position": "static",
+            "zIndex": "auto"
+          }
+        }
+      ],
+      "abilityIcons": [
+        {
+          "index": 0,
+          "className": "DrawCard",
+          "alt": "DrawCard",
+          "src": "http://127.0.0.1:4173/finsearch/static/media/DrawCard.f8797f97d67a54536956.svg",
+          "frame": {
+            "x": 399.140625,
+            "y": 401.484375,
+            "width": 43.84375,
+            "height": 29.859375,
+            "top": 401.484375,
+            "right": 442.984375,
+            "bottom": 431.34375,
+            "left": 399.140625
+          },
+          "cqw": {
+            "left": 79.968,
+            "top": 34.062,
+            "width": 11.681,
+            "height": 7.956,
+            "rightGap": 8.351,
+            "bottomGap": 23.738
+          },
+          "style": {
+            "height": "29.8594px",
+            "width": "43.8438px",
+            "maxHeight": "none",
+            "maxWidth": "none",
+            "marginTop": "0px",
+            "marginRight": "0px",
+            "marginBottom": "0px",
+            "marginLeft": "0px",
+            "position": "static",
+            "bottom": "auto",
+            "filter": "none",
+            "zIndex": "auto",
+            "objectFit": "fill",
+            "transform": "none"
+          },
+          "marginCqw": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          }
+        },
+        {
+          "index": 1,
+          "className": "AllPlayers",
+          "alt": "AllPlayers",
+          "src": "http://127.0.0.1:4173/finsearch/static/media/AllPlayers.2cedb023b25c27b4298e.svg",
+          "frame": {
+            "x": 399.140625,
+            "y": 470.90625,
+            "width": 35.484375,
+            "height": 33.59375,
+            "top": 470.90625,
+            "right": 434.625,
+            "bottom": 504.5,
+            "left": 399.140625
+          },
+          "cqw": {
+            "left": 79.968,
+            "top": 52.558,
+            "width": 9.454,
+            "height": 8.951,
+            "rightGap": 10.578,
+            "bottomGap": 4.246
+          },
+          "style": {
+            "height": "33.5938px",
+            "width": "35.4844px",
+            "maxHeight": "none",
+            "maxWidth": "none",
+            "marginTop": "0px",
+            "marginRight": "0px",
+            "marginBottom": "0px",
+            "marginLeft": "0px",
+            "position": "absolute",
+            "bottom": "14.9331px",
+            "filter": "drop-shadow(rgb(64, 64, 64) 0px 0px 4px)",
+            "zIndex": "auto",
+            "objectFit": "fill",
+            "transform": "none"
+          },
+          "marginCqw": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          }
+        }
+      ],
+      "arrowDown": null,
+      "alsoIfBlockCount": 0,
+      "alsoIfGap": null,
+      "silhouette": {
+        "frame": {
+          "x": 182.125,
+          "y": 345.5625,
+          "width": 179.171875,
+          "height": 57.578125,
+          "top": 345.5625,
+          "right": 361.296875,
+          "bottom": 403.140625,
+          "left": 182.125
+        },
+        "cqw": {
+          "left": 22.147,
+          "top": 19.162,
+          "width": 47.737,
+          "height": 15.341,
+          "rightGap": 30.115,
+          "bottomGap": 31.252
+        },
+        "style": {
+          "maxHeight": "126.932px",
+          "maxWidth": "179.197px",
+          "top": "70.9323px",
+          "left": "82.1322px",
+          "opacity": "1",
+          "filter": "none",
+          "transform": "none",
+          "zIndex": "auto"
+        }
+      },
+      "description": {
+        "text": "This species does not have a common name of its own. It’s a snailfish—scaleless with a thin, loose, gelatinous skin.",
         "frame": {
           "x": 182.125,
           "y": 461.296875,

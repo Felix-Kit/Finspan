@@ -200,9 +200,11 @@
 - Icon renderability pipeline fix 已完成：不再把 resolver success 当作可见性证明，新增 PNG 像素审计和 runtime bundle decode 测试。
 - Ability layout / brush / badge / starter corner pass 已完成：live JS/CSS 的 icon-run、ability-row、also-if split block、AllPlayers drop-shadow、S&R logo 和 starter corner overlay 已进入 Swift presentation model。
 - Live DOM measured ability brush correctness pass 已完成：right-side panel frame、brush cover/top-left background mode、also-if gap、ArrowDown overlap 和 AllPlayers bottom placement 已从真实 DOM / computed style 映射。
+- AllPlayers container overlay regression pass 已完成：34 张含 `[AllPlayers]` 的牌统一把图标放在 ability container 底部，不再让图标参与 IF ACTIVATED / GAME END brush block 高度；Paraliparis 已加入 live DOM 代表卡。
+- 能力 icon class 尺寸已对齐 live CSS，并保持 PNG / SVG 原始宽高比；plus-row 同步应用 live max-height / max-width，避免 DrawCard、Discard、Consume、UnSchoolFish 和 AnyCoral 等组合忽大忽小。
 - Inline ability interaction 当前完成 refined taxonomy、dock presentation model 和 floating control surface，但本阶段暂停 card inline 作为主交互。`BottomRewardDock` 先承载 reward / pending 信息和复杂 continuation；纯 `playFish` confirm / cancel 由 `FloatingActionPairView` 承载。card source / ability icon group 只做辅助高亮。包含 `ArrowDown` 的能力按组合语义整体高亮，不把 `ArrowDown` 单独作为可点入口。
 - Unified Board/Card Interaction Flow Design 已完成第一步：新增 `docs/UNIFIED_BOARD_CARD_INTERACTION_FLOW.md`、pure presentation model、四维 taxonomy、`IncomingRewardDockState` 和 `BottomRewardDockState`；当前不实现完整 card inline ability tap、完整 inline `playFish`、完整 inline dive reward 或 engine-level undo。
-- 后续用 live renderer screenshot 对 Great White Shark、If Activated、Game End 三类卡做截图级对照。
+- 后续继续在真实设备 / Simulator 牌库对极长文案、五图标组合和 S&R 特殊 coral group 做截图级微调；本轮已完成 Great White Shark、If Activated、Game End、also-if、AllPlayers / Paraliparis 的结构级对照。
 - 收敛 title、scientific name、points、length、ability text 的 font size / line-height / wrapping，以及 icon sub-pixel offset 的微调。
 - 调整 fish image frame、opacity、blend、clipping。
 - 继续保留 card face static view state cache，不在 SwiftUI `body` 内 parse ability text 或扫描 bundle。

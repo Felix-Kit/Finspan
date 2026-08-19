@@ -71,6 +71,17 @@ struct CardAbilityBlock: Equatable {
     var hasBrushBackground: Bool {
         backgroundAsset != nil
     }
+
+    /// Elements that participate in the brush-backed flex layout. Container
+    /// overlays such as `AllPlayers` are intentionally excluded.
+    var brushContentElements: [CardAbilityElement] {
+        elements.filter { element in
+            guard case let .icon(icon) = element else {
+                return true
+            }
+            return icon.placement != .allPlayersBottom
+        }
+    }
 }
 
 struct CardAbilityPresentation: Equatable {
@@ -91,8 +102,16 @@ struct CardAbilityPresentation: Equatable {
     }
 
     var hasAllPlayersShadow: Bool {
-        blocks.contains { block in
-            block.elements.containsAllPlayersShadow
+        !bottomOverlayIcons.isEmpty
+    }
+
+    /// The live card CSS positions `AllPlayers` relative to the complete
+    /// ability container, not relative to the brush-backed ability block.
+    /// Keeping this as presentation data prevents the brush from growing to
+    /// include the bottom icon while preserving the raw ability elements.
+    var bottomOverlayIcons: [CardAbilityIcon] {
+        blocks.flatMap { block in
+            block.elements.allPlayersBottomIcons
         }
     }
 
@@ -435,17 +454,17 @@ struct CardAbilityPresentationBuilder {
 }
 
 extension Array where Element == CardAbilityElement {
-    var containsAllPlayersShadow: Bool {
-        contains { element in
+    var allPlayersBottomIcons: [CardAbilityIcon] {
+        flatMap { element -> [CardAbilityIcon] in
             switch element {
-            case let .icon(icon):
-                return icon.style == .allPlayersShadow
+            case let .icon(icon) where icon.placement == .allPlayersBottom:
+                return [icon]
             case let .iconGroup(group):
-                return group.icons.contains { $0.style == .allPlayersShadow }
+                return group.icons.filter { $0.placement == .allPlayersBottom }
             case let .horizontalRow(elements):
-                return elements.containsAllPlayersShadow
-            case .text, .points:
-                return false
+                return elements.allPlayersBottomIcons
+            case .text, .icon, .points:
+                return []
             }
         }
     }
