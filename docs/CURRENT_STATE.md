@@ -102,12 +102,12 @@
 - 已明确区分 cost / requirement token 与 reward / ability token：`playFish` cost icon 是进度展示，玩家直接点击 board / hand / reef 上的合法来源；ability reward icon 才是主动入口。
 - Compact Resource HUD 已接入顶部 HUD，只用真实 live-derived token icon 显示鱼卵、幼鱼和鱼群计数。手牌数量留在手牌区域，三色珊瑚移到各 dive-site column 的 twilight / reef 区域附近。
 - board slot 鱼牌上的 egg / young / school 已从左侧 size-class 区域迁到中央 fish artwork / background region。token 可覆盖鱼图，但共享 normalized layout 保证视觉图标和透明 hit target 都留在 card / slot bounds 内，并避开 points、length、tag、名称、flavor 和右侧 ability 区。
-- board resource token 继续使用 live-derived CardAssets，无 badge / 底板；视觉尺寸从 7.5cqw 提高到 9cqw，最多五枚按紧凑错位布局展开。payment staged selection 仍由 slot 层同中心的透明 hit target 发送，手牌和弃牌卡面不注入 board token。
-- 玩家板上的初始 2 枚鱼卵和 1 枚幼鱼现在与后续资源完全共用 live token 呈现：直接叠加本地 `FishEgg` / `YoungFish` / `SchoolFish` 素材及透明点击区，不再为背景内的印刷起始提示单独校准或绘制圆角资源槽。资源锚点位于所属鱼牌／槽位的中央 artwork 区域；背景 PNG 保持原始、经校验的玩家板美术。
-- Player Mat Background Pass 已接入：Base 玩家面板由规则书干净样例手工分离为本地离线 `base_player_mat.png`，使用实体纵向面板比例；`player_mat_layout.json` 按面板像素校准 18 个 slot / card / hit / highlight rect，所有 overlay 继续复用 `BoardLayoutMapper` 的同一套 aspectFit 映射。
+- board resource token 无 badge / 底板；鱼卵改用橙色半透明果冻球实体素材，幼鱼改用不透明黄色厚片实体素材，鱼群与珊瑚继续复用现有本地素材。视觉尺寸维持 9cqw，最多五枚按紧凑错位布局展开。payment staged selection 仍由 slot 层同中心的透明 hit target 发送，手牌和弃牌卡面不注入 board token。
+- 玩家板上的初始 2 枚鱼卵和 1 枚幼鱼与后续资源完全共用 live token 呈现。`base_player_mat_clean.png` 已从背景中移除三处印刷资源方框／图标，避免静态提示与真实 token 重叠；资源锚点仍位于所属鱼牌／槽位的中央 artwork 区域。
+- Player Mat Background Pass 已接入：Base 玩家面板由规则书样例手工分离并局部清理为本地离线 `base_player_mat_clean.png`，使用实体纵向面板比例；`player_mat_layout.json` 按面板像素校准 18 个 slot / card / hit / highlight rect，所有 overlay 继续复用 `BoardLayoutMapper` 的同一套 aspectFit 映射。
 - 独立 PNG 棋盘资源现在通过 bundle 文件 URL 加载并缓存，不再误用只查 Asset Catalog 的 `Image(name)`。若背景文件缺失或解码失败，棋盘会自动显示渐变背景、可见空槽轮廓和独立 forage fish 卡面，不会再次退化成整板空白。
 - 每张出牌卡现在以完整鱼牌比例覆盖印刷 slot：`cardRect` 不再在 16:9 placeholder slot 内二次缩小。空槽只保留透明 hit target / 柔和 tint；面板印刷的 Catalina Goby、Showy Bristlemouth、Glasshead Grenadier 直接由背景显示，真实出牌继续叠加 `FishCardFaceView`。
-- S&R 继续使用与 Base 完全相同的面板尺寸和 18-slot 布局，只在 Twilight 上方按 normalized rect 叠加本地 `sharks_reefs_coral_overlay.png`；动态珊瑚进度使用轻量 overlay，不另造一张尺寸不同的棋盘。
+- S&R 继续使用与 Base 完全相同的面板尺寸和 18-slot 布局。`sharks_reefs_coral_overlay_aligned.png` 的底边精确贴合 Twilight slot 顶边，并已烘焙一致底色以避免半透明漏出 Base 面板。珊瑚不再显示 `0/6` badge；`CoralReefState.coralCount` 按数量逐枚把现有三色珊瑚素材放入条带印刷的六个圆槽。
 - DEBUG calibration overlay 仍可显示 slotRect / cardRect / hitRect / highlightRect 与 slot id，但只在启动参数 `-showBoardCalibration` 或环境变量 `FINSPAN_SHOW_BOARD_CALIBRATION=1` 时开启，不污染普通 Debug 试玩界面。
 - GameBoard UI Cleanup Pass 1 已完成第一轮明显 UI bug 修复：根视图使用海洋渐变背景，底部手牌区使用融入棋盘的 glass backdrop，不再出现突兀白色底条。
 - 手牌区继续以稳定 `cardId` 为 identity 居中渲染；选中 / 拖动只改变同一张卡的 offset / scale / zIndex，不让整排手牌因弃牌堆或 selection 重排。

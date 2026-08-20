@@ -96,6 +96,7 @@ struct BoardLayout: Codable, Equatable {
         let boardHeight = 3454.0
         let columnIndex = DiveSite.allCases.firstIndex(of: diveSite) ?? 0
         let xPixels = [77.0, 663.0, 1249.0][columnIndex]
+        let coralCenterXPixels = [365.021531, 847.016746, 1352.523923][columnIndex]
         let yPixels = [561.0, 965.0, 1365.0, 1909.0, 2459.0, 2859.0][rowIndex]
         let slotHeightPixels = rowIndex == 0 ? 388.0 : 387.0
         let slotRect = BoardNormalizedRect(
@@ -136,7 +137,10 @@ struct BoardLayout: Codable, Equatable {
                 x: cardRect.x + cardRect.width * 0.46,
                 y: cardRect.y + cardRect.height * 0.42
             ),
-            coralAnchor: BoardNormalizedPoint(x: slotRect.x + slotRect.width * 0.50, y: 1812.0 / boardHeight),
+            coralAnchor: BoardNormalizedPoint(
+                x: coralCenterXPixels / boardWidth,
+                y: 1800.064815 / boardHeight
+            ),
             diverAnchor: BoardNormalizedPoint(x: slotRect.x + slotRect.width * 0.12, y: slotRect.y + slotRect.height * 0.50)
         )
     }
@@ -232,6 +236,51 @@ enum BoardSlotResourceTokenLayout {
             width: constrainedSize,
             height: constrainedSize
         )
+    }
+}
+
+struct BoardCoralTokenFrame: Equatable {
+    let visualRect: CGRect
+}
+
+/// Maps earned coral pieces onto the six printed coral spaces in the S&R strip.
+/// The layout stays in normalized board coordinates so it follows the same
+/// aspect-fit transform as cards, hit targets, highlights, and the reef artwork.
+enum BoardCoralTokenLayout {
+    static let maxVisibleTokens = 6
+    static let tokenSizeToBoardWidth: CGFloat = 56.0 / 1_850.0
+    static let tokenSpacingToBoardWidth: CGFloat = 72.215311 / 1_850.0
+
+    static func frames(
+        coralCount: Int,
+        reefCenter: BoardNormalizedPoint,
+        boardRect: CGRect
+    ) -> [BoardCoralTokenFrame] {
+        let visibleCount = min(max(coralCount, 0), maxVisibleTokens)
+        guard visibleCount > 0 else { return [] }
+
+        let center = BoardLayoutMapper.mapBoardNormalizedPoint(
+            reefCenter,
+            into: boardRect
+        )
+        let tokenSize = boardRect.width * tokenSizeToBoardWidth
+        let spacing = boardRect.width * tokenSpacingToBoardWidth
+        let firstCenterX = center.x - spacing * CGFloat(maxVisibleTokens - 1) / 2
+
+        return (0..<visibleCount).map { index in
+            let tokenCenter = CGPoint(
+                x: firstCenterX + spacing * CGFloat(index),
+                y: center.y
+            )
+            return BoardCoralTokenFrame(
+                visualRect: CGRect(
+                    x: tokenCenter.x - tokenSize / 2,
+                    y: tokenCenter.y - tokenSize / 2,
+                    width: tokenSize,
+                    height: tokenSize
+                )
+            )
+        }
     }
 }
 

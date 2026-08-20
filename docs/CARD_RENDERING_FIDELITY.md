@@ -79,11 +79,11 @@ Swift resolver 层把 web renderer model 映射到可缓存的 view state：
 
 `GameBoardViewModel` 和 `CardLibraryViewModel` 负责构造静态 `FishCardFaceViewState`。`FishCardFaceView` 只读取 view state 展示，不在 `body` 内解析 ability text，不扫描 bundle。
 
-`GameTokenIconResolver` 是游戏 token UI 的复用层。Compact Resource HUD、鱼牌 board-resource overlay、珊瑚礁 badge 和 `BottomRewardDockToken` 正常路径都通过 live-derived CardAssets icon 渲染，不使用 SF Symbol、emoji、临时色块或纯文字作为 token 图标。布局尺寸由调用方明确 frame 控制，不由 PNG intrinsic size 控制。
+`GameTokenIconResolver` 是游戏 token UI 的复用层。Compact Resource HUD、鱼牌 board-resource overlay、逐枚珊瑚和 `BottomRewardDockToken` 正常路径都通过本地离线素材渲染，不使用 SF Symbol、emoji、临时色块或纯文字作为 token 图标。egg / young 优先解析 `BoardAssets` 中无 badge 的橙色果冻球与黄色厚片实体素材，其他 token 继续复用 live-derived CardAssets；布局尺寸由调用方明确 frame 控制，不由 PNG intrinsic size 控制。
 
 鱼卵 / 幼鱼 / 鱼群 board-resource token 通过 `FishCardFaceViewState.resourceTokens` 进入共享卡面，但只由 ocean slot 注入；手牌和弃牌复用卡面时保持空数组。token 已从左侧 size-class 区域移到中央 fish artwork / background region，可以覆盖 fish silhouette / image。`CardRenderMetrics.BoardResourceTokenLayout` 以同一套 cqw normalized frames 驱动 9cqw 视觉图标和 11cqw 透明 hit target，最多五枚采用两行轻微错位布局；所有 frame 均在 fish artwork 与 card / slot bounds 内，并避开名称、tag、points / Wave、length / size、flavor text、zone 和右侧 ability panel。token 没有 badge、圆框、方框或大底板；selected 状态只使用轻量 scale / shadow。slot 层透明命中区域继续发送 staged payment intent，不重复绘制图标。
 
-顶部 Compact Resource HUD 只保留鱼卵、幼鱼和鱼群。Blue / Purple / Green coral 继续使用相同 resolver，但展示位置移到对应 dive-site column 的 twilight / reef 区域前。
+顶部 Compact Resource HUD 只保留鱼卵、幼鱼和鱼群。Blue / Purple / Green coral 继续使用相同 resolver，但按 `coralCount` 逐枚放进对应 dive-site column 的 twilight / reef 印刷圆槽，不显示 `0/6` 数字 badge。
 
 Weekly Achievement Board 也复用同一路径：`WeeklyGoalIconToken` 在 `GameBoardViewModel` 中映射到 `GameTokenIconKind`，再由 `GameTokenIconResolver` / `GameTokenIconView` 渲染。右上角四个入口只显示 icon 与微型角标，当前周 icon 放大；全 4 周 scoreboard 的 section header 继续按“周数 -> icon -> 标题”使用相同 resolver。周目标 HUD / scoreboard 不用 emoji 或文本符号表达鱼卵、幼鱼、鱼群、珊瑚、区域、鱼长度、捕食者、弃牌和 GAME END。
 

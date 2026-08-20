@@ -140,7 +140,7 @@
 - `consumeFishFromHand` 的 dock flow 已稳定为 hand picker first，再继续到 board consumer target；不在 dock 内塞复杂选择。
 - `playFishForFree` / `playFishFromHand` 的 dock flow 已稳定为 hand picker -> staged `playFish`；free play 不要求支付，paid play 继续进入 payment selection，纯确认 / 取消由 `FloatingActionPairView` 承载。
 - `drawFish` direct commit、GAME END candidate activation / finish、AllPlayers target-player external reward 继续由 dock 表达；提交后没有 committed undo。
-- Compact Resource HUD 已瘦身为鱼卵、幼鱼、鱼群；珊瑚使用 live-derived CardAssets icon 显示在 twilight / reef 区域附近。
+- Compact Resource HUD 已瘦身为鱼卵、幼鱼、鱼群；鱼卵／幼鱼使用无 badge 的橙色果冻球／黄色厚片实体素材。珊瑚按实际数量逐枚显示在 twilight 上方 reef 条带的印刷槽内，不再用 `0/6` badge。
 - 右侧资源统计大面板已从 right-side fallback 区抽离；right-side pending / reward / action / playFish confirm 面板不再占主布局。
 - 新增 `GameTokenIconResolver` / `GameTokenIconView`，让非卡面 UI 复用 `CardSymbolAssetResolver` / live-derived PNG icon，不使用 SF Symbol、emoji、临时色块或纯文字作为 token 正常路径。
 - Unified staged interaction presentation model 已新增，覆盖 hand card、source fish、dive site / zone、reef / board marker、pending effect node，以及 payment source、reward token、target、confirm、skip、fallback 等 step。
@@ -233,9 +233,9 @@
 - Pass 1 已完成：新增 `BoardLayoutMapper.boardImageRect(in:imageAspectRatio:)`、normalized rect / point mapping helper；board overlay 坐标统一从同一套 aspectFit transform 派生。
 - Player Mat Background Pass 已完成：从用户提供的 Base 规则书干净面板参考手工分离本地背景，`player_mat_layout.json` 使用实体纵向比例并按像素校准 18 个等鱼牌尺寸的 card rect。
 - Player Mat 独立 PNG 已改为通过 bundle 文件 URL 加载并缓存，不再按 Asset Catalog 名称查找；背景缺失时使用可见 slot / forage fish 安全降级，避免整个 board canvas 空白。
-- S&R 使用同一面板和同一 slot mapping，只叠加手工分离的 coral reef strip；不复制或分叉 18-slot 坐标。
-- 背景图负责实体 slot / forage fish / bottom strip 美术；SwiftUI 只叠加透明 hit target、真实出牌、资源 token、coral progress、后续 diver 和柔和 glow / tint highlight。
-- board 上初始资源和后续资源统一为 resolver-backed 鱼卵／幼鱼／鱼群实物 token，叠加在所属鱼牌或空槽的中央 artwork anchor；不再额外画背景资源槽或为背景中印刷提示做专用对齐。
+- S&R 使用同一面板和同一 slot mapping，只叠加底边精确贴合 Twilight 顶边的 opaque-backed coral reef strip；不复制或分叉 18-slot 坐标。
+- 背景图负责实体 slot / forage fish / bottom strip 美术；SwiftUI 只叠加透明 hit target、真实出牌、资源 token、逐枚 coral piece、后续 diver 和柔和 glow / tint highlight。
+- clean 背景已移除三处印刷起始资源方框／图标；board 上初始资源和后续资源统一为 resolver-backed 实物 token，叠加在所属鱼牌或空槽的中央 artwork anchor，不再和静态印刷提示重复。
 - DEBUG calibration overlay 只在显式启动参数 / 环境变量打开，且不发送 `PlayerCommand`、不修改 `GameState`。
 - 下一步只做实机像素 QA 与少量 rect 微调；自动 PDF layer extraction、自动 slot 识别、服务器 / Nautoma / S&R 新规则仍不在本阶段。
 

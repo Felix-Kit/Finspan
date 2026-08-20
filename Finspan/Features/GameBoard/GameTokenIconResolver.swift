@@ -30,13 +30,14 @@ enum GameTokenIconKind: Equatable, Hashable {
 struct GameTokenIconAsset: Equatable {
     let kind: GameTokenIconKind
     let icon: FishCardFaceIconViewState
+    let boardAssetName: String?
 
     var asset: CardAssetReference? {
         icon.asset
     }
 
     var isResolved: Bool {
-        icon.asset != nil && icon.missingAsset == nil
+        boardAssetName != nil || (icon.asset != nil && icon.missingAsset == nil)
     }
 }
 
@@ -57,7 +58,8 @@ final class GameTokenIconResolver: @unchecked Sendable {
                 named: metadata.assetName,
                 fallbackText: metadata.fallbackText,
                 accessibilityText: metadata.accessibilityText
-            )
+            ),
+            boardAssetName: physicalPieceAssetName(for: kind)
         )
     }
 
@@ -129,6 +131,17 @@ final class GameTokenIconResolver: @unchecked Sendable {
             return ("AnyCoral", "潜水", "潜水点")
         }
     }
+
+    private func physicalPieceAssetName(for kind: GameTokenIconKind) -> String? {
+        switch kind {
+        case .egg:
+            return "board_token_egg_orange"
+        case .young:
+            return "board_token_young_yellow"
+        default:
+            return nil
+        }
+    }
 }
 
 struct GameTokenIconView: View {
@@ -137,7 +150,13 @@ struct GameTokenIconView: View {
 
     var body: some View {
         Group {
-            if let image = rasterImage(for: icon.asset) {
+            if let boardAssetName = icon.boardAssetName,
+               let image = BoardImageAssetResolver.image(named: boardAssetName) {
+                Image(uiImage: image)
+                    .resizable()
+                    .renderingMode(.original)
+                    .scaledToFit()
+            } else if let image = rasterImage(for: icon.asset) {
                 Image(uiImage: image)
                     .resizable()
                     .renderingMode(.original)

@@ -45,4 +45,16 @@ final class GameTokenIconResolverTests: XCTestCase {
             XCTAssertNil(icon.icon.missingAsset)
         }
     }
+
+    func testEggAndYoungUsePhysicalBoardPieceArtworkWithoutBadgeContainers() {
+        let egg = GameTokenIconResolver.shared.icon(for: .egg)
+        let young = GameTokenIconResolver.shared.icon(for: .young)
+        let school = GameTokenIconResolver.shared.icon(for: .school)
+
+        XCTAssertEqual(egg.boardAssetName, "board_token_egg_orange")
+        XCTAssertEqual(young.boardAssetName, "board_token_young_yellow")
+        XCTAssertNil(school.boardAssetName)
+        XCTAssertTrue(egg.isResolved)
+        XCTAssertTrue(young.isResolved)
+    }
 }

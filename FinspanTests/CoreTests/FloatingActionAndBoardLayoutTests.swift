@@ -246,7 +246,7 @@ final class BoardLayoutMappingTests: XCTestCase {
 
         XCTAssertEqual(layout.id, "base.player-mat.rulebook.v1")
         XCTAssertEqual(layout.imageAspectRatio, 1_850.0 / 3_454.0, accuracy: 0.000_001)
-        XCTAssertEqual(layout.backgroundAssetName, "base_player_mat")
+        XCTAssertEqual(layout.backgroundAssetName, "base_player_mat_clean")
         XCTAssertEqual(layout.includesPrintedForageFish, true)
         XCTAssertEqual(layout.slots.count, 18)
         XCTAssertNotNil(layout.slot(id: "blue.sunlit.0"))
@@ -276,25 +276,50 @@ final class BoardLayoutMappingTests: XCTestCase {
         let layout = try JSONDecoder().decode(BoardLayout.self, from: data)
         let overlayRect = try XCTUnwrap(layout.coralOverlayRect)
 
-        XCTAssertEqual(layout.coralOverlayAssetName, "sharks_reefs_coral_overlay")
-        XCTAssertGreaterThan(overlayRect.y, 0.49)
-        XCTAssertLessThan(overlayRect.maxY, 0.57)
-        XCTAssertTrue(FileManager.default.fileExists(atPath: try resourceURL("BoardAssets/base_player_mat.png").path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: try resourceURL("BoardAssets/sharks_reefs_coral_overlay.png").path))
+        XCTAssertEqual(layout.coralOverlayAssetName, "sharks_reefs_coral_overlay_aligned")
+        XCTAssertEqual(overlayRect.y, 1_728.0 / 3_454.0, accuracy: 0.000_001)
+        XCTAssertEqual(overlayRect.maxY, 1_909.0 / 3_454.0, accuracy: 0.000_001)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: try resourceURL("BoardAssets/base_player_mat_clean.png").path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: try resourceURL("BoardAssets/sharks_reefs_coral_overlay_aligned.png").path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: try resourceURL("BoardAssets/board_token_egg_orange.png").path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: try resourceURL("BoardAssets/board_token_young_yellow.png").path))
     }
 
     func testStandaloneBoardRasterAssetsResolveFromHostedAppBundle() throws {
         let backgroundURL = try XCTUnwrap(
-            BoardImageAssetResolver.resourceURL(named: "base_player_mat", bundle: .main)
+            BoardImageAssetResolver.resourceURL(named: "base_player_mat_clean", bundle: .main)
         )
         let overlayURL = try XCTUnwrap(
-            BoardImageAssetResolver.resourceURL(named: "sharks_reefs_coral_overlay", bundle: .main)
+            BoardImageAssetResolver.resourceURL(named: "sharks_reefs_coral_overlay_aligned", bundle: .main)
         )
 
-        XCTAssertEqual(backgroundURL.lastPathComponent, "base_player_mat.png")
-        XCTAssertEqual(overlayURL.lastPathComponent, "sharks_reefs_coral_overlay.png")
-        XCTAssertNotNil(BoardImageAssetResolver.image(named: "base_player_mat", bundle: .main))
-        XCTAssertNotNil(BoardImageAssetResolver.image(named: "sharks_reefs_coral_overlay", bundle: .main))
+        XCTAssertEqual(backgroundURL.lastPathComponent, "base_player_mat_clean.png")
+        XCTAssertEqual(overlayURL.lastPathComponent, "sharks_reefs_coral_overlay_aligned.png")
+        XCTAssertNotNil(BoardImageAssetResolver.image(named: "base_player_mat_clean", bundle: .main))
+        XCTAssertNotNil(BoardImageAssetResolver.image(named: "sharks_reefs_coral_overlay_aligned", bundle: .main))
+    }
+
+    func testCoralPiecesFillPrintedSpacesWithoutNumericProgressBadge() throws {
+        let data = try Data(contentsOf: boardLayoutJsonURL())
+        let layout = try JSONDecoder().decode(BoardLayout.self, from: data)
+        let boardRect = CGRect(x: 0, y: 0, width: 1_850, height: 3_454)
+        let overlayRect = BoardLayoutMapper.mapBoardNormalizedRect(
+            try XCTUnwrap(layout.coralOverlayRect),
+            into: boardRect
+        )
+        let reefAnchor = try XCTUnwrap(layout.slot(id: "blue.twilight.0")?.coralAnchor)
+
+        XCTAssertTrue(BoardCoralTokenLayout.frames(coralCount: 0, reefCenter: reefAnchor, boardRect: boardRect).isEmpty)
+
+        let frames = BoardCoralTokenLayout.frames(
+            coralCount: 6,
+            reefCenter: reefAnchor,
+            boardRect: boardRect
+        )
+        XCTAssertEqual(frames.count, 6)
+        XCTAssertTrue(frames.allSatisfy { overlayRect.contains($0.visualRect) })
+        XCTAssertGreaterThan(frames[1].visualRect.minX, frames[0].visualRect.maxX)
+        XCTAssertEqual(frames[0].visualRect.width, 56, accuracy: 0.01)
     }
 
     func testPlayerMatUsesPrintedForageFishButStillRendersPlayedFishCards() {

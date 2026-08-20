@@ -1046,9 +1046,12 @@ struct GameBoardView: View {
 
                 ForEach(viewModel.oceanColumns) { column in
                     if let coralReef = column.coralReef {
-                        coralReefBadge(coralReef)
-                            .frame(width: max(82, boardRect.width * 0.13))
-                            .position(coralReefPosition(for: column, layout: layout, in: boardRect))
+                        coralReefTokens(
+                            coralReef,
+                            for: column,
+                            layout: layout,
+                            in: boardRect
+                        )
                     }
                 }
 
@@ -1166,11 +1169,10 @@ struct GameBoardView: View {
         return .clear
     }
 
-    private func coralReefPosition(
+    private func coralReefAnchor(
         for column: OceanDiveSiteColumnViewData,
-        layout: BoardLayout,
-        in boardRect: CGRect
-    ) -> CGPoint {
+        layout: BoardLayout
+    ) -> BoardNormalizedPoint {
         let address = OceanSlotAddress(
             playerId: "layout",
             diveSite: column.diveSite,
@@ -1178,7 +1180,7 @@ struct GameBoardView: View {
         )
         let point = layout.slot(id: BoardLayout.slotId(for: address))?.coralAnchor
             ?? BoardNormalizedPoint(x: 0.5, y: 0.525)
-        return BoardLayoutMapper.mapBoardNormalizedPoint(point, into: boardRect)
+        return point
     }
 
     private var diveActionBar: some View {
@@ -1995,29 +1997,32 @@ struct GameBoardView: View {
         )
     }
 
-    private func coralReefBadge(_ reef: CoralReefViewState) -> some View {
-        HStack(spacing: 4) {
-            coralReefIcon(reef)
-                .frame(width: 14, height: 14)
-
-            Text(reef.progressText)
-                .font(.caption2.weight(.black))
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 4)
-        .background(
-            Capsule()
-                .fill(Color(.systemBackground).opacity(0.78))
+    private func coralReefTokens(
+        _ reef: CoralReefViewState,
+        for column: OceanDiveSiteColumnViewData,
+        layout: BoardLayout,
+        in boardRect: CGRect
+    ) -> some View {
+        let center = coralReefAnchor(
+            for: column,
+            layout: layout
         )
-        .shadow(color: coralReefColor(reef.diveSite).opacity(0.18), radius: 3, y: 1)
-        .accessibilityElement(children: .combine)
+        let frames = BoardCoralTokenLayout.frames(
+            coralCount: reef.coralCount,
+            reefCenter: center,
+            boardRect: boardRect
+        )
+        return ZStack(alignment: .topLeading) {
+            ForEach(Array(frames.enumerated()), id: \.offset) { _, frame in
+                GameTokenIconView(icon: reef.icon, size: frame.visualRect.width)
+                    .position(x: frame.visualRect.midX, y: frame.visualRect.midY)
+                    .accessibilityHidden(true)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .allowsHitTesting(false)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(reef.title) \(reef.progressText) \(reef.completionBonusText)")
-    }
-
-    private func coralReefIcon(_ reef: CoralReefViewState) -> some View {
-        GameTokenIconView(icon: reef.icon, size: 16)
-        .accessibilityHidden(true)
     }
 
     private func slotBackgroundColor(_ slot: OceanSlotViewData) -> Color {
@@ -2072,17 +2077,6 @@ struct GameBoardView: View {
             return .cyan
         case .midnight:
             return .indigo
-        }
-    }
-
-    private func coralReefColor(_ diveSite: DiveSite) -> Color {
-        switch diveSite {
-        case .blue:
-            return .cyan
-        case .purple:
-            return .purple
-        case .green:
-            return .green
         }
     }
 
