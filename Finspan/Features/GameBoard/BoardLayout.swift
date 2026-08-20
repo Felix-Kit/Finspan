@@ -130,7 +130,12 @@ struct BoardLayout: Codable, Equatable {
             cardRect: cardRect,
             hitRect: hitRect,
             highlightRect: highlightRect,
-            resourceAnchor: BoardNormalizedPoint(x: cardRect.x + cardRect.width * 0.46, y: cardRect.y + cardRect.height * 0.42),
+            // Resource pieces are live game tokens placed over the fish / slot artwork.
+            // They do not attempt to align with a printed marker in a raster board.
+            resourceAnchor: BoardNormalizedPoint(
+                x: cardRect.x + cardRect.width * 0.46,
+                y: cardRect.y + cardRect.height * 0.42
+            ),
             coralAnchor: BoardNormalizedPoint(x: slotRect.x + slotRect.width * 0.50, y: 1812.0 / boardHeight),
             diverAnchor: BoardNormalizedPoint(x: slotRect.x + slotRect.width * 0.12, y: slotRect.y + slotRect.height * 0.50)
         )
@@ -150,6 +155,83 @@ enum BoardSlotArtworkPolicy {
         case .fishCard, .placeholder:
             return true
         }
+    }
+
+    static func shouldRenderSeparateResourceTokens(
+        kind: FishCardFaceKind,
+        includesPrintedForageFish: Bool
+    ) -> Bool {
+        switch kind {
+        case .empty:
+            return true
+        case .forageFish:
+            return includesPrintedForageFish
+        case .fishCard, .placeholder:
+            return false
+        }
+    }
+}
+
+struct BoardSlotResourceTokenFrame: Equatable {
+    let visualRect: CGRect
+    let hitRect: CGRect
+}
+
+enum BoardSlotResourceTokenLayout {
+    static let maxVisibleTokens = 5
+    static let visualSizeToCardWidth: CGFloat = 0.155
+    static let hitSizeToVisualSize: CGFloat = 1.28
+
+    private static let offsetFactors: [(x: CGFloat, y: CGFloat)] = [
+        (0, 0),
+        (0.58, 0.18),
+        (-0.42, 0.52),
+        (0.18, 0.76),
+        (0.76, 0.68)
+    ]
+
+    static func frame(
+        at index: Int,
+        anchor: CGPoint,
+        cardRect: CGRect
+    ) -> BoardSlotResourceTokenFrame {
+        let visualSize = cardRect.width * visualSizeToCardWidth
+        let offset = offsetFactors[min(max(index, 0), offsetFactors.count - 1)]
+        let center = CGPoint(
+            x: anchor.x + visualSize * offset.x,
+            y: anchor.y + visualSize * offset.y
+        )
+        let visualRect = constrainedSquare(
+            centeredAt: center,
+            size: visualSize,
+            inside: cardRect
+        )
+        let hitSize = visualSize * hitSizeToVisualSize
+        let hitPadding = max(0, (hitSize - visualSize) / 2)
+        let hitRect = visualRect
+            .insetBy(dx: -hitPadding, dy: -hitPadding)
+            .intersection(cardRect)
+        return BoardSlotResourceTokenFrame(
+            visualRect: visualRect,
+            hitRect: hitRect
+        )
+    }
+
+    private static func constrainedSquare(
+        centeredAt center: CGPoint,
+        size: CGFloat,
+        inside bounds: CGRect
+    ) -> CGRect {
+        let constrainedSize = min(size, bounds.width, bounds.height)
+        let halfSize = constrainedSize / 2
+        let centerX = min(max(center.x, bounds.minX + halfSize), bounds.maxX - halfSize)
+        let centerY = min(max(center.y, bounds.minY + halfSize), bounds.maxY - halfSize)
+        return CGRect(
+            x: centerX - halfSize,
+            y: centerY - halfSize,
+            width: constrainedSize,
+            height: constrainedSize
+        )
     }
 }
 

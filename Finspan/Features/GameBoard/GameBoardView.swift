@@ -1010,20 +1010,33 @@ struct GameBoardView: View {
                             layoutSlot.highlightRect,
                             into: boardRect
                         )
+                        let usesPrintedForageFish = hasBoardArtwork
+                            && layout.includesPrintedForageFish == true
+                        let usesSeparateResourceTokens = BoardSlotArtworkPolicy.shouldRenderSeparateResourceTokens(
+                            kind: slot.cardFace.kind,
+                            includesPrintedForageFish: usesPrintedForageFish
+                        )
 
                         slotCanvasHighlight(slot, frame: highlightRect)
                         slotPanel(
                             slot,
                             presentation: .boardCanvas,
                             includesResourceTokenHitTargets: false,
-                            usesPrintedForageFish: hasBoardArtwork && layout.includesPrintedForageFish == true,
+                            usesPrintedForageFish: usesPrintedForageFish,
                             showsFallbackSlotOutline: !hasBoardArtwork
                         )
                             .frame(width: cardRect.width, height: cardRect.height)
                             .position(x: cardRect.midX, y: cardRect.midY)
                             .allowsHitTesting(false)
                         slotCanvasHitTarget(slot, frame: hitRect)
-                        if slot.resourceTokens.contains(where: \.isSelectable) {
+                        if usesSeparateResourceTokens, !slot.resourceTokens.isEmpty {
+                            boardSlotResourceTokens(
+                                slot,
+                                layoutSlot: layoutSlot,
+                                cardRect: cardRect,
+                                boardRect: boardRect
+                            )
+                        } else if slot.resourceTokens.contains(where: \.isSelectable) {
                             cardResourceTokenHitTargets(slot)
                                 .frame(width: cardRect.width, height: cardRect.height)
                                 .position(x: cardRect.midX, y: cardRect.midY)
@@ -1820,6 +1833,66 @@ struct GameBoardView: View {
                 }
             }
         }
+    }
+
+    private func boardSlotResourceTokens(
+        _ slot: OceanSlotViewData,
+        layoutSlot: BoardLayoutSlot,
+        cardRect: CGRect,
+        boardRect: CGRect
+    ) -> some View {
+        let anchor = BoardLayoutMapper.mapBoardNormalizedPoint(
+            layoutSlot.resourceAnchor,
+            into: boardRect
+        )
+        return ZStack(alignment: .topLeading) {
+            ForEach(
+                Array(slot.resourceTokens.prefix(BoardSlotResourceTokenLayout.maxVisibleTokens).enumerated()),
+                id: \.element.id
+            ) { index, token in
+                let frame = BoardSlotResourceTokenLayout.frame(
+                    at: index,
+                    anchor: anchor,
+                    cardRect: cardRect
+                )
+                GameTokenIconView(
+                    icon: token.icon,
+                    size: frame.visualRect.width
+                )
+                .scaleEffect(token.isSelectedForPayment ? 1.10 : 1)
+                .shadow(
+                    color: token.isSelectedForPayment
+                        ? Color.red.opacity(0.82)
+                        : Color.black.opacity(0.20),
+                    radius: token.isSelectedForPayment ? 3 : 1
+                )
+                .position(x: frame.visualRect.midX, y: frame.visualRect.midY)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+                .transition(GameBoardAnimation.tokenTransition)
+
+                if token.isSelectable {
+                    Button {
+                        viewModel.toggleResourcePayment(
+                            address: token.address,
+                            kind: token.kind,
+                            tokenIndex: token.tokenIndex
+                        )
+                    } label: {
+                        Color.clear
+                            .frame(width: frame.hitRect.width, height: frame.hitRect.height)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(token.title)
+                    .accessibilityHint(token.unavailableReasonText ?? token.warningText ?? "")
+                    .position(x: frame.hitRect.midX, y: frame.hitRect.midY)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .animation(GameBoardAnimation.token, value: slot.resourceTokens.map(\.id))
+        .animation(GameBoardAnimation.quick, value: slot.resourceTokens.map(\.isSelectedForPayment))
     }
 
     private func emptySlotPlaceholder(

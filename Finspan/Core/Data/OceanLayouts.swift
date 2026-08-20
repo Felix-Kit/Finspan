@@ -26,8 +26,11 @@ enum SampleOceanLayout {
                     let forageFish = forageFishLayout.first { fish in
                         fish.diveSite == diveSite && fish.rowIndex == rowIndex
                     }
-                    // Sample-only starting resources until the real base game ocean mat positions are encoded.
-                    let slotResources = forageFish.map(startingResources) ?? []
+                    // Setup pieces remain part of deterministic ocean state. Presentation places
+                    // them as live tokens over their fish / slot artwork rather than relying on
+                    // a printed marker in the board raster.
+                    let slotResources = (forageFish.map(startingResources) ?? [])
+                        + startingOpenSlotResources(diveSite: diveSite, rowIndex: rowIndex)
                     return OceanSlot(
                         address: address,
                         diveSiteColor: diveSiteColor(for: diveSite),
@@ -44,8 +47,8 @@ enum SampleOceanLayout {
         [
             ForageFish(
                 forageFishId: "sample-forage-blue-row-4",
-                name: "Catalina Goby",
-                lengthCm: 1,
+                name: "Glasshead Grenadier",
+                lengthCm: 9,
                 diveSite: .blue,
                 rowIndex: 4
             ),
@@ -58,8 +61,8 @@ enum SampleOceanLayout {
             ),
             ForageFish(
                 forageFishId: "sample-forage-green-row-1",
-                name: "Glasshead Grenadier",
-                lengthCm: 9,
+                name: "Catalina Goby",
+                lengthCm: 1,
                 diveSite: .green,
                 rowIndex: 1
             )
@@ -81,13 +84,21 @@ enum SampleOceanLayout {
         switch (fish.diveSite, fish.rowIndex) {
         case (.blue, 4):
             return [ResourceQuantity(kind: .egg, amount: 1)]
-        case (.purple, 3):
-            return [ResourceQuantity(kind: .egg, amount: 1)]
         case (.green, 1):
-            return [ResourceQuantity(kind: .young, amount: 1)]
+            return [ResourceQuantity(kind: .egg, amount: 1)]
         default:
             return []
         }
+    }
+
+    nonisolated private static func startingOpenSlotResources(
+        diveSite: DiveSite,
+        rowIndex: Int
+    ) -> [ResourceQuantity] {
+        guard diveSite == .purple, rowIndex == 2 else {
+            return []
+        }
+        return [ResourceQuantity(kind: .young, amount: 1)]
     }
 }
 

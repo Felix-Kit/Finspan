@@ -322,6 +322,70 @@ final class BoardLayoutMappingTests: XCTestCase {
                 includesPrintedForageFish: false
             )
         )
+        XCTAssertTrue(
+            BoardSlotArtworkPolicy.shouldRenderSeparateResourceTokens(
+                kind: .empty,
+                includesPrintedForageFish: true
+            )
+        )
+        XCTAssertTrue(
+            BoardSlotArtworkPolicy.shouldRenderSeparateResourceTokens(
+                kind: .forageFish,
+                includesPrintedForageFish: true
+            )
+        )
+        XCTAssertFalse(
+            BoardSlotArtworkPolicy.shouldRenderSeparateResourceTokens(
+                kind: .fishCard,
+                includesPrintedForageFish: true
+            )
+        )
+    }
+
+    func testStartingResourceAnchorsStayInTheLiveTokenArtworkRegion() throws {
+        let data = try Data(contentsOf: boardLayoutJsonURL())
+        let layout = try JSONDecoder().decode(BoardLayout.self, from: data)
+        let startingSlots = [
+            "blue.midnight.0",
+            "purple.sunlit.2",
+            "green.sunlit.1"
+        ]
+
+        for slotId in startingSlots {
+            let slot = try XCTUnwrap(layout.slot(id: slotId))
+            let relativeX = (slot.resourceAnchor.x - slot.cardRect.x) / slot.cardRect.width
+            let relativeY = (slot.resourceAnchor.y - slot.cardRect.y) / slot.cardRect.height
+            XCTAssertEqual(relativeX, 0.46, accuracy: 0.000_01, slotId)
+            XCTAssertEqual(relativeY, 0.42, accuracy: 0.000_01, slotId)
+        }
+    }
+
+    func testLiveResourceTokenVisualAndHitFramesStayInsideCard() {
+        let cardRect = CGRect(x: 100, y: 200, width: 300, height: 300 / CardRenderMetrics.cardAspectRatio)
+        let anchor = CGPoint(
+            x: cardRect.minX + cardRect.width * 0.46,
+            y: cardRect.minY + cardRect.height * 0.42
+        )
+
+        for index in 0..<BoardSlotResourceTokenLayout.maxVisibleTokens {
+            let frame = BoardSlotResourceTokenLayout.frame(
+                at: index,
+                anchor: anchor,
+                cardRect: cardRect
+            )
+            XCTAssertTrue(cardRect.contains(frame.visualRect), "visual \(index)")
+            XCTAssertTrue(cardRect.contains(frame.hitRect), "hit \(index)")
+            XCTAssertTrue(frame.hitRect.contains(frame.visualRect), "hit contains visual \(index)")
+        }
+
+        let firstFrame = BoardSlotResourceTokenLayout.frame(
+            at: 0,
+            anchor: anchor,
+            cardRect: cardRect
+        )
+        XCTAssertEqual(firstFrame.visualRect.width / cardRect.width, 0.155, accuracy: 0.000_1)
+        XCTAssertEqual(firstFrame.visualRect.midX, anchor.x, accuracy: 0.001)
+        XCTAssertEqual(firstFrame.visualRect.midY, anchor.y, accuracy: 0.001)
     }
 
     @MainActor

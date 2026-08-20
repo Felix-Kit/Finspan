@@ -28,7 +28,7 @@ Each slot uses normalized coordinates:
 - `cardRect`: the actual played-card frame, centered inside the small outline tolerance and preserving the fish-card ratio;
 - `hitRect`: a slightly larger tap / drop region;
 - `highlightRect`: the soft tint / glow region;
-- `resourceAnchor`: the board-resource anchor reserved for a slot;
+- `resourceAnchor`: the central artwork anchor for live board-resource tokens in a slot;
 - `coralAnchor`: the dynamic coral progress anchor on the S&R strip;
 - `diverAnchor`: the diver marker anchor.
 
@@ -49,6 +49,8 @@ The board canvas is ordered from back to front:
 The background owns printed slot outlines, zone art, three forage fish, and bottom-strip art. SwiftUI does not redraw those physical elements.
 
 Normal empty slots render no card-like placeholder. When a physical background is present, Catalina Goby, Showy Bristlemouth, and Glasshead Grenadier use the printed mat artwork; their underlying `forageFish` state remains unchanged. Real played fish still render through `FishCardFaceView` and cover the slot.
+
+Egg, young, and school are never redrawn as rounded resource cells on the player mat. Initial setup pieces and later resources use the same resolver-backed local token artwork (`FishEgg`, `YoungFish`, and `SchoolFish`) at `resourceAnchor`, with a transparent, co-located payment hit target. The background image remains the verified original artwork; it is not generatively repainted to chase token alignment.
 
 If the physical background cannot be found or decoded, the canvas deliberately falls back to the ocean gradient, dashed empty-slot outlines, and rendered forage-fish card faces. Hit targets and normalized mapping remain active, so a packaging mistake cannot make the entire interactive board invisible.
 

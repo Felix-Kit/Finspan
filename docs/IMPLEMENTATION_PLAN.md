@@ -235,6 +235,7 @@
 - Player Mat 独立 PNG 已改为通过 bundle 文件 URL 加载并缓存，不再按 Asset Catalog 名称查找；背景缺失时使用可见 slot / forage fish 安全降级，避免整个 board canvas 空白。
 - S&R 使用同一面板和同一 slot mapping，只叠加手工分离的 coral reef strip；不复制或分叉 18-slot 坐标。
 - 背景图负责实体 slot / forage fish / bottom strip 美术；SwiftUI 只叠加透明 hit target、真实出牌、资源 token、coral progress、后续 diver 和柔和 glow / tint highlight。
+- board 上初始资源和后续资源统一为 resolver-backed 鱼卵／幼鱼／鱼群实物 token，叠加在所属鱼牌或空槽的中央 artwork anchor；不再额外画背景资源槽或为背景中印刷提示做专用对齐。
 - DEBUG calibration overlay 只在显式启动参数 / 环境变量打开，且不发送 `PlayerCommand`、不修改 `GameState`。
 - 下一步只做实机像素 QA 与少量 rect 微调；自动 PDF layer extraction、自动 slot 识别、服务器 / Nautoma / S&R 新规则仍不在本阶段。
 

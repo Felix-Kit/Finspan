@@ -2772,7 +2772,7 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(slot?.consumedFish.count, 2)
         XCTAssertEqual(slot?.consumedFish.first, ConsumedFish(cardId: "already-consumed"))
         XCTAssertEqual(slot?.consumedFish.last?.forageFishId, "sample-forage-blue-row-4")
-        XCTAssertEqual(slot?.consumedFish.last?.lengthCm, 1)
+        XCTAssertEqual(slot?.consumedFish.last?.lengthCm, 9)
     }
 
     func testFishPlayedReducerMovesCoveredFishCardToConsumedFish() {
@@ -6144,7 +6144,7 @@ final class GameEngineTests: XCTestCase {
         let engine = GameEngine()
         var state = playFishState(keepForageFish: true)
         let choice = pendingChoice(kind: .placeEgg)
-        let target = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 1)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 3)
         state.pendingChoices[choice.choiceId] = choice
 
         let drafts = try engine.makeEventDrafts(
@@ -6382,7 +6382,7 @@ final class GameEngineTests: XCTestCase {
         let engine = GameEngine()
         var state = playFishState(keepForageFish: true)
         let choice = pendingChoice(kind: .hatchEgg)
-        let target = OceanSlotAddress(playerId: "player-1", diveSite: .green, rowIndex: 1)
+        let target = OceanSlotAddress(playerId: "player-1", diveSite: .purple, rowIndex: 3)
         state.pendingChoices[choice.choiceId] = choice
 
         XCTAssertThrowsError(

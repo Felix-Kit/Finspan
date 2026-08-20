@@ -126,6 +126,44 @@ final class DeterministicSetupTests: XCTestCase {
             XCTAssertNotEqual(eggSlots[0].address, eggSlots[1].address)
             XCTAssertEqual(youngSlots.count, 1)
             XCTAssertFalse(eggSlots.allSatisfy { $0.address == youngSlots[0].address })
+
+            XCTAssertEqual(
+                Set(eggSlots.map(\.address)),
+                [
+                    OceanSlotAddress(playerId: playerState.playerId, diveSite: .blue, rowIndex: 4),
+                    OceanSlotAddress(playerId: playerState.playerId, diveSite: .green, rowIndex: 1)
+                ]
+            )
+            XCTAssertEqual(
+                youngSlots[0].address,
+                OceanSlotAddress(playerId: playerState.playerId, diveSite: .purple, rowIndex: 2)
+            )
+        }
+    }
+
+    func testPrintedForageFishIdentityMatchesPhysicalPlayerMat() throws {
+        let service = try makeStartedService(seed: 123)
+
+        for playerState in service.gameState.playerGameStates.values {
+            let expected: [(DiveSite, Int, String, Int)] = [
+                (.blue, 4, "Glasshead Grenadier", 9),
+                (.purple, 3, "Showy Bristlemouth", 3),
+                (.green, 1, "Catalina Goby", 1)
+            ]
+
+            for (diveSite, rowIndex, name, lengthCm) in expected {
+                let address = OceanSlotAddress(
+                    playerId: playerState.playerId,
+                    diveSite: diveSite,
+                    rowIndex: rowIndex
+                )
+                let slot = try XCTUnwrap(playerState.ocean.slots.first { $0.address == address })
+                guard case let .forageFish(forageFish) = slot.content else {
+                    return XCTFail("Expected printed forage fish at \(diveSite.rawValue) row \(rowIndex).")
+                }
+                XCTAssertEqual(forageFish.name, name)
+                XCTAssertEqual(forageFish.lengthCm, lengthCm)
+            }
         }
     }
 
